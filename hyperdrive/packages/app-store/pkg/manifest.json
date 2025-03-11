@@ -1,0 +1,100 @@
+[
+    {
+        "process_name": "downloads",
+        "process_wasm_path": "/downloads.wasm",
+        "on_exit": "Restart",
+        "request_networking": true,
+        "request_capabilities": [
+            "chain:app-store:sys",
+            "http-client:distro:sys",
+            "main:app-store:sys",
+            "terminal:terminal:sys",
+            "vfs:distro:sys",
+            {
+                "process": "vfs:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [
+            "http-client:distro:sys",
+            "terminal:terminal:sys",
+            "vfs:distro:sys"
+        ],
+        "public": false
+    },
+    {
+        "process_name": "chain",
+        "process_wasm_path": "/chain.wasm",
+        "on_exit": "Restart",
+        "request_networking": false,
+        "request_capabilities": [
+            "downloads:app-store:sys",
+            "eth:distro:sys",
+            "http-client:distro:sys",
+            "hns-indexer:hns-indexer:sys",
+            "main:app-store:sys",
+            "sqlite:distro:sys",
+            "terminal:terminal:sys",
+            {
+                "process": "vfs:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [
+            "eth:distro:sys",
+            "http-client:distro:sys",
+            "hns-indexer:hns-indexer:sys",
+            "sqlite:distro:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys"
+        ],
+        "public": false
+    },
+    {
+        "process_name": "main",
+        "process_wasm_path": "/app-store.wasm",
+        "on_exit": "Restart",
+        "request_networking": true,
+        "request_capabilities": [
+            "chain:app-store:sys",
+            "downloads:app-store:sys",
+            {
+                "process": "eth:distro:sys",
+                "params": {
+                    "root": true
+                }
+            },
+            "filesystem:distro:sys",
+            "homepage:homepage:sys",
+            {
+                "process": "homepage:homepage:sys",
+                "params": "RemoveOther"
+            },
+            "http-server:distro:sys",
+            "kernel:distro:sys",
+            "hns-indexer:hns-indexer:sys",
+            "kv:distro:sys",
+            "sqlite:distro:sys",
+            "terminal:terminal:sys",
+            "vfs:distro:sys",
+            {
+                "process": "vfs:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [
+            "http-server:distro:sys",
+            "hns-indexer:hns-indexer:sys",
+            "terminal:terminal:sys",
+            "homepage:homepage:sys",
+            "vfs:distro:sys"
+        ],
+        "public": false
+    }
+]

@@ -1,0 +1,133 @@
+{
+    "alias.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "terminal:terminal:sys"
+        ],
+        "grant_capabilities": [],
+        "wit_version": 1
+    },
+    "cat.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "vfs:distro:sys",
+            {
+                "process": "vfs:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [],
+        "wit_version": 1
+    },
+    "echo.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [],
+        "grant_capabilities": [],
+        "wit_version": 1
+    },
+    "help.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [],
+        "grant_capabilities": [],
+        "wit_version": 1
+    },
+    "hfetch.wasm": {
+        "root": true,
+        "public": false,
+        "request_networking": false,
+        "grant_capabilities": [
+            "eth:distro:sys",
+            "kernel:distro:sys",
+            "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "hi.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": true,
+        "request_capabilities": [
+            "net:distro:sys"
+        ],
+        "grant_capabilities": [
+            "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "kill.wasm": {
+        "root": true,
+        "public": false,
+        "request_networking": false,
+        "wit_version": 1
+    },
+    "m.wasm": {
+        "root": true,
+        "public": true,
+        "request_networking": true,
+        "wit_version": 1
+    },
+    "namehash-to-name.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "net:distro:sys"
+        ],
+        "grant_capabilities": [
+            "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "net-diagnostics.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "net:distro:sys"
+        ],
+        "grant_capabilities": [
+            "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "peer.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "net:distro:sys"
+        ],
+        "grant_capabilities": [
+            "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "peers.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "net:distro:sys"
+        ],
+        "grant_capabilities": [
+            "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "top.wasm": {
+        "root": true,
+        "public": false,
+        "request_networking": false,
+        "wit_version": 1
+    }
+}

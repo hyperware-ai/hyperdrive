@@ -3,9 +3,9 @@ use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-const KIT_CACHE: &str = "/tmp/kinode-kit-cache";
-const KINODE_WIT_1_0_0_URL: &str =
-    "https://raw.githubusercontent.com/kinode-dao/kinode-wit/v1.0.0/kinode.wit";
+const KIT_CACHE: &str = "/tmp/hyperware-kit-cache";
+const HYPERWARE_WIT_1_0_0_URL: &str =
+    "https://raw.githubusercontent.com/hyperware-ai/hyperware-wit/v1.0.0/hyperware.wit";
 
 /// copied from `kit`
 async fn download_file(url: &str, path: &Path) -> anyhow::Result<()> {
@@ -59,11 +59,11 @@ fn main() {
 
     let pwd = std::env::current_dir().expect("Failed to get current directory");
 
-    let wit_file = pwd.join("wit-v1.0.0").join("kinode.wit");
+    let wit_file = pwd.join("wit-v1.0.0").join("hyperware.wit");
 
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        download_file(KINODE_WIT_1_0_0_URL, &wit_file)
+        download_file(HYPERWARE_WIT_1_0_0_URL, &wit_file)
             .await
             .expect("Failed to download WIT 1.0");
     });

@@ -1,0 +1,376 @@
+/* Base Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+li {
+    font-family: 'Kode Mono', monospace;
+}
+
+/* Layout */
+h1 {
+    padding: 20px;
+    max-width: 960px;
+    min-width: 300px;
+    margin: 0 auto;
+}
+
+#header {
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    padding: 20px;
+    max-width: 960px;
+    min-width: 300px;
+    gap: 1rem;
+    margin: 0 auto;
+}
+
+/* Main Grid Layout */
+main {
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px 20px;
+    grid-auto-flow: row;
+    grid-template-areas:
+        "diagnostics diagnostics diagnostics"
+        "node-info pings pings"
+        "eth-rpc-providers eth-rpc-providers eth-rpc-settings"
+        "kernel kernel kernel"
+        "id-onchain id-onchain id-onchain"
+        "hyperware-css hyperware-css hyperware-css";
+    padding: 20px;
+    max-width: 960px;
+    min-width: 300px;
+}
+
+/* Grid Areas */
+article#net-diagnostics {
+    grid-area: diagnostics;
+}
+
+article#node-info {
+    grid-area: node-info;
+    word-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+article#pings {
+    grid-area: pings;
+}
+
+article#eth-rpc-providers {
+    grid-area: eth-rpc-providers;
+}
+
+article#eth-rpc-settings {
+    grid-area: eth-rpc-settings;
+}
+
+article#kernel {
+    grid-area: kernel;
+}
+
+article#hyperware-css {
+    grid-area: hyperware-css;
+}
+
+#stylesheet-editor {
+    flex-grow: 1;
+    min-height: 300px;
+    resize: vertical;
+}
+
+/* Article Styles */
+article {
+    border: 1px solid #444;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-height: 600px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+}
+
+/* Text Formatting */
+p#diagnostics,
+p#peer-pki-response,
+p#peer-ping-response {
+    white-space: pre-wrap;
+}
+
+article#id-onchain {
+    grid-area: id-onchain;
+    word-wrap: break-word;
+}
+
+/* Lists */
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    padding: 8px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Process Map Specific */
+#process-map li p:first-child {
+    font-weight: bold;
+}
+
+#process-map li ul {
+    padding-left: 20px;
+}
+
+#process-map li ul li {
+    margin-bottom: 1px;
+    padding: 0;
+}
+
+/* Button Styles */
+button.kill-process {
+    padding: 3px 6px;
+    margin: 10px;
+}
+
+.edit-note {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.edit-note input {
+    flex-grow: 1;
+}
+
+#shutdown {
+    background-color: var(--ansi-red);
+}
+
+#shutdown:hover {
+    background-color: var(--maroon);
+}
+
+/* Settings UI Container */
+.settings-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.settings-section {
+    background: light-dark(var(--white), var(--tasteful-dark));
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Settings Forms */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.settings-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.settings-form-group label {
+    font-weight: bold;
+    color: light-dark(var(--off-black), var(--off-white));
+}
+
+.settings-form-group input,
+.settings-form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid light-dark(var(--gray), var(--off-white));
+    border-radius: var(--radius-md);
+    background: light-dark(var(--off-white), var(--off-black));
+    color: light-dark(var(--off-black), var(--off-white));
+}
+
+.settings-form-group input:focus,
+.settings-form-group textarea:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(43, 136, 217, 0.2);
+}
+
+/* Settings Actions */
+.settings-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.settings-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.settings-button-primary {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+}
+
+.settings-button-primary:hover {
+    background: var(--primary-light);
+}
+
+.settings-button-secondary {
+    background: transparent;
+    color: var(--secondary-color);
+    border: 2px solid var(--secondary-color);
+}
+
+.settings-button-secondary:hover {
+    background: var(--secondary-color);
+    color: white;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    main {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "diagnostics"
+            "node-info"
+            "pings"
+            "eth-rpc-providers"
+            "eth-rpc-settings"
+            "kernel"
+            "id-onchain"
+            "hyperware-css";
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    article {
+        max-height: none;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        overflow-y: auto;
+    }
+
+    .settings-container {
+        padding: 1rem;
+    }
+
+    .settings-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .settings-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .settings-actions {
+        flex-direction: column;
+    }
+
+    .settings-button {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    /* Improve form elements for touch */
+    .settings-form-group input,
+    .settings-form-group textarea {
+        font-size: 16px;
+        padding: 0.875rem;
+    }
+
+    /* Better spacing for mobile */
+    .settings-form {
+        gap: 0.75rem;
+    }
+
+    /* Improve readability */
+    .settings-section h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Add touch-friendly scrolling */
+    .settings-container {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Adjust button sizes for touch */
+    button.kill-process,
+    button.add-note-button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.75rem;
+    }
+
+    .edit-note {
+        flex-direction: column;
+    }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+    article {
+        border-color: var(--off-white);
+    }
+
+    .settings-form-group input,
+    .settings-form-group textarea {
+        background: var(--off-black);
+        color: var(--off-white);
+    }
+
+    .settings-button-secondary {
+        background: var(--off-black);
+    }
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "chain_id": 1,
+    "trusted": false,
+    "provider": {
+      "Node": {
+        "hns_update": {
+          "name": "eth-provider.hypr",
+          "public_key": "0xb2d90311d4666cc5a5ec6fb827dbbbcb3e884620470c18f5650ee166522a8089",
+          "ips": [
+            "15.204.59.64"
+          ],
+          "ports": {
+            "ws": 9005
+          },
+          "routers": []
+        },
+        "use_as_provider": true
+      }
+    }
+  },
+  {
+    "chain_id": 10,
+    "trusted": false,
+    "provider": {
+      "Node": {
+        "hns_update": {
+          "name": "optimism-provider.hypr",
+          "public_key": "0xda9c10f1c53ab3bd3069bdfa5e86170b5997aa4fe1f33208c6b3d0b3c06c6c47",
+          "ips": [
+            "15.204.59.64"
+          ],
+          "ports": {
+            "ws": 9006
+          },
+          "routers": []
+        },
+        "use_as_provider": true
+      }
+    }
+  },
+  {
+    "chain_id": 8453,
+    "trusted": false,
+    "provider": {
+      "Node": {
+        "hns_update": {
+          "name": "base-provider.hypr",
+          "public_key": "0xc30395d7d5d0273faed4bb63c9a277bd33040bf1d82f4199a6d825b0f94527a0",
+          "ips": [
+            "15.204.59.64"
+          ],
+          "ports": {
+            "ws": 9007
+          },
+          "routers": []
+        },
+        "use_as_provider": true
+      }
+    }
+  },
+  {
+    "chain_id": 11155111,
+    "trusted": false,
+    "provider": {
+      "Node": {
+        "hns_update": {
+          "name": "sepolia-provider.hypr",
+          "public_key": "0x6ae839dfda9e20138afd5db17dabfba7e1b029f57f79fe3f9174c33087890872",
+          "ips": [
+            "15.204.59.64"
+          ],
+          "ports": {
+            "ws": 9008
+          },
+          "routers": []
+        },
+        "use_as_provider": true
+      }
+    }
+  }
+]

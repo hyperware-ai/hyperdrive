@@ -1,0 +1,406 @@
+@import url('https://fonts.googleapis.com/css2?family=Kode+Mono:wght@700&display=swap');
+
+/* CSS Reset and Base Styles */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+    font-family: var(--font-family-main);
+    font-size: 16px;
+    /* Prevent zoom on iOS */
+}
+
+/* Variables */
+:root {
+    color-scheme: light dark;
+    --neon-green: #E5FF44;
+    --neon-green-light: #E5FF4488;
+    --neon-green-xlight: #E5FF4444;
+    --neon-blue: #44E5FF;
+    --neon-red: #FF44E5;
+    --neon-yellow: #FFFF44;
+    --neon-purple: #E544FF;
+    --neon-orange: #FF9944;
+    --neon-pink: #FF44B2;
+    --neon-cyan: #44FFE5;
+    --orange: #FF4F00;
+    --dark-orange: #cc4100;
+    --blue: #2B88D9;
+    --off-white: #fdfdfd;
+    --white: #ffffff;
+    --off-black: #0C090A;
+    --black: #000000;
+    --tan: #fdf6e3;
+    --ansi-red: #dc322f;
+    --maroon: #4f0000;
+    --gray: #657b83;
+    --tasteful-dark: #1f1f1f;
+
+    --primary-color: var(--neon-green);
+    --primary-light: var(--neon-green-light);
+    --primary-xlight: var(--neon-green-xlight);
+    --secondary-color: var(--neon-blue);
+    --tertiary-color: var(--neon-red);
+    --quaternary-color: var(--neon-yellow);
+    --quinary-color: var(--neon-purple);
+    --senary-color: var(--neon-orange);
+    --septenary-color: var(--neon-pink);
+
+    --font-family-main: 'Kode Mono', monospace;
+
+    /* Add modern CSS variables */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --button-border-width: 2px;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+label,
+li {
+    font-family: var(--font-family-main);
+    color: light-dark(var(--off-black), var(--off-white));
+    line-height: 1.5;
+}
+
+p,
+li {
+    font-size: 0.8em;
+}
+
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
+h3 {
+    font-size: 1.3em;
+}
+
+h4 {
+    font-size: 1.2em;
+}
+
+h5 {
+    font-size: 1.1em;
+}
+
+h6 {
+    font-size: 1em;
+}
+
+a {
+    font-family: var(--font-family-main);
+    color: light-dark(var(--secondary-colorndary-colorndary-color), var(--primary-color));
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Layout */
+body {
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    background-color: light-dark(var(--tan), var(--tasteful-dark));
+    background-image: radial-gradient(circle at 81% 210%, var(--primary-light) 17%, transparent 77.05%);
+    min-width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Sections */
+section {
+    background-color: light-dark(var(--white), var(--maroon));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: transform var(--transition-normal);
+}
+
+section:hover {
+    transform: translateY(-5px);
+}
+
+/* Forms */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+label {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    display: block;
+}
+
+input,
+textarea,
+select {
+    padding: 0.75rem;
+    border: var(--button-border-width) solid var(--primary-color);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    background-color: light-dark(var(--white), var(--off-black));
+    color: light-dark(var(--off-black), var(--off-white));
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px var(--primary-xlight);
+    animation: shine 0.4s ease-out;
+    background-size: 200% 100%;
+    background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
+}
+
+/* Button styles */
+button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    gap: 1rem;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    background-color: var(--primary-color);
+    color: var(--off-black);
+    border: var(--button-border-width) solid transparent;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    min-height: 44px;
+    min-width: 44px;
+}
+
+button:hover {
+    background-color: light-dark(var(--off-white), var(--off-black));
+    color: var(--primary-color);
+    border: var(--button-border-width) solid var(--primary-color);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+button.secondary {
+    background-color: light-dark(var(--off-white), var(--off-black));
+    color: light-dark(var(--off-black), var(--off-white));
+    border: var(--button-border-width) solid light-dark(var(--off-black), var(--off-white));
+}
+
+button.secondary:hover {
+    background-color: light-dark(var(--off-black), var(--off-white));
+    color: light-dark(var(--off-white), var(--off-black));
+    border: var(--button-border-width) solid light-dark(var(--off-white), var(--off-black));
+}
+
+button.tertiary {
+    background-color: var(--tertiary-color);
+    color: var(--off-black);
+    border: var(--button-border-width) solid transparent;
+}
+
+button.tertiary:hover {
+    background-color: light-dark(var(--off-white), var(--off-black));
+    color: var(--tertiary-color);
+    border: var(--button-border-width) solid var(--tertiary-color);
+}
+
+
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    :root {
+        --shadow-md: 0 2px 4px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 4px 6px -2px rgb(0 0 0 / 0.1);
+    }
+
+    section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: var(--radius-md);
+    }
+
+    form input,
+    form textarea,
+    form select {
+        font-size: 16px;
+        /* Prevent zoom on iOS */
+        padding: 0.875rem;
+    }
+
+    button {
+        width: 100%;
+        padding: 0.875rem;
+    }
+
+    /* Improve touch targets */
+    a,
+    button,
+    input[type="button"],
+    input[type="submit"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Add smooth scrolling */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Improve form spacing */
+    form {
+        gap: 0.75rem;
+    }
+
+    /* Better section spacing */
+    section+section {
+        margin-top: 1rem;
+    }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+
+    form input,
+    form textarea,
+    form select {
+        background-color: var(--off-black);
+        color: var(--off-white);
+    }
+
+    button.secondary {
+        background-color: var(--off-black);
+    }
+}
+
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.h-screen {
+    height: 100vh;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.place-content-center {
+    place-content: center;
+}
+
+.place-items-center {
+    place-items: center;
+}
+
+.self-stretch {
+    align-self: stretch;
+}
+
+.text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.leading-6 {
+    line-height: 1.5rem;
+}
+
+.p-4 {
+    padding: 1rem;
+}
+
+.px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.py-4 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+@keyframes shine {
+    0% {
+        background-position: 200% 0%;
+    }
+
+    100% {
+        background-position: 0% 0%;
+    }
+}
