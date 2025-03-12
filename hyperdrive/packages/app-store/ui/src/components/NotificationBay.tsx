@@ -3,7 +3,7 @@ import { FaBell, FaChevronDown, FaChevronUp, FaTrash, FaTimes } from 'react-icon
 import useAppsStore from '../store';
 import { Notification, NotificationAction } from '../types/Apps';
 import { useNavigate } from 'react-router-dom';
-
+import classNames from 'classnames';
 
 interface ModalProps {
     children: ReactNode;
@@ -29,6 +29,7 @@ const NotificationBay: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
     const navigate = useNavigate();
+    const isMobile = window.innerWidth < 768;
 
     const handleActionClick = (action: NotificationAction) => {
         switch (action.action.type) {
@@ -104,7 +105,7 @@ const NotificationBay: React.FC = () => {
 
     return (
         <>
-            <div className="notification-bay">
+            <div className={classNames("relative", { "ml-auto": isMobile })}>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     className={`notification-button ${hasErrors ? 'has-errors' : ''}`}

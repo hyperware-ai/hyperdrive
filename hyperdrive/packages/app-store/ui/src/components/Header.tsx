@@ -2,33 +2,48 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH } from '../constants/path';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { FaHome } from "react-icons/fa";
+import { FaChevronLeft } from "react-icons/fa";
 import NotificationBay from './NotificationBay';
 import useAppsStore from '../store';
-
+import classNames from 'classnames';
 const Header: React.FC = () => {
     const location = useLocation();
     const { updates } = useAppsStore();
     const updateCount = Object.keys(updates || {}).length;
+    const isMobile = window.innerWidth < 768;
 
     return (
-        <header className="app-header">
-            <div className="header-left">
-                <nav>
-                    <button onClick={() => window.location.href = window.location.origin.replace('//app-store-sys.', '//') + '/'} className="home-button">
-                        <FaHome />
+        <header className={classNames("app-header", { "flex-col": isMobile })}>
+            <div className="flex items-center gap-2 self-stretch flex-wrap">
+                <nav className="flex items-center gap-2 self-stretch flex-wrap">
+                    <button
+                        onClick={() => window.location.href = window.location.origin.replace('//app-store-sys.', '//') + '/'}
+                        className="alt"
+                    >
+                        <FaChevronLeft />
                     </button>
-                    <Link to={STORE_PATH} className={location.pathname === STORE_PATH ? 'active' : ''}>Store</Link>
-                    <Link to={MY_APPS_PATH} className={location.pathname === MY_APPS_PATH ? 'active' : ''}>
+                    <Link
+                        to={STORE_PATH}
+                        className={classNames('button', { clear: location.pathname !== STORE_PATH })}
+                    >Store</Link>
+                    <Link
+                        to={MY_APPS_PATH}
+                        className={classNames('button', { clear: location.pathname !== MY_APPS_PATH })}
+                    >
                         My Apps
                         {updateCount > 0 && <span className="update-badge">{updateCount}</span>}
                     </Link>
-                    <Link to={PUBLISH_PATH} className={location.pathname === PUBLISH_PATH ? 'active' : ''}>Publish</Link>
+                    <Link
+                        to={PUBLISH_PATH}
+                        className={classNames('button', { clear: location.pathname !== PUBLISH_PATH })}
+                    >
+                        Publish
+                    </Link>
                 </nav>
             </div>
-            <div className="header-right">
-                <NotificationBay />
+            <div className="flex items-center gap-2 self-stretch">
                 <ConnectButton />
+                <NotificationBay />
             </div>
         </header>
     );

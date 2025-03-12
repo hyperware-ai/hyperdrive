@@ -122,14 +122,12 @@ function Login({
 
           <button type="submit">Log in</button>
 
-          <div className="additional-options">
-            <button
-              className="alt"
-              onClick={() => navigate('/reset')}
-            >
-              Reset Password & Networking Info
-            </button>
-          </div>
+          <button
+            className="alt"
+            onClick={() => navigate('/reset')}
+          >
+            Reset Password & Networking Info
+          </button>
         </form>
       )}
     </>

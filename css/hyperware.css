@@ -4,9 +4,6 @@
 *,
 *::before,
 *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -195,7 +192,8 @@ select:focus {
 }
 
 /* Button styles */
-button {
+button,
+.button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -215,52 +213,75 @@ button {
     min-width: 44px;
 }
 
-button:hover {
+button:hover,
+.button:hover {
     background-color: light-dark(var(--off-white), var(--off-black));
     color: var(--primary-color);
     border: var(--button-border-width) solid var(--primary-color);
 }
 
-button:active {
+button:active,
+.button:active {
     transform: translateY(0);
 }
 
-button:disabled {
+button:disabled,
+.button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
 }
 
-button.alt {
+button.alt,
+.button.alt {
     background-color: light-dark(var(--off-white), var(--off-black));
     color: light-dark(var(--off-black), var(--off-white));
     border: var(--button-border-width) solid light-dark(var(--off-black), var(--off-white));
 }
 
-button.alt:hover {
+button.icon,
+.button.icon {
+    display: flex;
+    align-items: center;
+    place-content: center;
+    background-color: transparent;
+    color: light-dark(var(--off-black), var(--off-white));
+    padding: 0.75rem;
+    border-radius: 9999px;
+    border: var(--button-border-width) solid light-dark(var(--off-black), var(--off-white));
+    border-color: light-dark(var(--off-black), var(--off-white));
+    transition: all var(--transition-fast);
+}
+
+button.alt:hover,
+.button.alt:hover {
     background-color: light-dark(var(--off-black), var(--off-white));
     color: light-dark(var(--off-white), var(--off-black));
     border: var(--button-border-width) solid light-dark(var(--off-white), var(--off-black));
 }
 
-button.secondary {
+button.secondary,
+.button.secondary {
     background-color: var(--secondary-color);
     color: var(--off-black);
 }
 
-button.secondary:hover {
+button.secondary:hover,
+.button.secondary:hover {
     background-color: light-dark(var(--off-black), var(--off-white));
     color: light-dark(var(--off-white), var(--off-black));
     border: var(--button-border-width) solid var(--secondary-color);
 }
 
-button.tertiary {
+button.tertiary,
+.button.tertiary {
     background-color: var(--tertiary-color);
     color: var(--off-black);
     border: var(--button-border-width) solid transparent;
 }
 
-button.tertiary:hover {
+button.tertiary:hover,
+.button.tertiary:hover {
     background-color: light-dark(var(--off-white), var(--off-black));
     color: var(--tertiary-color);
     border: var(--button-border-width) solid var(--tertiary-color);
@@ -299,9 +320,10 @@ button.clear:hover,
         padding: 0.875rem;
     }
 
-    button {
+    button,
+    .button {
         align-self: stretch;
-        padding: 0.875rem;
+        padding: 0.25rem 0.5rem;
     }
 
     /* Improve touch targets */
@@ -327,79 +349,6 @@ button.clear:hover,
     section+section {
         margin-top: 1rem;
     }
-}
-
-
-.mb-2 {
-    margin-bottom: 0.5rem;
-}
-
-.mt-2 {
-    margin-top: 0.5rem;
-}
-
-.flex {
-    display: flex;
-}
-
-.flex-wrap {
-    flex-wrap: wrap;
-}
-
-.gap-4 {
-    gap: 1rem;
-}
-
-.h-screen {
-    height: 100vh;
-}
-
-.cursor-pointer {
-    cursor: pointer;
-}
-
-.flex-col {
-    flex-direction: column;
-}
-
-.place-content-center {
-    place-content: center;
-}
-
-.place-items-center {
-    place-items: center;
-}
-
-.self-stretch {
-    align-self: stretch;
-}
-
-.text-lg {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
-}
-
-.text-sm {
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-}
-
-.leading-6 {
-    line-height: 1.5rem;
-}
-
-.p-4 {
-    padding: 1rem;
-}
-
-.px-4 {
-    padding-left: 1rem;
-    padding-right: 1rem;
-}
-
-.py-4 {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
 }
 
 @keyframes shine {

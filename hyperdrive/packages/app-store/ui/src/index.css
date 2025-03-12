@@ -25,45 +25,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 1rem;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    /* Provides consistent spacing between NotificationBay and ConnectButton */
-}
-
-.header-left h1 {
-    margin: 0;
-    font-size: 1.5rem;
-}
-
-.header-left nav {
-    display: flex;
-    gap: 1.5rem;
-}
-
-.header-left nav a {
-    color: var(--primary-color);
-    text-decoration: none;
-    padding: 0.5rem;
-    border-radius: var(--radius-lg);
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-}
-
-.header-left nav a:hover,
-.header-left nav a.active {
-    background-color: var(--primary-color);
-    color: var(--text-light);
 }
 
 /* Forms */
@@ -235,19 +198,8 @@ form {
     margin: 0 auto;
 }
 
-.app-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-div.app-header {
-    background: transparent !important;
-}
-
 .app-warning {
-    background: var(--primary-color) !important;
+    background: var(--primary-color);
     color: var(--text-light);
     padding: 1rem;
     margin-bottom: 1rem;
@@ -260,14 +212,12 @@ div.app-header {
     color: light-dark(var(--text-light), var(--text-dark));
 }
 
-/* Components with secondary backgrounds */
-.app-header,
 .form-group,
 .version-selector,
 .mirror-selector select,
 .secondary,
 .message.success {
-    background: light-dark(var(--surface-light), var(--surface-dark)) !important;
+    background: light-dark(var(--surface-light), var(--surface-dark));
     color: light-dark(var(--text-light), var(--text-dark));
 }
 
@@ -564,11 +514,6 @@ div.app-header {
 
 .capability-section li {
     margin-bottom: 0.25rem;
-}
-
-.notification-bay {
-    position: relative;
-    margin-right: 1rem;
 }
 
 .notification-button {
@@ -1069,75 +1014,9 @@ div.app-header {
     border-radius: var(--radius-lg);
 }
 
-.tooltip-container {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
 .tooltip-icon {
     cursor: help;
-    color: #666;
-    font-size: 14px;
-    position: relative;
 }
-
-.tooltip-content {
-    position: absolute;
-    right: calc(100% + 8px);
-    /* Position to the left with 8px gap */
-    top: 50%;
-    transform: translateY(-50%);
-    background: #333;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    white-space: nowrap;
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    min-width: max-content;
-}
-
-.tooltip-container:hover .tooltip-content {
-    opacity: 1;
-    visibility: visible;
-    transition-delay: 0.2s;
-}
-
-.tooltip-content:hover {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-.tooltip-content::before {
-    content: '';
-    position: absolute;
-    left: -4px;
-    top: 8px;
-    border-top: 4px solid transparent;
-    border-bottom: 4px solid transparent;
-    border-right: 4px solid #333;
-}
-
-.tooltip-content a {
-    color: #fff;
-    text-decoration: underline;
-}
-
-.tooltip-content a:hover {
-    text-decoration: none;
-}
-
-.wallet-status {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
 
 /* Modal styles */
 .modal-overlay {
