@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Kode+Mono:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap');
 
 /* CSS Reset and Base Styles */
 *,
@@ -42,17 +42,14 @@ select {
     --neon-orange: #FF9944;
     --neon-pink: #FF44B2;
     --neon-cyan: #44FFE5;
-    --orange: #FF4F00;
-    --dark-orange: #cc4100;
-    --blue: #2B88D9;
     --off-white: #fdfdfd;
     --white: #ffffff;
     --off-black: #0C090A;
     --black: #000000;
     --tan: #fdf6e3;
-    --ansi-red: #dc322f;
     --maroon: #4f0000;
     --gray: #657b83;
+    --adaptive-gray: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
     --tasteful-dark: #1f1f1f;
 
     --primary-color: var(--neon-green);
@@ -65,7 +62,7 @@ select {
     --senary-color: var(--neon-orange);
     --septenary-color: var(--neon-pink);
 
-    --font-family-main: 'Kode Mono', monospace;
+    --font-family-main: 'Space Grotesk', monospace;
 
     /* Add modern CSS variables */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -77,6 +74,10 @@ select {
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
     --button-border-width: 2px;
+}
+
+body {
+    font-family: var(--font-family-main);
 }
 
 /* Typography */
@@ -125,7 +126,7 @@ h6 {
 
 a {
     font-family: var(--font-family-main);
-    color: light-dark(var(--secondary-colorndary-colorndary-color), var(--primary-color));
+    color: light-dark(var(--secondary-color), var(--primary-color));
     text-decoration: none;
 }
 
@@ -178,7 +179,7 @@ select {
     border: var(--button-border-width) solid var(--primary-color);
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
-    background-color: light-dark(var(--white), var(--off-black));
+    background-color: var(--adaptive-gray);
     color: light-dark(var(--off-black), var(--off-white));
 }
 
@@ -230,16 +231,27 @@ button:disabled {
     transform: none;
 }
 
-button.secondary {
+button.alt {
     background-color: light-dark(var(--off-white), var(--off-black));
     color: light-dark(var(--off-black), var(--off-white));
     border: var(--button-border-width) solid light-dark(var(--off-black), var(--off-white));
 }
 
-button.secondary:hover {
+button.alt:hover {
     background-color: light-dark(var(--off-black), var(--off-white));
     color: light-dark(var(--off-white), var(--off-black));
     border: var(--button-border-width) solid light-dark(var(--off-white), var(--off-black));
+}
+
+button.secondary {
+    background-color: var(--secondary-color);
+    color: var(--off-black);
+}
+
+button.secondary:hover {
+    background-color: light-dark(var(--off-black), var(--off-white));
+    color: light-dark(var(--off-white), var(--off-black));
+    border: var(--button-border-width) solid var(--secondary-color);
 }
 
 button.tertiary {
@@ -254,7 +266,17 @@ button.tertiary:hover {
     border: var(--button-border-width) solid var(--tertiary-color);
 }
 
+button.clear,
+.button.clear {
+    background-color: transparent;
+    color: light-dark(var(--off-black), var(--off-white));
+}
 
+button.clear:hover,
+.button.clear:hover {
+    background-color: light-dark(var(--off-white), var(--off-black));
+    color: var(--primary-color);
+}
 
 /* Mobile Optimizations */
 @media (max-width: 768px) {
@@ -278,7 +300,7 @@ button.tertiary:hover {
     }
 
     button {
-        width: 100%;
+        align-self: stretch;
         padding: 0.875rem;
     }
 
@@ -304,21 +326,6 @@ button.tertiary:hover {
     /* Better section spacing */
     section+section {
         margin-top: 1rem;
-    }
-}
-
-/* Dark mode optimizations */
-@media (prefers-color-scheme: dark) {
-
-    form input,
-    form textarea,
-    form select {
-        background-color: var(--off-black);
-        color: var(--off-white);
-    }
-
-    button.secondary {
-        background-color: var(--off-black);
     }
 }
 
@@ -403,4 +410,26 @@ button.tertiary:hover {
     100% {
         background-position: 0% 0%;
     }
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+th,
+td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--adaptive-gray);
+}
+
+th {
+    background-color: var(--adaptive-gray);
+}
+
+td:nth-child(even) {
+    background-color: var(--adaptive-gray);
 }

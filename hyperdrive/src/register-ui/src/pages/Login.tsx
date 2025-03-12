@@ -124,7 +124,7 @@ function Login({
 
           <div className="additional-options">
             <button
-              className="secondary"
+              className="alt"
               onClick={() => navigate('/reset')}
             >
               Reset Password & Networking Info

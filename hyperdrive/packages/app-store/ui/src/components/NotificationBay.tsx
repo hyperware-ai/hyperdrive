@@ -90,7 +90,7 @@ const NotificationBay: React.FC = () => {
 
                         {!notification.persistent && (
                             <button
-                                className="dismiss-button"
+                                className="clear"
                                 onClick={(e) => handleDismiss(notification.id, e)}
                             >
                                 <FaTrash />

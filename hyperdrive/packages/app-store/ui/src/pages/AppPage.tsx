@@ -124,13 +124,13 @@ export default function AppPage() {
   const handleMirrorSelect = useCallback((mirror: string, status: boolean | null | 'http') => {
     setSelectedMirror(mirror);
     setIsMirrorOnline(status === 'http' ? true : status);
-    setMirrorError(null);  
+    setMirrorError(null);
   }, []);
 
   const handleMirrorError = useCallback((error: string) => {
     setMirrorError(error);
     setIsMirrorOnline(false);
-    setAttemptedDownload(false); 
+    setAttemptedDownload(false);
   }, []);
 
   const handleInstallFlow = useCallback(async (isDownloadNeeded: boolean = false) => {
@@ -381,10 +381,10 @@ export default function AppPage() {
                 <FaPlay /> Launch
               </button>
             )}
-            <button onClick={handleUninstall} className="secondary">
+            <button onClick={handleUninstall} className="alt">
               {isUninstalling ? <FaSpinner className="fa-spin" /> : <FaTrash />} Uninstall
             </button>
-            <button onClick={handleToggleAutoUpdate} className="secondary">
+            <button onClick={handleToggleAutoUpdate} className="alt">
               {isTogglingAutoUpdate ? <FaSpinner className="fa-spin" /> : <FaSync />}
               {app.auto_update ? " Disable" : " Enable"} Auto Update
             </button>
@@ -456,7 +456,7 @@ export default function AppPage() {
 
       {valid_wit_version && !upToDate && (
         <>
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className="secondary">
+          <button onClick={() => setShowAdvanced(!showAdvanced)} className="alt">
             {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Download Options
           </button>
           {showAdvanced && (
@@ -465,9 +465,9 @@ export default function AppPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Mirror Selection</label>
-                  <MirrorSelector 
-                    packageId={id} 
-                    onMirrorSelect={handleMirrorSelect} 
+                  <MirrorSelector
+                    packageId={id}
+                    onMirrorSelect={handleMirrorSelect}
                     onError={handleMirrorError}
                   />
                   {mirrorError && (
