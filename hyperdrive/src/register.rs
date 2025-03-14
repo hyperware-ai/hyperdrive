@@ -263,7 +263,10 @@ pub async fn connect_to_provider(maybe_rpc: Option<String>) -> RootProvider<PubS
     ];
 
     for rpc_url in rpc_urls {
-        if let Ok(client) = ProviderBuilder::new().on_ws(WsConnect::new(rpc_url.to_string())).await {
+        if let Ok(client) = ProviderBuilder::new()
+            .on_ws(WsConnect::new(rpc_url.to_string()))
+            .await
+        {
             println!("Connected to {rpc_url}\r");
             return client;
         }
@@ -620,9 +623,11 @@ pub async fn assign_routing(
 
     let multicall_return = match provider.call(&tx).await {
         Ok(multicall_return) => multicall_return,
-        Err(e) => return Err(anyhow::anyhow!(
-            "Failed to fetch node IP data from hypermap: {e}"
-        )),
+        Err(e) => {
+            return Err(anyhow::anyhow!(
+                "Failed to fetch node IP data from hypermap: {e}"
+            ))
+        }
     };
 
     let Ok(results) = aggregateCall::abi_decode_returns(&multicall_return, false) else {
