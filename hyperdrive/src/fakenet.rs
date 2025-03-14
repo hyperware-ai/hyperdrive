@@ -45,7 +45,10 @@ pub async fn mint_local(
         Some(&"dev") => dotdev,
         _ => dotdev,
     };
-    println!("mint_local name, tlz, addy: {name}, {:?}, {minter}", parts.get(1));
+    println!(
+        "mint_local name, tlz, addy: {name}, {:?}, {minter}",
+        parts.get(1)
+    );
 
     let endpoint = format!("ws://localhost:{}", fakechain_port);
     let ws = WsConnect::new(endpoint);
@@ -110,7 +113,10 @@ pub async fn mint_local(
     ];
 
     let is_reset = tba != Address::default();
-    println!("is_reset, tba, owner, bytes: {}, {:?}, {:?}, {:?}", is_reset, tba, _owner, bytes);
+    println!(
+        "is_reset, tba, owner, bytes: {}, {:?}, {:?}, {:?}",
+        is_reset, tba, _owner, bytes
+    );
 
     let multicall = aggregateCall { calls: multicalls }.abi_encode();
 
