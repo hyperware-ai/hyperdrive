@@ -245,26 +245,36 @@ pub async fn register(
         .await;
 }
 
+/// Connect to given provider or one of two public RPC providers as fallbacks.
+/// TODO: add more fallbacks
 pub async fn connect_to_provider(maybe_rpc: Option<String>) -> RootProvider<PubSubFrontend> {
-    let url = if let Some(rpc_url) = maybe_rpc {
+    let url = if let Some(ref rpc_url) = maybe_rpc {
         rpc_url
     } else {
-        "wss://base-rpc.publicnode.com".to_string()
+        "wss://base-rpc.publicnode.com"
     };
 
-    let client = match ProviderBuilder::new().on_ws(WsConnect::new(url)).await {
-        Ok(client) => client,
-        Err(e) => {
-            panic!(
-                "Error: runtime could not connect to ETH RPC: {e}\n\
-                This is necessary in order to verify node identity onchain.\n\
-                Please make sure you are using a valid WebSockets URL if using \
-                the --rpc flag, and you are connected to the internet."
-            );
+    let rpc_urls = [
+        url,
+        "wss://base.llamarpc.com",
+        "wss://base-rpc.publicnode.com",
+        //"wss://1rpc.io/base",
+        //"wss://base.blockpi.network/v1/rpc/public",
+    ];
+
+    for rpc_url in rpc_urls {
+        if let Ok(client) = ProviderBuilder::new().on_ws(WsConnect::new(rpc_url.to_string())).await {
+            println!("Connected to {rpc_url}\r");
+            return client;
         }
-    };
+    }
 
-    client
+    panic!(
+        "Error: runtime could not connect to Base ETH RPCs {rpc_urls:?}\n\
+        This is necessary in order to verify node identity onchain.\n\
+        Please make sure you are using a valid WebSockets URL if using \
+        the --rpc flag, and you are connected to the internet."
+    );
 }
 
 async fn get_unencrypted_info(keyfile: Option<Vec<u8>>) -> Result<impl Reply, Rejection> {
@@ -608,10 +618,11 @@ pub async fn assign_routing(
     let tx_input = TransactionInput::new(Bytes::from(multicall_call));
     let tx = TransactionRequest::default().to(multicall).input(tx_input);
 
-    let Ok(multicall_return) = provider.call(&tx).await else {
-        return Err(anyhow::anyhow!(
-            "Failed to fetch node IP data from hypermap"
-        ));
+    let multicall_return = match provider.call(&tx).await {
+        Ok(multicall_return) => multicall_return,
+        Err(e) => return Err(anyhow::anyhow!(
+            "Failed to fetch node IP data from hypermap: {e}"
+        )),
     };
 
     let Ok(results) = aggregateCall::abi_decode_returns(&multicall_return, false) else {
