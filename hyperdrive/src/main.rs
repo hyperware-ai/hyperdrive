@@ -654,6 +654,7 @@ pub async fn simulate_node(
         }
         Some(name) => {
             let password_hash = password.unwrap_or_else(|| "secret".to_string());
+            println!("main: password_hash: {password_hash}\r");
             let (pubkey, networking_keypair) = keygen::generate_networking_key();
             let seed = SystemRandom::new();
             let mut jwt_secret = [0u8; 32];
@@ -902,11 +903,21 @@ async fn login_with_password(
         })
         .unwrap();
 
+    // salt is either node name (if node name is longer than 8 characters)
+    //  or node name repeated enough times to be longer than 8 characters
+    let min_salt_len = 8;
+    let name_len = username.len();
+    let salt = if name_len >= min_salt_len {
+        username
+    } else {
+        username.repeat(1 + min_salt_len / name_len)
+    };
+
     let mut output_key_material = [0u8; 32];
     Argon2::default()
         .hash_password_into(
             password.as_bytes(),
-            username.as_bytes(),
+            salt.as_bytes(),
             &mut output_key_material,
         )
         .expect("password hashing failed");

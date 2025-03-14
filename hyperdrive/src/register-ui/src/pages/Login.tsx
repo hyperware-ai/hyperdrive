@@ -45,9 +45,17 @@ function Login({
 
         try {
           // Try argon2 hash first
+
+          // salt is either node name (if node name is longer than 8 characters)
+          //  or node name repeated enough times to be longer than 8 characters
+          const minSaltL = 8;
+          const nodeL = hnsName.length;
+          const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
+          console.log(salt);
+
           const h = await argon2.hash({
             pass: pw,
-            salt: hnsName,
+            salt: salt,
             hashLen: 32,
             time: 2,
             mem: 19456,

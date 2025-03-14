@@ -341,6 +341,8 @@ async fn login_handler(
         subdomain: info.subdomain,
     };
 
+    println!("login_handler: got info {info:?}\r");
+
     match keygen::decode_keyfile(&encoded_keyfile, &info.password_hash) {
         Ok(keyfile) => {
             let token = match keygen::generate_jwt(

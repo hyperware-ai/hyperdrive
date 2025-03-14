@@ -13,8 +13,8 @@ use std::str::FromStr;
 use crate::{keygen, sol::*, HYPERMAP_ADDRESS, HYPER_ACCOUNT_IMPL, MULTICALL_ADDRESS};
 
 const FAKE_DOTDEV_TBA: &str = "0xcc3A576b8cE5340f5CE23d0DDAf133C0822C3B6d";
-const FAKE_DOTOS_TBA: &str = "0xbE46837617f8304Aa5E6d0aE62B74340251f48Bf";
-const _FAKE_ZEROTH_TBA: &str = "0x4bb0778bb92564bf8e82d0b3271b7512443fb060";
+const FAKE_DOTOS_TBA: &str = "0x9b3853358ede717fc7D4806cF75d7A4d4517A9C9";
+const _FAKE_ZEROTH_TBA: &str = "0x809A598d9883f2Fb6B77382eBfC9473Fd6A857c9";
 
 /// Attempts to connect to a local anvil fakechain,
 /// registering a name with its KiMap contract.
@@ -45,6 +45,7 @@ pub async fn mint_local(
         Some(&"dev") => dotdev,
         _ => dotdev,
     };
+    println!("mint_local name, tlz, addy: {name}, {:?}, {minter}", parts.get(1));
 
     let endpoint = format!("ws://localhost:{}", fakechain_port);
     let ws = WsConnect::new(endpoint);
@@ -64,7 +65,6 @@ pub async fn mint_local(
         .input(TransactionInput::new(get_call.into()));
 
     let exists = provider.call(&get_tx).await?;
-    println!("exists: {:?}", exists);
 
     let decoded = getCall::abi_decode_returns(&exists, false)?;
 
@@ -72,8 +72,6 @@ pub async fn mint_local(
     let _owner = decoded.owner;
     let bytes = decoded.data;
     // now set ip, port and pubkey
-
-    println!("tba, owner and bytes: {:?}, {:?}, {:?}", tba, _owner, bytes);
 
     let localhost = Ipv4Addr::new(127, 0, 0, 1);
     let ip = keygen::ip_to_bytes(localhost.into());
@@ -112,6 +110,7 @@ pub async fn mint_local(
     ];
 
     let is_reset = tba != Address::default();
+    println!("is_reset, tba, owner, bytes: {}, {:?}, {:?}, {:?}", is_reset, tba, _owner, bytes);
 
     let multicall = aggregateCall { calls: multicalls }.abi_encode();
 
@@ -160,6 +159,8 @@ pub async fn mint_local(
     // Send the raw transaction and retrieve the transaction receipt.
     let tx_hash = provider.send_raw_transaction(&tx_encoded).await?;
     let _receipt = tx_hash.get_receipt().await?;
+
+    println!("mint receipt: {:?}", _receipt);
 
     // send a small amount of ETH to the zero address
     // this is a workaround to get anvil to mine a block after our registration tx
