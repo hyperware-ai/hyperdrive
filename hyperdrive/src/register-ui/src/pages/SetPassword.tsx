@@ -50,7 +50,22 @@ function SetPassword({
 
       setTimeout(async () => {
         setLoading(true);
-        argon2.hash({ pass: pw, salt: hnsName, hashLen: 32, time: 2, mem: 19456, type: argon2.ArgonType.Argon2id }).then(async h => {
+
+        // salt is either node name (if node name is longer than 8 characters)
+        //  or node name repeated enough times to be longer than 8 characters
+        const minSaltL = 8;
+        const nodeL = hnsName.length;
+        const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
+        console.log(salt);
+
+        argon2.hash({
+          pass: pw,
+          salt: salt,
+          hashLen: 32,
+          time: 2,
+          mem: 19456,
+          type: argon2.ArgonType.Argon2id
+        }).then(async h => {
           const hashed_password_hex = `0x${h.hashHex}` as `0x${string}`;
           let owner = address;
           let timestamp = Date.now();
