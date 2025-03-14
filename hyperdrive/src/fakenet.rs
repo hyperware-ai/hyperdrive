@@ -70,7 +70,7 @@ pub async fn mint_local(
 
     let tba = decoded.tba;
     let _owner = decoded.owner;
-    let bytes = decoded.data;
+    let _bytes = decoded.data;
     // now set ip, port and pubkey
 
     let localhost = Ipv4Addr::new(127, 0, 0, 1);
