@@ -654,7 +654,6 @@ pub async fn simulate_node(
         }
         Some(name) => {
             let password_hash = password.unwrap_or_else(|| "secret".to_string());
-            println!("main: password_hash: {password_hash}\r");
             let (pubkey, networking_keypair) = keygen::generate_networking_key();
             let seed = SystemRandom::new();
             let mut jwt_secret = [0u8; 32];

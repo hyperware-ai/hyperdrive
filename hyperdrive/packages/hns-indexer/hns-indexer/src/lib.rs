@@ -367,14 +367,11 @@ fn handle_eth_message(
     notes_filter: &eth::Filter,
     last_block: &mut u64,
 ) -> anyhow::Result<()> {
-    print_to_terminal(0, "hem 0");
     match serde_json::from_slice::<eth::EthSubResult>(body) {
         Ok(Ok(eth::EthSub { result, .. })) => {
-            print_to_terminal(0, "hem 0");
             if let Ok(eth::SubscriptionResult::Log(log)) =
                 serde_json::from_value::<eth::SubscriptionResult>(result)
             {
-                print_to_terminal(0, "hem 1");
                 if let Err(e) = handle_log(state, pending_notes, &log, last_block) {
                     print_to_terminal(1, &format!("log-handling error! {e:?}"));
                 }
@@ -456,7 +453,6 @@ fn handle_pending_notes(
 }
 
 fn handle_note(state: &mut State, note: &hypermap::contract::Note) -> anyhow::Result<()> {
-    print_to_terminal(0, "hn 0");
     let note_label = String::from_utf8(note.label.to_vec())?;
     let node_hash = note.parenthash.to_string();
 
@@ -467,7 +463,7 @@ fn handle_note(state: &mut State, note: &hypermap::contract::Note) -> anyhow::Re
     let Some(node_name) = state.names.get(&node_hash) else {
         return Err(HnsError::NoParentError.into());
     };
-    print_to_terminal(0, &format!("hn 1: {node_name} {note_label}"));
+    print_to_terminal(3, &format!("note {node_name}: {note_label}"));
 
     match note_label.as_str() {
         "~ws-port" => {
@@ -540,14 +536,12 @@ fn handle_log(
     log: &eth::Log,
     last_block: &mut u64,
 ) -> anyhow::Result<()> {
-    print_to_terminal(0, "hl 0");
     if let Some(block) = log.block_number {
         *last_block = block;
     }
 
     match log.topics()[0] {
         hypermap::contract::Mint::SIGNATURE_HASH => {
-            print_to_terminal(0, "hl mint 0");
             let decoded = hypermap::contract::Mint::decode_log_data(log.data(), true).unwrap();
             let parent_hash = decoded.parenthash.to_string();
             let child_hash = decoded.childhash.to_string();
@@ -557,12 +551,11 @@ fn handle_log(
                 return Err(anyhow::anyhow!("skipping invalid name: {name}"));
             }
 
-            print_to_terminal(0, "hl mint 1");
             let full_name = match state.names.get(&parent_hash) {
                 Some(parent_name) => format!("{name}.{parent_name}"),
                 None => name,
             };
-            print_to_terminal(0, &format!("hl mint 2: {full_name}"));
+            print_to_terminal(3, &format!("mint {full_name}"));
 
             state.names.insert(child_hash.clone(), full_name.clone());
             state.nodes.insert(
@@ -577,7 +570,6 @@ fn handle_log(
             );
         }
         hypermap::contract::Note::SIGNATURE_HASH => {
-            print_to_terminal(0, "hl note 0");
             let decoded = hypermap::contract::Note::decode_log_data(log.data(), true).unwrap();
             let note: String = String::from_utf8(decoded.label.to_vec())?;
 
@@ -588,10 +580,6 @@ fn handle_log(
             if let Err(e) = handle_note(state, &decoded) {
                 if let Some(HnsError::NoParentError) = e.downcast_ref::<HnsError>() {
                     if let Some(block_number) = log.block_number {
-                        // print_to_terminal(
-                        //     1,
-                        //     &format!("adding note to pending_notes for block {block_number}"),
-                        // );
                         pending_notes
                             .entry(block_number)
                             .or_default()

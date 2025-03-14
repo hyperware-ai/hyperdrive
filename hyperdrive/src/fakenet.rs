@@ -12,7 +12,6 @@ use std::str::FromStr;
 
 use crate::{keygen, sol::*, HYPERMAP_ADDRESS, HYPER_ACCOUNT_IMPL, MULTICALL_ADDRESS};
 
-const FAKE_DOTDEV_TBA: &str = "0xcc3A576b8cE5340f5CE23d0DDAf133C0822C3B6d";
 const FAKE_DOTOS_TBA: &str = "0x9b3853358ede717fc7D4806cF75d7A4d4517A9C9";
 const _FAKE_ZEROTH_TBA: &str = "0x809A598d9883f2Fb6B77382eBfC9473Fd6A857c9";
 
@@ -35,18 +34,16 @@ pub async fn mint_local(
 
     let multicall_address = Address::from_str(MULTICALL_ADDRESS)?;
     let dotos = Address::from_str(FAKE_DOTOS_TBA)?;
-    let dotdev = Address::from_str(FAKE_DOTDEV_TBA)?;
     let hypermap = Address::from_str(HYPERMAP_ADDRESS)?;
 
     let parts: Vec<&str> = name.split('.').collect();
     let label = parts[0];
     let minter = match parts.get(1) {
         Some(&"os") => dotos,
-        Some(&"dev") => dotdev,
-        _ => dotdev,
+        _ => dotos,
     };
     println!(
-        "mint_local name, tlz, addy: {name}, {:?}, {minter}",
+        "mint_local name, tlz, tlz address: {name}, {:?}, {minter}",
         parts.get(1)
     );
 
@@ -113,10 +110,6 @@ pub async fn mint_local(
     ];
 
     let is_reset = tba != Address::default();
-    println!(
-        "is_reset, tba, owner, bytes: {}, {:?}, {:?}, {:?}",
-        is_reset, tba, _owner, bytes
-    );
 
     let multicall = aggregateCall { calls: multicalls }.abi_encode();
 
@@ -165,8 +158,6 @@ pub async fn mint_local(
     // Send the raw transaction and retrieve the transaction receipt.
     let tx_hash = provider.send_raw_transaction(&tx_encoded).await?;
     let _receipt = tx_hash.get_receipt().await?;
-
-    println!("mint receipt: {:?}", _receipt);
 
     // send a small amount of ETH to the zero address
     // this is a workaround to get anvil to mine a block after our registration tx
