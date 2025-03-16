@@ -243,7 +243,7 @@ export default function PublishPage() {
     <div className="publish-page">
       <h1>Manage Published Apps</h1>
       {!address ? <></> : (
-        <div className="wallet-status">
+        <div className="flex items-center gap-2 break-all flex-wrap">
           Connected: {address}
           <Tooltip content="Make sure the connected wallet is the owner of this node!" />
         </div>

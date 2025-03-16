@@ -149,7 +149,7 @@
 }
 
 .error-message {
-  color: var(--ansi-red);
+  color: var(--neon-red);
   margin-top: 0.5rem;
   overflow-wrap: break-word;
 }

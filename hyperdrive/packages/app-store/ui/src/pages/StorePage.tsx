@@ -37,7 +37,6 @@ export default function StorePage() {
           />
           <FaSearch />
         </div>
-        <ResetButton />
       </div>
       {!listings ? (
         <p>Loading...</p>
@@ -50,6 +49,10 @@ export default function StorePage() {
           ))}
         </div>
       )}
+      <>
+        <p>Can't find the app you're looking for?</p>
+        <ResetButton />
+      </>
     </div>
   );
 }
