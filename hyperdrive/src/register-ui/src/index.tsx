@@ -42,7 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider modalSize="compact" showRecentTransactions={true}>
+        <RainbowKitProvider initialChain={8453} modalSize="compact" showRecentTransactions={true}>
           <App />
         </RainbowKitProvider>
       </QueryClientProvider>
