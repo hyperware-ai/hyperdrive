@@ -3161,7 +3161,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "aes-gcm",
  "alloy",
@@ -3217,7 +3217,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive_lib"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "lib",
 ]
@@ -3751,7 +3751,7 @@ checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
 name = "lib"
-version = "1.1.1"
+version = "1.2.0"
 dependencies = [
  "alloy",
  "anyhow",
