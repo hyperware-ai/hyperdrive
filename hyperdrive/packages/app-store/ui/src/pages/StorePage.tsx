@@ -64,7 +64,7 @@ const AppCard: React.FC<{ app: AppListing }> = ({ app }) => {
     >
       <div className="app-icon-wrapper">
         <img
-          src={app.metadata?.image || '/bird-orange.svg'}
+          src={app.metadata?.image || '/h-green.svg'}
           alt={`${app.metadata?.name || app.package_id.package_name} icon`}
           className="app-icon"
         />
