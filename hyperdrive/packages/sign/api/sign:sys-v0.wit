@@ -1,0 +1,39 @@
+interface sign {
+    use standard.{address};
+
+    variant request {
+        /// Request to sign the message given in blob with net key.
+        ///
+        /// lazy-load-blob: required; the message to sign.
+        net-key-sign,
+        /// Request to verify the message given in blob with net key.
+        ///
+        /// lazy-load-blob: required; the message verify.
+        net-key-verify(net-key-verify-request),
+    }
+
+    variant response {
+        /// Response containing the net key signature and modified message in blob.
+        /// The source (address) will always be prepended to the payload.
+        /// The source (address) of sign:sign:sys will also be prepended.
+        /// Thus the message signed looks like
+        /// [sign-address, address, blob.bytes].concat()
+        ///
+        /// lazy-load-blob: required; signature.
+        net-key-sign,
+        /// Response: whether the net key signature is valid.
+        ///
+        /// lazy-load-blob: none.
+        net-key-verify(bool),
+    }
+
+    record net-key-verify-request {
+        node: string,
+        signature: list<u8>,
+    }
+}
+
+world sign-sys-v0 {
+    import sign;
+    include process-v1;
+}

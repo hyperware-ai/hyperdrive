@@ -21,6 +21,7 @@ members = [
     "hyperdrive/packages/homepage/homepage",
     "hyperdrive/packages/hns-indexer/hns-indexer", "hyperdrive/packages/hns-indexer/get-block", "hyperdrive/packages/settings/settings", "hyperdrive/packages/hns-indexer/reset",
     "hyperdrive/packages/hns-indexer/node-info", "hyperdrive/packages/hns-indexer/state",
+    "hyperdrive/packages/sign/sign",
     "hyperdrive/packages/terminal/terminal",
     "hyperdrive/packages/terminal/alias", "hyperdrive/packages/terminal/cat", "hyperdrive/packages/terminal/echo",
     "hyperdrive/packages/terminal/help", "hyperdrive/packages/terminal/hfetch", "hyperdrive/packages/terminal/hi",
