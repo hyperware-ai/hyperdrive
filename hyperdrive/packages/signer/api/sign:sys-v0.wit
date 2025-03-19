@@ -1,0 +1,21 @@
+interface sign{
+  use standard.{address};
+
+    variant request{
+        sign(list<u8>),
+        verify(verify-request)
+    }
+    record verify-request{
+        node: string,
+        signature: list<u8>
+    }
+    record sign-response{
+        message: list<u8>,
+        signature: list<u8> 
+    }
+}
+
+world sign-sys-v0 {
+    import sign;
+    include process-v1;
+}

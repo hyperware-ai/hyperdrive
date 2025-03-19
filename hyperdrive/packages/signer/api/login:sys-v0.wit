@@ -1,6 +1,0 @@
-interface all {}
-
-world sign-sys-v0 {
-    import all;
-    include process-v1;
-}
