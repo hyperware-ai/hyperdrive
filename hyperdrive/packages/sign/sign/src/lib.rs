@@ -30,7 +30,10 @@ fn initialize(_our: Address) {
 }
 
 fn handle_message(message: &Message) -> Result<()> {
-    if message.is_request() {
+    if !message.is_request() {
+        if message.source() == &Address::new("our", ("vfs", "distro", "sys")) {
+            return Ok(());
+        }
         return Err(anyhow!("Response received at sign process"));
     }
 
@@ -39,6 +42,7 @@ fn handle_message(message: &Message) -> Result<()> {
     match body.try_into()? {
         sign::Request::NetKeySign => handle_sign(source),
         sign::Request::NetKeyVerify(req) => handle_verify(source, req),
+        sign::Request::NetKeyMakeMessage => handle_make_message(source),
     }
 }
 
@@ -75,7 +79,7 @@ fn handle_verify(source: &Address, req: sign::NetKeyVerifyRequest) -> Result<()>
     };
     let message = make_message(source, &blob);
     let our_process = our().process;
-    let from = Address::new(req.node, our_process);
+    let from = Address::new("our", our_process);
     let body = rmp_serde::to_vec(&NetAction::Verify {
         from,
         signature: req.signature,
@@ -95,6 +99,23 @@ fn handle_verify(source: &Address, req: sign::NetKeyVerifyRequest) -> Result<()>
         }
         _ => Err(anyhow!("weird response")),
     }
+}
+
+fn handle_make_message(source: &Address) -> Result<()> {
+    let our_process = our().process;
+    let from = Address::new("our", our_process);
+
+    let message = make_message(source, &get_blob().unwrap_or(LazyLoadBlob::default()));
+    let message = [from.to_string().as_bytes(), &message].concat();
+
+    Response::new()
+        .blob(LazyLoadBlob {
+            mime: None,
+            bytes: message,
+        })
+        .body(sign::Response::NetKeySign)
+        .send()?;
+    Ok(())
 }
 
 /// net:distro:sys prepends the message to sign with the sender of the request
