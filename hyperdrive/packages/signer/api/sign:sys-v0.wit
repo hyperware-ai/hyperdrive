@@ -1,16 +1,18 @@
 interface sign{
   use standard.{address};
 
+  // takes blob for message to sign or verify
     variant request{
-        sign(list<u8>),
+        sign,
         verify(verify-request)
     }
+  // takes blob
     record verify-request{
         node: string,
         signature: list<u8>
     }
+  // takes blob
     record sign-response{
-        message: list<u8>,
         signature: list<u8> 
     }
 }

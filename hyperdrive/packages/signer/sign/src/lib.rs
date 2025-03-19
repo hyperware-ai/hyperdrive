@@ -2,7 +2,9 @@ use crate::hyperware::process::sign;
 use anyhow::{anyhow, Result};
 use hyperware_process_lib::logging::{error, init_logging, Level};
 use hyperware_process_lib::net::{NetAction, NetResponse};
-use hyperware_process_lib::{await_message, call_init, Address, Message, Request, Response};
+use hyperware_process_lib::{
+    await_message, call_init, get_blob, kiprintln, Address, Message, Request, Response,
+};
 
 wit_bindgen::generate!({
     path: "target/wit",
@@ -35,15 +37,18 @@ fn initialize(our: Address) {
 
 fn handle_request(our: &Address, request_bytes: &[u8]) -> Result<()> {
     match request_bytes.try_into()? {
-        sign::Request::Sign(bytes) => handle_sign(bytes),
+        sign::Request::Sign => handle_sign(),
         sign::Request::Verify(req) => handle_verify(our, req),
     }
 }
 
-fn handle_sign(bytes: Vec<u8>) -> Result<()> {
+fn handle_sign() -> Result<()> {
+    let Some(blob) = get_blob() else {
+        return Err(anyhow!("no blob"));
+    };
     let body = rmp_serde::to_vec(&NetAction::Sign)?;
     let res = Request::to(("our", "net", "distro", "sys"))
-        .blob_bytes(bytes.clone())
+        .blob(blob.clone())
         .body(body)
         .send_and_await_response(10)??;
     let Ok(NetResponse::Signed) = rmp_serde::from_slice::<NetResponse>(res.body()) else {
@@ -54,25 +59,32 @@ fn handle_sign(bytes: Vec<u8>) -> Result<()> {
         None => Err(anyhow!("no blob")),
         Some(b) => {
             let sign_response = sign::SignResponse {
-                message: bytes,
                 signature: b.bytes().to_vec(),
             };
             let sign_response_bytes = serde_json::to_vec(&sign_response)?;
-            Response::new().body(sign_response_bytes).send()?;
+            Response::new()
+                .blob(blob)
+                .body(sign_response_bytes)
+                .send()?;
             Ok(())
         }
     }
 }
+// NOTE net:distro:sys prepends the node ID to every message before signing
 fn handle_verify(our: &Address, req: sign::VerifyRequest) -> Result<()> {
+    kiprintln!("handling verifyy");
+    let Some(blob) = get_blob() else {
+        return Err(anyhow!("no blob"));
+    };
     let process = our.to_owned().process;
     let from = Address::new(req.node, process);
+    kiprintln!("handling verify");
     let body = rmp_serde::to_vec(&NetAction::Verify {
         from,
         signature: req.signature,
     })?;
-    let req_bytes = rmp_serde::to_vec(&body)?;
     let res = Request::to(("our", "net", "distro", "sys"))
-        .blob_bytes(req_bytes)
+        .blob(blob)
         .body(body)
         .send_and_await_response(10)??;
     let resp = rmp_serde::from_slice::<NetResponse>(res.body())?;
