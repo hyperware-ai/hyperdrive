@@ -810,9 +810,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.95"
+version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
+checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
 
 [[package]]
 name = "app-store"
@@ -3234,6 +3234,7 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "bincode",
+ "color-eyre",
  "http 1.2.0",
  "mime_guess",
  "rand",
@@ -3242,6 +3243,9 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
  "url",
  "wit-bindgen",
 ]
@@ -5561,6 +5565,19 @@ name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "sign"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "hyperware_process_lib",
+ "process_macros",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
 
 [[package]]
 name = "signal-hook"
