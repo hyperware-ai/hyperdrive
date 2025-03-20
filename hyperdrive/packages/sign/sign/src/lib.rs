@@ -78,10 +78,8 @@ fn handle_verify(source: &Address, req: sign::NetKeyVerifyRequest) -> Result<()>
         return Err(anyhow!("no blob"));
     };
     let message = make_message(source, &blob);
-    let our_process = our().process;
-    let from = Address::new("our", our_process);
     let body = rmp_serde::to_vec(&NetAction::Verify {
-        from,
+        from: our(),
         signature: req.signature,
     })?;
     let res = Request::to(("our", "net", "distro", "sys"))
@@ -94,7 +92,9 @@ fn handle_verify(source: &Address, req: sign::NetKeyVerifyRequest) -> Result<()>
     let resp = rmp_serde::from_slice::<NetResponse>(res.body())?;
     match resp {
         NetResponse::Verified(is_good) => {
-            Response::new().body(serde_json::to_vec(&is_good)?).send()?;
+            Response::new()
+                .body(sign::Response::NetKeyVerify(is_good))
+                .send()?;
             Ok(())
         }
         _ => Err(anyhow!("weird response")),
@@ -102,11 +102,8 @@ fn handle_verify(source: &Address, req: sign::NetKeyVerifyRequest) -> Result<()>
 }
 
 fn handle_make_message(source: &Address) -> Result<()> {
-    let our_process = our().process;
-    let from = Address::new("our", our_process);
-
     let message = make_message(source, &get_blob().unwrap_or(LazyLoadBlob::default()));
-    let message = [from.to_string().as_bytes(), &message].concat();
+    let message = [our().to_string().as_bytes(), &message].concat();
 
     Response::new()
         .blob(LazyLoadBlob {

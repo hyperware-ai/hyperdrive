@@ -8,7 +8,7 @@ interface sign {
         net-key-sign,
         /// Request to verify the message given in blob with net key.
         ///
-        /// lazy-load-blob: required; the message verify.
+        /// lazy-load-blob: required; the message to verify.
         net-key-verify(net-key-verify-request),
         /// Request to transform the message to the form that is signed with net key.
         /// For use by outside verifiers (net-key-verify transforms naked message
