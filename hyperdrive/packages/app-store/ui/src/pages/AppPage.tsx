@@ -124,13 +124,13 @@ export default function AppPage() {
   const handleMirrorSelect = useCallback((mirror: string, status: boolean | null | 'http') => {
     setSelectedMirror(mirror);
     setIsMirrorOnline(status === 'http' ? true : status);
-    setMirrorError(null);  
+    setMirrorError(null);
   }, []);
 
   const handleMirrorError = useCallback((error: string) => {
     setMirrorError(error);
     setIsMirrorOnline(false);
-    setAttemptedDownload(false); 
+    setAttemptedDownload(false);
   }, []);
 
   const handleInstallFlow = useCallback(async (isDownloadNeeded: boolean = false) => {
@@ -322,7 +322,7 @@ export default function AppPage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '128px', height: '128px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
-              src={app.metadata?.image || '/bird-orange.svg'}
+              src={app.metadata?.image || '/h-green.svg'}
               alt={app.metadata?.name || app.package_id.package_name}
               className="app-icon"
               style={{ maxWidth: '100%', maxHeight: '100%' }}
@@ -465,9 +465,9 @@ export default function AppPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Mirror Selection</label>
-                  <MirrorSelector 
-                    packageId={id} 
-                    onMirrorSelect={handleMirrorSelect} 
+                  <MirrorSelector
+                    packageId={id}
+                    onMirrorSelect={handleMirrorSelect}
                     onError={handleMirrorError}
                   />
                   {mirrorError && (
