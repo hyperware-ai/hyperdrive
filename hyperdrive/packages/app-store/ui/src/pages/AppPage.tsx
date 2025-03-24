@@ -318,7 +318,7 @@ export default function AppPage() {
           </div>
         </div>
       )}
-      <div className="app-header" style={{ minHeight: '200px' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap" style={{ minHeight: '200px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '128px', height: '128px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
@@ -371,7 +371,7 @@ export default function AppPage() {
         </ul>
       </div>
 
-      {!valid_wit_version && <div className="app-warning">This app must be updated to 1.0</div>}
+      {!valid_wit_version && <div className="p-2 bg-neon text-black">This app must be updated to 1.0</div>}
 
       <div className="app-actions" style={{ minHeight: '50px' }}>
         {installedApp && (

@@ -247,7 +247,7 @@ export default function DownloadPage() {
 
     return (
         <div className="downloads-page">
-            <div className="app-header">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="app-title-container">
                     {app.metadata?.image && (
                         <img src={app.metadata.image} alt={app.metadata?.name || app.package_id.package_name} className="app-icon" />

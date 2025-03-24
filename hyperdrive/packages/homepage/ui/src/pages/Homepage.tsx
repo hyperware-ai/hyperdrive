@@ -4,6 +4,7 @@ import useHomepageStore from "../store/homepageStore";
 import AllApps from "../components/AllApps";
 import Widgets from "../components/Widgets";
 import WidgetsSettingsModal from "../components/WidgetsSettingsModal";
+import { FaMoon, FaSun } from "react-icons/fa6";
 
 function Homepage() {
   const [our, setOur] = useState("");
@@ -43,7 +44,7 @@ function Homepage() {
     <div id="homepage">
       <div className="container">
         <header>
-          <HyperwareLogo style={{ marginRight: '10px' }} />
+          <HyperwareLogo style={{ marginRight: '10px', maxWidth: 64 }} />
           <h2>
             {new Date().getHours() < 4
               ? "Good evening" // midnight to 4am
@@ -54,6 +55,11 @@ function Homepage() {
                   : "Good evening" // 5pm to midnight
             }, {our}
           </h2>
+          <button onClick={() => {
+            document.body.classList.toggle('dark');
+          }}>
+            [{document.body.classList.contains('dark') ? <FaSun /> : <FaMoon />}]
+          </button>
           <a
             href="https://github.com/hyperware-ai/hyperdrive/releases"
             target="_blank"

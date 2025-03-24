@@ -10,42 +10,6 @@
     --text-dark: var(--off-white);
 }
 
-/* Layout */
-.app-content {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 1rem;
-}
-
-/* Header */
-.app-header {
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    padding: 1rem;
-    margin-bottom: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-/* Forms */
-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    max-width: 500px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 1rem;
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    padding: 0.75rem;
-    border-radius: var(--radius-lg);
-}
-
 /* App Grid */
 .app-grid {
     display: grid;
@@ -175,16 +139,6 @@ form {
     gap: 0.5rem;
 }
 
-/* Error Message */
-.error-message {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--red);
-    margin-top: 0.5rem;
-    font-size: 0.9rem;
-}
-
 /* Shared page styles */
 .store-page,
 .app-page,
@@ -198,13 +152,6 @@ form {
     margin: 0 auto;
 }
 
-.app-warning {
-    background: var(--primary-color);
-    color: var(--text-light);
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
 .app-description {
     margin-bottom: 0.5rem;
     line-height: 1.6;
@@ -212,7 +159,6 @@ form {
     color: light-dark(var(--text-light), var(--text-dark));
 }
 
-.form-group,
 .version-selector,
 .mirror-selector select,
 .secondary,
@@ -389,12 +335,12 @@ form {
 
 /* Search bar */
 .search-bar {
-    width: 100%;
+    align-self: stretch;
     position: relative;
 }
 
 .search-bar input {
-    width: 100%;
+    align-self: stretch;
     padding: 0.75rem 1rem 0.75rem 2.5rem;
     border: 2px solid transparent;
     border-radius: 2rem;
@@ -458,7 +404,7 @@ form {
 }
 
 .process-header {
-    width: 100%;
+    align-self: stretch;
     display: flex;
     align-items: center;
     gap: 0.5rem;

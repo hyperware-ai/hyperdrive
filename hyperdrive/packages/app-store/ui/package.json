@@ -25,6 +25,7 @@
     "react-dom": "^18.2.0",
     "react-icons": "^5.0.1",
     "react-router-dom": "^6.21.3",
+    "unocss": "^66.1.0-beta.6",
     "viem": "^2.15.1",
     "wagmi": "^2.10.3",
     "zustand": "^4.4.7"
