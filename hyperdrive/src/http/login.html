@@ -135,9 +135,16 @@
       document.getElementById("loading").style.display = "flex";
 
       try {
+        // salt is either node name (if node name is longer than 8 characters)
+        //  or node name repeated enough times to be longer than 8 characters
+        const hnsName = `${node}`;
+        const minSaltL = 8;
+        const nameL = hnsName.length;
+        const salt = nameL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nameL));
+
         const h = await argon2.hash({
           pass: password,
-          salt: '${node}',
+          salt: salt,
           hashLen: 32,
           time: 2,
           mem: 19456,
@@ -163,6 +170,7 @@
         throw new Error("Login failed");
 
       } catch (err) {
+        console.log(`login failed with err: ${JSON.stringify(err)}`);
         document.getElementById("login-form").style.display = "flex";
         document.getElementById("loading").style.display = "none";
         document.getElementById("password").value = "";
