@@ -23,16 +23,6 @@ span {
   color: var(--white);
 }
 
-.container {
-  display: block;
-  padding: 0.25em;
-  width: 100%;
-  max-width: 1080px;
-  margin: auto;
-  background-color: light-dark(var(--white), var(--tasteful-dark));
-  border: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
-  border-radius: 20px;
-}
 
 header,
 #widgets-container {
@@ -102,7 +92,6 @@ header button {
   flex-direction: column;
   color: light-dark(var(--tasteful-dark), var(--off-white));
   background-color: light-dark(var(--off-white), var(--tasteful-dark));
-  border: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
   /* border-radius: 10px; */
   text-align: center;
   position: relative;
@@ -129,6 +118,7 @@ header button {
   padding: 2px;
   flex-direction: row;
   justify-content: space-between;
+  color: var(--off-white);
   border-color: var(--off-white);
 }
 
@@ -147,7 +137,11 @@ header button {
 .widget .bottom-bar p {
   font-size: 0.8em;
   cursor: default;
-  color: var(--off-black);
+  color: var(--off-white);
+}
+
+.widget-wrapper {
+  border: 1px solid light-dark(var(--off-white), var(--tasteful-dark));
 }
 
 footer {
@@ -206,18 +200,6 @@ footer {
     overflow: hidden;
   }
 
-  .container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    padding-bottom: 60px;
-    border-radius: 0;
-    padding: 0;
-    border-left: none;
-    border-right: none;
-  }
-
   header {
     flex-shrink: 0;
     padding: 0.75em;
@@ -273,18 +255,6 @@ footer {
   .apps-grid.expanded {
     display: flex;
     flex-direction: column;
-  }
-
-  .apps-grid .app-display {
-    padding: 1em;
-    display: flex;
-    align-items: center;
-    gap: 1em;
-  }
-
-  .app-display {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
   }
 
   .expand-button {
@@ -386,29 +356,6 @@ footer {
   header button {
     margin: 4px 0;
   }
-}
-
-.app-icon {
-  width: 32px;
-  height: 32px;
-  margin-right: 1em;
-}
-
-.app-display {
-  height: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  text-align: left;
-  position: relative;
-  text-decoration: none;
-  padding: 1em;
-  border: 0.5px solid rgba(255, 255, 255, 0.2);
-  color: var(--white) !important;
-}
-
-.app-display:hover {
-  text-decoration: underline;
 }
 
 .app-wrapper {

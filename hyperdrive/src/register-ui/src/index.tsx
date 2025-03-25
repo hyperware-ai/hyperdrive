@@ -5,6 +5,7 @@ import App from './App';
 import '@rainbow-me/rainbowkit/styles.css';
 import './index.css';
 import './hyperware.css';
+import 'uno.css'
 
 import {
   getDefaultConfig,

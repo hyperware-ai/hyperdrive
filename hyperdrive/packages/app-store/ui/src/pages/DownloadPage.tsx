@@ -250,7 +250,9 @@ export default function DownloadPage() {
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="app-title-container">
                     {app.metadata?.image && (
-                        <img src={app.metadata.image} alt={app.metadata?.name || app.package_id.package_name} className="app-icon" />
+                        <img src={app.metadata.image} alt={app.metadata?.name || app.package_id.package_name}
+                            className="w-24 h-24 object-cover rounded-lg"
+                        />
                     )}
                     <div className="app-title">
                         <h2>{app.metadata?.name || app.package_id.package_name}</h2>

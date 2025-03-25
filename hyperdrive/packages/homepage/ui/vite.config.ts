@@ -68,14 +68,6 @@ export default defineConfig({
           return '/favorite';
         },
       },
-      [`^${BASE_URL}/(?!(@vite/client|src/.*|node_modules/.*|@react-refresh|$))`]: {
-        target: PROXY_URL,
-        changeOrigin: true,
-        rewrite: (path) => {
-          console.log('Rewriting path for other requests:', path);
-          return path.replace(BASE_URL, '');
-        },
-      },
     },
 
 

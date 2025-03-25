@@ -97,7 +97,7 @@ function App() {
   return (
     <>
       <Header />
-      <div id="signup-page" className="container">
+      <div id="signup-page" className="place-items-center place-content-center h-screen container">
         <Router>
           <main>
             <Routes>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 
-import DirectCheckbox from "../components/DirectCheckbox";
+import DirectNodeCheckbox from "../components/DirectCheckbox";
 
 import { useAccount, useWaitForTransactionReceipt, useSendTransaction } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
@@ -133,7 +133,7 @@ function MintCustom({
                                 <input type="text" name="tba" placeholder="Enter TBA to mint under" />
                                 <details>
                                     <summary>Advanced Options</summary>
-                                <DirectCheckbox {...{ direct, setDirect }} />
+                                    <DirectNodeCheckbox {...{ direct, setDirect }} />
                                 </details>
                                 <div className="button-group">
                                     <button type="submit" className="button">

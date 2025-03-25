@@ -1,9 +1,7 @@
-import { defineConfig, ViteDevServer } from 'vite'
+import { defineConfig } from 'vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import react from '@vitejs/plugin-react'
 import UnoCSS from '@unocss/vite'
-import { presetIcons } from 'unocss'
-import { transformerDirectives } from 'unocss'
 
 /*
 If you are developing a UI outside of a Hyperware project,
@@ -65,12 +63,6 @@ export default defineConfig({
           return '/hyperware.css';
         },
       },
-      // This route will match all other HTTP requests to the backend
-      [`^${BASE_URL}/(?!(@vite/client|src/.*|node_modules/.*|@react-refresh|$))`]: {
-        target: PROXY_URL,
-        changeOrigin: true,
-      },
-
     },
 
 

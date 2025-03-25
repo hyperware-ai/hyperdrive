@@ -324,8 +324,7 @@ export default function AppPage() {
             <img
               src={app.metadata?.image || '/bird-orange.svg'}
               alt={app.metadata?.name || app.package_id.package_name}
-              className="app-icon"
-              style={{ maxWidth: '100%', maxHeight: '100%' }}
+              className="w-24 h-24 object-cover rounded-lg"
             />
           </div>
           <div className="app-title">

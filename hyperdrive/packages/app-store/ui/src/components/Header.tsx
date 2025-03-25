@@ -13,7 +13,7 @@ const Header: React.FC = () => {
     const isMobile = window.innerWidth < 768;
 
     return (
-        <header className={classNames("flex items-center justify-between gap-2 flex-wrap", { "flex-col": isMobile })}>
+        <header className={classNames("flex items-center justify-between gap-2 flex-wrap py-2 px-4", { "flex-col": isMobile })}>
             <div className="flex items-center gap-2 self-stretch flex-wrap">
                 <nav className="flex items-center gap-2 self-stretch flex-wrap">
                     <button
