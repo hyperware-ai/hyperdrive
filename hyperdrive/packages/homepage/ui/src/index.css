@@ -23,8 +23,8 @@ span {
 }
 
 .homepage-container {
-  width: 950px;
-  max-width: 950px;
+  width: 960px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
@@ -83,9 +83,9 @@ header button {
   height: auto;
   overflow-y: visible;
   /* Fixed width to hold exactly 3 widgets - 300px per widget plus gaps and paddings */
-  max-width: 950px;
+  max-width: 960px;
   margin: 0 auto;
-  width: 950px;
+  width: 960px;
 }
 
 #widgets {
@@ -108,7 +108,7 @@ header button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-gap: 10px;
   width: 100%;
-  max-width: 950px;
+  max-width: 960px;
 }
 
 .widget {
@@ -223,7 +223,7 @@ footer {
 }
 
 /* Remove borders on mobile */
-@media (max-width: 980px) {
+@media (max-width: 960px) {
   .apps-grid::before,
   .apps-grid::after {
     display: none;
@@ -251,7 +251,7 @@ footer {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 960px) {
 
   body,
   html {
@@ -270,7 +270,7 @@ footer {
     width: 100%;
     padding-top: 0;
   }
-  
+
   .homepage-container {
     width: 100%;
     max-width: 100%;
@@ -310,7 +310,7 @@ footer {
     padding: 0.5em;
     padding-bottom: 10vh;
   }
-  
+
   .widgets-container {
     display: flex;
     flex-direction: column;
