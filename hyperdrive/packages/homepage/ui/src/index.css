@@ -16,7 +16,16 @@ span {
 #homepage {
   height: 100vh;
   width: 100vw;
-  align-content: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 2vh;
+}
+
+.homepage-container {
+  width: 950px;
+  max-width: 950px;
+  margin: 0 auto;
 }
 
 #app-name {
@@ -73,6 +82,10 @@ header button {
   /* Remove fixed max-height and overflow for auto-fitting */
   height: auto;
   overflow-y: visible;
+  /* Fixed width to hold exactly 3 widgets - 300px per widget plus gaps and paddings */
+  max-width: 950px;
+  margin: 0 auto;
+  width: 950px;
 }
 
 #widgets {
@@ -92,9 +105,10 @@ header button {
 
 .widgets-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-gap: 10px;
   width: 100%;
+  max-width: 950px;
 }
 
 .widget {
@@ -173,13 +187,47 @@ footer {
   border-top: 1px solid light-dark(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2));
 }
 
-/* Target the first and last app-wrapper to add side borders */
-.apps-grid .app-wrapper:first-child {
-  border-left: 1px solid light-dark(var(--off-black), var(--off-white));
+/* Add side borders to the app grid based on viewport edges */
+.apps-grid {
+  position: relative;
+  box-sizing: border-box;
 }
 
-.apps-grid .app-wrapper:last-child {
-  border-right: 1px solid light-dark(var(--off-black), var(--off-white));
+/* Use pseudo-elements for left and right borders that extend full height */
+.apps-grid::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: light-dark(var(--off-black), var(--off-white));
+  z-index: 1;
+}
+
+.apps-grid::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: light-dark(var(--off-black), var(--off-white));
+  z-index: 1;
+}
+
+/* Make sure the border extends to the full expanded height */
+.apps-grid.expanded::before,
+.apps-grid.expanded::after {
+  height: 100%;
+}
+
+/* Remove borders on mobile */
+@media (max-width: 980px) {
+  .apps-grid::before,
+  .apps-grid::after {
+    display: none;
+  }
 }
 
 .apps-grid.apps-count-3 {
@@ -219,6 +267,13 @@ footer {
     flex-direction: column;
     height: 100vh;
     overflow: hidden;
+    width: 100%;
+    padding-top: 0;
+  }
+  
+  .homepage-container {
+    width: 100%;
+    max-width: 100%;
   }
 
   header {
@@ -246,6 +301,8 @@ footer {
     max-height: none;
     border-radius: 0;
     padding: 0.5em;
+    width: auto;
+    max-width: 100%;
   }
 
   #widgets {

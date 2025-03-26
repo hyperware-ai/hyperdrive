@@ -41,7 +41,7 @@ function Homepage() {
 
   return (
     <div id="homepage">
-      <div className="container">
+      <div className="homepage-container">
         <header>
           <HyperwareLogo style={{ marginRight: '10px', maxWidth: 64 }} />
           <h2>
