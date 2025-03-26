@@ -203,28 +203,7 @@ footer {
   box-sizing: border-box;
 }
 
-/* Use pseudo-elements for left and right borders that extend full height */
-.apps-grid::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: light-dark(var(--off-black), var(--off-white));
-  z-index: 1;
-}
-
-.apps-grid::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: light-dark(var(--off-black), var(--off-white));
-  z-index: 1;
-}
+/* Remove unwanted vertical border pseudo-elements */
 
 /* Make sure the border extends to the full expanded height */
 .apps-grid.expanded::before,
