@@ -295,7 +295,7 @@ body {
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     background-color: light-dark(var(--white), var(--black));
-    background-image: radial-gradient(circle at 50% 50%, var(--primary-light) 0%, transparent 90%);
+    background-image: radial-gradient(circle at 81% 210%, var(--primary-light) 17%, transparent 77.05%);
     background-size: 200% 200%;
     background-position: center center;
     background-repeat: no-repeat;
