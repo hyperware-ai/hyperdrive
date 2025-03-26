@@ -322,7 +322,7 @@ export default function AppPage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '128px', height: '128px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
-              src={app.metadata?.image || '/bird-orange.svg'}
+              src={app.metadata?.image || '/h-green.svg'}
               alt={app.metadata?.name || app.package_id.package_name}
               className="w-24 h-24 object-cover rounded-lg"
             />

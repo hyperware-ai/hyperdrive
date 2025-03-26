@@ -1,0 +1,61 @@
+interface sign {
+    use standard.{address};
+
+    variant request {
+        /// Request to sign the message given in blob with net key.
+        ///
+        /// lazy-load-blob: required; the message to sign.
+        net-key-sign,
+        /// Request to verify the message given in blob with net key.
+        ///
+        /// lazy-load-blob: required; the message to verify.
+        net-key-verify(net-key-verify-request),
+        /// Request to transform the message to the form that is signed with net key.
+        /// For use by outside verifiers (net-key-verify transforms naked message
+        /// properly under-the-hood).
+        ///
+        /// lazy-load-blob: required; the message to transform.
+        net-key-make-message,
+    }
+
+    variant response {
+        /// Response containing the net key signature in blob.
+        /// The source (address) will always be prepended to the payload.
+        /// The source (address) of sign:sign:sys will also be prepended.
+        /// Thus the message signed looks like
+        /// [sign-address, address, blob.bytes].concat()
+        ///
+        /// Using request::net-key-verify handles the concatenation under-the-hood,
+        /// but verifying the signature will require the proper transformation of
+        /// the message.
+        ///
+        /// lazy-load-blob: required; signature.
+        net-key-sign,
+        /// Response: whether the net key signature is valid.
+        ///
+        /// lazy-load-blob: none.
+        net-key-verify(bool),
+        /// Response containing modified message in blob.
+        /// The source (address) will always be prepended to the payload.
+        /// The source (address) of sign:sign:sys will also be prepended.
+        /// Thus the message signed looks like
+        /// [sign-address, address, blob.bytes].concat()
+        ///
+        /// Using request::net-key-verify handles the concatenation under-the-hood,
+        /// but verifying the signature will require the proper transformation of
+        /// the message.
+        ///
+        /// lazy-load-blob: required; the transformed message.
+        net-key-make-message,
+    }
+
+    record net-key-verify-request {
+        node: string,
+        signature: list<u8>,
+    }
+}
+
+world sign-sys-v0 {
+    import sign;
+    include process-v1;
+}

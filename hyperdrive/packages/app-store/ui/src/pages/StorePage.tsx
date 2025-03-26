@@ -67,7 +67,7 @@ const AppCard: React.FC<{ app: AppListing }> = ({ app }) => {
     >
       <div className="my-0 mx-auto fit-content">
         <img
-          src={app.metadata?.image || '/bird-orange.svg'}
+          src={app.metadata?.image || '/h-green.svg'}
           alt={`${app.metadata?.name || app.package_id.package_name} icon`}
           className="w-24 h-24 object-cover rounded-lg"
         />
