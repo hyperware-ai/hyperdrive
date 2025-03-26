@@ -41,9 +41,9 @@ function Homepage() {
 
   return (
     <div id="homepage">
-      <div className="container">
+      <div className="homepage-container">
         <header>
-          <HyperwareLogo style={{ marginRight: '10px' }} />
+          <HyperwareLogo style={{ marginRight: '10px', maxWidth: 64 }} />
           <h2>
             {new Date().getHours() < 4
               ? "Good evening" // midnight to 4am

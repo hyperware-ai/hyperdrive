@@ -9,7 +9,7 @@ import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 import { MULTICALL, generateNetworkingKeys, mechAbi } from "../abis";
 import { Tooltip } from "../components/Tooltip";
-import DirectCheckbox from "../components/DirectCheckbox";
+import DirectNodeCheckbox from "../components/DirectCheckbox";
 import EnterHnsName from "../components/EnterHnsName";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
@@ -119,7 +119,7 @@ function ResetHnsName({
 
   return (
     <div className="container fade-in">
-      <button onClick={() => history.back()} className="button secondary back">🔙</button>
+      <button onClick={() => history.back()} className="button secondary back self-start">🔙</button>
       <div className="section">
         {
           <form className="form" onSubmit={handleResetRecords}>
@@ -134,8 +134,8 @@ function ResetHnsName({
                 </h3>
                 <EnterHnsName {...{ address, name, setName, triggerNameCheck, nameValidities, setNameValidities, setTba, isReset: true }} />
                 <details>
-                    <summary>Advanced Options</summary>
-                <DirectCheckbox {...{ direct, setDirect }} />
+                  <summary>Advanced Options</summary>
+                  <DirectNodeCheckbox {...{ direct, setDirect }} />
                 </details>
                 <p>
                   A reset will not delete any data. It only updates the networking information that your node publishes onchain.

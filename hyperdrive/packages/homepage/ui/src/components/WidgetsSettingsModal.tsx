@@ -1,6 +1,7 @@
 import useHomepageStore from "../store/homepageStore"
 import { Modal } from "./Modal"
 import usePersistentStore from "../store/persistentStore"
+import { FaCheck, FaRegSquare } from "react-icons/fa6"
 
 const WidgetsSettingsModal = () => {
   const { apps, setShowWidgetsSettings } = useHomepageStore()
@@ -15,16 +16,12 @@ const WidgetsSettingsModal = () => {
         return (
           <div className="widget-settings-item">
             <h4>{app.label}</h4>
-            <div>
-              <div>
-                <span><input
-                  type="checkbox"
-                  checked={!widgetSettings[app.id]?.hide}
-                  onChange={() => toggleWidgetVisibility(app.id)}
-                  autoFocus
-                /></span>
-              </div>
-            </div>
+            <button
+              className="icon"
+              onClick={() => toggleWidgetVisibility(app.id)}
+            >
+              {widgetSettings[app.id]?.hide ? <FaRegSquare /> : <FaCheck />}
+            </button>
           </div>
         );
       })}

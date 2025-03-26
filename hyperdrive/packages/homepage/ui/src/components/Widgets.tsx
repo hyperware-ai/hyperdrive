@@ -51,6 +51,7 @@ const Widgets = () => {
   return (
     <div
       id="widgets"
+      className="widgets-container"
     >
       {orderedWidgets.map((wid, index) => (
         <div

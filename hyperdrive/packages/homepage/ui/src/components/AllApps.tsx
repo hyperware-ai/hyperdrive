@@ -88,8 +88,7 @@ const AllApps: React.FC = () => {
   return (
     <div id="all-apps" className={isMobile ? "mobile" : ""}>
       <div
-        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""
-          }`}
+        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""}`}
         style={{ gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)` }}
       >
         {displayedApps.map((app, index) => (

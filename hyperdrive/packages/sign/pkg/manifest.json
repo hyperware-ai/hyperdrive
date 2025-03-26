@@ -1,0 +1,11 @@
+[
+  {
+    "process_name": "sign",
+    "process_wasm_path": "/sign.wasm",
+    "on_exit": "Restart",
+    "request_networking": false,
+    "request_capabilities": ["net:distro:sys", "vfs:distro:sys"],
+    "grant_capabilities": ["net:distro:sys", "vfs:distro:sys"],
+    "public": false
+  }
+]

@@ -18,6 +18,7 @@ import {
 
 
 import './index.css'
+import 'uno.css'
 
 const config = getDefaultConfig({
   appName: 'Hyperware App Store',
