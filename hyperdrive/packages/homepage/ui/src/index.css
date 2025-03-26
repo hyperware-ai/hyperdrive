@@ -446,6 +446,40 @@ footer {
 .app-wrapper {
   position: relative;
   transition: transform 0.2s ease;
+  /* Add a border that continues the pane's border */
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-right: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Remove right border for last app in a row */
+.app-wrapper.last-in-row {
+  border-right: none;
+}
+
+/* When there's no expand button, add proper border radius */
+.apps-grid.no-expand-button .app-wrapper.last-app.first-app {
+  /* Only one app */
+  border-radius: 0 0 1em 1em;
+}
+
+.apps-grid.no-expand-button .app-wrapper.last-app:not(.first-app) {
+  /* Last app in a multi-app grid */
+  border-radius: 0 0 1em 0;
+}
+
+.apps-grid.no-expand-button .app-wrapper.first-in-row.last-in-row:not(.first-app) {
+  /* Single app in a row that's not the first row */
+  border-radius: 0 0 1em 1em;
+}
+
+.apps-grid.no-expand-button .app-wrapper.first-in-row:not(.last-in-row):not(.first-app) {
+  /* First app in a row that has multiple apps */
+  border-radius: 0 0 0 1em;
+}
+
+.apps-grid.no-expand-button .app-wrapper.last-in-row:not(.first-in-row) {
+  /* Last app in a row that has multiple apps */
+  border-radius: 0 0 1em 0;
 }
 
 .widget-wrapper {

@@ -9,7 +9,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
   return (
     <div className="tooltip">
       {children}
-      <span className="tooltip-text">{text}</span>
+      <div className="tooltip-text">{text}</div>
     </div>
   );
 };

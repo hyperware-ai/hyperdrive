@@ -34,33 +34,25 @@
 .tooltip-text {
   font-size: 0.8em;
   visibility: hidden;
-  width: 200px;
+  width: 250px;
+  max-width: 90vw;
   background-color: #555;
   color: var(--off-white);
   text-align: center;
   border-radius: 6px;
-  padding: 5px;
-  position: absolute;
-  z-index: 1;
+  padding: 8px;
+  position: fixed;
+  z-index: 100;
   opacity: 0;
   transition: opacity 0.3s;
-}
-
-.tooltip-top .tooltip-text {
-  bottom: 125%;
-  left: 50%;
-  margin-left: -100px;
-}
-
-.tooltip-bottom .tooltip-text {
-  top: 125%;
-  left: 50%;
-  margin-left: -100px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
 }
 
 .tooltip:hover .tooltip-text {
   visibility: visible;
   opacity: 1;
+  /* Position will be set via JavaScript */
 }
 
 .section {
@@ -162,51 +154,29 @@
   user-select: none;
 }
 
-.checkbox-container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
-.checkmark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 25px;
-  width: 25px;
-  background-color: #eee;
+.checkbox-button {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  background-color: transparent;
   border: 2px solid var(--primary-color);
   border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.checkbox-container:hover input~.checkmark {
-  background-color: var(--gray);
+.checkbox-button:hover {
+  background-color: var(--primary-xlight);
 }
 
-.checkbox-container input:checked~.checkmark {
-  background-color: var(--primary-color);
-}
-
-.checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-}
-
-.checkbox-container input:checked~.checkmark:after {
-  display: block;
-}
-
-.checkbox-container .checkmark:after {
-  left: 9px;
-  top: 5px;
-  width: 5px;
-  height: 10px;
-  border: solid var(--off-white);
-  border-width: 0 3px 3px 0;
-  transform: rotate(45deg);
+.checkbox-button svg {
+  color: var(--black);
+  font-size: 12px;
 }
 
 .checkbox-label {
@@ -238,6 +208,16 @@ summary {
   font-family: var(--font-family-main);
   color: light-dark(var(--off-black), var(--off-white));
   margin-bottom: 10px;
+  cursor: pointer;
+}
+
+details {
+  width: 100%;
+  min-height: 80px; /* Ensure consistent height whether open or closed */
+}
+
+details > div {
+  margin-top: 10px;
 }
 
 button.secondary {

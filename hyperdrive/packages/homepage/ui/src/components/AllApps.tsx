@@ -88,7 +88,7 @@ const AllApps: React.FC = () => {
   return (
     <div id="all-apps" className={isMobile ? "mobile" : ""}>
       <div
-        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""}`}
+        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button"}`}
         style={{ gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)` }}
       >
         {displayedApps.map((app, index) => (
@@ -100,7 +100,12 @@ const AllApps: React.FC = () => {
             onDragEnd={handleDragEnd}
             onDrop={(e) => handleDrop(e, index)}
             className={`app-wrapper ${draggedIndex === index ? "dragging" : ""
-              } ${dragOverIndex === index ? "drag-over" : ""}`}
+              } ${dragOverIndex === index ? "drag-over" : ""}
+              ${index === displayedApps.length - 1 ? "last-app" : ""}
+              ${index === 0 ? "first-app" : ""}
+              ${index % 5 === 0 ? "first-in-row" : ""}
+              ${(index + 1) % 5 === 0 || index === displayedApps.length - 1 ? "last-in-row" : ""}
+              `}
           >
             <AppDisplay app={app} />
             <div className="drag-handle">⋮⋮</div>
