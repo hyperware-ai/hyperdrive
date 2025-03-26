@@ -96,7 +96,8 @@ header button {
   text-align: center;
   position: relative;
   max-width: 100vw;
-  width: 338px;
+  width: calc(33.33% - 10px);
+  min-width: 300px;
   height: 400px;
   overflow: hidden;
 }
@@ -174,6 +175,8 @@ footer {
   border: 0.5px solid rgba(255, 255, 255, 0.2);
   padding: 1em;
   color: var(--white);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 @media (max-width: 1024px) {
@@ -182,7 +185,7 @@ footer {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 980px) {
 
   body,
   html {
@@ -346,6 +349,7 @@ footer {
 @media (max-width: 480px) {
   .widget {
     min-height: 250px;
+    width: 100%;
   }
 
   header {
