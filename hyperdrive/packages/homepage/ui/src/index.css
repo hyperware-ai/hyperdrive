@@ -178,6 +178,16 @@ footer {
   background-color: var(--off-black);
   border-color: var(--off-white);
   border-radius: 0 0 1em 1em;
+  border: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
+  border-top: none;
+}
+
+/* When there's no expand button, ensure the container has proper borders
+   Applied from JavaScript by adding a class to the container */
+#all-apps.no-expand-button-container {
+  border-bottom: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
+  border-left: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
+  border-right: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
 }
 
 .apps-grid {
@@ -456,20 +466,39 @@ footer {
   border-right: none;
 }
 
-/* When there's no expand button, add proper border radius */
+/* For apps without "Show Apps" button, make border more significant on edges */
+.apps-grid.no-expand-button .app-wrapper {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Enhanced border for apps that form the bottom edge when no expand button */
+.apps-grid.no-expand-button .app-wrapper:nth-last-child(-n+5) {
+  border-bottom-width: 1px;
+}
+
+/* When there's no expand button, add proper border radius and borders */
+.apps-grid.no-expand-button {
+  /* Remove the border that would continue to the "Show Apps" button */
+  border-bottom: none;
+}
+
 .apps-grid.no-expand-button .app-wrapper.last-app.first-app {
   /* Only one app */
   border-radius: 0 0 1em 1em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
 }
 
 .apps-grid.no-expand-button .app-wrapper.last-app:not(.first-app) {
   /* Last app in a multi-app grid */
   border-radius: 0 0 1em 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
 }
 
 .apps-grid.no-expand-button .app-wrapper.first-in-row.last-in-row:not(.first-app) {
   /* Single app in a row that's not the first row */
   border-radius: 0 0 1em 1em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
 }
 
 .apps-grid.no-expand-button .app-wrapper.first-in-row:not(.last-in-row):not(.first-app) {
@@ -480,6 +509,18 @@ footer {
 .apps-grid.no-expand-button .app-wrapper.last-in-row:not(.first-in-row) {
   /* Last app in a row that has multiple apps */
   border-radius: 0 0 1em 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
+}
+
+/* Fix for last row in a no-expand-button grid */
+.apps-grid.no-expand-button .app-wrapper:nth-last-child(-n+5):not(.last-in-row) {
+  /* Apps in last row that aren't at the end of their row */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
+}
+
+/* Add left border to first column in last row */
+.apps-grid.no-expand-button .app-wrapper:nth-last-child(5n+1) {
+  border-left: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
 }
 
 .widget-wrapper {

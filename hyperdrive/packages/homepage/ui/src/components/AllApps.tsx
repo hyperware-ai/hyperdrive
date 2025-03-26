@@ -86,10 +86,14 @@ const AllApps: React.FC = () => {
   };
 
   return (
-    <div id="all-apps" className={isMobile ? "mobile" : ""}>
+    <div id="all-apps" className={`${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button-container"}`}>
       <div
         className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button"}`}
-        style={{ gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)` }}
+        style={{
+          gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)`,
+          /* Remove the border that would continue to the Show Apps button when it's not present */
+          borderBottom: hasMoreApps ? '0.5px solid rgba(255, 255, 255, 0.2)' : 'none'
+        }}
       >
         {displayedApps.map((app, index) => (
           <div

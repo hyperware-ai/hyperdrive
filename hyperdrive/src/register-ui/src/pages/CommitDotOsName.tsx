@@ -118,7 +118,7 @@ function CommitDotOsName({
                                     </Tooltip>
                                 </h3>
                                 <EnterHnsName {...enterOsNameProps} />
-                                <details>
+                                <details className="advanced-options">
                                     <summary>Advanced Options</summary>
                                     <DirectNodeCheckbox {...{ direct, setDirect }} />
                                 </details>

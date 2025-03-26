@@ -167,7 +167,7 @@
   border: 2px solid var(--primary-color);
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .checkbox-button:hover {
@@ -175,13 +175,35 @@
 }
 
 .checkbox-button svg {
-  color: var(--black);
+  color: light-dark(var(--black), var(--neon-green));
   font-size: 12px;
 }
 
 .checkbox-label {
   margin-left: 10px;
   font-size: 0.9em;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.checkbox-container-flex {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+  padding-right: 8px;
+}
+
+@media (max-width: 480px) {
+  .checkbox-container-flex {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .checkbox-container-flex .checkbox-button {
+    margin-top: 2px;
+  }
 }
 
 .file-input-label {
@@ -214,10 +236,33 @@ summary {
 details {
   width: 100%;
   min-height: 80px; /* Ensure consistent height whether open or closed */
+  max-width: 100%;
+  overflow: hidden;
 }
 
 details > div {
   margin-top: 10px;
+}
+
+.advanced-options {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ensure the inner content doesn't exceed the width of the container */
+.advanced-options > div {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* Ensure the tooltip and checkbox label can wrap */
+.advanced-options .checkbox-label {
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 button.secondary {

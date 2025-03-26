@@ -8,7 +8,7 @@ interface DNCBProps {
 
 export default function DirectNodeCheckbox({ direct, setDirect }: DNCBProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="checkbox-container-flex">
       <button className="checkbox-button" onClick={(e) => {
         e.preventDefault(); // Prevent form submission
         e.stopPropagation(); // Prevent event bubbling
