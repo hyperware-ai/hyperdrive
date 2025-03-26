@@ -318,14 +318,13 @@ export default function AppPage() {
           </div>
         </div>
       )}
-      <div className="app-header" style={{ minHeight: '200px' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap" style={{ minHeight: '200px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '128px', height: '128px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
               src={app.metadata?.image || '/h-green.svg'}
               alt={app.metadata?.name || app.package_id.package_name}
-              className="app-icon"
-              style={{ maxWidth: '100%', maxHeight: '100%' }}
+              className="w-24 h-24 object-cover rounded-lg"
             />
           </div>
           <div className="app-title">
@@ -371,7 +370,7 @@ export default function AppPage() {
         </ul>
       </div>
 
-      {!valid_wit_version && <div className="app-warning">This app must be updated to 1.0</div>}
+      {!valid_wit_version && <div className="p-2 bg-neon text-black">This app must be updated to 1.0</div>}
 
       <div className="app-actions" style={{ minHeight: '50px' }}>
         {installedApp && (
@@ -381,10 +380,10 @@ export default function AppPage() {
                 <FaPlay /> Launch
               </button>
             )}
-            <button onClick={handleUninstall} className="secondary">
+            <button onClick={handleUninstall} className="alt">
               {isUninstalling ? <FaSpinner className="fa-spin" /> : <FaTrash />} Uninstall
             </button>
-            <button onClick={handleToggleAutoUpdate} className="secondary">
+            <button onClick={handleToggleAutoUpdate} className="alt">
               {isTogglingAutoUpdate ? <FaSpinner className="fa-spin" /> : <FaSync />}
               {app.auto_update ? " Disable" : " Enable"} Auto Update
             </button>
@@ -456,7 +455,7 @@ export default function AppPage() {
 
       {valid_wit_version && !upToDate && (
         <>
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className="secondary">
+          <button onClick={() => setShowAdvanced(!showAdvanced)} className="alt">
             {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Download Options
           </button>
           {showAdvanced && (

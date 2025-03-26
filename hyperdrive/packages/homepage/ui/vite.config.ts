@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import UnoCSS from '@unocss/vite'
 
 /*
 If you are developing a UI outside of a Hyperware project,
@@ -21,6 +22,7 @@ const PROXY_URL = (process.env.VITE_NODE_URL || 'http://127.0.0.1:8080').replace
 export default defineConfig({
   plugins: [
     react(),
+    UnoCSS(),
   ],
   base: BASE_URL,
   build: {
@@ -64,14 +66,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => {
           return '/favorite';
-        },
-      },
-      [`^${BASE_URL}/(?!(@vite/client|src/.*|node_modules/.*|@react-refresh|$))`]: {
-        target: PROXY_URL,
-        changeOrigin: true,
-        rewrite: (path) => {
-          console.log('Rewriting path for other requests:', path);
-          return path.replace(BASE_URL, '');
         },
       },
     },

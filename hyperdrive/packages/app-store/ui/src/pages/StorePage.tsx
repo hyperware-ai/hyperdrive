@@ -37,7 +37,6 @@ export default function StorePage() {
           />
           <FaSearch />
         </div>
-        <ResetButton />
       </div>
       {!listings ? (
         <p>Loading...</p>
@@ -50,6 +49,10 @@ export default function StorePage() {
           ))}
         </div>
       )}
+      <div className="reset-store-container">
+        <p>Can't find the app you're looking for?</p>
+        <ResetButton />
+      </div>
     </div>
   );
 }
@@ -62,11 +65,11 @@ const AppCard: React.FC<{ app: AppListing }> = ({ app }) => {
       to={`/app/${app.package_id.package_name}:${app.package_id.publisher_node}`}
       className="app-card"
     >
-      <div className="app-icon-wrapper">
+      <div className="my-0 mx-auto fit-content">
         <img
           src={app.metadata?.image || '/h-green.svg'}
           alt={`${app.metadata?.name || app.package_id.package_name} icon`}
-          className="app-icon"
+          className="w-24 h-24 object-cover rounded-lg"
         />
       </div>
       <h3 className="app-name">

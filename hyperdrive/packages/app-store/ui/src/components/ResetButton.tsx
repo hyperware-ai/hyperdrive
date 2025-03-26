@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaExclamationTriangle } from 'react-icons/fa';
 import useAppsStore from '../store';
+import { Tooltip } from './Tooltip';
 
 const ResetButton: React.FC = () => {
     const resetStore = useAppsStore(state => state.resetStore);
@@ -22,18 +23,13 @@ const ResetButton: React.FC = () => {
 
     return (
         <>
-            <div className="tooltip-container">
-                <button
-                    onClick={() => setIsOpen(true)}
-                    className="button tertiary"
-                    style={{ fontSize: '0.9rem' }}
-                >
-                    Reset Store
-                </button>
-                <div className="tooltip-content">
-                    Use this if the app store state seems incomplete or out of sync.
-                </div>
-            </div>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="button tertiary"
+                style={{ fontSize: '0.9rem' }}
+            >
+                Reset Store
+            </button>
 
             {isOpen && (
                 <div className="modal-overlay" onClick={() => setIsOpen(false)}>

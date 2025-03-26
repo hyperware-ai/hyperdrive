@@ -8,7 +8,7 @@ h6,
 p,
 a,
 li {
-    font-family: 'Kode Mono', monospace;
+    font-family: 'Space Grotesk', monospace;
 }
 
 /* Layout */
@@ -158,15 +158,6 @@ button.kill-process {
     flex-grow: 1;
 }
 
-#shutdown {
-    background-color: var(--ansi-red);
-}
-
-#shutdown:hover {
-    background-color: var(--maroon);
-}
-
-/* Settings UI Container */
 .settings-container {
     max-width: 1200px;
     margin: 0 auto;
