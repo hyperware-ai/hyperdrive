@@ -49,10 +49,10 @@ export default function StorePage() {
           ))}
         </div>
       )}
-      <>
+      <div className="reset-store-container">
         <p>Can't find the app you're looking for?</p>
         <ResetButton />
-      </>
+      </div>
     </div>
   );
 }

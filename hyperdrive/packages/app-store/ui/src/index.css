@@ -9,7 +9,7 @@
 .app-grid .app-card {
     padding: 1rem;
     border-radius: var(--radius-lg);
-    background: light-dark(var(--surface-light), var(--surface-dark)) !important;
+    background: light-dark(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)) !important;
     transition: background-color 0.2s ease;
     display: flex;
     flex-direction: column;
@@ -17,7 +17,7 @@
 }
 
 .app-grid .app-card:hover {
-    background: light-dark(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)) !important;
+    background: light-dark(rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1)) !important;
 }
 
 .app-card .my-0.mx-auto.fit-content {
@@ -157,6 +157,19 @@
     text-align: center;
     display: block;
     margin: 0 auto;
+}
+
+.reset-store-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.reset-store-container p {
+    margin-bottom: 0.5rem;
 }
 
 .app-description {
@@ -357,6 +370,12 @@
     font-size: 1rem;
     transition: all 0.2s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: light-dark(var(--surface-light), var(--surface-dark));
+}
+
+.search-bar input::placeholder {
+    color: light-dark(rgba(0, 0, 0, 0.5), rgba(255, 255, 255, 0.7));
+    opacity: 1;
 }
 
 .search-bar input:focus {
