@@ -243,7 +243,7 @@ export default function PublishPage() {
     <div className="publish-page">
       <h1>Manage Published Apps</h1>
       {!address ? <></> : (
-        <div className="wallet-status">
+        <div className="flex items-center gap-2 break-all flex-wrap">
           Connected: {address}
           <Tooltip content="Make sure the connected wallet is the owner of this node!" />
         </div>
@@ -291,13 +291,13 @@ export default function PublishPage() {
         </div>
       ) : (
         <form className="publish-form" onSubmit={publishPackage}>
-          <div className="form-group">
+          <div className="p-2 bg-white dark:bg-black rounded-lg">
             <label htmlFor="package-select">Select app to publish</label>
             <PackageSelector onPackageSelect={handlePackageSelection} publisherId={publisherId} />
-            {nameValidity && <p className="error-message">{nameValidity}</p>}
+            {nameValidity && <p className="p-2 bg-red text-white rounded-lg">{nameValidity}</p>}
           </div>
 
-          <div className="form-group">
+          <div className="p-2 bg-white dark:bg-black rounded-lg">
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <label>Metadata URL</label>
               <Tooltip content={<>add a link to metadata.json here (<a href="https://raw.githubusercontent.com/hyperware-ai/kit/47cdf82f70b36f2a102ddfaaeed5efa10d7ef5b9/src/new/templates/rust/ui/chat/metadata.json" target="_blank" rel="noopener noreferrer">example link</a>)</>} />
@@ -308,9 +308,9 @@ export default function PublishPage() {
               onChange={(e) => setMetadataUrl(e.target.value)}
               onBlur={calculateMetadataHash}
             />
-            {metadataError && <p className="error-message">{metadataError}</p>}
+            {metadataError && <p className="p-2 bg-red text-white rounded-lg">{metadataError}</p>}
           </div>
-          <div className="form-group">
+          <div className="p-2 bg-white dark:bg-black rounded-lg">
             <label>Metadata Hash</label>
             <input
               readOnly

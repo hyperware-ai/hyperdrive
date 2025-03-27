@@ -2,6 +2,8 @@
 .form-group {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .form-label {
@@ -32,39 +34,25 @@
 .tooltip-text {
   font-size: 0.8em;
   visibility: hidden;
-  width: 200px;
+  width: 250px;
+  max-width: 90vw;
   background-color: #555;
   color: var(--off-white);
   text-align: center;
   border-radius: 6px;
-  padding: 5px;
-  position: absolute;
-  z-index: 1;
+  padding: 8px;
+  position: fixed;
+  z-index: 100;
   opacity: 0;
   transition: opacity 0.3s;
-}
-
-.tooltip-top .tooltip-text {
-  bottom: 125%;
-  left: 50%;
-  margin-left: -100px;
-}
-
-.tooltip-bottom .tooltip-text {
-  top: 125%;
-  left: 50%;
-  margin-left: -100px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
 }
 
 .tooltip:hover .tooltip-text {
   visibility: visible;
   opacity: 1;
-}
-
-.container {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 2rem;
+  /* Position will be set via JavaScript */
 }
 
 .section {
@@ -72,10 +60,15 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 2rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .content {
   text-align: center;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .button-group {
@@ -83,6 +76,8 @@
   flex-direction: column;
   gap: 1rem;
   margin-top: 1rem;
+  max-width: 100%;
+  width: 100%;
 }
 
 .text-center {
@@ -108,11 +103,6 @@
 .connect-wallet {
   display: flex;
   justify-content: flex-end;
-}
-
-.container {
-  padding-top: 4rem;
-  /* Add some top padding to account for the fixed header */
 }
 
 .enter-hns-name {
@@ -149,15 +139,9 @@
 }
 
 .error-message {
-  color: var(--ansi-red);
+  color: var(--neon-red);
   margin-top: 0.5rem;
   overflow-wrap: break-word;
-}
-
-.direct-checkbox {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
 }
 
 .checkbox-container {
@@ -170,56 +154,56 @@
   user-select: none;
 }
 
-.checkbox-container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
-.checkmark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 25px;
-  width: 25px;
-  background-color: #eee;
+.checkbox-button {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  background-color: transparent;
   border: 2px solid var(--primary-color);
   border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.checkbox-container:hover input~.checkmark {
-  background-color: var(--gray);
+.checkbox-button:hover {
+  background-color: var(--primary-xlight);
 }
 
-.checkbox-container input:checked~.checkmark {
-  background-color: var(--primary-color);
-}
-
-.checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-}
-
-.checkbox-container input:checked~.checkmark:after {
-  display: block;
-}
-
-.checkbox-container .checkmark:after {
-  left: 9px;
-  top: 5px;
-  width: 5px;
-  height: 10px;
-  border: solid var(--off-white);
-  border-width: 0 3px 3px 0;
-  transform: rotate(45deg);
+.checkbox-button svg {
+  color: light-dark(var(--black), var(--neon-green));
+  font-size: 12px;
 }
 
 .checkbox-label {
   margin-left: 10px;
   font-size: 0.9em;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.checkbox-container-flex {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+  padding-right: 8px;
+}
+
+@media (max-width: 480px) {
+  .checkbox-container-flex {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .checkbox-container-flex .checkbox-button {
+    margin-top: 2px;
+  }
 }
 
 .file-input-label {
@@ -246,6 +230,39 @@ summary {
   font-family: var(--font-family-main);
   color: light-dark(var(--off-black), var(--off-white));
   margin-bottom: 10px;
+  cursor: pointer;
+}
+
+details {
+  width: 100%;
+  min-height: 80px; /* Ensure consistent height whether open or closed */
+  max-width: 100%;
+  overflow: hidden;
+}
+
+details > div {
+  margin-top: 10px;
+}
+
+.advanced-options {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ensure the inner content doesn't exceed the width of the container */
+.advanced-options > div {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* Ensure the tooltip and checkbox label can wrap */
+.advanced-options .checkbox-label {
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 button.secondary {
@@ -442,4 +459,25 @@ button.back {
   to {
     transform: scaleX(1);
   }
+}
+
+/* Fix for overrunning components */
+.container {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.button.secondary {
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+h2, h4 {
+  max-width: 100%;
+  overflow-wrap: break-word;
 }

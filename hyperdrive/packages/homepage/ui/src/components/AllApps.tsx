@@ -86,11 +86,14 @@ const AllApps: React.FC = () => {
   };
 
   return (
-    <div id="all-apps" className={isMobile ? "mobile" : ""}>
+    <div id="all-apps" className={`${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button-container"}`}>
       <div
-        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""
-          }`}
-        style={{ gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)` }}
+        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button"}`}
+        style={{
+          gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)`,
+          /* Remove the border that would continue to the Show Apps button when it's not present */
+          borderBottom: hasMoreApps ? '0.5px solid rgba(255, 255, 255, 0.2)' : 'none'
+        }}
       >
         {displayedApps.map((app, index) => (
           <div
@@ -101,7 +104,12 @@ const AllApps: React.FC = () => {
             onDragEnd={handleDragEnd}
             onDrop={(e) => handleDrop(e, index)}
             className={`app-wrapper ${draggedIndex === index ? "dragging" : ""
-              } ${dragOverIndex === index ? "drag-over" : ""}`}
+              } ${dragOverIndex === index ? "drag-over" : ""}
+              ${index === displayedApps.length - 1 ? "last-app" : ""}
+              ${index === 0 ? "first-app" : ""}
+              ${index % 5 === 0 ? "first-in-row" : ""}
+              ${(index + 1) % 5 === 0 || index === displayedApps.length - 1 ? "last-in-row" : ""}
+              `}
           >
             <AppDisplay app={app} />
             <div className="drag-handle">⋮⋮</div>

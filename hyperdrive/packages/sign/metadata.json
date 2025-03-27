@@ -1,0 +1,18 @@
+{
+  "name": "Sign",
+  "description": "Sign messages with Hyperware",
+  "image": "",
+  "properties": {
+    "package_name": "sign",
+    "current_version": "1.0.0",
+    "publisher": "sys",
+    "mirrors": [],
+    "code_hashes": {
+      "1.0.0": ""
+    },
+    "wit_version": 1,
+    "dependencies": []
+  },
+  "external_url": "https://hyperware.ai",
+  "animation_url": ""
+}

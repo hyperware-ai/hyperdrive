@@ -207,6 +207,7 @@ function App() {
             <button
               onClick={handleShutdown}
               id="shutdown"
+              className="tertiary"
             >
               Shutdown Node
             </button>

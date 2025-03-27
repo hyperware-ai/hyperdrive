@@ -398,13 +398,14 @@ fn make_clock_widget() -> String {
                 border-radius: 50%;
                 position: relative;
                 margin: 20px auto;
+                background: black;
             }}
             .hand {{
                 position: absolute;
                 bottom: 50%;
                 left: 50%;
                 transform-origin: bottom;
-                background-color: light-dark(var(--off-black), var(--off-white));
+                background-color: white;
             }}
             .hour {{
                 width: 4px;

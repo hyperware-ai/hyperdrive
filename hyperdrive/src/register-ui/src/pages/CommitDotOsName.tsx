@@ -5,7 +5,7 @@ import EnterHnsName from "../components/EnterHnsName";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 
-import DirectCheckbox from "../components/DirectCheckbox";
+import DirectNodeCheckbox from "../components/DirectCheckbox";
 import { Tooltip } from "../components/Tooltip";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
@@ -118,9 +118,9 @@ function CommitDotOsName({
                                     </Tooltip>
                                 </h3>
                                 <EnterHnsName {...enterOsNameProps} />
-                                <details>
+                                <details className="advanced-options">
                                     <summary>Advanced Options</summary>
-                                    <DirectCheckbox {...{ direct, setDirect }} />
+                                    <DirectNodeCheckbox {...{ direct, setDirect }} />
                                 </details>
                                 <div className="button-group">
                                     <button
