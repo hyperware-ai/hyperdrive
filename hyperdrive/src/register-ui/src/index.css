@@ -10,6 +10,10 @@
   margin-bottom: 0.5rem;
   font-weight: bold;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .form-input {
@@ -28,7 +32,10 @@
 /* tooltips */
 .tooltip {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .tooltip-text {
@@ -47,6 +54,7 @@
   transition: opacity 0.3s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   pointer-events: none;
+  user-select: none;
 }
 
 .tooltip:hover .tooltip-text {
@@ -60,9 +68,9 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 2rem;
-  max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
+  @apply max-w-screen-sm relative;
 }
 
 .content {
@@ -110,12 +118,6 @@
   margin-bottom: 1rem;
 }
 
-.input-wrapper {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
 .hns-input {
   flex-grow: 1;
   padding: 0.5rem;
@@ -154,56 +156,11 @@
   user-select: none;
 }
 
-.checkbox-button {
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
-  background-color: transparent;
-  border: 2px solid var(--primary-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.checkbox-button:hover {
-  background-color: var(--primary-xlight);
-}
-
-.checkbox-button svg {
-  color: light-dark(var(--black), var(--neon-green));
-  font-size: 12px;
-}
-
 .checkbox-label {
   margin-left: 10px;
   font-size: 0.9em;
   word-wrap: break-word;
   overflow-wrap: break-word;
-}
-
-.checkbox-container-flex {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-  flex-wrap: wrap;
-  padding-right: 8px;
-}
-
-@media (max-width: 480px) {
-  .checkbox-container-flex {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .checkbox-container-flex .checkbox-button {
-    margin-top: 2px;
-  }
 }
 
 .file-input-label {
@@ -234,28 +191,14 @@ summary {
 }
 
 details {
-  width: 100%;
-  min-height: 80px; /* Ensure consistent height whether open or closed */
-  max-width: 100%;
   overflow: hidden;
-}
-
-details > div {
-  margin-top: 10px;
-}
-
-.advanced-options {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Ensure the inner content doesn't exceed the width of the container */
-.advanced-options > div {
-  width: 100%;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  border: 1px solid var(--primary-xlight);
+  border-radius: 8px;
+  padding: 0.25rem 0.5rem;
 }
+
 
 /* Ensure the tooltip and checkbox label can wrap */
 .advanced-options .checkbox-label {
@@ -263,18 +206,6 @@ details > div {
   min-width: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
-}
-
-button.secondary {
-  width: 100%;
-}
-
-button.back {
-  float: left;
-  width: auto !important;
-  padding: 5px !important;
-  border: none !important;
-  background-color: var(--primary-color) !important;
 }
 
 /* Progress Bar Styles */
@@ -477,7 +408,8 @@ button.back {
   word-wrap: break-word;
 }
 
-h2, h4 {
+h2,
+h4 {
   max-width: 100%;
   overflow-wrap: break-word;
 }
