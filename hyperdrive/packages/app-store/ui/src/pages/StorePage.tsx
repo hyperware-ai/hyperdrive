@@ -127,14 +127,14 @@ export default function StorePage() {
       {!listings ? (
         <p>Loading...</p>
       ) : filteredApps.length === 0 ? (
-        // <p>No apps available.</p>
-        <div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {mockApps.map((app) => (
-            <AppCard key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`} app={app} />
-          ))}
-        </div>
+        <p>No apps available.</p>
+        // <div
+        //   className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        // >
+        //   {mockApps.map((app) => (
+        //     <AppCard key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`} app={app} />
+        //   ))}
+        // </div>
       ) : (
         <div
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
