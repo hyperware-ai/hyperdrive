@@ -8,6 +8,7 @@
     "@rainbow-me/rainbowkit": "^2.1.6",
     "@szhsin/react-menu": "^4.1.0",
     "@tanstack/react-query": "^5.45.1",
+    "classnames": "^2.5.1",
     "idna-uts46-hx": "^6.0.4",
     "is-valid-domain": "^0.1.6",
     "jazzicon": "^1.5.0",
@@ -61,6 +62,27 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.2.10"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-android-arm-eabi": "^4.35.0",
+    "@rollup/rollup-android-arm64": "^4.35.0",
+    "@rollup/rollup-darwin-arm64": "^4.35.0",
+    "@rollup/rollup-darwin-x64": "^4.35.0",
+    "@rollup/rollup-freebsd-arm64": "^4.35.0",
+    "@rollup/rollup-freebsd-x64": "^4.35.0",
+    "@rollup/rollup-linux-arm-gnueabihf": "^4.35.0",
+    "@rollup/rollup-linux-arm-musleabihf": "^4.35.0",
+    "@rollup/rollup-linux-arm64-gnu": "^4.35.0",
+    "@rollup/rollup-linux-arm64-musl": "^4.35.0",
+    "@rollup/rollup-linux-loongarch64-gnu": "^4.35.0",
+    "@rollup/rollup-linux-powerpc64le-gnu": "^4.35.0",
+    "@rollup/rollup-linux-riscv64-gnu": "^4.35.0",
+    "@rollup/rollup-linux-s390x-gnu": "^4.35.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.35.0",
+    "@rollup/rollup-linux-x64-musl": "^4.35.0",
+    "@rollup/rollup-win32-arm64-msvc": "^4.35.0",
+    "@rollup/rollup-win32-ia32-msvc": "^4.35.0",
+    "@rollup/rollup-win32-x64-msvc": "^4.35.0"
   },
   "type": "module"
 }

@@ -120,7 +120,7 @@ function EnterHnsName({
 
   return (
     <div className="enter-hns-name">
-      <div className="input-wrapper">
+      <div className="flex gap-2">
         <input
           value={name}
           onChange={noSpaces}
@@ -128,7 +128,7 @@ function EnterHnsName({
           required
           name="hns-name"
           placeholder="node-name"
-          className="hns-input"
+          className="grow"
         />
         {fixedTlz && <span className="hns-suffix">{fixedTlz}</span>}
       </div>

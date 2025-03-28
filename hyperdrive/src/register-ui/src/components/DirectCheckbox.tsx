@@ -1,5 +1,5 @@
 import { DirectTooltip } from "./DirectTooltip";
-import { FaCheck } from "react-icons/fa6";
+import { FaSquareCheck, FaRegSquare } from "react-icons/fa6";
 
 interface DNCBProps {
   direct: boolean;
@@ -8,17 +8,18 @@ interface DNCBProps {
 
 export default function DirectNodeCheckbox({ direct, setDirect }: DNCBProps) {
   return (
-    <div className="checkbox-container-flex">
-      <button className="checkbox-button" onClick={(e) => {
-        e.preventDefault(); // Prevent form submission
-        e.stopPropagation(); // Prevent event bubbling
+    <div className="flex flex-col md:flex-row flex-wrap gap-2 items-center">
+      <button className="icon" onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
         setDirect(!direct);
       }}>
-        {direct ? <FaCheck /> : null}
+        {direct ? <FaSquareCheck /> : <FaRegSquare />}
       </button>
-      <span className="checkbox-label">
-        Register as a direct node. If you are unsure, leave unchecked.
-      </span>
+      <div className="flex flex-col gap-1 min-w-0 word-wrap overflow-wrap">
+        <span className="text-sm">Register as a direct node.</span>
+        <span className="text-xs">If you are unsure, leave unchecked.</span>
+      </div>
       <DirectTooltip />
     </div>
   );

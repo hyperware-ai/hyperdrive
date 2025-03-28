@@ -9,7 +9,7 @@ import { useAccount, useWaitForTransactionReceipt, useSendTransaction } from "wa
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
 import { tbaMintAbi, generateNetworkingKeys, HYPER_ACCOUNT_IMPL } from "../abis";
 import { encodePacked, encodeFunctionData, stringToHex } from "viem";
-
+import BackButton from "../components/BackButton";
 interface MintCustomNameProps extends PageProps { }
 
 function MintCustom({
@@ -117,7 +117,6 @@ function MintCustom({
 
     return (
         <div className="container fade-in">
-            <button onClick={() => history.back()} className="button secondary back">🔙</button>
             <div className="section">
                 {
                     <form className="form" onSubmit={handleMint}>
@@ -126,7 +125,10 @@ function MintCustom({
                         ) : (
                             <>
                                 <p className="form-label">
-                                    Register a name on a different top-level zone -- this will likely fail if that zone's requirements are not met
+                                    <BackButton />
+                                    <span>
+                                        Register a name on a different top-level zone -- this will likely fail if that zone's requirements are not met
+                                    </span>
                                 </p>
                                 <input type="text" name="name" placeholder="Enter hypermap name" />
                                 <input type="text" name="full-hns-name" placeholder="Enter full HNS name" />
