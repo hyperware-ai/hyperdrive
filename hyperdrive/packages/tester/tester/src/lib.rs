@@ -30,7 +30,7 @@ fn handle_response(message: &Message) -> anyhow::Result<()> {
         );
         fail!("tester");
     }
-    Response::new().body(message.body()).send().unwrap();
+    Response::new().body(message.body()).send()?;
     Ok(())
 }
 
@@ -71,10 +71,7 @@ fn handle_request(
 
     if our.node != node_names[0] {
         // we are not the master node
-        Response::new()
-            .body(TesterResponse::Run(Ok(())))
-            .send()
-            .unwrap();
+        Response::new().body(TesterResponse::Run(Ok(()))).send()?;
         return Ok(());
     }
 
@@ -120,35 +117,42 @@ fn handle_request(
 
     for test_name in test_names {
         let test_path = format!("{}/{}.wasm", dir_prefix, test_name);
-        let (mut request_caps, grant_caps) = caps_by_child
-            .get(test_name)
-            .and_then(|caps_map| {
-                Some((
-                    caps_map["request_capabilities"]
-                        .iter()
-                        .map(|cap| {
-                            serde_json::from_str(cap).unwrap_or_else(|_| {
-                                Capability::new(
-                                    Address::new(our.node(), cap.parse::<ProcessId>().unwrap()),
+        let caps_map = caps_by_child.get(test_name);
+        let (mut request_caps, grant_caps) = if let Some(caps_map) = caps_map {
+            (
+                caps_map["request_capabilities"].iter().try_fold(
+                    Vec::new(),
+                    |mut caps, cap| -> anyhow::Result<Vec<Capability>> {
+                        let cap: anyhow::Result<Capability> =
+                            serde_json::from_str(cap).or_else(|_| {
+                                let pid = cap.parse::<ProcessId>()?;
+                                Ok(Capability::new(
+                                    Address::new(our.node(), pid),
                                     "\"messaging\"",
-                                )
-                            })
-                        })
-                        .collect(),
-                    caps_map["grant_capabilities"]
-                        .iter()
-                        .map(|cap| {
-                            serde_json::from_str::<(ProcessId, String)>(cap).unwrap_or_else(|_| {
-                                (
-                                    cap.parse::<ProcessId>().unwrap(),
-                                    "\"messaging\"".to_string(),
-                                )
-                            })
-                        })
-                        .collect(),
-                ))
-            })
-            .unwrap_or((vec![], vec![]));
+                                ))
+                            });
+                        let cap = cap?;
+                        caps.push(cap);
+                        Ok(caps)
+                    },
+                )?,
+                caps_map["grant_capabilities"].iter().try_fold(
+                    Vec::new(),
+                    |mut caps, cap| -> anyhow::Result<Vec<(ProcessId, String)>> {
+                        let cap: anyhow::Result<(ProcessId, String)> = serde_json::from_str(cap)
+                            .or_else(|_| {
+                                let pid = cap.parse::<ProcessId>()?;
+                                Ok((pid, "\"messaging\"".to_string()))
+                            });
+                        let cap = cap?;
+                        caps.push(cap);
+                        Ok(caps)
+                    },
+                )?,
+            )
+        } else {
+            (vec![], vec![])
+        };
         println!("tester: request_caps: {request_caps:?}\ntester: grant_caps: {grant_caps:?}");
         request_caps.extend(our_capabilities());
         let child_process_id = match spawn(
@@ -207,19 +211,14 @@ fn handle_message(our: &Address, node_names: &mut Vec<String>) -> anyhow::Result
     return handle_request(our, &message, node_names);
 }
 
-call_init!(init);
-fn init(our: Address) {
-    let mut node_names: Vec<String> = Vec::new();
+fn setup(our: &Address) -> anyhow::Result<()> {
     for path in [SETUP_PATH, TESTS_PATH] {
         match Request::new()
             .target(("our", "vfs", "distro", "sys"))
-            .body(
-                serde_json::to_vec(&vfs::VfsRequest {
-                    path: path.into(),
-                    action: vfs::VfsAction::CreateDrive,
-                })
-                .unwrap(),
-            )
+            .body(serde_json::to_vec(&vfs::VfsRequest {
+                path: path.into(),
+                action: vfs::VfsAction::CreateDrive,
+            })?)
             .send_and_await_response(5)
         {
             Err(_) => {
@@ -236,27 +235,34 @@ fn init(our: Address) {
         //  -> must give drive cap to rpc
         let sent = Request::new()
             .target(("our", "kernel", "distro", "sys"))
-            .body(
-                serde_json::to_vec(&kt::KernelCommand::GrantCapabilities {
-                    target: ProcessId::new(Some("http-server"), "distro", "sys"),
-                    capabilities: vec![kt::Capability {
-                        issuer: Address::new(
-                            our.node.clone(),
-                            ProcessId::new(Some("vfs"), "distro", "sys"),
-                        ),
-                        params: serde_json::json!({
-                            "kind": "write",
-                            "drive": path,
-                        })
-                        .to_string(),
-                    }],
-                })
-                .unwrap(),
-            )
+            .body(serde_json::to_vec(&kt::KernelCommand::GrantCapabilities {
+                target: ProcessId::new(Some("http-server"), "distro", "sys"),
+                capabilities: vec![kt::Capability {
+                    issuer: Address::new(
+                        our.node.clone(),
+                        ProcessId::new(Some("vfs"), "distro", "sys"),
+                    ),
+                    params: serde_json::json!({
+                        "kind": "write",
+                        "drive": path,
+                    })
+                    .to_string(),
+                }],
+            })?)
             .send();
         if sent.is_err() {
             fail!("tester");
         }
+    }
+    Ok(())
+}
+
+call_init!(init);
+fn init(our: Address) {
+    let mut node_names: Vec<String> = Vec::new();
+
+    if let Err(_) = setup(&our) {
+        fail!("tester");
     }
 
     loop {
