@@ -14,6 +14,7 @@ import EnterHnsName from "../components/EnterHnsName";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit";
+import BackButton from "../components/BackButton";
 
 interface ResetProps extends PageProps { }
 
@@ -119,7 +120,6 @@ function ResetHnsName({
 
   return (
     <div className="container fade-in">
-      <button onClick={() => history.back()} className="button secondary back self-start">🔙</button>
       <div className="section">
         {
           <form className="form" onSubmit={handleResetRecords}>
@@ -128,6 +128,7 @@ function ResetHnsName({
             ) : (
               <>
                 <h3 className="form-label">
+                  <BackButton />
                   <Tooltip text="Nodes use an onchain username in order to identify themselves to other nodes in the network.">
                     Node ID to reset:
                   </Tooltip>
@@ -137,8 +138,10 @@ function ResetHnsName({
                   <summary>Advanced Options</summary>
                   <DirectNodeCheckbox {...{ direct, setDirect }} />
                 </details>
-                <p>
-                  A reset will not delete any data. It only updates the networking information that your node publishes onchain.
+                <p className="text-sm">
+                  A reset will not delete any data.
+                  <br />
+                  It only updates the networking info your node publishes onchain.
                 </p>
                 <button
                   type="submit"
