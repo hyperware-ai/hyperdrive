@@ -1,9 +1,95 @@
 import React, { useState, useEffect } from "react";
 import useAppsStore from "../store";
 import { AppListing } from "../types/Apps";
-import { Link } from "react-router-dom";
 import { FaSearch } from "react-icons/fa";
 import { ResetButton } from "../components";
+import { AppCard } from "../components/AppCard";
+const mockApps: AppListing[] = [
+  {
+    package_id: {
+      package_name: "test-app",
+      publisher_node: "test-node",
+    },
+    tba: "0x0000000000000000000000000000000000000000",
+    metadata_uri: "https://example.com/metadata",
+    metadata_hash: "1234567890",
+    auto_update: false,
+    metadata: {
+      name: "Test App",
+      description: "This is a test app",
+      properties: {
+        package_name: "test-app",
+        publisher: "test-node",
+        current_version: "1.0.0",
+        mirrors: [],
+        code_hashes: [],
+      },
+    },
+  },
+  {
+    package_id: {
+      package_name: "test-app",
+      publisher_node: "test-node",
+    },
+    tba: "0x0000000000000000000000000000000000000000",
+    metadata_uri: "https://example.com/metadata",
+    metadata_hash: "1234567890",
+    auto_update: false,
+    metadata: {
+      name: "Test App",
+      description: "This is a test app",
+      properties: {
+        package_name: "test-app",
+        publisher: "test-node",
+        current_version: "1.0.0",
+        mirrors: [],
+        code_hashes: [],
+      },
+    },
+  },
+  {
+    package_id: {
+      package_name: "test-app",
+      publisher_node: "test-node",
+    },
+    tba: "0x0000000000000000000000000000000000000000",
+    metadata_uri: "https://example.com/metadata",
+    metadata_hash: "1234567890",
+    auto_update: false,
+    metadata: {
+      name: "Test App TestappTestappTestappTestappTestapp",
+      description: "adsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege a",
+      properties: {
+        package_name: "test-app",
+        publisher: "test-node",
+        current_version: "1.0.0",
+        mirrors: [],
+        code_hashes: [],
+      },
+    },
+  },
+  {
+    package_id: {
+      package_name: "test-app",
+      publisher_node: "test-node",
+    },
+    tba: "0x0000000000000000000000000000000000000000",
+    metadata_uri: "https://example.com/metadata",
+    metadata_hash: "1234567890",
+    auto_update: false,
+    metadata: {
+      name: "Test App",
+      description: "This is a test app",
+      properties: {
+        package_name: "test-app",
+        publisher: "test-nodetest-nodetest-nodetest-nodetest-node",
+        current_version: "1.0.0",
+        mirrors: [],
+        code_hashes: [],
+      },
+    },
+  },
+];
 
 export default function StorePage() {
   const { listings, fetchListings, fetchUpdates } = useAppsStore();
@@ -42,49 +128,26 @@ export default function StorePage() {
         <p>Loading...</p>
       ) : filteredApps.length === 0 ? (
         <p>No apps available.</p>
+        // <div
+        //   className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        // >
+        //   {mockApps.map((app) => (
+        //     <AppCard key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`} app={app} />
+        //   ))}
+        // </div>
       ) : (
-        <div className="app-grid">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {filteredApps.map((app) => (
             <AppCard key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`} app={app} />
           ))}
         </div>
       )}
-      <div className="reset-store-container">
+      <div className="flex flex-col items-center justify-center text-center gap-4">
         <p>Can't find the app you're looking for?</p>
         <ResetButton />
       </div>
     </div>
   );
 }
-
-const AppCard: React.FC<{ app: AppListing }> = ({ app }) => {
-  if (!app || !app.package_id) return null;
-
-  return (
-    <Link
-      to={`/app/${app.package_id.package_name}:${app.package_id.publisher_node}`}
-      className="app-card"
-    >
-      <div className="my-0 mx-auto fit-content">
-        <img
-          src={app.metadata?.image || '/h-green.svg'}
-          alt={`${app.metadata?.name || app.package_id.package_name} icon`}
-          className="w-24 h-24 object-cover rounded-lg"
-        />
-      </div>
-      <h3 className="app-name">
-        {app.metadata?.name || app.package_id.package_name}
-      </h3>
-      <p className="app-publisher">
-        {app.package_id.publisher_node}
-      </p>
-      {app.metadata?.description && (
-        <p className="app-description">
-          {app.metadata.description.length > 100
-            ? `${app.metadata.description.substring(0, 100)}...`
-            : app.metadata.description}
-        </p>
-      )}
-    </Link>
-  );
-};

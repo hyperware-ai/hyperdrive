@@ -29,7 +29,7 @@ const AppDisplay: React.FC<AppDisplayProps> = ({ app }) => {
       ) : (
         <img className="w-8 h-8 object-cover rounded-lg" src="/h-green.svg" />
       )}
-      <h6 id="app-name">{app?.label || app?.package_name}</h6>
+      <h6 className="text-white">{app?.label || app?.package_name}</h6>
     </a>
   );
 };

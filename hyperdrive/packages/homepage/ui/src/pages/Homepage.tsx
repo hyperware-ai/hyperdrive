@@ -40,8 +40,15 @@ function Homepage() {
   }, [our]);
 
   return (
-    <div id="homepage">
-      <div className="homepage-container">
+    <div
+      className="
+        homepage
+        flex flex-col md:flex-row place-items-center place-content-center
+        md:h-screen w-screen
+        overflow-y-auto overflow-x-hidden
+      "
+    >
+      <div className="max-w-screen w-full lg:w-fit">
         <header>
           <HyperwareLogo style={{ marginRight: '10px', maxWidth: 64 }} />
           <h2>
@@ -71,15 +78,14 @@ function Homepage() {
           </a>
         </header>
 
-        <div id="widgets-container">
-          <Widgets />
-        </div>
+
+        <Widgets />
         <footer>
           <AllApps />
         </footer>
         {showWidgetsSettings && <WidgetsSettingsModal />}
       </div>
-    </div>
+    </ div>
   );
 }
 

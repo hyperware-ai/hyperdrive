@@ -126,13 +126,11 @@ function ImportKeyfile({
               </div>
               <div className="form-group">
                 <h4 className="form-label">2. Enter Node ID</h4>
-                <label className="name-input-label">
-                  <input
-                    type="text"
-                    className="name-input"
-                    onChange={(e) => setHnsName(e.target.value)}
-                  />
-                </label>
+                <input
+                  type="text"
+                  className="name-input"
+                  onChange={(e) => setHnsName(e.target.value)}
+                />
               </div>
               <div className="form-group">
                 <h4 className="form-label">3. Enter Password</h4>

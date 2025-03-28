@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import useHomepageStore, { HomepageApp } from "../store/homepageStore";
 import AppDisplay from "./AppDisplay";
+import classNames from "classnames";
 
 const AllApps: React.FC = () => {
   const { apps } = useHomepageStore();
@@ -86,9 +87,24 @@ const AllApps: React.FC = () => {
   };
 
   return (
-    <div id="all-apps" className={`${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button-container"}`}>
+    <div
+      className={classNames(`
+        all-apps
+        fixed bottom-0 left-0 right-0 z-40
+        bg-black 
+        p-0 
+        rounded-none md:rounded-b-lg
+        border border-solid border-1 border-black dark:border-white border-t-0
+        shadow-lg
+        md:static
+      `, {
+      })}>
       <div
-        className={`apps-grid ${expanded ? "expanded" : ""} ${isMobile ? "mobile" : ""} ${hasMoreApps ? "" : "no-expand-button"}`}
+        className={classNames("apps-grid", {
+          expanded: expanded,
+          mobile: isMobile,
+          noExpandButton: !hasMoreApps
+        })}
         style={{
           gridTemplateColumns: `repeat(${Math.min(displayedApps.length, 5)}, 1fr)`,
           /* Remove the border that would continue to the Show Apps button when it's not present */
@@ -103,13 +119,14 @@ const AllApps: React.FC = () => {
             onDragOver={(e) => handleDragOver(e, index)}
             onDragEnd={handleDragEnd}
             onDrop={(e) => handleDrop(e, index)}
-            className={`app-wrapper ${draggedIndex === index ? "dragging" : ""
-              } ${dragOverIndex === index ? "drag-over" : ""}
-              ${index === displayedApps.length - 1 ? "last-app" : ""}
-              ${index === 0 ? "first-app" : ""}
-              ${index % 5 === 0 ? "first-in-row" : ""}
-              ${(index + 1) % 5 === 0 || index === displayedApps.length - 1 ? "last-in-row" : ""}
-              `}
+            className={classNames("app-wrapper", {
+              dragging: draggedIndex === index,
+              "drag-over": dragOverIndex === index,
+              lastApp: index === displayedApps.length - 1,
+              firstApp: index === 0,
+              "first-in-row": index % 5 === 0,
+              "last-in-row": (index + 1) % 5 === 0 || index === displayedApps.length - 1
+            })}
           >
             <AppDisplay app={app} />
             <div className="drag-handle">⋮⋮</div>

@@ -50,8 +50,15 @@ const Widgets = () => {
 
   return (
     <div
-      id="widgets"
-      className="widgets-container"
+      className="
+        bg-white dark:bg-tasteful-dark
+        border border-solid border-1 border-black dark:border-white
+        grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4
+        p-0
+        max-w-screen 
+        mx-auto my-0
+        overflow-x-hidden
+      "
     >
       {orderedWidgets.map((wid, index) => (
         <div
