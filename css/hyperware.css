@@ -12,11 +12,11 @@
     --stone: #353534;
     --black: #111111;
     --black-light: #11111188;
-    --black-xlight: #11111144;
+    --black-xlight: #11111111;
     --tasteful-dark: var(--black);
     --white: #f6f6f6;
     --white-light: #f6f6f688;
-    --white-xlight: #f6f6f644;
+    --white-xlight: #f6f6f611;
     --magenta: #bf1363;
     --orange: #dd6e42;
     --off-white: var(--white);
@@ -29,6 +29,8 @@
     --secondary-color: var(--iris);
     --tertiary-color: var(--orange);
     --quaternary-color: var(--magenta);
+
+    --link-color: light-dark(var(--secondary-color), var(--primary-color));
 
     --font-family-main: 'Space Grotesk', monospace;
 
@@ -58,7 +60,6 @@
 
 html {
     font-size: 16px;
-
     background-color: light-dark(var(--white), var(--black));
     color: light-dark(var(--off-black), var(--off-white));
 }
@@ -79,7 +80,7 @@ body {
 
 a {
     text-decoration: none;
-    color: var(--primary-color);
+    color: var(--link-color);
 }
 
 form {
@@ -212,8 +213,8 @@ button.icon,
     background-color: transparent;
     padding: 0.5rem;
     border-radius: 999px;
-    border: 2px solid var(--white-xlight);
-    color: var(--white);
+    border: light-dark(2px solid var(--black-xlight), 2px solid var(--white-xlight));
+    color: light-dark(var(--black), var(--white));
 }
 
 button.icon:hover,
