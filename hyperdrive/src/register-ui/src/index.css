@@ -64,19 +64,7 @@
 }
 
 .section {
-  background-color: light-dark(var(--off-white), var(--tasteful-dark));
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
-  box-sizing: border-box;
-  overflow: hidden;
-  @apply max-w-screen-sm relative;
-}
-
-.content {
-  text-align: center;
-  max-width: 100%;
-  overflow: hidden;
+  @apply max-w-screen-sm relative px-6 py-3 overflow-hidden rounded-lg bg-white dark:bg-black shadow-md;
 }
 
 .button-group {
@@ -113,27 +101,6 @@
   justify-content: flex-end;
 }
 
-.enter-hns-name {
-  width: 100%;
-  margin-bottom: 1rem;
-}
-
-.hns-input {
-  flex-grow: 1;
-  padding: 0.5rem;
-  font-size: 1.2em;
-  border: 1px solid var(--gray);
-  border-radius: 4px 0 0 4px;
-}
-
-.hns-suffix {
-  padding: 0.5rem;
-  background-color: var(--secondary-color);
-  border: 1px solid var(--tasteful-dark);
-  border-left: none;
-  border-radius: 0 4px 4px 0;
-}
-
 .button-group {
   display: flex;
   flex-direction: column;
@@ -146,22 +113,7 @@
   overflow-wrap: break-word;
 }
 
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  position: relative;
-  padding-left: 35px;
-  cursor: pointer;
-  font-size: 16px;
-  user-select: none;
-}
 
-.checkbox-label {
-  margin-left: 10px;
-  font-size: 0.9em;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
 
 .file-input-label {
   display: inline-block;
@@ -183,42 +135,6 @@
   color: var(--off-white);
 }
 
-summary {
-  font-family: var(--font-family-main);
-  color: light-dark(var(--off-black), var(--off-white));
-  margin-bottom: 10px;
-  cursor: pointer;
-}
-
-details {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--primary-xlight);
-  border-radius: 8px;
-  padding: 0.25rem 0.5rem;
-}
-
-
-/* Ensure the tooltip and checkbox label can wrap */
-.advanced-options .checkbox-label {
-  flex: 1;
-  min-width: 0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-/* Progress Bar Styles */
-.progress-container {
-  font-family: var(--font-family-main);
-  margin-top: 1.5rem;
-  padding: 1.5rem;
-  max-width: 600px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  border-radius: 16px;
-  position: relative;
-}
-
 .progress-container::before {
   content: '';
   position: absolute;
@@ -228,80 +144,9 @@ details {
   height: 1px;
   background: linear-gradient(90deg,
       transparent,
-      rgba(255, 79, 0, 0.2),
-      rgba(255, 79, 0, 0.2),
+      var(--secondary-color),
+      var(--secondary-color),
       transparent);
-}
-
-.progress-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0 auto;
-  position: relative;
-  padding: 0 1rem;
-}
-
-.step-wrapper {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  position: relative;
-}
-
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.3s ease;
-  z-index: 2;
-  padding: 0.5rem;
-}
-
-.step.clickable {
-  cursor: pointer;
-}
-
-.step.disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.step.disabled:hover .step-number {
-  transform: none;
-  box-shadow: none;
-}
-
-.step.clickable:not(.active):hover .step-number {
-  background: rgba(255, 79, 0, 0.1);
-}
-
-.step.clickable.completed:hover .step-number {
-  background: var(--primary-light);
-  opacity: 0.9;
-}
-
-.step:hover .step-number {
-  transform: scale(1.1);
-  box-shadow: 0 0 12px rgba(255, 79, 0, 0.3);
-}
-
-.step-number {
-  width: 28px;
-  height: 28px;
-  font-size: 0.8rem;
-  border-radius: 50%;
-  background: var(--off-white);
-  border: 2px solid var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  color: var(--primary-color);
-  transition: all 0.3s ease;
-  position: relative;
 }
 
 .step-number::after {
@@ -313,73 +158,15 @@ details {
   transition: all 0.3s ease;
 }
 
-.step.active .step-number {
-  background: var(--primary-color);
-  color: var(--off-white);
-  transform: scale(1.1);
-}
-
 .step.active .step-number::after {
-  border-color: rgba(255, 79, 0, 0.3);
+  border-color: light-dark(var(--secondary-color), var(--primary-color));
   inset: -4px;
 }
 
 .step.completed .step-number {
-  background: var(--primary-light);
-  border-color: var(--primary-light);
-  color: var(--off-white);
-}
-
-.step-label {
-  margin-top: 0.6rem;
-  font-size: 0.75rem;
-  color: var(--primary-color);
-  font-weight: 500;
-  transition: all 0.3s ease;
-  text-align: center;
-  white-space: nowrap;
-  opacity: 0.85;
-  letter-spacing: 0.2px;
-}
-
-.step.active .step-label {
-  opacity: 1;
-  font-weight: 600;
-  transform: translateY(1px);
-}
-
-.connector {
-  flex: 1;
-  height: 2px;
-  background: rgba(255, 79, 0, 0.15);
-  position: relative;
-  top: -8px;
-  transform-origin: left center;
-  margin: 0 0.25rem;
-  min-width: 20px;
-}
-
-.connector.active {
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
-  animation: fillLine 0.4s ease-out forwards;
-}
-
-.selected-name {
-  text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--text);
-  opacity: 0.9;
-  padding: 0.75rem;
-  background: rgba(255, 79, 0, 0.05);
-  border-radius: 8px;
-  letter-spacing: 0.3px;
-}
-
-.selected-name span {
-  font-weight: 600;
-  color: var(--primary-color);
-  margin-left: 0.3rem;
+  background: light-dark(var(--secondary-color), var(--primary-color));
+  border-color: light-dark(var(--secondary-xlight), var(--primary-xlight));
+  color: light-dark(var(--off-white), var(--off-black));
 }
 
 @keyframes fillLine {
@@ -390,26 +177,4 @@ details {
   to {
     transform: scaleX(1);
   }
-}
-
-/* Fix for overrunning components */
-.container {
-  max-width: 100%;
-  overflow-x: hidden;
-  box-sizing: border-box;
-}
-
-.button.secondary {
-  width: 100%;
-  box-sizing: border-box;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: normal;
-  word-wrap: break-word;
-}
-
-h2,
-h4 {
-  max-width: 100%;
-  overflow-wrap: break-word;
 }

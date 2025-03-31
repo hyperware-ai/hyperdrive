@@ -27,6 +27,8 @@
     --primary-light: var(--neon-green-light);
     --primary-xlight: var(--neon-green-xlight);
     --secondary-color: var(--iris);
+    --secondary-light: var(--iris-light);
+    --secondary-xlight: var(--iris-xlight);
     --tertiary-color: var(--orange);
     --quaternary-color: var(--magenta);
 
@@ -44,6 +46,22 @@
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
     --button-border-width: 2px;
+}
+
+.bg-secondary {
+    background-color: var(--secondary-color);
+}
+
+.bg-primary {
+    background-color: var(--primary-color);
+}
+
+.text-secondary {
+    color: var(--secondary-color);
+}
+
+.text-primary {
+    color: var(--primary-color);
 }
 
 * {
@@ -191,12 +209,25 @@ button.secondary,
 .button.secondary {
     background-color: var(--iris);
     color: var(--white);
-    transition: all 0.1s ease-in-out;
+}
+
+button.secondary:hover,
+.button.secondary:hover {
+    background-color: light-dark(var(--white), var(--black));
+    color: var(--iris);
+    border-color: var(--iris);
 }
 
 button.tertiary,
 .button.tertiary {
     background-color: var(--orange);
+}
+
+button.tertiary:hover,
+.button.tertiary:hover {
+    background-color: light-dark(var(--white), var(--black));
+    color: var(--orange);
+    border-color: var(--orange);
 }
 
 button.thin,

@@ -51,9 +51,9 @@ const Widgets = () => {
   return (
     <div
       className="
-        bg-white dark:bg-tasteful-dark
+        bg-white dark:bg-black
         border border-solid border-1 border-black dark:border-white
-        grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4
+        grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3
         p-0
         max-w-screen 
         mx-auto my-0

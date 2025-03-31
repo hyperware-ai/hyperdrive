@@ -120,7 +120,7 @@ function EnterHnsName({
 
   return (
     <div className="enter-hns-name">
-      <div className="flex gap-2">
+      <div className="flex">
         <input
           value={name}
           onChange={noSpaces}
@@ -128,9 +128,13 @@ function EnterHnsName({
           required
           name="hns-name"
           placeholder="node-name"
-          className="grow"
+          className="grow rounded-r-none"
         />
-        {fixedTlz && <span className="hns-suffix">{fixedTlz}</span>}
+        {fixedTlz && <span
+          className="rounded-r-md p-2 bg-secondary text-white"
+        >
+          {fixedTlz}
+        </span>}
       </div>
       {nameValidities.map((x, i) => (
         <p key={i} className="error-message">{x}</p>

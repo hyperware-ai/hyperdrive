@@ -152,9 +152,7 @@
 }
 
 /* Action Buttons */
-.action-button,
-.primary,
-.secondary {
+.action-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -177,20 +175,8 @@
     color: var(--off-black);
 }
 
-.secondary {
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    color: var(--primary-color);
-    border: 2px solid var(--primary-color);
-}
 
-.secondary:hover:not(:disabled) {
-    background-color: var(--primary-color);
-    color: var(--text-light);
-}
-
-.action-button:disabled,
-.primary:disabled,
-.secondary:disabled {
+.action-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -496,20 +482,6 @@
     display: flex;
     gap: 0.5rem;
     margin-left: auto;
-}
-
-.progress-bar {
-    margin-top: 0.5rem;
-    height: 4px;
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.progress {
-    height: 100%;
-    background-color: var(--primary-color);
-    transition: width 0.3s ease;
 }
 
 /* Modal styles */

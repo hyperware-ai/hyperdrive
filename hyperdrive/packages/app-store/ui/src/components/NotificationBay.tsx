@@ -65,9 +65,9 @@ const NotificationBay: React.FC = () => {
                         <div className="notification-content">
                             <p>{notification.message}</p>
                             {notification.type === 'download' && notification.metadata?.progress && (
-                                <div className="progress-bar">
+                                <div className=" mt-2 h-1 bg-white dark:bg-black rounded overflow-hidden">
                                     <div
-                                        className="progress"
+                                        className="h-full bg-blue dark:bg-neon transition-width duration-300"
                                         style={{ width: `${notification.metadata.progress}%` }}
                                     />
                                 </div>
