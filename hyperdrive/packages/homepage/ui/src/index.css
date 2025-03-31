@@ -1,40 +1,4 @@
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p,
-a,
-button,
-input,
-textarea,
-span {
-  font-family: "Space Grotesk", monospace;
-}
-
-#homepage {
-  height: 100vh;
-  width: 100vw;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 2vh;
-}
-
-.homepage-container {
-  width: 960px;
-  max-width: 960px;
-  margin: 0 auto;
-}
-
-#app-name {
-  color: var(--white);
-}
-
-
-header,
-#widgets-container {
+header {
   background-color: light-dark(var(--white), var(--tasteful-dark));
   border-color: light-dark(var(--tasteful-dark), var(--off-white));
 }
@@ -67,48 +31,6 @@ header button {
   position: absolute;
   bottom: 0;
   left: 0;
-}
-
-#widgets-container {
-  display: flex;
-  flex-direction: column;
-  background-color: light-dark(var(--white), var(--tasteful-dark));
-  /* border-radius: 20px; */
-  overflow: hidden;
-  border: 1px solid light-dark(var(--off-black), var(--off-white));
-  padding: 1em;
-  padding-top: 0em;
-  gap: 1em;
-  /* Remove fixed max-height and overflow for auto-fitting */
-  height: auto;
-  overflow-y: visible;
-  /* Fixed width to hold exactly 3 widgets - 300px per widget plus gaps and paddings */
-  max-width: 960px;
-  margin: 0 auto;
-  width: 960px;
-}
-
-#widgets {
-  margin-top: 1em;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 10px;
-  margin-bottom: 0;
-  background-color: transparent !important;
-  padding: 0em;
-  /* Limit to exactly 3 widgets per row */
-  max-width: 100%;
-}
-
-.widgets-container {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-gap: 10px;
-  width: 100%;
-  max-width: 960px;
 }
 
 .widget {
@@ -173,23 +95,6 @@ footer {
   max-width: 100vw;
 }
 
-
-#all-apps {
-  background-color: var(--off-black);
-  border-color: var(--off-white);
-  border-radius: 0 0 1em 1em;
-  border: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
-  border-top: none;
-}
-
-/* When there's no expand button, ensure the container has proper borders
-   Applied from JavaScript by adding a class to the container */
-#all-apps.no-expand-button-container {
-  border-bottom: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
-  border-left: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
-  border-right: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
-}
-
 .apps-grid {
   display: grid;
   width: 100%;
@@ -209,14 +114,6 @@ footer {
 .apps-grid.expanded::before,
 .apps-grid.expanded::after {
   height: 100%;
-}
-
-/* Remove borders on mobile */
-@media (max-width: 960px) {
-  .apps-grid::before,
-  .apps-grid::after {
-    display: none;
-  }
 }
 
 .apps-grid.apps-count-3 {
@@ -241,30 +138,6 @@ footer {
 }
 
 @media (max-width: 960px) {
-
-  body,
-  html {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  #homepage {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-    width: 100%;
-    padding-top: 0;
-  }
-
-  .homepage-container {
-    width: 100%;
-    max-width: 100%;
-  }
-
   header {
     flex-shrink: 0;
     padding: 0.75em;
@@ -276,50 +149,7 @@ footer {
     font-size: 1.25em;
   }
 
-  header button {
-    padding: 8px;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  #widgets-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    max-height: none;
-    border-radius: 0;
-    padding: 0.5em;
-    width: auto;
-    max-width: 100%;
-  }
-
-  #widgets {
-    flex: 1;
-    padding: 0.5em;
-    padding-bottom: 10vh;
-  }
-
-  .widgets-container {
-    display: flex;
-    flex-direction: column;
-    grid-template-columns: 1fr;
-  }
-
-  #all-apps {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--off-black);
-    z-index: 1000;
-    padding: 0;
-    border-radius: 0;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  }
-
   .apps-grid {
-    display: none;
     max-height: 50vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -339,28 +169,6 @@ footer {
     touch-action: manipulation;
   }
 
-  .modal-inner {
-    width: 90%;
-    max-width: 400px;
-    max-height: 80vh;
-    margin: 10vh auto;
-    border-radius: 12px;
-  }
-
-  .widget-settings-item {
-    padding: 1em;
-    margin: 0.5em 0;
-    border-radius: 8px;
-  }
-
-  .widget-settings button {
-    min-height: 44px;
-    padding: 0.75em 1em;
-    margin: 0.5em 0;
-    width: 100%;
-    border-radius: 8px;
-  }
-
   .drag-handle {
     display: none;
   }
@@ -370,34 +178,9 @@ footer {
     touch-action: manipulation;
   }
 
-  .modal {
-    padding: 1em;
-  }
-
-  .modal-header {
-    padding: 1em;
-    gap: 0.5em;
-  }
-
-  .modal-header button {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0.5em;
-  }
-
   /* Add smooth scrolling for iOS momentum scroll */
   *:where([class*="container"], [class*="grid"]) {
     -webkit-overflow-scrolling: touch;
-  }
-
-  /* Improve tap targets */
-  button,
-  a,
-  input[type="button"],
-  input[type="submit"] {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0.75em;
   }
 
   .widget {
@@ -445,63 +228,6 @@ footer {
   border-right: none;
 }
 
-/* For apps without "Show Apps" button, make border more significant on edges */
-.apps-grid.no-expand-button .app-wrapper {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  border-right: 0.5px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Enhanced border for apps that form the bottom edge when no expand button */
-.apps-grid.no-expand-button .app-wrapper:nth-last-child(-n+5) {
-  border-bottom-width: 1px;
-}
-
-/* When there's no expand button, add proper border radius and borders */
-.apps-grid.no-expand-button {
-  /* Remove the border that would continue to the "Show Apps" button */
-  border-bottom: none;
-}
-
-.apps-grid.no-expand-button .app-wrapper.last-app.first-app {
-  /* Only one app */
-  border-radius: 0 0 1em 1em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
-}
-
-.apps-grid.no-expand-button .app-wrapper.last-app:not(.first-app) {
-  /* Last app in a multi-app grid */
-  border-radius: 0 0 1em 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
-}
-
-.apps-grid.no-expand-button .app-wrapper.first-in-row.last-in-row:not(.first-app) {
-  /* Single app in a row that's not the first row */
-  border-radius: 0 0 1em 1em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
-}
-
-.apps-grid.no-expand-button .app-wrapper.first-in-row:not(.last-in-row):not(.first-app) {
-  /* First app in a row that has multiple apps */
-  border-radius: 0 0 0 1em;
-}
-
-.apps-grid.no-expand-button .app-wrapper.last-in-row:not(.first-in-row) {
-  /* Last app in a row that has multiple apps */
-  border-radius: 0 0 1em 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
-}
-
-/* Fix for last row in a no-expand-button grid */
-.apps-grid.no-expand-button .app-wrapper:nth-last-child(-n+5):not(.last-in-row) {
-  /* Apps in last row that aren't at the end of their row */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
-}
-
-/* Add left border to first column in last row */
-.apps-grid.no-expand-button .app-wrapper:nth-last-child(5n+1) {
-  border-left: 1px solid rgba(255, 255, 255, 0.2); /* Add significant border */
-}
-
 .widget-wrapper {
   position: relative;
   transition: transform 0.2s ease;
@@ -535,54 +261,12 @@ footer {
   transform: translateY(5px);
 }
 
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  text-align: center;
-  background-color: rgb(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal-inner {
-  width: fit-content;
-  text-align: center;
-  background-color: light-dark(var(--off-white), var(--tasteful-dark));
-  border-radius: 1em;
-  border: 1px solid light-dark(var(--off-black), var(--off-white));
-  padding: 1em;
-  margin: auto;
-  min-width: 400px;
-}
-
-.modal-header {
-  text-align: center;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  margin-bottom: 1em;
-}
-
 .modal .widget-settings {
   display: flex;
   flex-direction: column;
   gap: 0.5em;
 }
 
-.widget-settings-item {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1em;
-  padding: 1em;
-  border: 1px solid light-dark(var(--off-black), var(--off-white));
-  border-radius: 0.5em;
-}
 
 .widget-settings button {
   margin-top: 0.5em;

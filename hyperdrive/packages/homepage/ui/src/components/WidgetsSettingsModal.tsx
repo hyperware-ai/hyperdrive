@@ -11,24 +11,27 @@ const WidgetsSettingsModal = () => {
     title='Widget Settings'
     onClose={() => setShowWidgetsSettings(false)}
   >
-    <div className="widget-settings">
-      {apps.filter((app) => app.widget).map((app) => {
-        return (
-          <div className="widget-settings-item">
-            <h4>{app.label}</h4>
-            <button
-              className="icon"
-              onClick={() => toggleWidgetVisibility(app.id)}
-            >
-              {widgetSettings[app.id]?.hide ? <FaRegSquare /> : <FaCheck />}
-            </button>
-          </div>
-        );
-      })}
-      <button onClick={() => window.location.href = '/settings:settings:sys'}>
-        System settings
-      </button>
-    </div>
+    {apps.filter((app) => app.widget).map((app) => {
+      return (
+        <div className="
+          rounded-full 
+          border border-solid border-black/5 dark:border-white/5 
+          p-2 
+          flex items-center justify-between gap-2 self-stretch
+        ">
+          <h4>{app.label}</h4>
+          <button
+            className="icon"
+            onClick={() => toggleWidgetVisibility(app.id)}
+          >
+            {widgetSettings[app.id]?.hide ? <FaRegSquare /> : <FaCheck />}
+          </button>
+        </div>
+      );
+    })}
+    <button onClick={() => window.location.href = '/settings:settings:sys'}>
+      System settings
+    </button>
   </Modal>
 }
 

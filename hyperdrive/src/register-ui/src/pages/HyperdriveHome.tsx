@@ -23,7 +23,7 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
         <>
             <div className="container fade-in">
                 <div className="section">
-                    <div className="content">
+                    <div className="flex flex-col items-stretch gap-2">
                         {previouslyBooted ? (
                             <div className="text-center">
                                 <h2 className="mb-2">Welcome back!</h2>
@@ -31,8 +31,8 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
                             </div>
                         ) : (
                             <>
-                                <h2 className="text-center mb-2">Welcome to Hyperdrive</h2>
-                                <h4 className="text-center mb-2">New here? Register a node to get started:</h4>
+                                <h2 className="text-center">Welcome to Hyperdrive</h2>
+                                <h4 className="text-center">New here? Register a node to get started:</h4>
                                 <div className="button-group">
                                     <button onClick={registerRedir} className="button">
                                         Register .os Name

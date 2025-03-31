@@ -12,11 +12,11 @@
     --stone: #353534;
     --black: #111111;
     --black-light: #11111188;
-    --black-xlight: #11111144;
+    --black-xlight: #11111111;
     --tasteful-dark: var(--black);
     --white: #f6f6f6;
     --white-light: #f6f6f688;
-    --white-xlight: #f6f6f644;
+    --white-xlight: #f6f6f611;
     --magenta: #bf1363;
     --orange: #dd6e42;
     --off-white: var(--white);
@@ -27,8 +27,12 @@
     --primary-light: var(--neon-green-light);
     --primary-xlight: var(--neon-green-xlight);
     --secondary-color: var(--iris);
+    --secondary-light: var(--iris-light);
+    --secondary-xlight: var(--iris-xlight);
     --tertiary-color: var(--orange);
     --quaternary-color: var(--magenta);
+
+    --link-color: light-dark(var(--secondary-color), var(--primary-color));
 
     --font-family-main: 'Space Grotesk', monospace;
 
@@ -42,6 +46,22 @@
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
     --button-border-width: 2px;
+}
+
+.bg-secondary {
+    background-color: var(--secondary-color);
+}
+
+.bg-primary {
+    background-color: var(--primary-color);
+}
+
+.text-secondary {
+    color: var(--secondary-color);
+}
+
+.text-primary {
+    color: var(--primary-color);
 }
 
 * {
@@ -58,7 +78,6 @@
 
 html {
     font-size: 16px;
-
     background-color: light-dark(var(--white), var(--black));
     color: light-dark(var(--off-black), var(--off-white));
 }
@@ -79,7 +98,7 @@ body {
 
 a {
     text-decoration: none;
-    color: var(--primary-color);
+    color: var(--link-color);
 }
 
 form {
@@ -190,12 +209,25 @@ button.secondary,
 .button.secondary {
     background-color: var(--iris);
     color: var(--white);
-    transition: all 0.1s ease-in-out;
+}
+
+button.secondary:hover,
+.button.secondary:hover {
+    background-color: light-dark(var(--white), var(--black));
+    color: var(--iris);
+    border-color: var(--iris);
 }
 
 button.tertiary,
 .button.tertiary {
     background-color: var(--orange);
+}
+
+button.tertiary:hover,
+.button.tertiary:hover {
+    background-color: light-dark(var(--white), var(--black));
+    color: var(--orange);
+    border-color: var(--orange);
 }
 
 button.thin,
@@ -212,8 +244,8 @@ button.icon,
     background-color: transparent;
     padding: 0.5rem;
     border-radius: 999px;
-    border: 2px solid var(--white-xlight);
-    color: var(--white);
+    border: light-dark(2px solid var(--black-xlight), 2px solid var(--white-xlight));
+    color: light-dark(var(--black), var(--white));
 }
 
 button.icon:hover,
