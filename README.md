@@ -1,5 +1,5 @@
 <p align="center">
-    <img width="300" alt="Hyperware" src="https://github.com/user-attachments/assets/3e29e04f-3f33-48c3-ae7c-977084197cca">
+    <img width="300" alt="Hyperware" src="https://github.com/user-attachments/assets/dd781692-e691-4393-82be-cfb27e129103">
     <br />
     <img src="https://img.shields.io/twitter/follow/Hyperware_ai">
 

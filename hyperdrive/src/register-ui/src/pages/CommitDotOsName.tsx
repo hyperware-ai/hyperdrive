@@ -12,7 +12,7 @@ import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagm
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
 import { dotOsAbi, DOTOS } from "../abis";
 import { stringToHex, encodeAbiParameters, parseAbiParameters, keccak256 } from "viem";
-
+import BackButton from "../components/BackButton";
 interface RegisterOsNameProps extends PageProps { }
 
 function CommitDotOsName({
@@ -100,7 +100,6 @@ function CommitDotOsName({
 
     return (
         <div className="container fade-in">
-            <button onClick={() => history.back()} className="button secondary back">🔙</button>
             <div className="section">
                 {
                     <form className="form" onSubmit={handleCommit}>
@@ -113,6 +112,7 @@ function CommitDotOsName({
                         ) : (
                             <>
                                 <h3 className="form-label">
+                                    <BackButton />
                                     <Tooltip text="Nodes need an onchain node identity in order to communicate with other nodes in the network.">
                                         Choose a name for your node
                                     </Tooltip>

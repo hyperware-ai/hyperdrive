@@ -7,7 +7,7 @@ import {
 import { PageProps } from "../lib/types";
 import Loader from "../components/Loader";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
-
+import BackButton from "../components/BackButton";
 interface ImportKeyfileProps extends PageProps { }
 
 function ImportKeyfile({
@@ -101,7 +101,6 @@ function ImportKeyfile({
 
   return (
     <div className="container fade-in">
-      <button onClick={() => history.back()} className="button secondary back">🔙</button>
       <div className="section">
         {loading ? (
           <Loader msg="Setting up node..." />
@@ -109,7 +108,10 @@ function ImportKeyfile({
           <>
             <form className="form" onSubmit={handleImportKeyfile}>
               <div className="form-group">
-                <h4 className="form-label">1. Upload Keyfile</h4>
+                <h4 className="form-label">
+                  <BackButton />
+                  <span>1. Upload Keyfile</span>
+                </h4>
                 <label className="file-input-label">
                   <input
                     type="file"
@@ -124,13 +126,11 @@ function ImportKeyfile({
               </div>
               <div className="form-group">
                 <h4 className="form-label">2. Enter Node ID</h4>
-                <label className="name-input-label">
-                  <input
-                    type="text"
-                    className="name-input"
-                    onChange={(e) => setHnsName(e.target.value)}
-                  />
-                </label>
+                <input
+                  type="text"
+                  className="name-input"
+                  onChange={(e) => setHnsName(e.target.value)}
+                />
               </div>
               <div className="form-group">
                 <h4 className="form-label">3. Enter Password</h4>

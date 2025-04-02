@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const steps = [
@@ -14,15 +15,15 @@ interface ProgressBarProps {
 const ProgressBar = ({ hnsName }: ProgressBarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const currentStepIndex = steps.findIndex(step => step.path === location.pathname);
 
   const isStepAccessible = (index: number) => {
     // Home is always accessible
     if (index === 0) return true;
-    
+
     if (hnsName && index <= 2) return true;
-    
+
     // Otherwise only allow going back
     return index <= currentStepIndex;
   };
@@ -34,31 +35,82 @@ const ProgressBar = ({ hnsName }: ProgressBarProps) => {
   };
 
   return (
-    <div className="progress-container">
-      <div className="progress-bar">
+    <div
+      className="progress-container mt-3 p-3 max-w-2xl rounded-lg relative"
+      style={{
+        background: "linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))"
+      }}
+    >
+      <div
+        className="progress-bar flex justify-between items-center mx-auto relative px-4"
+      >
         {steps.map((step, index) => {
           const accessible = isStepAccessible(index);
+          const active = index <= currentStepIndex;
+          const completed = index < currentStepIndex;
           return (
-            <div key={step.path} className="step-wrapper">
+            <div
+              key={step.path}
+              className="step-wrapper flex items-center flex-1 relative"
+            >
               <div
-                className={`step ${index <= currentStepIndex ? 'active' : ''} ${
-                  index < currentStepIndex ? 'completed' : ''
-                } ${accessible ? 'clickable' : 'disabled'}`}
+                style={{
+                }}
+                className={classNames("step flex flex-col items-center relative transition-all duration-300 z-20 p-2", {
+                  active,
+                  completed,
+                  "cursor-pointer": accessible,
+                  "cursor-not-allowed opacity-50 pointer-events-none": !accessible
+                })}
                 onClick={() => handleStepClick(step.path, index)}
               >
-                <div className="step-number">{index}</div>
-                <div className="step-label">{step.label}</div>
+                <div
+                  style={{
+                  }}
+                  className="
+                    step-number 
+                    shadow-sm
+                    w-6 h-6 text-sm font-bold rounded-full
+                    flex items-center justify-center
+                    bg-secondary dark:!bg-primary text-white dark:text-black
+                    transition-all duration-300
+                    relative
+                  "
+                >
+                  {index}
+                </div>
+                <div
+                  className={classNames(`
+                    step-label
+                    mt-2 
+                    text-sm text-center
+                    whitespace-nowrap
+                    tracking-widest
+                    text-black dark:text-white
+                  `, {
+                    "opacity-85": !active,
+                    "font-bold": active
+                  })}
+                >
+                  {step.label}
+                </div>
               </div>
-              {index < steps.length - 1 && (
-                <div className={`connector ${index < currentStepIndex ? 'active' : ''}`} />
-              )}
             </div>
           );
         })}
       </div>
       {hnsName && (
-        <div className="selected-name">
-          Selected name: <span>{hnsName}</span>
+        <div
+          className="selected-name text-center mt-3 font-bold text-black dark:text-white opacity-90 p-3 rounded-lg tracking-wide"
+          style={{
+            background: 'var(--primary-xlight)',
+          }}
+        >
+          Selected name: <span
+            className='font-bold ml-2'
+          >
+            {hnsName}
+          </span>
         </div>
       )}
     </div>
