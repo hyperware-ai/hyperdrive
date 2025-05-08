@@ -22,22 +22,11 @@ wit_bindgen::generate!({
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
 });
 
-const HYPERMAP_ADDRESS: &'static str = hypermap::HYPERMAP_ADDRESS;
-
-#[cfg(not(feature = "simulation-mode"))]
-const CHAIN_ID: u64 = hypermap::HYPERMAP_CHAIN_ID; // base
-#[cfg(feature = "simulation-mode")]
-const CHAIN_ID: u64 = 31337; // local
-
-#[cfg(not(feature = "simulation-mode"))]
-const HYPERMAP_FIRST_BLOCK: u64 = hypermap::HYPERMAP_FIRST_BLOCK; // base
-#[cfg(feature = "simulation-mode")]
-const HYPERMAP_FIRST_BLOCK: u64 = 1; // local
-
-const MAX_PENDING_ATTEMPTS: u8 = 3;
-const SUBSCRIPTION_TIMEOUT: u64 = 60;
-const DELAY_MS: u64 = 1_000; // 1s
-const CHECKPOINT_MS: u64 = 300_000; // 5 minutes
+const MAX_PENDING_ATTEMPTS: u8 = 5;
+const SUBSCRIPTION_TIMEOUT_S: u64 = 60;
+// 1.001s (compare to src/eth/mod.rs DELAY_MS of 1_000: long enough to invalidate cache)
+const DELAY_MS: u64 = 1_001;
+const CHECKPOINT_MS: u64 = 5 * 60 * 1_000; // 5 minutes
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct State {
@@ -53,14 +42,35 @@ struct State {
     last_checkpoint_block: u64,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct StateV1 {
+    /// what contract this state pertains to
+    contract_address: eth::Address,
+    /// namehash to human readable name
+    names: HashMap<String, String>,
+    /// human readable name to most recent on-chain routing information as json
+    nodes: HashMap<String, net::HnsUpdate>,
+    /// last saved checkpoint block
+    last_checkpoint_block: u64,
+}
+
 impl State {
+    fn load() -> Option<Self> {
+        let Some(ref state_bytes) = get_state() else {
+            return None;
+        };
+
+        rmp_serde::from_slice(state_bytes).ok()
+    }
+}
+
+impl StateV1 {
     fn new() -> Self {
-        State {
-            chain_id: CHAIN_ID,
-            contract_address: eth::Address::from_str(HYPERMAP_ADDRESS).unwrap(),
+        StateV1 {
+            contract_address: eth::Address::from_str(hypermap::HYPERMAP_ADDRESS).unwrap(),
             names: HashMap::new(),
             nodes: HashMap::new(),
-            last_checkpoint_block: HYPERMAP_FIRST_BLOCK,
+            last_checkpoint_block: hypermap::HYPERMAP_FIRST_BLOCK,
         }
     }
 
@@ -103,6 +113,17 @@ impl State {
     }
 }
 
+impl From<State> for StateV1 {
+    fn from(old: State) -> Self {
+        StateV1 {
+            contract_address: old.contract_address,
+            names: old.names,
+            nodes: old.nodes,
+            last_checkpoint_block: old.last_checkpoint_block,
+        }
+    }
+}
+
 impl From<net::HnsUpdate> for WitHnsUpdate {
     fn from(k: net::HnsUpdate) -> Self {
         WitHnsUpdate {
@@ -127,11 +148,11 @@ impl From<WitHnsUpdate> for net::HnsUpdate {
     }
 }
 
-impl From<State> for WitState {
-    fn from(s: State) -> Self {
+impl From<StateV1> for WitState {
+    fn from(s: StateV1) -> Self {
         let contract_address: [u8; 20] = s.contract_address.into();
         WitState {
-            chain_id: s.chain_id,
+            chain_id: hypermap::HYPERMAP_CHAIN_ID,
             contract_address: contract_address.to_vec(),
             names: s.names.into_iter().map(|(k, v)| (k, v)).collect::<Vec<_>>(),
             nodes: s
@@ -155,7 +176,14 @@ fn init(our: Address) {
     println!("started");
 
     // state is checkpointed regularly (default every 5 minutes if new events are found)
-    let mut state = State::load();
+    //
+    // to maintain backwards compatibility, try loading old version of state first
+    // (and convert to new)
+    let mut state: StateV1 = if let Some(old) = State::load() {
+        old.into()
+    } else {
+        StateV1::load()
+    };
 
     loop {
         if let Err(e) = main(&our, &mut state) {
@@ -165,7 +193,7 @@ fn init(our: Address) {
     }
 }
 
-fn main(our: &Address, state: &mut State) -> anyhow::Result<()> {
+fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     #[cfg(feature = "simulation-mode")]
     add_temp_hardcoded_tlzs(state);
 
@@ -204,7 +232,8 @@ fn main(our: &Address, state: &mut State) -> anyhow::Result<()> {
 
     // 60s timeout -- these calls can take a long time
     // if they do time out, we try them again
-    let eth_provider: eth::Provider = eth::Provider::new(state.chain_id, SUBSCRIPTION_TIMEOUT);
+    let eth_provider: eth::Provider =
+        eth::Provider::new(hypermap::HYPERMAP_CHAIN_ID, SUBSCRIPTION_TIMEOUT_S);
 
     // subscribe to logs first, so no logs are missed
     eth_provider.subscribe_loop(1, mints_filter.clone(), 2, 0);
@@ -357,7 +386,7 @@ fn main(our: &Address, state: &mut State) -> anyhow::Result<()> {
 }
 
 fn handle_eth_message(
-    state: &mut State,
+    state: &mut StateV1,
     eth_provider: &eth::Provider,
     tick: bool,
     checkpoint: bool,
@@ -404,11 +433,16 @@ fn handle_eth_message(
         timer::set_timer(DELAY_MS, None);
     }
 
+    if checkpoint {
+        // reset checkpoint timer
+        timer::set_timer(CHECKPOINT_MS, Some(b"checkpoint".to_vec()));
+    }
+
     Ok(())
 }
 
 fn handle_pending_notes(
-    state: &mut State,
+    state: &mut StateV1,
     pending_notes: &mut BTreeMap<u64, Vec<(hypermap::contract::Note, u8)>>,
     last_block: &mut u64,
 ) -> anyhow::Result<()> {
@@ -452,7 +486,7 @@ fn handle_pending_notes(
     Ok(())
 }
 
-fn handle_note(state: &mut State, note: &hypermap::contract::Note) -> anyhow::Result<()> {
+fn handle_note(state: &mut StateV1, note: &hypermap::contract::Note) -> anyhow::Result<()> {
     let note_label = String::from_utf8(note.label.to_vec())?;
     let node_hash = note.parenthash.to_string();
 
@@ -531,7 +565,7 @@ fn handle_note(state: &mut State, note: &hypermap::contract::Note) -> anyhow::Re
 }
 
 fn handle_log(
-    state: &mut State,
+    state: &mut StateV1,
     pending_notes: &mut BTreeMap<u64, Vec<(hypermap::contract::Note, u8)>>,
     log: &eth::Log,
     last_block: &mut u64,
@@ -599,7 +633,7 @@ fn handle_log(
 /// Get logs for a filter then process them while taking pending notes into account.
 fn fetch_and_process_logs(
     eth_provider: &eth::Provider,
-    state: &mut State,
+    state: &mut StateV1,
     filter: eth::Filter,
     pending_notes: &mut BTreeMap<u64, Vec<(hypermap::contract::Note, u8)>>,
     last_block: &mut u64,
@@ -623,7 +657,7 @@ fn fetch_and_process_logs(
     }
 }
 
-fn fetch_node(timeout: u64, name: &str, state: &State) -> Option<net::HnsUpdate> {
+fn fetch_node(timeout: u64, name: &str, state: &StateV1) -> Option<net::HnsUpdate> {
     let hypermap = hypermap::Hypermap::default(timeout - 1);
     if let Ok((_tba, _owner, _data)) = hypermap.get(name) {
         let Ok(Some(public_key_bytes)) = hypermap
@@ -680,7 +714,7 @@ fn fetch_node(timeout: u64, name: &str, state: &State) -> Option<net::HnsUpdate>
 // TEMP. Either remove when event reimitting working with anvil,
 // or refactor into better structure(!)
 #[cfg(feature = "simulation-mode")]
-fn add_temp_hardcoded_tlzs(state: &mut State) {
+fn add_temp_hardcoded_tlzs(state: &mut StateV1) {
     // add some hardcoded top level zones
     state.names.insert(
         "0xdeeac81ae11b64e7cab86d089c306e5d223552a630f02633ce170d2786ff1bbd".to_string(),
@@ -694,7 +728,7 @@ fn add_temp_hardcoded_tlzs(state: &mut State) {
 
 /// Decodes bytes under ~routers in hypermap into an array of keccak256 hashes (32 bytes each)
 /// and returns the associated node identities.
-fn decode_routers(data: &[u8], state: &State) -> Vec<String> {
+fn decode_routers(data: &[u8], state: &StateV1) -> Vec<String> {
     if data.len() % 32 != 0 {
         print_to_terminal(
             1,
