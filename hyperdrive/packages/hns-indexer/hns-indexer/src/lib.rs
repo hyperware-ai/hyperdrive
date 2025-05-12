@@ -385,19 +385,19 @@ impl StateV1 {
         Ok(())
     }
 
-    fn handle_tick(&mut self, checkpoint: bool) -> anyhow::Result<()> {
+    fn handle_tick(&mut self, is_checkpoint: bool) -> anyhow::Result<()> {
         let block_number = self.hypermap.provider.get_block_number();
         if let Ok(block_number) = block_number {
             print_to_terminal(2, &format!("new block: {}", block_number));
             self.last_block = block_number;
-            if checkpoint {
+            if is_checkpoint {
                 self.save();
             }
         }
 
         self.handle_pending_notes()?;
 
-        if checkpoint {
+        if is_checkpoint {
             // reset checkpoint timer
             timer::set_timer(CHECKPOINT_MS, Some(b"checkpoint".to_vec()));
         }
@@ -652,29 +652,25 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
             continue;
         };
 
-        // if true, time to go check current block number and handle pending notes.
-        let tick = message.is_local() && message.source().process == "timer:distro:sys";
-        let checkpoint = message.is_local()
-            && message.source().process == "timer:distro:sys"
-            && message.context() == Some(b"checkpoint");
-
+        // extract expects_response for later use if Message is a Request
         let Message::Request {
-            ref body,
-            ref capabilities,
             ref expects_response,
             ..
         } = message
         else {
-            if tick {
-                state.handle_tick(checkpoint)?;
+            // only expect to hear Response from timer
+            if message.is_local() && message.source().process == "timer:distro:sys" {
+                let is_checkpoint = message.context() == Some(b"checkpoint");
+                state.handle_tick(is_checkpoint)?;
             }
+
             continue;
         };
 
         if message.is_local() && message.source().process == "eth:distro:sys" {
-            state.handle_eth_message(&body)?;
+            state.handle_eth_message(message.body())?;
         } else {
-            let response_body = match serde_json::from_slice(body)? {
+            let response_body = match serde_json::from_slice(message.body())? {
                 IndexerRequest::NamehashToName(NamehashToNameRequest { ref hash, .. }) => {
                     // TODO: make sure we've seen the whole block, while actually
                     // sending a response to the proper place.
@@ -711,11 +707,12 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
                     // check for root capability
                     let root_cap = Capability::new(our.clone(), "{\"root\":true}");
                     if message.source().package_id() != our.package_id()
-                        || !capabilities.contains(&root_cap)
+                        || !message.capabilities().contains(&root_cap)
                     {
                         IndexerResponse::Reset(ResetResult::Err(ResetError::NoRootCap))
                     } else {
                         // reload state fresh - this will create new db
+                        println!("resetting state");
                         state.reset();
                         IndexerResponse::Reset(ResetResult::Success)
                     }
@@ -723,18 +720,8 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
                 IndexerRequest::GetState(_) => IndexerResponse::GetState(state.clone().into()),
             };
 
-            if let IndexerResponse::Reset(ResetResult::Success) = response_body {
-                println!("resetting state");
-                if expects_response.is_some() {
-                    Response::new()
-                        .body(IndexerResponse::Reset(ResetResult::Success))
-                        .send()?;
-                }
-                return Ok(());
-            } else {
-                if expects_response.is_some() {
-                    Response::new().body(response_body).send()?;
-                }
+            if expects_response.is_some() {
+                Response::new().body(response_body).send()?;
             }
         }
     }
