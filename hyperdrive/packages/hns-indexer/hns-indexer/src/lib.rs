@@ -482,6 +482,62 @@ impl StateV1 {
             None
         }
     }
+
+    fn handle_indexer_request(&mut self, request: IndexerRequest) -> anyhow::Result<()> {
+        let response_body = match request {
+            IndexerRequest::NamehashToName(NamehashToNameRequest { ref hash, .. }) => {
+                // TODO: make sure we've seen the whole block, while actually
+                // sending a response to the proper place.
+                IndexerResponse::Name(self.names.get(hash).cloned())
+            }
+            IndexerRequest::NodeInfo(NodeInfoRequest { ref name, .. }) => {
+                match self.nodes.get(name) {
+                    Some(node) => IndexerResponse::NodeInfo(Some(node.clone().into())),
+                    None => {
+                        // we don't have the node in our state: try hypermap.get()
+                        //  to see if it exists onchain and the indexer missed it
+                        let mut response = IndexerResponse::NodeInfo(None);
+                        if let Some(timeout) = expects_response {
+                            if let Some(hns_update) = self.fetch_node(timeout, name) {
+                                response =
+                                    IndexerResponse::NodeInfo(Some(hns_update.clone().into()));
+                                // save the node to state
+                                self.nodes.insert(name.clone(), hns_update.clone());
+                                // produce namehash and save in names map
+                                self.names.insert(hypermap::namehash(name), name.clone());
+                                // send the node to net
+                                Request::to(("our", "net", "distro", "sys"))
+                                    .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(
+                                        hns_update,
+                                    ))?)
+                                    .send()?;
+                            }
+                        }
+                        response
+                    }
+                }
+            }
+            IndexerRequest::Reset => {
+                // check for root capability
+                let root_cap = Capability::new(our.clone(), "{\"root\":true}");
+                if message.source().package_id() != our.package_id()
+                    || !message.capabilities().contains(&root_cap)
+                {
+                    IndexerResponse::Reset(ResetResult::Err(ResetError::NoRootCap))
+                } else {
+                    // reload state fresh - this will create new db
+                    info!("resetting state");
+                    self.reset();
+                    IndexerResponse::Reset(ResetResult::Success)
+                }
+            }
+            IndexerRequest::GetState(_) => IndexerResponse::GetState(self.clone().into()),
+        };
+
+        if expects_response.is_some() {
+            Response::new().body(response_body).send()?;
+        }
+    }
 }
 
 fn decode_note(note_log: &eth::Log) -> anyhow::Result<(hypermap::contract::Note, String, String)> {
@@ -663,59 +719,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
         if message.is_local() && message.source().process == "eth:distro:sys" {
             state.handle_eth_message(message.body())?;
         } else {
-            let response_body = match serde_json::from_slice(message.body())? {
-                IndexerRequest::NamehashToName(NamehashToNameRequest { ref hash, .. }) => {
-                    // TODO: make sure we've seen the whole block, while actually
-                    // sending a response to the proper place.
-                    IndexerResponse::Name(state.names.get(hash).cloned())
-                }
-                IndexerRequest::NodeInfo(NodeInfoRequest { ref name, .. }) => {
-                    match state.nodes.get(name) {
-                        Some(node) => IndexerResponse::NodeInfo(Some(node.clone().into())),
-                        None => {
-                            // we don't have the node in our state: try hypermap.get()
-                            //  to see if it exists onchain and the indexer missed it
-                            let mut response = IndexerResponse::NodeInfo(None);
-                            if let Some(timeout) = expects_response {
-                                if let Some(hns_update) = state.fetch_node(timeout, name) {
-                                    response =
-                                        IndexerResponse::NodeInfo(Some(hns_update.clone().into()));
-                                    // save the node to state
-                                    state.nodes.insert(name.clone(), hns_update.clone());
-                                    // produce namehash and save in names map
-                                    state.names.insert(hypermap::namehash(name), name.clone());
-                                    // send the node to net
-                                    Request::to(("our", "net", "distro", "sys"))
-                                        .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(
-                                            hns_update,
-                                        ))?)
-                                        .send()?;
-                                }
-                            }
-                            response
-                        }
-                    }
-                }
-                IndexerRequest::Reset => {
-                    // check for root capability
-                    let root_cap = Capability::new(our.clone(), "{\"root\":true}");
-                    if message.source().package_id() != our.package_id()
-                        || !message.capabilities().contains(&root_cap)
-                    {
-                        IndexerResponse::Reset(ResetResult::Err(ResetError::NoRootCap))
-                    } else {
-                        // reload state fresh - this will create new db
-                        info!("resetting state");
-                        state.reset();
-                        IndexerResponse::Reset(ResetResult::Success)
-                    }
-                }
-                IndexerRequest::GetState(_) => IndexerResponse::GetState(state.clone().into()),
-            };
-
-            if expects_response.is_some() {
-                Response::new().body(response_body).send()?;
-            }
+            state.handle_indexer_request(message.body().try_into()?)?;
         }
     }
 }
