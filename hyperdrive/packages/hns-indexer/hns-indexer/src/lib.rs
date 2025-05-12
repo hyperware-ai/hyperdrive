@@ -5,7 +5,7 @@ use crate::hyperware::process::hns_indexer::{
 use alloy_primitives::keccak256;
 use alloy_sol_types::SolEvent;
 use hyperware::process::standard::clear_state;
-use hyperware_process_lib::logging::{error, info, init_logging, warn, Level};
+use hyperware_process_lib::logging::{debug, error, info, init_logging, warn, Level};
 use hyperware_process_lib::{
     await_message, call_init, eth, get_state, hypermap, net, set_state, timer, Address, Capability,
     Message, Request, Response,
@@ -412,7 +412,7 @@ impl StateV1 {
     /// and returns the associated node identities.
     fn decode_routers(&self, data: &[u8]) -> Vec<String> {
         if data.len() % 32 != 0 {
-            warn("got invalid data length for router hashes: {}", data.len());
+            warn!("got invalid data length for router hashes: {}", data.len());
             return vec![];
         }
 
@@ -483,8 +483,17 @@ impl StateV1 {
         }
     }
 
-    fn handle_indexer_request(&mut self, request: IndexerRequest) -> anyhow::Result<()> {
-        let response_body = match request {
+    fn handle_indexer_request(&mut self, our: &Address, message: Message) -> anyhow::Result<()> {
+        let Message::Request {
+            ref expects_response,
+            ..
+        } = message
+        else {
+            return Err(anyhow::anyhow!(
+                "got Response input to handle_indexer_request"
+            ));
+        };
+        let response_body = match message.body().try_into()? {
             IndexerRequest::NamehashToName(NamehashToNameRequest { ref hash, .. }) => {
                 // TODO: make sure we've seen the whole block, while actually
                 // sending a response to the proper place.
@@ -537,6 +546,8 @@ impl StateV1 {
         if expects_response.is_some() {
             Response::new().body(response_body).send()?;
         }
+
+        Ok(())
     }
 }
 
@@ -701,12 +712,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
             continue;
         };
 
-        // extract expects_response for later use if Message is a Request
-        let Message::Request {
-            ref expects_response,
-            ..
-        } = message
-        else {
+        if !message.is_request() {
             // only expect to hear Response from timer
             if message.is_local() && message.source().process == "timer:distro:sys" {
                 let is_checkpoint = message.context() == Some(b"checkpoint");
@@ -719,7 +725,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
         if message.is_local() && message.source().process == "eth:distro:sys" {
             state.handle_eth_message(message.body())?;
         } else {
-            state.handle_indexer_request(message.body().try_into()?)?;
+            state.handle_indexer_request(our, message)?;
         }
     }
 }
