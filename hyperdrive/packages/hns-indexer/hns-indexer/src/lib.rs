@@ -5,9 +5,10 @@ use crate::hyperware::process::hns_indexer::{
 use alloy_primitives::keccak256;
 use alloy_sol_types::SolEvent;
 use hyperware::process::standard::clear_state;
+use hyperware_process_lib::logging::{error, info, init_logging, warn, Level};
 use hyperware_process_lib::{
-    await_message, call_init, eth, get_state, hypermap, net, print_to_terminal, println, set_state,
-    timer, Address, Capability, Message, Request, Response,
+    await_message, call_init, eth, get_state, hypermap, net, set_state, timer, Address, Capability,
+    Message, Request, Response,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -114,7 +115,7 @@ impl StateV1 {
             Some(state_bytes) => match rmp_serde::from_slice(&state_bytes) {
                 Ok(state) => state,
                 Err(e) => {
-                    println!("failed to deserialize saved state: {e:?}");
+                    warn!("failed to deserialize saved state: {e:?}");
                     Self::new()
                 }
             },
@@ -130,7 +131,7 @@ impl StateV1 {
     fn save(&mut self) {
         match rmp_serde::to_vec(self) {
             Ok(state_bytes) => set_state(&state_bytes),
-            Err(e) => println!("failed to serialize state: {e:?}"),
+            Err(e) => error!("failed to serialize state: {e:?}"),
         }
     }
 
@@ -164,16 +165,16 @@ impl StateV1 {
         loop {
             match self.hypermap.provider.get_logs(&filter) {
                 Ok(logs) => {
-                    print_to_terminal(2, &format!("log len: {}", logs.len()));
+                    debug!("log len: {}", logs.len());
                     for log in logs {
                         if let Err(e) = self.handle_log(&log) {
-                            print_to_terminal(1, &format!("log-handling error! {e:?}"));
+                            error!("log-handling error! {e:?}");
                         }
                     }
                     return;
                 }
                 Err(e) => {
-                    println!("got eth error while fetching logs: {e:?}, trying again in 5s...");
+                    error!("got eth error while fetching logs: {e:?}, trying again in 5s...");
                     std::thread::sleep(std::time::Duration::from_secs(5));
                 }
             }
@@ -187,12 +188,12 @@ impl StateV1 {
                     serde_json::from_value::<eth::SubscriptionResult>(result)
                 {
                     if let Err(e) = self.handle_log(&log) {
-                        print_to_terminal(1, &format!("log-handling error! {e:?}"));
+                        error!("log-handling error! {e:?}");
                     }
                 }
             }
             Ok(Err(e)) => {
-                println!("got eth subscription error ({e:?}), resubscribing");
+                error!("got eth subscription error ({e:?}), resubscribing");
                 let (mints_filter, notes_filter) = make_filters(None);
                 if e.id == 1 {
                     self.hypermap.provider.subscribe_loop(1, mints_filter, 2, 0);
@@ -200,7 +201,9 @@ impl StateV1 {
                     self.hypermap.provider.subscribe_loop(2, notes_filter, 2, 0);
                 }
             }
-            _ => {}
+            Err(e) => {
+                error!("failed to deserialize message from eth:distro:sys: {e:?}")
+            }
         }
 
         self.handle_pending_notes()?;
@@ -242,7 +245,7 @@ impl StateV1 {
             Some(parent_name) => &format!("{name}.{parent_name}"),
             None => name,
         };
-        print_to_terminal(3, &format!("mint {full_name}"));
+        debug!("mint {full_name}");
 
         self.names
             .insert(child_hash.to_string(), full_name.to_string());
@@ -280,13 +283,13 @@ impl StateV1 {
                     data.clone(),
                     attempt_number,
                 ));
-                print_to_terminal(3, &format!("note put into pending: {note}"));
+                debug!("note put into pending: {note}");
             } else {
-                print_to_terminal(0, &format!("note should go into pending, but no block_number given. dropping note. parent_hash, note: {parent_hash}, {note}"));
+                error!("note should go into pending, but no block_number given. dropping note. parent_hash, note: {parent_hash}, {note}");
             }
             return Ok(());
         };
-        print_to_terminal(3, &format!("note {parent_name}: {note}"));
+        debug!("note {parent_name}: {note}");
 
         match note {
             "~ws-port" => {
@@ -370,7 +373,7 @@ impl StateV1 {
                 // ripe: call add_note()
                 for (parent_hash, note, data, attempt) in notes.iter() {
                     if attempt >= &MAX_PENDING_ATTEMPTS {
-                        println!("pending note exceeded max attempts; dropping: parent_hash, note: {parent_hash}, {note}");
+                        error!("pending note exceeded max attempts; dropping: parent_hash, note: {parent_hash}, {note}");
                         continue;
                     }
                     self.add_note(parent_hash, note, data, Some(block), attempt + 1)?;
@@ -388,7 +391,7 @@ impl StateV1 {
     fn handle_tick(&mut self, is_checkpoint: bool) -> anyhow::Result<()> {
         let block_number = self.hypermap.provider.get_block_number();
         if let Ok(block_number) = block_number {
-            print_to_terminal(2, &format!("new block: {}", block_number));
+            debug!("new block: {block_number}");
             self.last_block = block_number;
             if is_checkpoint {
                 self.save();
@@ -409,10 +412,7 @@ impl StateV1 {
     /// and returns the associated node identities.
     fn decode_routers(&self, data: &[u8]) -> Vec<String> {
         if data.len() % 32 != 0 {
-            print_to_terminal(
-                1,
-                &format!("got invalid data length for router hashes: {}", data.len()),
-            );
+            warn("got invalid data length for router hashes: {}", data.len());
             return vec![];
         }
 
@@ -422,10 +422,7 @@ impl StateV1 {
 
             match self.names.get(&hash_str) {
                 Some(full_name) => routers.push(full_name.clone()),
-                None => print_to_terminal(
-                    1,
-                    &format!("error: no name found for router hash {hash_str}"),
-                ),
+                None => error!("no name found for router hash {hash_str}"),
             }
         }
 
@@ -625,17 +622,13 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
 
     // loop through checkpointed values and send to net
     if let Err(e) = state.send_nodes() {
-        // todo change verbosity
-        println!("failed to send nodes to net: {e}");
+        error!("failed to send nodes to net: {e}");
     }
 
     state.subscribe();
 
     // if block in state is < current_block, get logs from that part.
-    print_to_terminal(
-        2,
-        &format!("syncing old logs from block: {}", state.last_block),
-    );
+    info!("syncing old logs from block: {}", state.last_block);
 
     state.fetch_and_process_logs();
 
@@ -645,7 +638,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     // set a timer tick for checkpointing
     timer::set_timer(CHECKPOINT_MS, Some(b"checkpoint".to_vec()));
 
-    print_to_terminal(2, "done syncing old logs.");
+    debug!("done syncing old logs");
 
     loop {
         let Ok(message) = await_message() else {
@@ -712,7 +705,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
                         IndexerResponse::Reset(ResetResult::Err(ResetError::NoRootCap))
                     } else {
                         // reload state fresh - this will create new db
-                        println!("resetting state");
+                        info!("resetting state");
                         state.reset();
                         IndexerResponse::Reset(ResetResult::Success)
                     }
@@ -729,7 +722,8 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
 
 call_init!(init);
 fn init(our: Address) {
-    println!("started");
+    init_logging(Level::DEBUG, Level::INFO, None, None, None).unwrap();
+    info!("begin");
 
     // state is checkpointed regularly (default every 5 minutes if new events are found)
     //
@@ -743,7 +737,7 @@ fn init(our: Address) {
 
     loop {
         if let Err(e) = main(&our, &mut state) {
-            println!("fatal error: {e}");
+            error!("fatal error: {e}");
             break;
         }
     }
