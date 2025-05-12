@@ -13,8 +13,8 @@ This repo contains the core runtime and processes.
 Most developers need not build the runtime.
 Instead, check out the [Hyperware Book](https://book.hyperware.ai/), and in particular the ["My First App" tutorial](https://book.hyperware.ai/my_first_app/chapter_1.html).
 
-If you want to get on the network, you can download a binary, rather than building it yourself, from [the releases page](https://github.com/hyperware-ai/hyperware/tags).
-Then follow the instructions to [install it](https://book.hyperware.ai/install.html) and [join the network](https://book.hyperware.ai/login.html).
+If you want to get on the network, you can download a binary, rather than building it yourself, from [the releases page](https://github.com/hyperware-ai/hyperdrive/tags).
+Then follow the instructions to [install it](https://book.hyperware.ai/getting_started/install.html) and [join the network](https://book.hyperware.ai/getting_started/login.html).
 
 If you have questions, join the [Hyperware discord](https://discord.com/invite/KaPXX7SFTD) and drop us a line in `#dev-support`.
 
