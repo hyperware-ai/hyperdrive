@@ -483,7 +483,9 @@ impl StateV1 {
         }
     }
 
-    fn handle_indexer_request(&mut self, our: &Address, message: Message) -> anyhow::Result<()> {
+    fn handle_indexer_request(&mut self, our: &Address, message: Message) -> anyhow::Result<bool> {
+        let mut is_reset = false;
+
         let Message::Request {
             ref expects_response,
             ..
@@ -493,6 +495,7 @@ impl StateV1 {
                 "got Response input to handle_indexer_request"
             ));
         };
+
         let response_body = match message.body().try_into()? {
             IndexerRequest::NamehashToName(NamehashToNameRequest { ref hash, .. }) => {
                 // TODO: make sure we've seen the whole block, while actually
@@ -537,6 +540,7 @@ impl StateV1 {
                     // reload state fresh - this will create new db
                     info!("resetting state");
                     self.reset();
+                    is_reset = true;
                     IndexerResponse::Reset(ResetResult::Success)
                 }
             }
@@ -547,7 +551,7 @@ impl StateV1 {
             Response::new().body(response_body).send()?;
         }
 
-        Ok(())
+        Ok(is_reset)
     }
 }
 
@@ -725,7 +729,17 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
         if message.is_local() && message.source().process == "eth:distro:sys" {
             state.handle_eth_message(message.body())?;
         } else {
-            state.handle_indexer_request(our, message)?;
+            let is_reset = state.handle_indexer_request(our, message)?;
+            if is_reset {
+                // reset state works like:
+                //  1. call `state.reset()` to clear state on disk (happens in
+                //     `handle_indexer_request()`
+                //  2. return from `main()`, causing `init()` to loop
+                //     and call `main()` again
+                //  3. `main()` attempts to load state from disk, sees it is empty,
+                //     and loads it from scratch from the chain
+                return Ok(());
+            }
         }
     }
 }
