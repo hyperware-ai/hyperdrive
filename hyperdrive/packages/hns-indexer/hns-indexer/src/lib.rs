@@ -85,6 +85,7 @@ impl<'de> serde::Deserialize<'de> for StateV1 {
             nodes: HashMap<String, net::HnsUpdate>,
             last_block: u64,
             pending_notes: PendingNotes,
+            is_checkpoint_timer_live: bool,
         }
 
         let helper = StateHelper::deserialize(deserializer)?;
@@ -707,6 +708,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     timer::set_timer(DELAY_MS, None);
 
     // set a timer tick for checkpointing
+    state.is_checkpoint_timer_live = true;
     timer::set_timer(CHECKPOINT_MS, Some(b"checkpoint".to_vec()));
 
     debug!("done syncing old logs");
