@@ -70,6 +70,7 @@ struct StateV1 {
     /// notes are under a mint; in case they come out of order, store till next block
     // #[serde(skip)] // TODO: ?
     pending_notes: PendingNotes,
+    is_checkpoint_timer_live: bool,
 }
 
 impl<'de> serde::Deserialize<'de> for StateV1 {
@@ -94,6 +95,7 @@ impl<'de> serde::Deserialize<'de> for StateV1 {
             last_block: helper.last_block,
             hypermap: hypermap::Hypermap::default(SUBSCRIPTION_TIMEOUT_S),
             pending_notes: helper.pending_notes,
+            is_checkpoint_timer_live: false,
         })
     }
 }
@@ -106,6 +108,7 @@ impl StateV1 {
             last_block: hypermap::HYPERMAP_FIRST_BLOCK,
             hypermap: hypermap::Hypermap::default(SUBSCRIPTION_TIMEOUT_S),
             pending_notes: BTreeMap::new(),
+            is_checkpoint_timer_live: false,
         }
     }
 
@@ -394,16 +397,12 @@ impl StateV1 {
             debug!("new block: {block_number}");
             self.last_block = block_number;
             if is_checkpoint {
+                self.is_checkpoint_timer_live = false;
                 self.save();
             }
         }
 
         self.handle_pending_notes()?;
-
-        if is_checkpoint {
-            // reset checkpoint timer
-            timer::set_timer(CHECKPOINT_MS, Some(b"checkpoint".to_vec()));
-        }
 
         Ok(())
     }
@@ -570,6 +569,7 @@ impl From<State> for StateV1 {
             last_block: old.last_checkpoint_block,
             hypermap: hypermap::Hypermap::default(SUBSCRIPTION_TIMEOUT_S),
             pending_notes: BTreeMap::new(),
+            is_checkpoint_timer_live: false,
         }
     }
 }
@@ -711,6 +711,9 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
 
     debug!("done syncing old logs");
 
+    let mut is_checkpoint = false;
+    let mut is_reset = false;
+
     loop {
         let Ok(message) = await_message() else {
             continue;
@@ -719,27 +722,33 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
         if !message.is_request() {
             // only expect to hear Response from timer
             if message.is_local() && message.source().process == "timer:distro:sys" {
-                let is_checkpoint = message.context() == Some(b"checkpoint");
+                is_checkpoint = message.context() == Some(b"checkpoint");
                 state.handle_tick(is_checkpoint)?;
             }
-
-            continue;
-        };
-
-        if message.is_local() && message.source().process == "eth:distro:sys" {
-            state.handle_eth_message(message.body())?;
         } else {
-            let is_reset = state.handle_indexer_request(our, message)?;
-            if is_reset {
-                // reset state works like:
-                //  1. call `state.reset()` to clear state on disk (happens in
-                //     `handle_indexer_request()`
-                //  2. return from `main()`, causing `init()` to loop
-                //     and call `main()` again
-                //  3. `main()` attempts to load state from disk, sees it is empty,
-                //     and loads it from scratch from the chain
-                return Ok(());
+            if message.is_local() && message.source().process == "eth:distro:sys" {
+                state.handle_eth_message(message.body())?;
+            } else {
+                is_reset = state.handle_indexer_request(our, message)?;
             }
+        }
+
+        if state.pending_notes.is_empty() && !state.is_checkpoint_timer_live && !is_checkpoint {
+            // set checkpoint timer
+            debug!("set checkpoint timer");
+            state.is_checkpoint_timer_live = true;
+            timer::set_timer(CHECKPOINT_MS, Some(b"checkpoint".to_vec()));
+        }
+
+        if is_reset {
+            // reset state works like:
+            //  1. call `state.reset()` to clear state on disk (happens in
+            //     `handle_indexer_request()`
+            //  2. return from `main()`, causing `init()` to loop
+            //     and call `main()` again
+            //  3. `main()` attempts to load state from disk, sees it is empty,
+            //     and loads it from scratch from the chain
+            return Ok(());
         }
     }
 }
