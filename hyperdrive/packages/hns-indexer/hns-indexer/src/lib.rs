@@ -711,10 +711,10 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
 
     debug!("done syncing old logs");
 
-    let mut is_checkpoint = false;
-    let mut is_reset = false;
-
     loop {
+        let mut is_checkpoint = false;
+        let mut is_reset = false;
+
         let Ok(message) = await_message() else {
             continue;
         };

@@ -413,7 +413,9 @@ fn init(our: Address) {
             eth_provider,
             eth::Address::from_str(HYPERMAP_ADDRESS).unwrap(),
         );
-        let last_saved_block = db.get_last_saved_block().unwrap_or(0);
+        let last_saved_block = db
+            .get_last_saved_block()
+            .unwrap_or(hypermap::HYPERMAP_FIRST_BLOCK);
 
         let mut state = State {
             hypermap: hypermap_helper,
