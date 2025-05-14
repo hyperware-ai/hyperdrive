@@ -158,7 +158,7 @@ impl StateV1 {
     }
 
     fn fetch_and_process_logs(&mut self) {
-        let (mints_filter, notes_filter) = make_filters(None);
+        let (mints_filter, notes_filter) = make_filters(Some(self.last_block));
 
         self.fetch_and_process_logs_filter(mints_filter);
         self.fetch_and_process_logs_filter(notes_filter);
