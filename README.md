@@ -72,7 +72,7 @@ The `--` here separates cargo arguments from binary arguments.
 cargo run -p hyperdrive -- home
 ```
 
-On boot you will be prompted to navigate to `localhost:8080` or whatever HTTP port your node bound to: it will try 8080 and go up from there, or use the port passed with the `--port` boot flag. Make sure your browser wallet matches the network that the node is being booted on. Follow the registration UI -- if you want to register a new ID you will either need Optimism ETH or an invite code.
+On boot you will be prompted to navigate to `localhost:8080` or whatever HTTP port your node bound to: it will try 8080 and go up from there, or use the port passed with the `--port` boot flag. Make sure your browser wallet matches the network that the node is being booted on. Follow the registration UI -- if you want to register a new ID you will either need Base ETH or an invite code.
 
 #### Boot Flags
 
@@ -169,7 +169,7 @@ Use this message format to add a provider -- this will make your node's performa
 m our@eth:distro:sys '{"AddProvider": {"chain_id": <SOME_CHAIN_ID>, "trusted": true, "provider": {"RpcUrl": "<WS_RPC_URL>"}}}'
 ```
 
-You can also do the same thing by using the `--rpc` boot flag with an Optimism WebSockets RPC URL, or going to the Settings app once booted into a node.
+You can also do the same thing by using the `--rpc` boot flag with an Base WebSockets RPC URL, or going to the Settings app once booted into a node.
 
 ## Distro and Runtime processes
 
