@@ -85,7 +85,6 @@ impl<'de> serde::Deserialize<'de> for StateV1 {
             nodes: HashMap<String, net::HnsUpdate>,
             last_block: u64,
             pending_notes: PendingNotes,
-            is_checkpoint_timer_live: bool,
         }
 
         let helper = StateHelper::deserialize(deserializer)?;
