@@ -123,7 +123,8 @@ fn main() -> anyhow::Result<()> {
     let skip_frontend = matches.get_flag("SKIP_FRONTEND");
 
     let local_dependencies = fs::read(hyperdrive_dir.join("packages-local-dependencies.json"))?;
-    let local_dependencies: HashMap<String, Vec<String>> = serde_json::from_slice(&local_dependencies)?;
+    let local_dependencies: HashMap<String, Vec<String>> =
+        serde_json::from_slice(&local_dependencies)?;
     let mut local_dependencies: HashMap<String, Vec<PathBuf>> = local_dependencies
         .into_iter()
         .map(|(key, val)| (key, val.iter().map(|f| packages_dir.join(f)).collect()))
