@@ -1,0 +1,15 @@
+[package]
+name = "start"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+hyperware_process_lib = "1.0.4"
+wit-bindgen = "0.36.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "hyperware:process"

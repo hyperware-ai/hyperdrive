@@ -202,13 +202,18 @@ The distro userspace packages are:
 - `contacts:sys`
 - `homepage:sys`
 - `hns-indexer:sys`
+- `hypermap-cacher:sys`
 - `settings:sys`
+- `sign:sys`
 - `terminal:sys`
 - `tester:sys` (used with `kit` for running test suites, only installed in `simulation-mode`)
 
 The `sys` publisher is not a real node ID, but it's also not a special case value.
 Packages, whether runtime or userspace, installed from disk when a node bootstraps do not have their package ID or publisher node ID validated.
 Packages installed (not injected locally, as is done during development) after a node has booted will have their publisher field validated.
+
+Distro userspace packages may have their dependencies satisfied by specifying them as local dependencies in `hyperdrive/packages-local-dependencies.json`.
+For example, `hypermap-cacher:sys` depends on `sign:sys`, and so has an entry whose key is `hypermap-cacher` (the dir name) and whose value is an array with one item: `sign` (the dir name).
 
 ## Terminal syntax
 

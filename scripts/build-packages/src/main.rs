@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
     path::{Path, PathBuf},
 };
@@ -44,6 +44,7 @@ fn build_and_zip_package(
     parent_pkg_path: &str,
     skip_frontend: bool,
     features: &str,
+    local_dependencies: Vec<PathBuf>,
 ) -> anyhow::Result<(PathBuf, String, Vec<u8>)> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -58,7 +59,7 @@ fn build_and_zip_package(
             None,
             None,
             None,
-            vec![],
+            local_dependencies,
             vec![],
             false,
             false,
@@ -121,6 +122,14 @@ fn main() -> anyhow::Result<()> {
 
     let skip_frontend = matches.get_flag("SKIP_FRONTEND");
 
+    let local_dependencies = fs::read(hyperdrive_dir.join("packages-local-dependencies.json"))?;
+    let local_dependencies: HashMap<String, Vec<String>> = serde_json::from_slice(&local_dependencies)?;
+    let mut local_dependencies: HashMap<String, Vec<PathBuf>> = local_dependencies
+        .into_iter()
+        .map(|(key, val)| (key, val.iter().map(|f| packages_dir.join(f)).collect()))
+        //.map(|(key, val)| (key, val.iter().map(|f| packages_dir.join(f)).collect::<Vec<_>>()))
+        .collect();
+
     let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = fs::read_dir(&packages_dir)?
         .filter_map(|entry| {
             let entry_path = match entry {
@@ -132,11 +141,19 @@ fn main() -> anyhow::Result<()> {
                 // don't run on, e.g., `.DS_Store`
                 return None;
             }
+            let local_dependency_array = if let Some(filename) = entry_path.file_name() {
+                local_dependencies
+                    .remove(&filename.to_string_lossy().to_string())
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
             Some(build_and_zip_package(
                 entry_path.clone(),
                 child_pkg_path.to_str().unwrap(),
                 skip_frontend,
                 &features,
+                local_dependency_array,
             ))
         })
         .collect();

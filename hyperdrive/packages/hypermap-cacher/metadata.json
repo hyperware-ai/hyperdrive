@@ -1,0 +1,21 @@
+{
+    "name": "hypermap-cacher",
+    "description": "",
+    "image": "",
+    "properties": {
+        "package_name": "hypermap-cacher",
+        "current_version": "0.1.0",
+        "publisher": "sys",
+
+        "mirrors": [],
+        "code_hashes": {
+            "0.1.0": ""
+        },
+        "wit_version": 1,
+        "dependencies": [
+            "sign:sys"
+        ]
+    },
+    "external_url": "",
+    "animation_url": ""
+}
