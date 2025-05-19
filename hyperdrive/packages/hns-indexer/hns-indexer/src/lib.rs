@@ -720,14 +720,23 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
             continue;
         };
 
+        if !message.is_local() {
+            info!(
+                "rejecting unexpected non-local message from {}",
+                message.source()
+            );
+        }
+
         if !message.is_request() {
             // only expect to hear Response from timer
-            if message.is_local() && message.source().process == "timer:distro:sys" {
+            if message.source().process == "timer:distro:sys" {
                 is_checkpoint = message.context() == Some(b"checkpoint");
                 state.handle_tick(is_checkpoint)?;
+            } else {
+                info!("rejecting unexpected response from {}", message.source());
             }
         } else {
-            if message.is_local() && message.source().process == "eth:distro:sys" {
+            if message.source().process == "eth:distro:sys" {
                 state.handle_eth_message(message.body())?;
             } else {
                 is_reset = state.handle_indexer_request(our, message)?;
