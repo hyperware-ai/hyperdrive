@@ -19,6 +19,9 @@ serde_json = "1.0"
 thiserror = "1.0"
 wit-bindgen = "0.36.0"
 
+[features]
+simulation-mode = ["hyperware_process_lib/simulation-mode"]
+
 [lib]
 crate-type = ["cdylib"]
 
