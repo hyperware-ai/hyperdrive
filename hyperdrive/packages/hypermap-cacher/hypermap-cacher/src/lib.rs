@@ -272,12 +272,14 @@ impl State {
             to_block
         );
 
+        let our = our();
+
         let metadata = LogsMetadataInternal {
             chain_id: self.chain_id.clone(),
             from_block: from_block.to_string(),
             to_block: to_block.to_string(),
             time_created: get_current_timestamp_str(),
-            created_by: our().to_string(),
+            created_by: our.to_string(),
             signature: "".to_string(),
         };
 
@@ -292,7 +294,7 @@ impl State {
         let logs_hash_for_sig = keccak256(&logs_bytes_for_sig);
 
         // sign
-        let request_result = Request::to((our().node(), ("sign", "sign", "sys")))
+        let request_result = Request::to(("our", "sign", "sign", "sys"))
             .blob_bytes(logs_hash_for_sig.to_vec())
             .body(sign::Request::NetKeySign)
             .send_and_await_response(10)?;
@@ -658,7 +660,7 @@ fn main_loop(
     hypermap: &hypermap::Hypermap,
     server: &http::server::HttpServer,
 ) -> anyhow::Result<()> {
-    info!("Hypermap Cacher main_loop started. Our address: {}", our,);
+    info!("Hypermap Cacher main_loop started. Our address: {}", our);
     info!(
         "Monitoring Hypermap contract: {}",
         state.hypermap_address.to_string()
