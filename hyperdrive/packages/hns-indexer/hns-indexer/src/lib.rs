@@ -150,14 +150,14 @@ impl StateV1 {
     }
 
     fn subscribe(&self) {
-        let (mints_filter, notes_filter) = make_filters(None);
+        let (mints_filter, notes_filter) = make_filters();
 
         self.hypermap.provider.subscribe_loop(1, mints_filter, 1, 0);
         self.hypermap.provider.subscribe_loop(2, notes_filter, 1, 0);
     }
 
     fn fetch_and_process_logs(&mut self) {
-        let (mints_filter, notes_filter) = make_filters(Some(self.last_block));
+        let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
 
         self.fetch_and_process_logs_filter(mints_filter);
         self.fetch_and_process_logs_filter(notes_filter);
@@ -197,7 +197,7 @@ impl StateV1 {
             }
             Ok(Err(e)) => {
                 error!("got eth subscription error ({e:?}), resubscribing");
-                let (mints_filter, notes_filter) = make_filters(None);
+                let (mints_filter, notes_filter) = make_filters();
                 if e.id == 1 {
                     self.hypermap.provider.subscribe_loop(1, mints_filter, 2, 0);
                 } else if e.id == 2 {
@@ -618,23 +618,18 @@ impl From<StateV1> for WitState {
     }
 }
 
-fn make_filters(from_block: Option<u64>) -> (eth::Filter, eth::Filter) {
+fn make_filters() -> (eth::Filter, eth::Filter) {
     let hypermap_address = eth::Address::from_str(hypermap::HYPERMAP_ADDRESS).unwrap();
-    let from_block = from_block.unwrap_or_else(|| hypermap::HYPERMAP_FIRST_BLOCK);
     // sub_id: 1
     // listen to all mint events in hypermap
     let mints_filter = eth::Filter::new()
         .address(hypermap_address)
-        .from_block(from_block)
-        .to_block(eth::BlockNumberOrTag::Latest)
         .event(hypermap::contract::Mint::SIGNATURE);
 
     // sub_id: 2
     // listen to all note events that are relevant to the HNS protocol within hypermap
     let notes_filter = eth::Filter::new()
         .address(hypermap_address)
-        .from_block(from_block)
-        .to_block(eth::BlockNumberOrTag::Latest)
         .event(hypermap::contract::Note::SIGNATURE)
         .topic3(vec![
             keccak256("~ws-port"),
@@ -644,6 +639,26 @@ fn make_filters(from_block: Option<u64>) -> (eth::Filter, eth::Filter) {
             keccak256("~ip"),
         ]);
 
+    (mints_filter, notes_filter)
+}
+
+fn add_filter_from_to(from_block: Option<u64>, filters: Vec<eth::Filter>) -> Vec<eth::Filter> {
+    let from_block = from_block.unwrap_or_else(|| hypermap::HYPERMAP_FIRST_BLOCK);
+    filters
+        .into_iter()
+        .map(|filter| {
+            filter
+                .from_block(from_block)
+                .to_block(eth::BlockNumberOrTag::Latest)
+        })
+        .collect()
+}
+
+fn make_filters_with_from_to(from_block: Option<u64>) -> (eth::Filter, eth::Filter) {
+    let (mints_filter, notes_filter) = make_filters();
+    let mut filters = add_filter_from_to(from_block, vec![mints_filter, notes_filter]);
+    let notes_filter = filters.pop().unwrap();
+    let mints_filter = filters.pop().unwrap();
     (mints_filter, notes_filter)
 }
 
