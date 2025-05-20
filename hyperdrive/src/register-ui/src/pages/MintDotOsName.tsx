@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 
-import { useAccount, useWaitForTransactionReceipt, useSendTransaction } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
 import { generateNetworkingKeys, HYPER_ACCOUNT_IMPL, DOTOS, tbaMintAbi } from "../abis";
-import { encodePacked, encodeFunctionData, stringToHex } from "viem";
+import { createPublicClient, encodePacked, http, stringToHex, BaseError, ContractFunctionRevertedError } from "viem";
+import { base } from 'viem/chains'
 
 interface RegisterOsNameProps extends PageProps { }
 
@@ -23,7 +24,7 @@ function MintDotOsName({
   let navigate = useNavigate();
   let { openConnectModal } = useConnectModal();
 
-  const { data: hash, sendTransaction, isPending, isError, error } = useSendTransaction({
+  const { data: hash, writeContract, isPending, isError, error } = useWriteContract({
     mutation: {
       onSuccess: (data) => {
         addRecentTransaction({ hash: data, description: `Mint ${hnsName}` });
@@ -74,31 +75,40 @@ function MintDotOsName({
     // strip .os suffix
     const name = hnsName.replace(/\.os$/, '');
 
-    const data = encodeFunctionData({
-      abi: tbaMintAbi,
-      functionName: 'mint',
-      args: [
-        address,
-        encodePacked(["bytes"], [stringToHex(name)]),
-        initCall,
-        HYPER_ACCOUNT_IMPL,
-      ],
-    })
+    const publicClient = createPublicClient({
+      chain: base,
+      transport: http(),
+    });
 
-    // use data to write to contract -- do NOT use writeContract
-    // writeContract will NOT generate the correct selector for some reason
-    // probably THEIR bug.. no abi works
     try {
-      sendTransaction({
-        to: DOTOS,
-        data: data,
-        gas: 1000000n,
-      })
-    } catch (error) {
-      console.error('Failed to send transaction:', error)
-      setHasMinted(false);
+      const { request } = await publicClient.simulateContract({
+        abi: tbaMintAbi,
+        address: DOTOS,
+        functionName: 'mint',
+        args: [
+          address,
+          encodePacked(["bytes"], [stringToHex(name)]),
+          initCall,
+          HYPER_ACCOUNT_IMPL,
+        ],
+        account: address
+      });
+
+      writeContract(request);
+    } catch (err) {
+      if (err instanceof BaseError) {
+        const revertError = err.walk(err => err instanceof ContractFunctionRevertedError)
+        if (revertError instanceof ContractFunctionRevertedError) {
+          if (revertError?.data) {
+            const errorName = revertError.data.errorName;
+            const args = revertError.data.args;
+            console.log(`Reverted with ${errorName}`, args);
+          }
+        }
+      }
+      throw err;
     }
-  }, [direct, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted])
+  }, [direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted])
 
   useEffect(() => {
     if (address && !isPending && !isConfirming) {
