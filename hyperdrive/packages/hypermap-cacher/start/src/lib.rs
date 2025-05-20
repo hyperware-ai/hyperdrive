@@ -1,4 +1,6 @@
-use hyperware_process_lib::{call_init, spawn, Address, Capability, OnExit, ProcessId};
+use hyperware_process_lib::{
+    call_init, get_capability, spawn, Address, Capability, OnExit, ProcessId,
+};
 
 wit_bindgen::generate!({
     path: "target/wit",
@@ -33,14 +35,23 @@ fn init(our: Address) {
         "vfs:distro:sys",
     ];
 
+    let networking = get_capability(
+        &Address::from(("our", "kernel", "distro", "sys")),
+        "\"network\"",
+    )
+    .expect("couldn't get networking capability");
+
+    let mut caps: Vec<Capability> = correspondents
+        .iter()
+        .map(|process| to_messaging_cap(&our, process))
+        .collect();
+    caps.push(networking);
+
     let _spawned_process_id = match spawn(
         Some(PROCESS_NAME),
         &format!("{}/pkg/{PROCESS_NAME}.wasm", our.package_id()),
         OnExit::Restart,
-        correspondents
-            .iter()
-            .map(|process| to_messaging_cap(&our, process))
-            .collect(),
+        caps,
         correspondents
             .iter()
             .map(|process| to_messaging_tuple(process))

@@ -11,12 +11,11 @@ use crate::hyperware::process::hypermap_cacher::{
     CacherRequest, CacherResponse, CacherStatus, LogsMetadata as WitLogsMetadata,
     Manifest as WitManifest, ManifestItem as WitManifestItem,
 };
-use crate::hyperware::process::sign;
 
 use hyperware_process_lib::{
-    await_message, call_init, eth, get_blob, get_state, http, hypermap,
+    await_message, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
-    our, set_state, timer, vfs, Address, ProcessId, Request, Response,
+    our, set_state, sign, timer, vfs, Address, ProcessId, Response,
 };
 
 wit_bindgen::generate!({
@@ -293,15 +292,7 @@ impl State {
         logs_bytes_for_sig.extend_from_slice(&to_block.to_be_bytes());
         let logs_hash_for_sig = keccak256(&logs_bytes_for_sig);
 
-        // sign
-        let request_result = Request::to(("our", "sign", "sign", "sys"))
-            .blob_bytes(logs_hash_for_sig.to_vec())
-            .body(sign::Request::NetKeySign)
-            .send_and_await_response(10)?;
-        if request_result.is_err() {
-            return Err(anyhow::anyhow!("Failed to send request"));
-        }
-        let signature = get_blob().unwrap().bytes;
+        let signature = sign::net_key_sign(logs_hash_for_sig.to_vec())?;
 
         log_cache.metadata.signature = format!("0x{}", hex::encode(signature));
 

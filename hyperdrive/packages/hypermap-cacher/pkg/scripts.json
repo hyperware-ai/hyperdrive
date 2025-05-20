@@ -2,7 +2,7 @@
     "start.wasm": {
         "root": false,
         "public": false,
-        "request_networking": false,
+        "request_networking": true,
         "request_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
