@@ -9,6 +9,7 @@
             "http-server:distro:sys",
             "kv:distro:sys",
             "net:distro:sys",
+            "sign:sign:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],
@@ -16,6 +17,7 @@
             "eth:distro:sys",
             "http-server:distro:sys",
             "kv:distro:sys",
+            "sign:sign:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],
