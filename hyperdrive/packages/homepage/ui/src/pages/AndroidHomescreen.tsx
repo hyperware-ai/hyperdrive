@@ -93,7 +93,7 @@ const useNavigationStore = create<NavigationStore>((set, get) => ({
   switchToApp: (appId) => set({ currentAppId: appId, isRecentAppsOpen: false }),
   toggleAppDrawer: () => set((state) => ({ isAppDrawerOpen: !state.isAppDrawerOpen, isRecentAppsOpen: false })),
   toggleRecentApps: () => set((state) => ({ isRecentAppsOpen: !state.isRecentAppsOpen, isAppDrawerOpen: false })),
-  closeAllOverlays: () => set({ isAppDrawerOpen: false, isRecentAppsOpen: false }),
+  closeAllOverlays: () => set({ isAppDrawerOpen: false, isRecentAppsOpen: false, currentAppId: null }),
 }));
 
 interface PersistentStore {
@@ -287,10 +287,8 @@ const Widget: React.FC<{ app: HomepageApp }> = ({ app }) => {
 const GestureZone: React.FC = () => {
   const { toggleRecentApps, runningApps, currentAppId, switchToApp } = useNavigationStore();
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [mouseStart, setMouseStart] = useState<{ x: number; y: number } | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -332,79 +330,30 @@ const GestureZone: React.FC = () => {
     setIsActive(false);
   };
 
-  // Mouse handlers for desktop
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setMouseStart({ x: e.clientX, y: e.clientY });
-    setIsDragging(true);
-    setIsActive(true);
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!mouseStart || !isDragging) return;
-
-    const deltaX = mouseStart.x - e.clientX;
-    const deltaY = e.clientY - mouseStart.y;
-
-    // Swipe left (show recent apps)
-    if (deltaX > 50 && Math.abs(deltaY) < 30) {
-      toggleRecentApps();
-      setMouseStart(null);
-      setIsDragging(false);
-    }
-
-    // Swipe up/down (switch apps)
-    if (Math.abs(deltaY) > 50 && Math.abs(deltaX) < 30) {
-      const currentIndex = runningApps.findIndex(app => app.id === currentAppId);
-      if (currentIndex !== -1) {
-        const newIndex = deltaY > 0
-          ? Math.min(currentIndex + 1, runningApps.length - 1)
-          : Math.max(currentIndex - 1, 0);
-        if (newIndex !== currentIndex) {
-          switchToApp(runningApps[newIndex].id);
-        }
-      }
-      setMouseStart(null);
-      setIsDragging(false);
-    }
-  };
-
-  const handleMouseUp = () => {
-    setMouseStart(null);
-    setIsDragging(false);
-    setIsActive(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (isDragging) {
-      setMouseStart(null);
-      setIsDragging(false);
-      setIsActive(false);
-    }
+  // Desktop click handler
+  const handleClick = () => {
+    toggleRecentApps();
   };
 
   return (
     <>
       <div
-        className={`fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-grab
+        className={`fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-pointer
           ${isActive ? 'bg-white/20 w-12' : ''}
-          ${isHovered && !isActive ? 'bg-white/10' : ''}
-          ${isDragging ? 'cursor-grabbing' : ''}`}
+          ${isHovered && !isActive ? 'bg-white/10' : ''}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={handleMouseLeave}
+        onMouseLeave={() => setIsHovered(false)}
       />
       {/* Desktop hint */}
       {isHovered && !isActive && (
         <div className="fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/80 text-white px-3 py-2 rounded-lg text-sm pointer-events-none z-50">
-          <div>← Drag left: Recent apps</div>
-          <div>↕ Drag up/down: Switch apps</div>
+          <div>Click or press <kbd className="px-1 bg-white/20 rounded">S</kbd> for recent apps</div>
+          <div>Press <kbd className="px-1 bg-white/20 rounded">A</kbd> for all apps</div>
+          <div>Press <kbd className="px-1 bg-white/20 rounded">H</kbd> for home</div>
         </div>
       )}
     </>
@@ -415,7 +364,7 @@ const GestureZone: React.FC = () => {
 const AppDrawer: React.FC = () => {
   const { apps } = useHomepageStore();
   const { isAppDrawerOpen, toggleAppDrawer } = useNavigationStore();
-  const { homeScreenApps, addToHomeScreen } = usePersistentStore();
+  const { homeScreenApps, addToHomeScreen, appPositions } = usePersistentStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredApps = useMemo(() => {
@@ -427,7 +376,14 @@ const AppDrawer: React.FC = () => {
   const handleAddToHome = (app: HomepageApp) => {
     // Find first empty position, ensuring we don't duplicate
     if (!homeScreenApps.includes(app.id)) {
-      addToHomeScreen(app.id, 0, homeScreenApps.length);
+      // Add to page 0 at the next available position
+      const existingPositions = Object.values(appPositions)
+        .filter(pos => pos.page === 0)
+        .map(pos => pos.position);
+      const nextPosition = existingPositions.length > 0
+        ? Math.max(...existingPositions) + 1
+        : 0;
+      addToHomeScreen(app.id, 0, nextPosition);
     }
     toggleAppDrawer();
   };
@@ -476,53 +432,77 @@ const AppDrawer: React.FC = () => {
 
 // Recent Apps Component
 const RecentApps: React.FC = () => {
-  const { runningApps, isRecentAppsOpen, switchToApp, closeApp, toggleRecentApps } = useNavigationStore();
+  const { runningApps, isRecentAppsOpen, switchToApp, closeApp, toggleRecentApps, closeAllOverlays } = useNavigationStore();
 
-  if (!isRecentAppsOpen || runningApps.length === 0) return null;
+  if (!isRecentAppsOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center">
-      <div className="w-full max-w-4xl h-96 overflow-x-auto">
-        <div className="flex gap-4 p-4 h-full items-center">
-          {runningApps.map(app => (
-            <div
-              key={app.id}
-              className="relative flex-shrink-0 w-64 h-full bg-gray-800 rounded-2xl overflow-hidden cursor-pointer group"
-              onClick={() => switchToApp(app.id)}
-            >
-              <div className="p-4 bg-gray-900 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {app.base64_icon && (
-                    <img src={app.base64_icon} alt={app.label} className="w-8 h-8 rounded" />
-                  )}
-                  <span className="text-white text-sm">{app.label}</span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeApp(app.id);
-                  }}
-                  className="text-white/50 hover:text-white"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="p-4 text-white/50 text-center">
-                <div className="text-6xl mb-2">⧉</div>
-                <p className="text-sm">App Preview</p>
-              </div>
-            </div>
-          ))}
+      {runningApps.length === 0 ? (
+        <div className="text-center">
+          <div className="text-6xl mb-4 text-white/30">📱</div>
+          <h2 className="text-xl text-white/70 mb-2">No running apps</h2>
+          <p className="text-white/50 mb-8">Open an app to see it here</p>
+          <button
+            onClick={closeAllOverlays}
+            className="px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-colors"
+          >
+            🏠 Back to Home
+          </button>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="w-full max-w-4xl h-96 overflow-x-auto">
+            <div className="flex gap-4 p-4 h-full items-center">
+              {runningApps.map(app => (
+                <div
+                  key={app.id}
+                  className="relative flex-shrink-0 w-64 h-full bg-gray-800 rounded-2xl overflow-hidden cursor-pointer group"
+                  onClick={() => switchToApp(app.id)}
+                >
+                  <div className="p-4 bg-gray-900 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {app.base64_icon && (
+                        <img src={app.base64_icon} alt={app.label} className="w-8 h-8 rounded" />
+                      )}
+                      <span className="text-white text-sm">{app.label}</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closeApp(app.id);
+                      }}
+                      className="text-white/50 hover:text-white"
+                    >
+                      ×
+                    </button>
+                  </div>
 
-      <button
-        onClick={toggleRecentApps}
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white"
-      >
-        Close
-      </button>
+                  <div className="p-4 text-white/50 text-center">
+                    <div className="text-6xl mb-2">⧉</div>
+                    <p className="text-sm">App Preview</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4">
+            <button
+              onClick={closeAllOverlays}
+              className="px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-colors"
+            >
+              🏠 Home
+            </button>
+            <button
+              onClick={toggleRecentApps}
+              className="px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -591,7 +571,7 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
 // Home Screen Component
 const HomeScreen: React.FC = () => {
   const { apps } = useHomepageStore();
-  const { homeScreenApps, appPositions, widgetSettings } = usePersistentStore();
+  const { homeScreenApps, appPositions, widgetSettings, toggleWidget } = usePersistentStore();
   const { isEditMode, setEditMode } = useHomepageStore();
   const { toggleAppDrawer } = useNavigationStore();
   const [currentPage] = useState(0);
@@ -606,6 +586,18 @@ const HomeScreen: React.FC = () => {
       return position && position.page === currentPage;
     });
   }, [homeApps, appPositions, currentPage]);
+
+  const dockApps = useMemo(() => {
+    // Get first 4 favorited apps for the dock, or first 4 apps if no favorites
+    const favoriteApps = homeApps.filter(app => app.favorite).slice(0, 4);
+    return favoriteApps.length > 0 ? favoriteApps : homeApps.slice(0, 4);
+  }, [homeApps]);
+
+  const nonDockPageApps = useMemo(() => {
+    // Filter out dock apps from page apps to avoid duplicates
+    const dockAppIds = dockApps.map(app => app.id);
+    return pageApps.filter(app => !dockAppIds.includes(app.id));
+  }, [pageApps, dockApps]);
 
   const widgetApps = useMemo(() => {
     return homeApps.filter(app => app.widget && !widgetSettings[app.id]?.hide);
@@ -631,7 +623,7 @@ const HomeScreen: React.FC = () => {
         {/* Apps grid */}
         <div className="flex-1">
           <div className="grid grid-cols-4 gap-4 auto-rows-min">
-            {pageApps.map(app => (
+            {nonDockPageApps.map(app => (
               <AppIcon key={app.id} app={app} isEditMode={isEditMode} />
             ))}
           </div>
@@ -639,7 +631,7 @@ const HomeScreen: React.FC = () => {
 
         {/* Dock */}
         <div className="h-24 bg-black/30 backdrop-blur-sm rounded-2xl p-2 flex items-center justify-around">
-          {homeApps.slice(0, 4).map(app => (
+          {dockApps.map(app => (
             <AppIcon key={app.id} app={app} isEditMode={isEditMode} showLabel={false} />
           ))}
           <button
@@ -650,7 +642,7 @@ const HomeScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* Edit mode toggle */}
+        {/* Edit mode toggle and widget settings */}
         {!isEditMode && (
           <button
             onClick={() => setEditMode(true)}
@@ -661,17 +653,47 @@ const HomeScreen: React.FC = () => {
         )}
 
         {isEditMode && (
-          <button
-            onClick={() => setEditMode(false)}
-            className="absolute top-4 right-4 px-3 py-1 bg-green-500 rounded-full text-white text-sm"
-          >
-            Done
-          </button>
+          <>
+            <button
+              onClick={() => setEditMode(false)}
+              className="absolute top-4 right-4 px-3 py-1 bg-green-500 rounded-full text-white text-sm"
+            >
+              Done
+            </button>
+
+            {/* Widget management in edit mode */}
+            <div className="absolute top-16 right-4 bg-black/80 backdrop-blur rounded-lg p-3 max-w-xs">
+              <h3 className="text-white text-sm font-semibold mb-2">Widgets</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {homeApps.filter(app => app.widget).map(app => (
+                  <div key={app.id} className="flex items-center justify-between text-white/80 text-sm">
+                    <span>{app.label}</span>
+                    <button
+                      onClick={() => toggleWidget(app.id)}
+                      className={`px-2 py-1 rounded text-xs ${
+                        widgetSettings[app.id]?.hide
+                          ? 'bg-white/10 hover:bg-white/20'
+                          : 'bg-green-500/50 hover:bg-green-500/70'
+                      }`}
+                    >
+                      {widgetSettings[app.id]?.hide ? 'Show' : 'Hide'}
+                    </button>
+                  </div>
+                ))}
+                {homeApps.filter(app => app.widget).length === 0 && (
+                  <p className="text-white/50 text-sm">No apps with widgets on home screen</p>
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Desktop hint */}
         <div className="hidden md:block absolute bottom-32 left-4 text-white/30 text-xs">
-          Alt+Tab: Recent apps • Ctrl+[1-9]: Switch apps
+          <kbd className="px-1 bg-white/10 rounded">A</kbd> All apps •
+          <kbd className="px-1 bg-white/10 rounded">S</kbd> Recent apps •
+          <kbd className="px-1 bg-white/10 rounded">H</kbd> Home •
+          <kbd className="px-1 bg-white/10 rounded">1-9</kbd> Switch apps
         </div>
       </div>
     </div>
@@ -681,27 +703,40 @@ const HomeScreen: React.FC = () => {
 // Main App Component
 export default function AndroidHomescreen() {
   const { setApps } = useHomepageStore();
-  const { runningApps, currentAppId, isAppDrawerOpen, isRecentAppsOpen, toggleRecentApps, switchToApp } = useNavigationStore();
+  const { runningApps, currentAppId, isAppDrawerOpen, isRecentAppsOpen, toggleRecentApps, switchToApp, toggleAppDrawer, closeAllOverlays } = useNavigationStore();
   const [loading, setLoading] = useState(true);
 
   // Keyboard shortcuts for desktop
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Alt+Tab or Cmd+Tab to show recent apps
-      if ((e.altKey || e.metaKey) && e.key === 'Tab') {
-        e.preventDefault();
-        toggleRecentApps();
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // Single key shortcuts
+      switch(e.key.toLowerCase()) {
+        case 'a':
+          e.preventDefault();
+          if (!isAppDrawerOpen) toggleAppDrawer();
+          break;
+        case 's':
+          e.preventDefault();
+          if (!isRecentAppsOpen) toggleRecentApps();
+          break;
+        case 'h':
+          e.preventDefault();
+          closeAllOverlays();
+          break;
+        case 'escape':
+          e.preventDefault();
+          closeAllOverlays();
+          break;
       }
 
-      // Escape to close overlays
-      if (e.key === 'Escape') {
-        if (isRecentAppsOpen) toggleRecentApps();
-      }
-
-      // Ctrl/Cmd + number to switch to app by index
-      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+      // Number keys to switch apps
+      if (e.key >= '1' && e.key <= '9') {
         const index = parseInt(e.key) - 1;
         if (runningApps[index]) {
+          e.preventDefault();
           switchToApp(runningApps[index].id);
         }
       }
@@ -709,7 +744,7 @@ export default function AndroidHomescreen() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [runningApps, isRecentAppsOpen, toggleRecentApps, switchToApp]);
+  }, [runningApps, isRecentAppsOpen, isAppDrawerOpen, toggleRecentApps, toggleAppDrawer, switchToApp, closeAllOverlays]);
 
   // Fetch apps from backend
   useEffect(() => {
@@ -735,8 +770,11 @@ export default function AndroidHomescreen() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-2 animate-spin text-gray-600 dark:text-gray-300">⏳</div>
+          <div className="text-gray-800 dark:text-gray-200 text-xl">Loading...</div>
+        </div>
       </div>
     );
   }
