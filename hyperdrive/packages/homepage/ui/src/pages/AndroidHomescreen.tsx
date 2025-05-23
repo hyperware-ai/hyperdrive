@@ -220,25 +220,65 @@ const AppIcon: React.FC<{
 // Widget Component
 const Widget: React.FC<{ app: HomepageApp }> = ({ app }) => {
   const { toggleWidget, widgetSettings } = usePersistentStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-  if (widgetSettings[app.id]?.hide || !app.widget) return null;
+  if (widgetSettings[app.id]?.hide) return null;
 
-  // Extract the widget URL from the app
-  const widgetUrl = app.path || `/app:${app.process}:${app.publisher}.os/`;
+  // Widgets can either have widget HTML content or be loaded from their app URL
+  const isHtmlWidget = app.widget && app.widget !== 'true' && app.widget.includes('<');
+
+  const handleError = () => {
+    setHasError(true);
+    setIsLoading(false);
+  };
 
   return (
-    <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-4 col-span-2 row-span-2">
-      <button
-        onClick={() => toggleWidget(app.id)}
-        className="absolute top-2 right-2 text-white/50 hover:text-white z-10"
-      >
-        ×
-      </button>
-      <iframe
-        src={widgetUrl}
-        className="w-full h-full rounded-lg"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-      />
+    <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl overflow-hidden col-span-2 row-span-2">
+      <div className="absolute top-2 right-2 z-10 flex gap-2">
+        <span className="text-white/50 text-xs">{app.label}</span>
+        <button
+          onClick={() => toggleWidget(app.id)}
+          className="text-white/50 hover:text-white"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoading && !isHtmlWidget && !hasError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/5">
+          <div className="text-white/50 animate-pulse text-center">
+            <div className="text-2xl mb-2">⏳</div>
+            <div className="text-sm">Loading {app.label}...</div>
+          </div>
+        </div>
+      )}
+
+      {hasError ? (
+        <div className="flex flex-col items-center justify-center h-full text-white/50 text-center p-4">
+          <div className="text-3xl mb-2">⚠️</div>
+          <div className="text-sm">Failed to load widget</div>
+        </div>
+      ) : isHtmlWidget ? (
+        <iframe
+          srcDoc={app.widget}
+          className="w-full h-full"
+          sandbox="allow-scripts"
+          onLoad={() => setIsLoading(false)}
+          onError={handleError}
+        />
+      ) : (
+        <iframe
+          src={app.path || `/app:${app.process}:${app.publisher}.os/`}
+          className="w-full h-full"
+          onLoad={() => setIsLoading(false)}
+          onError={handleError}
+          // Allow necessary permissions for widgets
+          allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; payment; usb"
+          // Minimal sandbox for widget functionality
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
+        />
+      )}
     </div>
   );
 };
@@ -247,8 +287,12 @@ const Widget: React.FC<{ app: HomepageApp }> = ({ app }) => {
 const GestureZone: React.FC = () => {
   const { toggleRecentApps, runningApps, currentAppId, switchToApp } = useNavigationStore();
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [mouseStart, setMouseStart] = useState<{ x: number; y: number } | null>(null);
   const [isActive, setIsActive] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
+  // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     setTouchStart({ x: touch.clientX, y: touch.clientY });
@@ -288,14 +332,82 @@ const GestureZone: React.FC = () => {
     setIsActive(false);
   };
 
+  // Mouse handlers for desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setMouseStart({ x: e.clientX, y: e.clientY });
+    setIsDragging(true);
+    setIsActive(true);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!mouseStart || !isDragging) return;
+
+    const deltaX = mouseStart.x - e.clientX;
+    const deltaY = e.clientY - mouseStart.y;
+
+    // Swipe left (show recent apps)
+    if (deltaX > 50 && Math.abs(deltaY) < 30) {
+      toggleRecentApps();
+      setMouseStart(null);
+      setIsDragging(false);
+    }
+
+    // Swipe up/down (switch apps)
+    if (Math.abs(deltaY) > 50 && Math.abs(deltaX) < 30) {
+      const currentIndex = runningApps.findIndex(app => app.id === currentAppId);
+      if (currentIndex !== -1) {
+        const newIndex = deltaY > 0
+          ? Math.min(currentIndex + 1, runningApps.length - 1)
+          : Math.max(currentIndex - 1, 0);
+        if (newIndex !== currentIndex) {
+          switchToApp(runningApps[newIndex].id);
+        }
+      }
+      setMouseStart(null);
+      setIsDragging(false);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setMouseStart(null);
+    setIsDragging(false);
+    setIsActive(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (isDragging) {
+      setMouseStart(null);
+      setIsDragging(false);
+      setIsActive(false);
+    }
+  };
+
   return (
-    <div
-      className={`fixed right-0 top-0 w-8 h-full z-40 transition-opacity
-        ${isActive ? 'bg-white/20' : ''}`}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    />
+    <>
+      <div
+        className={`fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-grab
+          ${isActive ? 'bg-white/20 w-12' : ''}
+          ${isHovered && !isActive ? 'bg-white/10' : ''}
+          ${isDragging ? 'cursor-grabbing' : ''}`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={handleMouseLeave}
+      />
+      {/* Desktop hint */}
+      {isHovered && !isActive && (
+        <div className="fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/80 text-white px-3 py-2 rounded-lg text-sm pointer-events-none z-50">
+          <div>← Drag left: Recent apps</div>
+          <div>↕ Drag up/down: Switch apps</div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -419,13 +531,20 @@ const RecentApps: React.FC = () => {
 const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, isVisible }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Ensure we have a valid path
   const appUrl = app.path || `/app:${app.process}:${app.publisher}.os/`;
 
   const handleError = () => {
     setHasError(true);
+    setIsLoading(false);
     console.error(`Failed to load app: ${app.label}`);
+  };
+
+  const handleLoad = () => {
+    setIsLoading(false);
+    // The iframe will handle redirects automatically
   };
 
   return (
@@ -442,14 +561,28 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
           </div>
         </div>
       ) : (
-        <iframe
-          ref={iframeRef}
-          src={appUrl}
-          className="w-full h-full border-0"
-          title={app.label}
-          onError={handleError}
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-        />
+        <>
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+              <div className="text-center">
+                <div className="text-4xl mb-2 animate-spin">⏳</div>
+                <p>Loading {app.label}...</p>
+              </div>
+            </div>
+          )}
+          <iframe
+            ref={iframeRef}
+            src={appUrl}
+            className="w-full h-full border-0"
+            title={app.label}
+            onError={handleError}
+            onLoad={handleLoad}
+            // Allow all necessary permissions for subdomain redirects
+            allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; payment; usb; xr-spatial-tracking"
+            // Minimal sandbox restrictions to allow redirects and full functionality
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals allow-downloads"
+          />
+        </>
       )}
     </div>
   );
@@ -458,7 +591,7 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
 // Home Screen Component
 const HomeScreen: React.FC = () => {
   const { apps } = useHomepageStore();
-  const { homeScreenApps, appPositions } = usePersistentStore();
+  const { homeScreenApps, appPositions, widgetSettings } = usePersistentStore();
   const { isEditMode, setEditMode } = useHomepageStore();
   const { toggleAppDrawer } = useNavigationStore();
   const [currentPage] = useState(0);
@@ -475,8 +608,8 @@ const HomeScreen: React.FC = () => {
   }, [homeApps, appPositions, currentPage]);
 
   const widgetApps = useMemo(() => {
-    return homeApps.filter(app => app.widget);
-  }, [homeApps]);
+    return homeApps.filter(app => app.widget && !widgetSettings[app.id]?.hide);
+  }, [homeApps, widgetSettings]);
 
   return (
     <div className="flex-1 relative bg-gradient-to-b from-blue-900 to-black">
@@ -535,6 +668,11 @@ const HomeScreen: React.FC = () => {
             Done
           </button>
         )}
+
+        {/* Desktop hint */}
+        <div className="hidden md:block absolute bottom-32 left-4 text-white/30 text-xs">
+          Alt+Tab: Recent apps • Ctrl+[1-9]: Switch apps
+        </div>
       </div>
     </div>
   );
@@ -543,8 +681,35 @@ const HomeScreen: React.FC = () => {
 // Main App Component
 export default function AndroidHomescreen() {
   const { setApps } = useHomepageStore();
-  const { runningApps, currentAppId, isAppDrawerOpen, isRecentAppsOpen } = useNavigationStore();
+  const { runningApps, currentAppId, isAppDrawerOpen, isRecentAppsOpen, toggleRecentApps, switchToApp } = useNavigationStore();
   const [loading, setLoading] = useState(true);
+
+  // Keyboard shortcuts for desktop
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Alt+Tab or Cmd+Tab to show recent apps
+      if ((e.altKey || e.metaKey) && e.key === 'Tab') {
+        e.preventDefault();
+        toggleRecentApps();
+      }
+
+      // Escape to close overlays
+      if (e.key === 'Escape') {
+        if (isRecentAppsOpen) toggleRecentApps();
+      }
+
+      // Ctrl/Cmd + number to switch to app by index
+      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key) - 1;
+        if (runningApps[index]) {
+          switchToApp(runningApps[index].id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [runningApps, isRecentAppsOpen, toggleRecentApps, switchToApp]);
 
   // Fetch apps from backend
   useEffect(() => {
