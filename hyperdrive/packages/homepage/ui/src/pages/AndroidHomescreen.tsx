@@ -20,6 +20,16 @@ interface RunningApp extends HomepageApp {
   openedAt: number;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+interface Size {
+  width: number;
+  height: number;
+}
+
 // ==================== STORES ====================
 interface HomepageStore {
   apps: HomepageApp[];
@@ -98,13 +108,15 @@ const useNavigationStore = create<NavigationStore>((set, get) => ({
 
 interface PersistentStore {
   homeScreenApps: string[];
-  appPositions: { [key: string]: { page: number; position: number } };
-  widgetSettings: { [key: string]: { hide?: boolean; size?: 'small' | 'large' } };
+  appPositions: { [key: string]: Position };
+  widgetSettings: { [key: string]: { hide?: boolean; position?: Position; size?: Size } };
 
-  addToHomeScreen: (appId: string, page: number, position: number) => void;
+  addToHomeScreen: (appId: string) => void;
   removeFromHomeScreen: (appId: string) => void;
-  moveApp: (appId: string, page: number, position: number) => void;
+  moveItem: (appId: string, position: Position) => void;
   toggleWidget: (appId: string) => void;
+  setWidgetPosition: (appId: string, position: Position) => void;
+  setWidgetSize: (appId: string, size: Size) => void;
 }
 
 const usePersistentStore = create<PersistentStore>()(
@@ -114,10 +126,17 @@ const usePersistentStore = create<PersistentStore>()(
       appPositions: {},
       widgetSettings: {},
 
-      addToHomeScreen: (appId, page, position) => {
+      addToHomeScreen: (appId) => {
         set((state) => ({
           homeScreenApps: [...state.homeScreenApps, appId],
-          appPositions: { ...state.appPositions, [appId]: { page, position } },
+          // Default position for apps at bottom of screen
+          appPositions: {
+            ...state.appPositions,
+            [appId]: {
+              x: Math.random() * (window.innerWidth - 100),
+              y: window.innerHeight - 200 - Math.random() * 100
+            }
+          },
         }));
       },
 
@@ -132,9 +151,9 @@ const usePersistentStore = create<PersistentStore>()(
         });
       },
 
-      moveApp: (appId, page, position) => {
+      moveItem: (appId, position) => {
         set((state) => ({
-          appPositions: { ...state.appPositions, [appId]: { page, position } },
+          appPositions: { ...state.appPositions, [appId]: position },
         }));
       },
 
@@ -145,6 +164,37 @@ const usePersistentStore = create<PersistentStore>()(
             [appId]: {
               ...state.widgetSettings[appId],
               hide: !state.widgetSettings[appId]?.hide,
+              // Default position for widgets at top of screen
+              position: state.widgetSettings[appId]?.position || {
+                x: Math.random() * (window.innerWidth - 300),
+                y: 50 + Math.random() * 100
+              },
+              // Default size
+              size: state.widgetSettings[appId]?.size || { width: 300, height: 200 }
+            },
+          },
+        }));
+      },
+
+      setWidgetPosition: (appId, position) => {
+        set((state) => ({
+          widgetSettings: {
+            ...state.widgetSettings,
+            [appId]: {
+              ...state.widgetSettings[appId],
+              position,
+            },
+          },
+        }));
+      },
+
+      setWidgetSize: (appId, size) => {
+        set((state) => ({
+          widgetSettings: {
+            ...state.widgetSettings,
+            [appId]: {
+              ...state.widgetSettings[appId],
+              size,
             },
           },
         }));
@@ -159,12 +209,91 @@ const usePersistentStore = create<PersistentStore>()(
 
 // ==================== COMPONENTS ====================
 
+// Draggable wrapper component
+const Draggable: React.FC<{
+  id: string;
+  position: Position;
+  onMove: (position: Position) => void;
+  isEditMode: boolean;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ position, onMove, isEditMode, children, className = '' }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const elementRef = useRef<HTMLDivElement>(null);
+
+  const handleStart = (clientX: number, clientY: number) => {
+    if (!isEditMode) return;
+    setIsDragging(true);
+    setDragOffset({
+      x: clientX - position.x,
+      y: clientY - position.y,
+    });
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    const newX = Math.max(0, Math.min(window.innerWidth - 100, clientX - dragOffset.x));
+    const newY = Math.max(40, Math.min(window.innerHeight - 100, clientY - dragOffset.y));
+    onMove({ x: newX, y: newY });
+  };
+
+  const handleEnd = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      handleMove(touch.clientX, touch.clientY);
+    };
+    const handleMouseUp = () => handleEnd();
+    const handleTouchEnd = () => handleEnd();
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, dragOffset, handleMove]);
+
+  return (
+    <div
+      ref={elementRef}
+      className={`absolute ${isDragging ? 'z-50' : ''} ${className}`}
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        cursor: isEditMode ? 'move' : 'default',
+        touchAction: isEditMode ? 'none' : 'auto',
+      }}
+      onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        handleStart(touch.clientX, touch.clientY);
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
 // App Icon Component
 const AppIcon: React.FC<{
   app: HomepageApp;
   isEditMode: boolean;
   showLabel?: boolean;
-}> = ({ app, isEditMode, showLabel = true }) => {
+  isFloating?: boolean;
+}> = ({ app, isEditMode, showLabel = true, isFloating = false }) => {
   const { openApp } = useNavigationStore();
   const { removeFromHomeScreen } = usePersistentStore();
   const [isPressed, setIsPressed] = useState(false);
@@ -184,32 +313,33 @@ const AppIcon: React.FC<{
     <div
       className={`relative flex flex-col items-center justify-center p-2 rounded-xl cursor-pointer select-none transition-all
         ${isPressed ? 'scale-95' : 'scale-100'}
-        ${isEditMode ? 'animate-wiggle' : 'active:scale-95'}
+        ${isEditMode && isFloating ? 'animate-wiggle' : ''}
+        ${!isEditMode && isFloating ? 'hover:scale-110' : ''}
         ${!app.path && !(app.process && app.publisher) ? 'opacity-50' : ''}`}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onMouseLeave={() => setIsPressed(false)}
       onClick={handlePress}
     >
-      {isEditMode && (
+      {isEditMode && isFloating && (
         <button
           onClick={handleRemove}
-          className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs z-10"
+          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs z-10 shadow-lg"
         >
           ×
         </button>
       )}
 
-      <div className="w-16 h-16 mb-1 rounded-2xl overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+      <div className="w-16 h-16 mb-1 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-600 dark:to-blue-800 flex items-center justify-center shadow-lg">
         {app.base64_icon ? (
           <img src={app.base64_icon} alt={app.label} className="w-full h-full object-cover" />
         ) : (
-          <div className="text-2xl">{app.label[0]}</div>
+          <div className="text-2xl text-white font-bold">{app.label[0]}</div>
         )}
       </div>
 
       {showLabel && (
-        <span className="text-xs text-center max-w-full truncate text-white">
+        <span className="text-xs text-center max-w-full truncate text-white drop-shadow-md mt-1">
           {app.label}
         </span>
       )}
@@ -219,11 +349,18 @@ const AppIcon: React.FC<{
 
 // Widget Component
 const Widget: React.FC<{ app: HomepageApp }> = ({ app }) => {
-  const { toggleWidget, widgetSettings } = usePersistentStore();
+  const { toggleWidget, widgetSettings, setWidgetPosition, setWidgetSize } = usePersistentStore();
+  const { isEditMode } = useHomepageStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<HTMLDivElement>(null);
 
-  if (widgetSettings[app.id]?.hide) return null;
+  const settings = widgetSettings[app.id] || {};
+  if (settings.hide) return null;
+
+  const position = settings.position || { x: 50, y: 50 };
+  const size = settings.size || { width: 300, height: 200 };
 
   // Widgets can either have widget HTML content or be loaded from their app URL
   const isHtmlWidget = app.widget && app.widget !== 'true' && app.widget.includes('<');
@@ -233,53 +370,104 @@ const Widget: React.FC<{ app: HomepageApp }> = ({ app }) => {
     setIsLoading(false);
   };
 
+  const handleResize = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isEditMode) return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = size.width;
+    const startHeight = size.height;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(200, startWidth + e.clientX - startX);
+      const newHeight = Math.max(150, startHeight + e.clientY - startY);
+      setWidgetSize(app.id, { width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      setIsResizing(false);
+    };
+
+    setIsResizing(true);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
-    <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl overflow-hidden col-span-2 row-span-2">
-      <div className="absolute top-2 right-2 z-10 flex gap-2">
-        <span className="text-white/50 text-xs">{app.label}</span>
-        <button
-          onClick={() => toggleWidget(app.id)}
-          className="text-white/50 hover:text-white"
-        >
-          ×
-        </button>
+    <Draggable
+      id={app.id}
+      position={position}
+      onMove={(pos) => setWidgetPosition(app.id, pos)}
+      isEditMode={isEditMode}
+    >
+      <div
+        className={`bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl border border-white/20
+          ${isEditMode ? 'ring-2 ring-blue-400' : ''}
+          ${isResizing ? 'pointer-events-none' : ''}`}
+        style={{ width: `${size.width}px`, height: `${size.height}px` }}
+      >
+        <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-2 border-b border-white/10">
+          <span className="text-white/90 text-sm font-medium">{app.label}</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWidget(app.id);
+            }}
+            className="text-white/60 hover:text-white transition-colors"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="relative w-full h-[calc(100%-40px)]">
+          {isLoading && !isHtmlWidget && !hasError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+              <div className="text-white/70 animate-pulse">
+                <div className="w-8 h-8 border-2 border-white/30 border-t-white/70 rounded-full animate-spin mb-2"></div>
+                <div className="text-sm">Loading...</div>
+              </div>
+            </div>
+          )}
+
+          {hasError ? (
+            <div className="flex flex-col items-center justify-center h-full text-white/50 text-center p-4">
+              <div className="text-3xl mb-2">⚠️</div>
+              <div className="text-sm">Failed to load widget</div>
+            </div>
+          ) : isHtmlWidget ? (
+            <iframe
+              srcDoc={app.widget}
+              className="w-full h-full bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              onLoad={() => setIsLoading(false)}
+              onError={handleError}
+            />
+          ) : (
+            <iframe
+              src={app.path || `/app:${app.process}:${app.publisher}.os/`}
+              className="w-full h-full bg-white"
+              onLoad={() => setIsLoading(false)}
+              onError={handleError}
+              // Enhanced permissions for CORS
+              allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; payment; usb; xr-spatial-tracking"
+              // Minimal sandbox for widget functionality
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation-by-user-activation"
+            />
+          )}
+        </div>
+
+        {isEditMode && (
+          <div
+            ref={resizeRef}
+            className="absolute bottom-0 right-0 w-4 h-4 bg-blue-400 cursor-se-resize rounded-tl-lg"
+            onMouseDown={handleResize}
+          />
+        )}
       </div>
-
-      {isLoading && !isHtmlWidget && !hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/5">
-          <div className="text-white/50 animate-pulse text-center">
-            <div className="text-2xl mb-2">⏳</div>
-            <div className="text-sm">Loading {app.label}...</div>
-          </div>
-        </div>
-      )}
-
-      {hasError ? (
-        <div className="flex flex-col items-center justify-center h-full text-white/50 text-center p-4">
-          <div className="text-3xl mb-2">⚠️</div>
-          <div className="text-sm">Failed to load widget</div>
-        </div>
-      ) : isHtmlWidget ? (
-        <iframe
-          srcDoc={app.widget}
-          className="w-full h-full"
-          sandbox="allow-scripts"
-          onLoad={() => setIsLoading(false)}
-          onError={handleError}
-        />
-      ) : (
-        <iframe
-          src={app.path || `/app:${app.process}:${app.publisher}.os/`}
-          className="w-full h-full"
-          onLoad={() => setIsLoading(false)}
-          onError={handleError}
-          // Allow necessary permissions for widgets
-          allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; payment; usb"
-          // Minimal sandbox for widget functionality
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
-        />
-      )}
-    </div>
+    </Draggable>
   );
 };
 
@@ -340,7 +528,7 @@ const GestureZone: React.FC = () => {
       <div
         className={`fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-pointer
           ${isActive ? 'bg-white/20 w-12' : ''}
-          ${isHovered && !isActive ? 'bg-white/10' : ''}`}
+          ${isHovered && !isActive ? 'bg-gradient-to-l from-white/10 to-transparent' : ''}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -350,10 +538,21 @@ const GestureZone: React.FC = () => {
       />
       {/* Desktop hint */}
       {isHovered && !isActive && (
-        <div className="fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/80 text-white px-3 py-2 rounded-lg text-sm pointer-events-none z-50">
-          <div>Click or press <kbd className="px-1 bg-white/20 rounded">S</kbd> for recent apps</div>
-          <div>Press <kbd className="px-1 bg-white/20 rounded">A</kbd> for all apps</div>
-          <div>Press <kbd className="px-1 bg-white/20 rounded">H</kbd> for home</div>
+        <div className="fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/90 backdrop-blur text-white px-4 py-3 rounded-lg text-sm pointer-events-none z-50 shadow-xl">
+          <div className="flex items-center gap-2 mb-1">
+            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">Click</kbd>
+            <span>or</span>
+            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">S</kbd>
+            <span>Recent apps</span>
+          </div>
+          <div className="flex items-center gap-2 mb-1">
+            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">A</kbd>
+            <span>All apps</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">H</kbd>
+            <span>Home</span>
+          </div>
         </div>
       )}
     </>
@@ -364,7 +563,7 @@ const GestureZone: React.FC = () => {
 const AppDrawer: React.FC = () => {
   const { apps } = useHomepageStore();
   const { isAppDrawerOpen, toggleAppDrawer } = useNavigationStore();
-  const { homeScreenApps, addToHomeScreen, appPositions } = usePersistentStore();
+  const { homeScreenApps, addToHomeScreen } = usePersistentStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredApps = useMemo(() => {
@@ -374,16 +573,9 @@ const AppDrawer: React.FC = () => {
   }, [apps, searchQuery]);
 
   const handleAddToHome = (app: HomepageApp) => {
-    // Find first empty position, ensuring we don't duplicate
+    // Ensure we don't duplicate
     if (!homeScreenApps.includes(app.id)) {
-      // Add to page 0 at the next available position
-      const existingPositions = Object.values(appPositions)
-        .filter(pos => pos.page === 0)
-        .map(pos => pos.position);
-      const nextPosition = existingPositions.length > 0
-        ? Math.max(...existingPositions) + 1
-        : 0;
-      addToHomeScreen(app.id, 0, nextPosition);
+      addToHomeScreen(app.id);
     }
     toggleAppDrawer();
   };
@@ -391,26 +583,32 @@ const AppDrawer: React.FC = () => {
   if (!isAppDrawerOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col">
+    <div className="fixed inset-0 bg-gradient-to-b from-gray-900/98 to-black/98 backdrop-blur-xl z-50 flex flex-col">
       <div className="p-4">
-        <input
-          type="text"
-          placeholder="Search apps..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 bg-white/10 backdrop-blur rounded-full text-white placeholder-white/50"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search apps..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-3 pl-12 bg-white/10 backdrop-blur rounded-2xl text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none transition-all"
+            autoFocus
+          />
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50">
+            🔍
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-6 gap-4">
           {filteredApps.map(app => (
-            <div key={app.id} className="relative">
+            <div key={app.id} className="relative group">
               <AppIcon app={app} isEditMode={false} />
               {!homeScreenApps.includes(app.id) && (
                 <button
                   onClick={() => handleAddToHome(app)}
-                  className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs"
+                  className="absolute -top-2 -right-2 w-7 h-7 bg-green-500 text-white rounded-full flex items-center justify-center text-sm shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   +
                 </button>
@@ -422,7 +620,7 @@ const AppDrawer: React.FC = () => {
 
       <button
         onClick={toggleAppDrawer}
-        className="p-4 text-white text-center"
+        className="p-6 text-white/70 text-center hover:text-white transition-colors"
       >
         Close
       </button>
@@ -437,7 +635,7 @@ const RecentApps: React.FC = () => {
   if (!isRecentAppsOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-gradient-to-b from-gray-900/98 to-black/98 backdrop-blur-xl z-50 flex items-center justify-center">
       {runningApps.length === 0 ? (
         <div className="text-center">
           <div className="text-6xl mb-4 text-white/30">📱</div>
@@ -445,42 +643,47 @@ const RecentApps: React.FC = () => {
           <p className="text-white/50 mb-8">Open an app to see it here</p>
           <button
             onClick={closeAllOverlays}
-            className="px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-colors"
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full text-white font-medium hover:shadow-lg transition-all transform hover:scale-105"
           >
             🏠 Back to Home
           </button>
         </div>
       ) : (
         <>
-          <div className="w-full max-w-4xl h-96 overflow-x-auto">
-            <div className="flex gap-4 p-4 h-full items-center">
+          <div className="w-full max-w-6xl h-[70vh] overflow-x-auto">
+            <div className="flex gap-4 p-4 h-full items-center justify-center flex-wrap">
               {runningApps.map(app => (
                 <div
                   key={app.id}
-                  className="relative flex-shrink-0 w-64 h-full bg-gray-800 rounded-2xl overflow-hidden cursor-pointer group"
+                  className="relative flex-shrink-0 w-72 h-96 bg-gradient-to-b from-gray-800 to-gray-900 rounded-3xl overflow-hidden cursor-pointer group transform transition-all hover:scale-105 hover:shadow-2xl"
                   onClick={() => switchToApp(app.id)}
                 >
-                  <div className="p-4 bg-gray-900 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {app.base64_icon && (
-                        <img src={app.base64_icon} alt={app.label} className="w-8 h-8 rounded" />
+                  <div className="p-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {app.base64_icon ? (
+                        <img src={app.base64_icon} alt={app.label} className="w-10 h-10 rounded-xl" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
+                          {app.label[0]}
+                        </div>
                       )}
-                      <span className="text-white text-sm">{app.label}</span>
+                      <span className="text-white font-medium">{app.label}</span>
                     </div>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         closeApp(app.id);
                       }}
-                      className="text-white/50 hover:text-white"
+                      className="text-white/50 hover:text-white transition-colors text-xl"
                     >
                       ×
                     </button>
                   </div>
 
-                  <div className="p-4 text-white/50 text-center">
-                    <div className="text-6xl mb-2">⧉</div>
-                    <p className="text-sm">App Preview</p>
+                  <div className="p-8 text-white/50 text-center flex flex-col items-center justify-center h-full">
+                    <div className="text-8xl mb-4 opacity-20">⧉</div>
+                    <p className="text-lg">App Preview</p>
+                    <p className="text-sm mt-2 opacity-50">Click to switch</p>
                   </div>
                 </div>
               ))}
@@ -490,13 +693,13 @@ const RecentApps: React.FC = () => {
           <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4">
             <button
               onClick={closeAllOverlays}
-              className="px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-colors"
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full text-white font-medium hover:shadow-lg transition-all transform hover:scale-105"
             >
               🏠 Home
             </button>
             <button
               onClick={toggleRecentApps}
-              className="px-6 py-2 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-colors"
+              className="px-6 py-3 bg-white/10 backdrop-blur rounded-full text-white hover:bg-white/20 transition-all"
             >
               Close
             </button>
@@ -524,7 +727,36 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
 
   const handleLoad = () => {
     setIsLoading(false);
-    // The iframe will handle redirects automatically
+
+    // Handle subdomain redirects
+    try {
+      const iframe = iframeRef.current;
+      if (iframe && iframe.contentWindow) {
+        // Check if we need to redirect to subdomain
+        const currentHost = window.location.host;
+        const expectedSubdomain = generateSubdomain(app.process, app.publisher);
+
+        if (!currentHost.startsWith(expectedSubdomain)) {
+          // Redirect to subdomain version
+          const protocol = window.location.protocol;
+          const port = window.location.port ? `:${window.location.port}` : '';
+          const baseDomain = currentHost.split('.').slice(1).join('.');
+          const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
+
+          // Use window.location for redirect to handle authentication
+          window.location.href = subdomainUrl;
+        }
+      }
+    } catch (e) {
+      // Iframe might be cross-origin, that's ok
+    }
+  };
+
+  const generateSubdomain = (process: string, publisher: string) => {
+    return `${process}-${publisher}`.toLowerCase()
+      .split('')
+      .map(c => c.match(/[a-zA-Z0-9]/) ? c : '-')
+      .join('');
   };
 
   return (
@@ -533,20 +765,20 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
         ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
     >
       {hasError ? (
-        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
           <div className="text-center">
             <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold mb-2">Failed to load {app.label}</h2>
-            <p className="text-gray-600">The app could not be loaded.</p>
+            <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Failed to load {app.label}</h2>
+            <p className="text-gray-600 dark:text-gray-400">The app could not be loaded.</p>
           </div>
         </div>
       ) : (
         <>
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 z-10">
               <div className="text-center">
-                <div className="text-4xl mb-2 animate-spin">⏳</div>
-                <p>Loading {app.label}...</p>
+                <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-400">Loading {app.label}...</p>
               </div>
             </div>
           )}
@@ -559,8 +791,8 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
             onLoad={handleLoad}
             // Allow all necessary permissions for subdomain redirects
             allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; payment; usb; xr-spatial-tracking"
-            // Minimal sandbox restrictions to allow redirects and full functionality
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals allow-downloads"
+            // Enhanced sandbox permissions
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals allow-downloads allow-presentation allow-storage-access-by-user-activation"
           />
         </>
       )}
@@ -571,129 +803,137 @@ const AppContainer: React.FC<{ app: RunningApp; isVisible: boolean }> = ({ app, 
 // Home Screen Component
 const HomeScreen: React.FC = () => {
   const { apps } = useHomepageStore();
-  const { homeScreenApps, appPositions, widgetSettings, toggleWidget } = usePersistentStore();
+  const { homeScreenApps, appPositions, widgetSettings, toggleWidget, moveItem } = usePersistentStore();
   const { isEditMode, setEditMode } = useHomepageStore();
   const { toggleAppDrawer } = useNavigationStore();
-  const [currentPage] = useState(0);
 
   const homeApps = useMemo(() => {
     return apps.filter(app => homeScreenApps.includes(app.id));
   }, [apps, homeScreenApps]);
 
-  const pageApps = useMemo(() => {
-    return homeApps.filter(app => {
-      const position = appPositions[app.id];
-      return position && position.page === currentPage;
-    });
-  }, [homeApps, appPositions, currentPage]);
-
-  const dockApps = useMemo(() => {
-    // Get first 4 favorited apps for the dock, or first 4 apps if no favorites
-    const favoriteApps = homeApps.filter(app => app.favorite).slice(0, 4);
-    return favoriteApps.length > 0 ? favoriteApps : homeApps.slice(0, 4);
-  }, [homeApps]);
-
-  const nonDockPageApps = useMemo(() => {
-    // Filter out dock apps from page apps to avoid duplicates
-    const dockAppIds = dockApps.map(app => app.id);
-    return pageApps.filter(app => !dockAppIds.includes(app.id));
-  }, [pageApps, dockApps]);
-
   const widgetApps = useMemo(() => {
     return homeApps.filter(app => app.widget && !widgetSettings[app.id]?.hide);
   }, [homeApps, widgetSettings]);
 
+  // Dock apps are the first 5 apps marked as favorites or just first 5
+  const dockApps = useMemo(() => {
+    const favoriteApps = homeApps.filter(app => app.favorite).slice(0, 5);
+    return favoriteApps.length > 0 ? favoriteApps : homeApps.slice(0, 5);
+  }, [homeApps]);
+
+  // Floating apps are all home apps that aren't in the dock
+  const floatingApps = useMemo(() => {
+    const dockAppIds = dockApps.map(app => app.id);
+    return homeApps.filter(app => !dockAppIds.includes(app.id));
+  }, [homeApps, dockApps]);
+
   return (
-    <div className="flex-1 relative bg-gradient-to-b from-blue-900 to-black">
-      {/* Wallpaper overlay */}
-      <div className="absolute inset-0 bg-black/30" />
+    <div className="flex-1 relative bg-gradient-to-br from-purple-900 via-blue-900 to-black">
+      {/* Animated background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full filter blur-3xl opacity-20 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full filter blur-3xl opacity-20 animate-pulse" />
+      </div>
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col p-4">
-        {/* Status bar placeholder */}
-        <div className="h-8 mb-4" />
+      <div className="relative z-10 h-full">
+        {/* Floating apps on canvas */}
+        {floatingApps.map(app => {
+          const position = appPositions[app.id] || {
+            x: Math.random() * (window.innerWidth - 100),
+            y: window.innerHeight - 200 - Math.random() * 100
+          };
 
-        {/* Widgets area */}
-        <div className="mb-4">
-          {widgetApps.slice(0, 1).map(app => (
-            <Widget key={app.id} app={app} />
-          ))}
-        </div>
+          return (
+            <Draggable
+              key={app.id}
+              id={app.id}
+              position={position}
+              onMove={(pos) => moveItem(app.id, pos)}
+              isEditMode={isEditMode}
+            >
+              <AppIcon app={app} isEditMode={isEditMode} isFloating={true} />
+            </Draggable>
+          );
+        })}
 
-        {/* Apps grid */}
-        <div className="flex-1">
-          <div className="grid grid-cols-4 gap-4 auto-rows-min">
-            {nonDockPageApps.map(app => (
-              <AppIcon key={app.id} app={app} isEditMode={isEditMode} />
+        {/* Widgets */}
+        {widgetApps.map(app => (
+          <Widget key={app.id} app={app} />
+        ))}
+
+        {/* Dock at bottom */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+          <div className="bg-black/60 backdrop-blur-xl rounded-3xl p-3 flex items-center gap-2 shadow-2xl border border-white/20">
+            {dockApps.map(app => (
+              <AppIcon key={app.id} app={app} isEditMode={false} showLabel={false} />
             ))}
+            <div className="w-px h-12 bg-white/20 mx-1" />
+            <button
+              onClick={toggleAppDrawer}
+              className="w-16 h-16 bg-gradient-to-br from-gray-700 to-gray-800 backdrop-blur rounded-2xl flex items-center justify-center text-white text-2xl hover:from-gray-600 hover:to-gray-700 transition-all shadow-lg"
+            >
+              ⊞
+            </button>
           </div>
         </div>
 
-        {/* Dock */}
-        <div className="h-24 bg-black/30 backdrop-blur-sm rounded-2xl p-2 flex items-center justify-around">
-          {dockApps.map(app => (
-            <AppIcon key={app.id} app={app} isEditMode={isEditMode} showLabel={false} />
-          ))}
-          <button
-            onClick={toggleAppDrawer}
-            className="w-16 h-16 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center text-white text-2xl"
-          >
-            ⊞
-          </button>
+        {/* Edit mode toggle and widget settings */}
+        <div className="absolute top-4 right-4 flex items-start gap-2">
+          {!isEditMode && (
+            <button
+              onClick={() => setEditMode(true)}
+              className="px-4 py-2 bg-white/10 backdrop-blur-xl rounded-full text-white text-sm font-medium hover:bg-white/20 transition-all shadow-lg border border-white/20"
+            >
+              Edit
+            </button>
+          )}
+
+          {isEditMode && (
+            <>
+              <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20">
+                <h3 className="text-white text-sm font-semibold mb-3">Widget Manager</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {homeApps.filter(app => app.widget).map(app => (
+                    <div key={app.id} className="flex items-center justify-between text-white/80 text-sm p-2 rounded-lg hover:bg-white/10 transition-colors">
+                      <span>{app.label}</span>
+                      <button
+                        onClick={() => toggleWidget(app.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                          widgetSettings[app.id]?.hide
+                            ? 'bg-white/10 hover:bg-white/20'
+                            : 'bg-green-500/50 hover:bg-green-500/70'
+                        }`}
+                      >
+                        {widgetSettings[app.id]?.hide ? 'Show' : 'Hide'}
+                      </button>
+                    </div>
+                  ))}
+                  {homeApps.filter(app => app.widget).length === 0 && (
+                    <p className="text-white/50 text-sm text-center py-4">No apps with widgets on home screen</p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setEditMode(false)}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 rounded-full text-white text-sm font-medium hover:shadow-lg transition-all shadow-lg"
+              >
+                Done
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Edit mode toggle and widget settings */}
-        {!isEditMode && (
-          <button
-            onClick={() => setEditMode(true)}
-            className="absolute top-4 right-4 px-3 py-1 bg-white/10 backdrop-blur rounded-full text-white text-sm"
-          >
-            Edit
-          </button>
-        )}
-
-        {isEditMode && (
-          <>
-            <button
-              onClick={() => setEditMode(false)}
-              className="absolute top-4 right-4 px-3 py-1 bg-green-500 rounded-full text-white text-sm"
-            >
-              Done
-            </button>
-
-            {/* Widget management in edit mode */}
-            <div className="absolute top-16 right-4 bg-black/80 backdrop-blur rounded-lg p-3 max-w-xs">
-              <h3 className="text-white text-sm font-semibold mb-2">Widgets</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {homeApps.filter(app => app.widget).map(app => (
-                  <div key={app.id} className="flex items-center justify-between text-white/80 text-sm">
-                    <span>{app.label}</span>
-                    <button
-                      onClick={() => toggleWidget(app.id)}
-                      className={`px-2 py-1 rounded text-xs ${
-                        widgetSettings[app.id]?.hide
-                          ? 'bg-white/10 hover:bg-white/20'
-                          : 'bg-green-500/50 hover:bg-green-500/70'
-                      }`}
-                    >
-                      {widgetSettings[app.id]?.hide ? 'Show' : 'Hide'}
-                    </button>
-                  </div>
-                ))}
-                {homeApps.filter(app => app.widget).length === 0 && (
-                  <p className="text-white/50 text-sm">No apps with widgets on home screen</p>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
         {/* Desktop hint */}
-        <div className="hidden md:block absolute bottom-32 left-4 text-white/30 text-xs">
-          <kbd className="px-1 bg-white/10 rounded">A</kbd> All apps •
-          <kbd className="px-1 bg-white/10 rounded">S</kbd> Recent apps •
-          <kbd className="px-1 bg-white/10 rounded">H</kbd> Home •
-          <kbd className="px-1 bg-white/10 rounded">1-9</kbd> Switch apps
+        <div className="hidden md:block absolute bottom-32 left-4 text-white/30 text-xs bg-black/50 backdrop-blur rounded-lg px-3 py-2">
+          <div className="flex items-center gap-4">
+            <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">A</kbd> All apps</span>
+            <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">S</kbd> Recent apps</span>
+            <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">H</kbd> Home</span>
+            <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">1-9</kbd> Switch apps</span>
+          </div>
         </div>
       </div>
     </div>
@@ -770,10 +1010,10 @@ export default function AndroidHomescreen() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+      <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-2 animate-spin text-gray-600 dark:text-gray-300">⏳</div>
-          <div className="text-gray-800 dark:text-gray-200 text-xl">Loading...</div>
+          <div className="w-16 h-16 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+          <div className="text-gray-300 text-xl">Loading Hyperware...</div>
         </div>
       </div>
     );
