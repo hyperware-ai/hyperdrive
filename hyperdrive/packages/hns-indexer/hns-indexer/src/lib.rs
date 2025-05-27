@@ -11,7 +11,7 @@ use hyperware_process_lib::{
     Message, Request, Response,
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     str::FromStr,
 };
@@ -159,12 +159,38 @@ impl StateV1 {
     fn fetch_and_process_logs(&mut self) {
         let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
 
-        self.fetch_and_process_logs_filter(mints_filter);
-        self.fetch_and_process_logs_filter(notes_filter);
+        let nodes: HashSet<String> = ["diligence.os".to_string()].into_iter().collect();
+        match self.hypermap.bootstrap(
+            Some(self.last_checkpoint_block),
+            vec![mints_filter, notes_filter],
+            nodes,
+            None,
+        ) {
+            Err(e) => println!("bootstrap from cache failed: {e:?}"),
+            Ok(mut logs) => {
+                assert_eq!(logs.len(), 2);
+                let maybe_notes_logs = logs.pop();
+                let maybe_mints_logs = logs.pop();
+                self.fetch_and_process_logs_filter(mints_filter, maybe_mints_logs);
+                self.fetch_and_process_logs_filter(notes_filter, maybe_notes_logs);
+            }
+        }
     }
 
     /// Get logs for a filter then process them while taking pending notes into account.
-    fn fetch_and_process_logs_filter(&mut self, filter: eth::Filter) {
+    fn fetch_and_process_logs_filter(
+        &mut self,
+        filter: eth::Filter,
+        maybe_logs: Option<Vec<eth::Log>>,
+    ) {
+        if Some(logs) = maybe_logs {
+            for log in logs {
+                if let Err(e) = self.hypermap.provider.handle_log(&log) {
+                    error!("log-handling error! {e:?}");
+                }
+            }
+        }
+
         loop {
             match self.hypermap.provider.get_logs(&filter) {
                 Ok(logs) => {
@@ -216,7 +242,9 @@ impl StateV1 {
 
     fn handle_log(&mut self, log: &eth::Log) -> anyhow::Result<()> {
         if let Some(block) = log.block_number {
-            self.last_block = block;
+            if block > self.last_block {
+                self.last_block = block;
+            }
         }
 
         match log.topics()[0] {

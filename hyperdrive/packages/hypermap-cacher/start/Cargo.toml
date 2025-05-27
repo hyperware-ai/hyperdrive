@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-hyperware_process_lib = { path = "../../../../../process_lib" }
+hyperware_process_lib = { git = "https://github.com/hyperware-ai/process_lib", rev = "40d3daf" }
 wit-bindgen = "0.36.0"
 
 [lib]
