@@ -38,7 +38,7 @@ use hyperware_process_lib::{
     timer, Address, Message, PackageId, Request, Response,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 wit_bindgen::generate!({
@@ -621,8 +621,10 @@ fn handle_eth_log(
                     state.db.delete_published(&package_id)?;
                     state.db.delete_listing(&package_id)?;
                     if !startup {
-                        state.last_saved_block = block_number - 1;
-                        state.db.set_last_saved_block(block_number - 1)?;
+                        if block_number - 1 > state.last_saved_block {
+                            state.last_saved_block = block_number - 1;
+                            state.db.set_last_saved_block(block_number - 1)?;
+                        }
                     }
                     return Ok(());
                 }
@@ -836,10 +838,29 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
         .hypermap
         .provider
         .subscribe_loop(SUBSCRIPTION_NUMBER, filter.clone(), 1, 0);
+
+    let nodes: HashSet<String> = ["nick.hypr".to_string()].into_iter().collect();
+    match state
+        .hypermap
+        .bootstrap(Some(last_saved_block), vec![filter.clone()], nodes, None)
+    {
+        Err(e) => println!("bootstrap from cache failed: {e:?}"),
+        Ok(mut logs) => {
+            assert_eq!(logs.len(), 1);
+            if let Some(logs) = logs.pop() {
+                for log in logs {
+                    if let Err(e) = handle_eth_log(our, state, log, true) {
+                        print_to_terminal(1, &format!("error ingesting log: {e}"));
+                    };
+                }
+            }
+        }
+    }
+
     // println!("fetching old logs from block {last_saved_block}");
     for log in fetch_logs(
         &state.hypermap.provider,
-        &filter.from_block(last_saved_block),
+        &filter.from_block(state.last_saved_block),
     ) {
         if let Err(e) = handle_eth_log(our, state, log, true) {
             print_to_terminal(1, &format!("error ingesting log: {e}"));

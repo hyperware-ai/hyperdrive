@@ -70,6 +70,7 @@ struct StateV1 {
     /// notes are under a mint; in case they come out of order, store till next block
     // #[serde(skip)] // TODO: ?
     pending_notes: PendingNotes,
+    #[serde(skip)]
     is_checkpoint_timer_live: bool,
 }
 
@@ -138,14 +139,15 @@ impl StateV1 {
         }
     }
 
-    /// loops through saved nodes, and sends them to net
+    /// sends saved nodes to net
+    ///
     /// called upon bootup
     fn send_nodes(&self) -> anyhow::Result<()> {
-        for node in self.nodes.values() {
-            Request::to(("our", "net", "distro", "sys"))
-                .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(node.clone()))?)
-                .send()?;
-        }
+        Request::to(("our", "net", "distro", "sys"))
+            .body(rmp_serde::to_vec(&net::NetAction::HnsBatchUpdate(
+                self.nodes.values().cloned().collect(),
+            ))?)
+            .send()?;
         Ok(())
     }
 
@@ -156,13 +158,25 @@ impl StateV1 {
         self.hypermap.provider.subscribe_loop(2, notes_filter, 1, 0);
     }
 
-    fn fetch_and_process_logs(&mut self) {
+    fn fetch_and_process_logs(&mut self, nodes: HashSet<String>) {
         let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
 
-        let nodes: HashSet<String> = ["diligence.os".to_string()].into_iter().collect();
+        // confirm or try to get networking info for bootstrap nodes
+        for node in nodes.iter() {
+            match self.handle_node_info_request(node, &None) {
+                Err(e) => println!("bootstrap node {node} lookup failed: {e}"),
+                Ok(IndexerResponse::NodeInfo(Some(WitHnsUpdate { routers, .. }))) => {
+                    if !routers.is_empty() {
+                        println!("bootstrap node {node} is indirect; recommend using direct bootstrap nodes");
+                    }
+                }
+                Ok(_) => {}
+            }
+        }
+
         match self.hypermap.bootstrap(
-            Some(self.last_checkpoint_block),
-            vec![mints_filter, notes_filter],
+            Some(self.last_block),
+            vec![mints_filter.clone(), notes_filter.clone()],
             nodes,
             None,
         ) {
@@ -183,9 +197,10 @@ impl StateV1 {
         filter: eth::Filter,
         maybe_logs: Option<Vec<eth::Log>>,
     ) {
-        if Some(logs) = maybe_logs {
+        if let Some(logs) = maybe_logs {
+            debug!("cached log len: {}", logs.len());
             for log in logs {
-                if let Err(e) = self.hypermap.provider.handle_log(&log) {
+                if let Err(e) = self.handle_log(&log) {
                     error!("log-handling error! {e:?}");
                 }
             }
@@ -530,31 +545,7 @@ impl StateV1 {
                 IndexerResponse::Name(self.names.get(hash).cloned())
             }
             IndexerRequest::NodeInfo(NodeInfoRequest { ref name, .. }) => {
-                match self.nodes.get(name) {
-                    Some(node) => IndexerResponse::NodeInfo(Some(node.clone().into())),
-                    None => {
-                        // we don't have the node in our state: try hypermap.get()
-                        //  to see if it exists onchain and the indexer missed it
-                        let mut response = IndexerResponse::NodeInfo(None);
-                        if let Some(timeout) = expects_response {
-                            if let Some(hns_update) = self.fetch_node(timeout, name) {
-                                response =
-                                    IndexerResponse::NodeInfo(Some(hns_update.clone().into()));
-                                // save the node to state
-                                self.nodes.insert(name.clone(), hns_update.clone());
-                                // produce namehash and save in names map
-                                self.names.insert(hypermap::namehash(name), name.clone());
-                                // send the node to net
-                                Request::to(("our", "net", "distro", "sys"))
-                                    .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(
-                                        hns_update,
-                                    ))?)
-                                    .send()?;
-                            }
-                        }
-                        response
-                    }
-                }
+                self.handle_node_info_request(name, expects_response)?
             }
             IndexerRequest::Reset => {
                 // check for root capability
@@ -579,6 +570,35 @@ impl StateV1 {
         }
 
         Ok(is_reset)
+    }
+
+    fn handle_node_info_request(
+        &mut self,
+        name: &str,
+        timeout: &Option<u64>,
+    ) -> anyhow::Result<IndexerResponse> {
+        match self.nodes.get(name) {
+            Some(node) => Ok(IndexerResponse::NodeInfo(Some(node.clone().into()))),
+            None => {
+                // we don't have the node in our state: try hypermap.get()
+                //  to see if it exists onchain and the indexer missed it
+                let mut response = IndexerResponse::NodeInfo(None);
+                let timeout = timeout.unwrap_or_else(|| 5);
+                if let Some(hns_update) = self.fetch_node(&timeout, name) {
+                    response = IndexerResponse::NodeInfo(Some(hns_update.clone().into()));
+                    // save the node to state
+                    self.nodes.insert(name.to_string(), hns_update.clone());
+                    // produce namehash and save in names map
+                    self.names
+                        .insert(hypermap::namehash(name), name.to_string());
+                    // send the node to net
+                    Request::to(("our", "net", "distro", "sys"))
+                        .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(hns_update))?)
+                        .send()?;
+                }
+                Ok(response)
+            }
+        }
     }
 }
 
@@ -744,7 +764,8 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     // if block in state is < current_block, get logs from that part.
     info!("syncing old logs from block: {}", state.last_block);
 
-    state.fetch_and_process_logs();
+    let nodes: HashSet<String> = ["nick.hypr".to_string()].into_iter().collect();
+    state.fetch_and_process_logs(nodes);
 
     // set a timer tick so any pending logs will be processed
     timer::set_timer(DELAY_MS, None);
