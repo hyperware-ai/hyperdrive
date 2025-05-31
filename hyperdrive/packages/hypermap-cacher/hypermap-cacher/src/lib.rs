@@ -639,9 +639,7 @@ fn handle_request(our: &Address, state: &mut State, request: CacherRequest) -> a
         }
     };
 
-    Response::new()
-        .body(serde_json::to_vec(&response_body).unwrap())
-        .send()?;
+    Response::new().body(response_body).send()?;
     Ok(())
 }
 
