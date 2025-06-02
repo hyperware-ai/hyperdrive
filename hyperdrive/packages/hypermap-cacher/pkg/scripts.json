@@ -1,21 +1,25 @@
 {
-    "start.wasm": {
+    "start-providing.wasm": {
         "root": false,
         "public": false,
-        "request_networking": true,
+        "request_networking": false,
         "request_capabilities": [
-            "eth:distro:sys",
-            "http-server:distro:sys",
-            "sign:sign:sys",
-            "timer:distro:sys",
-            "vfs:distro:sys"
+            "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
-            "eth:distro:sys",
-            "http-server:distro:sys",
-            "sign:sign:sys",
-            "timer:distro:sys",
-            "vfs:distro:sys"
+            "hypermap-cacher:hypermap-cacher:sys"
+        ],
+        "wit_version": 1
+    },
+    "stop-providing.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "hypermap-cacher:hypermap-cacher:sys"
+        ],
+        "grant_capabilities": [
+            "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
     }

@@ -15,7 +15,7 @@ use crate::hyperware::process::hypermap_cacher::{
 use hyperware_process_lib::{
     await_message, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
-    our, set_state, sign, timer, vfs, Address, ProcessId, Response,
+    our, set_state, sign, timer, vfs, Address, Message, ProcessId, Response,
 };
 
 wit_bindgen::generate!({
@@ -88,12 +88,17 @@ struct State {
     block_batch_size: u64,
     is_cache_timer_live: bool,
     drive_path: String,
+    is_providing: bool,
 }
 
 // Generates a timestamp string.
 fn get_current_timestamp_str() -> String {
     let datetime = chrono::Utc::now();
     datetime.format("%Y%m%dT%H%M%SZ").to_string()
+}
+
+fn is_local_request(our: &Address, source: &Address) -> bool {
+    our.node == source.node
 }
 
 impl State {
@@ -123,6 +128,7 @@ impl State {
             block_batch_size: DEFAULT_BLOCK_BATCH_SIZE,
             is_cache_timer_live: false,
             drive_path: drive_path.to_string(),
+            is_providing: false,
         }
     }
 
@@ -420,9 +426,6 @@ enum HttpApi {
 fn http_handler(
     state: &mut State,
     path: &str,
-    _method: &http::Method,
-    //_headers: &http::Headers,
-    //_body: &[u8],
 ) -> anyhow::Result<(http::server::HttpResponse, Vec<u8>)> {
     let response = http::server::HttpResponse::new(http::StatusCode::OK)
         .header("Content-Type", "application/json");
@@ -481,6 +484,7 @@ fn http_handler(
             manifest_filename: state.manifest.manifest_filename.clone(),
             log_files_count: state.manifest.items.len() as u32,
             our_address: our().to_string(),
+            is_providing: state.is_providing,
         };
         match serde_json::to_vec(&status_info) {
             Ok(body) => (response, body),
@@ -500,7 +504,28 @@ fn http_handler(
     })
 }
 
-fn handle_request(our: &Address, state: &mut State, request: CacherRequest) -> anyhow::Result<()> {
+fn handle_request(
+    our: &Address,
+    source: &Address,
+    state: &mut State,
+    request: CacherRequest,
+) -> anyhow::Result<()> {
+    let is_local = is_local_request(our, source);
+
+    if !is_local && source.process.to_string() != "hypermap-cacher:hypermap-cacher:sys" {
+        warn!("Rejecting remote request from non-hypermap-cacher: {source}");
+        Response::new().body(CacherResponse::Rejected).send()?;
+        return Ok(());
+    }
+
+    if !is_local
+        && !state.is_providing
+        && source.process.to_string() == "hypermap-cacher:hypermap-cacher:sys"
+    {
+        warn!("Rejecting remote request from {source} - not in provider mode");
+        Response::new().body(CacherResponse::Rejected).send()?;
+        return Ok(());
+    }
     let response_body = match request {
         CacherRequest::GetManifest => {
             let manifest_path =
@@ -560,6 +585,7 @@ fn handle_request(our: &Address, state: &mut State, request: CacherRequest) -> a
                 manifest_filename: state.manifest.manifest_filename.clone(),
                 log_files_count: state.manifest.items.len() as u32,
                 our_address: our.to_string(),
+                is_providing: state.is_providing,
             };
             CacherResponse::GetStatus(status)
         }
@@ -637,6 +663,28 @@ fn handle_request(our: &Address, state: &mut State, request: CacherRequest) -> a
                 ))),
             }
         }
+        CacherRequest::StartProviding => {
+            if !is_local {
+                // should never happen: should be caught in check above
+                Response::new().body(CacherResponse::Rejected).send()?;
+                return Ok(());
+            }
+            state.is_providing = true;
+            state.save();
+            info!("Provider mode enabled");
+            CacherResponse::StartProviding(Ok("Provider mode enabled".to_string()))
+        }
+        CacherRequest::StopProviding => {
+            if !is_local {
+                Response::new().body(CacherResponse::Rejected).send()?;
+                warn!("Rejecting remote request from {source} to alter provider mode");
+                return Ok(());
+            }
+            state.is_providing = false;
+            state.save();
+            info!("Provider mode disabled");
+            CacherResponse::StopProviding(Ok("Provider mode disabled".to_string()))
+        }
     };
 
     Response::new().body(response_body).send()?;
@@ -694,8 +742,7 @@ fn main_loop(
                     // Potentially send an error response back if possible/expected
                     continue;
                 };
-                let (http_response, body) =
-                    http_handler(state, &http_request.path()?, &http_request.method()?)?;
+                let (http_response, body) = http_handler(state, &http_request.path()?)?;
                 Response::new()
                     .body(serde_json::to_vec(&http_response).unwrap())
                     .blob_bytes(body)
@@ -704,7 +751,7 @@ fn main_loop(
                 // Standard process-to-process request
                 match serde_json::from_slice::<CacherRequest>(message.body()) {
                     Ok(request) => {
-                        if let Err(e) = handle_request(our, state, request) {
+                        if let Err(e) = handle_request(our, &source, state, request) {
                             error!("Error handling request from {:?}: {:?}", source, e);
                         }
                     }
