@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
     "hypermap-cacher",
-    "start"
+    "start-providing",
+    "stop-providing"
 ]
 
 [profile.release]

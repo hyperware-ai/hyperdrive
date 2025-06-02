@@ -65,6 +65,7 @@ interface hypermap-cacher {
         start-providing(result<string, string>),
         stop-providing(result<string, string>),
         rejected,
+        is-starting,
     }
 }
 

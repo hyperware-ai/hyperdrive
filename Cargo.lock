@@ -5767,10 +5767,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
-name = "start"
+name = "start-providing"
 version = "0.1.0"
 dependencies = [
  "hyperware_process_lib 1.1.1",
+ "process_macros",
+ "serde",
+ "serde_json",
  "wit-bindgen",
 ]
 
@@ -5806,6 +5809,17 @@ dependencies = [
  "once_cell",
  "urlencoding 1.3.3",
  "warp",
+]
+
+[[package]]
+name = "stop-providing"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib 1.1.1",
+ "process_macros",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
 ]
 
 [[package]]
