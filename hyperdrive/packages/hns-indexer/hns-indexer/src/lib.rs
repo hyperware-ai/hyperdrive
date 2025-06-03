@@ -189,6 +189,13 @@ impl StateV1 {
                 self.fetch_and_process_logs_filter(notes_filter, maybe_notes_logs);
             }
         }
+
+        if let Err(e) = self.handle_pending_notes() {
+            error!(
+                "fetch_and_process_logs: failed to handle {} pending notes: {e:?}",
+                self.pending_notes.len()
+            );
+        }
     }
 
     /// Get logs for a filter then process them while taking pending notes into account.
@@ -363,7 +370,20 @@ impl StateV1 {
                 }
             }
             "~routers" => {
-                let routers = self.decode_routers(data);
+                let Some(routers) = self.decode_routers(data) else {
+                    if let Some(block_number) = block_number {
+                        self.pending_notes.entry(block_number).or_default().push((
+                            parent_hash.to_string(),
+                            note.to_string(),
+                            data.clone(),
+                            attempt_number,
+                        ));
+                        debug!("note put into pending: {note}");
+                    } else {
+                        error!("note should go into pending, but no block_number given. dropping note. parent_hash, note: {parent_hash}, {note}");
+                    }
+                    return Ok(());
+                };
                 if let Some(node) = self.nodes.get_mut(parent_name) {
                     node.routers = routers;
                     // -> indirect
@@ -452,10 +472,10 @@ impl StateV1 {
 
     /// Decodes bytes under ~routers in hypermap into an array of keccak256 hashes (32 bytes each)
     /// and returns the associated node identities.
-    fn decode_routers(&self, data: &[u8]) -> Vec<String> {
+    fn decode_routers(&self, data: &[u8]) -> Option<Vec<String>> {
         if data.len() % 32 != 0 {
             warn!("got invalid data length for router hashes: {}", data.len());
-            return vec![];
+            return Some(vec![]);
         }
 
         let mut routers = Vec::new();
@@ -464,11 +484,14 @@ impl StateV1 {
 
             match self.names.get(&hash_str) {
                 Some(full_name) => routers.push(full_name.clone()),
-                None => error!("no name found for router hash {hash_str}"),
+                None => {
+                    error!("no name found for router hash {hash_str}");
+                    return None;
+                }
             }
         }
 
-        routers
+        Some(routers)
     }
 
     pub fn fetch_node(&self, timeout: &u64, name: &str) -> Option<net::HnsUpdate> {
@@ -495,7 +518,7 @@ impl StateV1 {
 
             let maybe_routers = hypermap
                 .get(&format!("~routers.{name}"))
-                .map(|(_, _, data)| data.map(|b| self.decode_routers(&b)));
+                .map(|(_, _, data)| data.and_then(|b| self.decode_routers(&b)));
 
             let mut ports = BTreeMap::new();
             if let Ok(Some(Ok(tcp_port))) = maybe_tcp_port {
