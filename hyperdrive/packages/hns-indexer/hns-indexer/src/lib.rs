@@ -177,7 +177,7 @@ impl StateV1 {
         match self.hypermap.bootstrap(
             Some(self.last_block),
             vec![mints_filter.clone(), notes_filter.clone()],
-            nodes,
+            Some((5, 5)),
             None,
         ) {
             Err(e) => println!("bootstrap from cache failed: {e:?}"),

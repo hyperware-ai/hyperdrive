@@ -1,21 +1,23 @@
 use std::{
     cmp::{max, min},
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     str::FromStr,
 };
 
+use alloy::hex;
 use alloy_primitives::keccak256;
 use serde::{Deserialize, Serialize};
 
 use crate::hyperware::process::hypermap_cacher::{
-    CacherRequest, CacherResponse, CacherStatus, LogsMetadata as WitLogsMetadata,
-    Manifest as WitManifest, ManifestItem as WitManifestItem,
+    CacherRequest, CacherResponse, CacherStatus, GetLogsByRangeRequest,
+    LogsMetadata as WitLogsMetadata, Manifest as WitManifest, ManifestItem as WitManifestItem,
 };
 
 use hyperware_process_lib::{
     await_message, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
-    our, set_state, sign, timer, vfs, Address, Message, ProcessId, Response,
+    net::{NetAction, NetResponse},
+    our, set_state, sign, timer, vfs, Address, ProcessId, Request, Response,
 };
 
 wit_bindgen::generate!({
@@ -89,6 +91,8 @@ struct State {
     is_cache_timer_live: bool,
     drive_path: String,
     is_providing: bool,
+    #[serde(skip)]
+    is_starting: bool,
 }
 
 // Generates a timestamp string.
@@ -129,14 +133,29 @@ impl State {
             is_cache_timer_live: false,
             drive_path: drive_path.to_string(),
             is_providing: false,
+            is_starting: true,
         }
     }
 
     fn load(drive_path: &str) -> Self {
         match get_state() {
             Some(state_bytes) => match serde_json::from_slice::<Self>(&state_bytes) {
-                Ok(loaded_state) => {
+                Ok(mut loaded_state) => {
                     info!("Successfully loaded state from checkpoint.");
+                    // Always start in starting mode to bootstrap from other nodes
+                    // is_starting is not serialized, so it defaults to false and we set it to true
+                    loaded_state.is_starting = true;
+                    loaded_state.drive_path = drive_path.to_string();
+
+                    // Validate state against manifest file on disk
+                    if let Err(e) = loaded_state.validate_state_against_manifest() {
+                        warn!("State validation failed: {:?}. Clearing drive and creating fresh state.", e);
+                        if let Err(clear_err) = loaded_state.clear_drive() {
+                            error!("Failed to clear drive: {:?}", clear_err);
+                        }
+                        return Self::new(drive_path);
+                    }
+
                     loaded_state
                 }
                 Err(e) => {
@@ -383,6 +402,362 @@ impl State {
         Ok(())
     }
 
+    // Validate that the in-memory state matches the manifest file on disk
+    fn validate_state_against_manifest(&self) -> anyhow::Result<()> {
+        let manifest_path = format!("{}/{}", self.drive_path, self.manifest.manifest_filename);
+
+        // Check if manifest file exists
+        match vfs::open_file(&manifest_path, false, None) {
+            Ok(manifest_file) => {
+                match manifest_file.read() {
+                    Ok(disk_manifest_bytes) => {
+                        match serde_json::from_slice::<ManifestInternal>(&disk_manifest_bytes) {
+                            Ok(disk_manifest) => {
+                                // Compare key aspects of the manifests
+                                if self.manifest.chain_id != disk_manifest.chain_id {
+                                    return Err(anyhow::anyhow!(
+                                        "Chain ID mismatch: state has {}, disk has {}",
+                                        self.manifest.chain_id,
+                                        disk_manifest.chain_id
+                                    ));
+                                }
+
+                                if self.manifest.protocol_version != disk_manifest.protocol_version
+                                {
+                                    return Err(anyhow::anyhow!(
+                                        "Protocol version mismatch: state has {}, disk has {}",
+                                        self.manifest.protocol_version,
+                                        disk_manifest.protocol_version
+                                    ));
+                                }
+
+                                // Check if all files mentioned in state manifest exist on disk
+                                for (_filename, item) in &self.manifest.items {
+                                    if !item.file_name.is_empty() {
+                                        let file_path =
+                                            format!("{}/{}", self.drive_path, item.file_name);
+                                        if vfs::metadata(&file_path, None).is_err() {
+                                            return Err(anyhow::anyhow!(
+                                                "File {} mentioned in state manifest does not exist on disk",
+                                                item.file_name
+                                            ));
+                                        }
+                                    }
+                                }
+
+                                // Check if disk manifest has more recent data than our state
+                                let disk_max_block = disk_manifest
+                                    .items
+                                    .values()
+                                    .filter_map(|item| item.metadata.to_block.parse::<u64>().ok())
+                                    .max()
+                                    .unwrap_or(0);
+
+                                let state_max_block = self
+                                    .manifest
+                                    .items
+                                    .values()
+                                    .filter_map(|item| item.metadata.to_block.parse::<u64>().ok())
+                                    .max()
+                                    .unwrap_or(0);
+
+                                if disk_max_block > state_max_block {
+                                    return Err(anyhow::anyhow!(
+                                        "Disk manifest has more recent data (block {}) than state (block {})",
+                                        disk_max_block, state_max_block
+                                    ));
+                                }
+
+                                info!("State validation passed - state matches manifest file");
+                                Ok(())
+                            }
+                            Err(e) => {
+                                Err(anyhow::anyhow!("Failed to parse manifest file: {:?}", e))
+                            }
+                        }
+                    }
+                    Err(e) => Err(anyhow::anyhow!("Failed to read manifest file: {:?}", e)),
+                }
+            }
+            Err(_) => {
+                // Manifest file doesn't exist - this is okay for new installs
+                if self.manifest.items.is_empty() {
+                    info!("No manifest file found, but state is also empty - validation passed");
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!(
+                        "State has manifest items but no manifest file exists on disk"
+                    ))
+                }
+            }
+        }
+    }
+
+    // Clear all files from the drive
+    fn clear_drive(&self) -> anyhow::Result<()> {
+        info!("Clearing all files from drive: {}", self.drive_path);
+
+        // Remove the manifest file
+        let manifest_path = format!("{}/{}", self.drive_path, self.manifest.manifest_filename);
+        match vfs::remove_file(&manifest_path, None) {
+            Ok(_) => info!("Removed manifest file: {}", manifest_path),
+            Err(e) => warn!("Failed to remove manifest file {}: {:?}", manifest_path, e),
+        }
+
+        // Remove all files mentioned in the manifest
+        for (_, item) in &self.manifest.items {
+            if !item.file_name.is_empty() {
+                let file_path = format!("{}/{}", self.drive_path, item.file_name);
+                match vfs::remove_file(&file_path, None) {
+                    Ok(_) => info!("Removed cache file: {}", file_path),
+                    Err(e) => warn!("Failed to remove cache file {}: {:?}", file_path, e),
+                }
+            }
+        }
+
+        info!("Drive clearing completed");
+        Ok(())
+    }
+
+    // Bootstrap state from other nodes, then fallback to RPC
+    fn bootstrap_state(&mut self, hypermap: &hypermap::Hypermap) -> anyhow::Result<()> {
+        info!("Starting state bootstrap process...");
+
+        // Try to bootstrap from other nodes first
+        if let Ok(()) = self.try_bootstrap_from_nodes() {
+            info!("Successfully bootstrapped from other nodes");
+        } else {
+            info!("Failed to bootstrap from other nodes, falling back to RPC");
+            self.try_bootstrap_from_rpc(hypermap)?;
+        }
+
+        // Mark as no longer starting
+        self.is_starting = false;
+        self.save();
+        info!("Bootstrap process completed, cacher is now ready");
+        Ok(())
+    }
+
+    // Try to bootstrap from other hypermap-cacher nodes
+    fn try_bootstrap_from_nodes(&mut self) -> anyhow::Result<()> {
+        let default_nodes: Vec<String> = vec!["nick.hypr".into()];
+        let nodes: HashSet<String> = default_nodes.into_iter().collect();
+
+        if nodes.is_empty() {
+            info!("No nodes configured for bootstrap, will fallback to RPC");
+            return Err(anyhow::anyhow!("No nodes configured for bootstrap"));
+        }
+
+        info!("Attempting to bootstrap from {} nodes", nodes.len());
+
+        let mut nodes_not_yet_in_net = nodes.clone();
+        let num_retries = 10;
+        for _ in 0..num_retries {
+            for node in nodes_not_yet_in_net.clone() {
+                let Ok(Ok(response)) = Request::new()
+                    .target(("our", "net", "distro", "sys"))
+                    .body(rmp_serde::to_vec(&NetAction::GetPeer(node.clone())).unwrap())
+                    .send_and_await_response(1)
+                else {
+                    continue;
+                };
+                if let Ok(NetResponse::Peer(_)) =
+                    rmp_serde::from_slice::<NetResponse>(response.body())
+                {
+                    nodes_not_yet_in_net.remove(&node);
+                }
+            }
+            if nodes_not_yet_in_net.is_empty() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        if !nodes_not_yet_in_net.is_empty() {
+            error!("failed to get peering info for {nodes_not_yet_in_net:?}");
+        }
+
+        for node in nodes {
+            info!("Requesting logs from node: {}", node);
+
+            let cacher_process_address =
+                Address::new(&node, ("hypermap-cacher", "hypermap-cacher", "sys"));
+
+            if cacher_process_address == our() {
+                continue;
+            }
+
+            let get_logs_request = GetLogsByRangeRequest {
+                from_block: self.last_cached_block + 1,
+                to_block: None, // Get all available logs
+            };
+
+            match Request::to(cacher_process_address.clone())
+                .body(CacherRequest::GetLogsByRange(get_logs_request))
+                .send_and_await_response(15)
+            {
+                Ok(Ok(response_msg)) => match response_msg.body().try_into() {
+                    Ok(CacherResponse::GetLogsByRange(Ok(json_string))) => {
+                        if let Ok(log_caches) =
+                            serde_json::from_str::<Vec<LogCacheInternal>>(&json_string)
+                        {
+                            self.process_received_log_caches(log_caches)?;
+                            return Ok(());
+                        }
+                    }
+                    Ok(CacherResponse::GetLogsByRange(Err(e))) => {
+                        warn!("Node {} returned error: {}", cacher_process_address, e);
+                    }
+                    Ok(CacherResponse::IsStarting) => {
+                        info!(
+                            "Node {} is still starting, trying next node",
+                            cacher_process_address
+                        );
+                    }
+                    Ok(CacherResponse::Rejected) => {
+                        warn!("Node {} rejected our request", cacher_process_address);
+                    }
+                    Ok(_) => {
+                        warn!(
+                            "Node {} returned unexpected response type",
+                            cacher_process_address
+                        );
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to parse response from {}: {:?}",
+                            cacher_process_address, e
+                        );
+                    }
+                },
+                Ok(Err(e)) => {
+                    warn!("Error response from {}: {:?}", cacher_process_address, e);
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to send request to {}: {:?}",
+                        cacher_process_address, e
+                    );
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!("Failed to bootstrap from any node"))
+    }
+
+    // Process received log caches and write them to VFS
+    fn process_received_log_caches(
+        &mut self,
+        log_caches: Vec<LogCacheInternal>,
+    ) -> anyhow::Result<()> {
+        info!("Processing {} received log caches", log_caches.len());
+
+        for log_cache in log_caches {
+            // Validate the log cache signature
+            if !self.validate_log_cache(&log_cache)? {
+                warn!("Invalid log cache signature, skipping");
+                continue;
+            }
+
+            // Generate filename from metadata
+            let filename = format!(
+                "{}-chain{}-from{}-to{}-protocol{}.json",
+                log_cache
+                    .metadata
+                    .time_created
+                    .replace(":", "")
+                    .replace("-", ""),
+                log_cache.metadata.chain_id,
+                log_cache.metadata.from_block,
+                log_cache.metadata.to_block,
+                PROTOCOL_VERSION
+            );
+
+            // Write log cache to VFS
+            let file_path = format!("{}/{}", self.drive_path, filename);
+            let log_cache_bytes = serde_json::to_vec(&log_cache)?;
+
+            let mut file = vfs::open_file(&file_path, true, None)?;
+            file.write_all(&log_cache_bytes)?;
+
+            info!("Wrote log cache file: {}", file_path);
+
+            // Update manifest
+            let file_hash = format!("0x{}", hex::encode(keccak256(&log_cache_bytes)));
+            let manifest_item = ManifestItemInternal {
+                metadata: log_cache.metadata.clone(),
+                is_empty: log_cache.logs.is_empty(),
+                file_hash,
+                file_name: filename.clone(),
+            };
+
+            self.manifest.items.insert(filename, manifest_item);
+
+            // Update last cached block if this cache goes beyond it
+            if let Ok(to_block) = log_cache.metadata.to_block.parse::<u64>() {
+                if to_block > self.last_cached_block {
+                    self.last_cached_block = to_block;
+                }
+            }
+        }
+
+        // Write updated manifest
+        self.write_manifest()?;
+
+        Ok(())
+    }
+
+    // Validate a log cache signature
+    fn validate_log_cache(&self, log_cache: &LogCacheInternal) -> anyhow::Result<bool> {
+        let from_block = log_cache.metadata.from_block.parse::<u64>()?;
+        let to_block = log_cache.metadata.to_block.parse::<u64>()?;
+
+        let mut bytes_to_verify = serde_json::to_vec(&log_cache.logs)?;
+        bytes_to_verify.extend_from_slice(&from_block.to_be_bytes());
+        bytes_to_verify.extend_from_slice(&to_block.to_be_bytes());
+        let hashed_data = keccak256(&bytes_to_verify);
+
+        let signature_hex = log_cache.metadata.signature.trim_start_matches("0x");
+        let signature_bytes = hex::decode(signature_hex)?;
+
+        let created_by_address = log_cache.metadata.created_by.parse::<Address>()?;
+
+        Ok(sign::net_key_verify(
+            hashed_data.to_vec(),
+            &created_by_address,
+            signature_bytes,
+        )?)
+    }
+
+    // Write manifest to VFS
+    fn write_manifest(&self) -> anyhow::Result<()> {
+        let manifest_bytes = serde_json::to_vec(&self.manifest)?;
+        let manifest_path = format!("{}/{}", self.drive_path, self.manifest.manifest_filename);
+        let manifest_file = vfs::open_file(&manifest_path, true, None)?;
+        manifest_file.write(&manifest_bytes)?;
+        info!("Updated manifest file: {}", manifest_path);
+        Ok(())
+    }
+
+    // Fallback to RPC bootstrap - catch up from where we left off
+    fn try_bootstrap_from_rpc(&mut self, hypermap: &hypermap::Hypermap) -> anyhow::Result<()> {
+        info!(
+            "Bootstrapping from RPC, starting from block {}",
+            self.last_cached_block + 1
+        );
+
+        // Only run RPC bootstrap if we're behind the current chain head
+        let current_chain_head = hypermap.provider.get_block_number()?;
+        if self.last_cached_block < current_chain_head {
+            self.cache_logs_and_update_manifest(hypermap)?;
+        } else {
+            info!(
+                "Already caught up to chain head ({}), no RPC bootstrap needed",
+                current_chain_head
+            );
+        }
+        Ok(())
+    }
+
     fn to_wit_manifest(&self) -> WitManifest {
         let items = self
             .manifest
@@ -511,6 +886,12 @@ fn handle_request(
     request: CacherRequest,
 ) -> anyhow::Result<()> {
     let is_local = is_local_request(our, source);
+
+    // If we're still starting, respond with IsStarting to all requests
+    if state.is_starting {
+        Response::new().body(CacherResponse::IsStarting).send()?;
+        return Ok(());
+    }
 
     if !is_local && source.process.to_string() != "hypermap-cacher:hypermap-cacher:sys" {
         warn!("Rejecting remote request from non-hypermap-cacher: {source}");
@@ -708,11 +1089,11 @@ fn main_loop(
     );
     info!("Last cached block: {}", state.last_cached_block);
 
-    // Initial cache cycle attempt if just started and behind.
-    if state.last_cached_block < hypermap.provider.get_block_number().unwrap_or(0) {
-        match state.cache_logs_and_update_manifest(hypermap) {
-            Ok(_) => info!("Initial catch-up cache cycle complete."),
-            Err(e) => error!("Error during initial catch-up cache cycle: {:?}", e),
+    // Always bootstrap on start to get latest state from other nodes or RPC
+    if state.is_starting {
+        match state.bootstrap_state(hypermap) {
+            Ok(_) => info!("Bootstrap process completed successfully."),
+            Err(e) => error!("Error during bootstrap process: {:?}", e),
         }
     }
 

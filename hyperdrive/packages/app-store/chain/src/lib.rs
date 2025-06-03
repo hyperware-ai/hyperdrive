@@ -839,11 +839,12 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
         .provider
         .subscribe_loop(SUBSCRIPTION_NUMBER, filter.clone(), 1, 0);
 
-    let nodes: HashSet<String> = ["nick.hypr".to_string()].into_iter().collect();
-    match state
-        .hypermap
-        .bootstrap(Some(last_saved_block), vec![filter.clone()], nodes, None)
-    {
+    match state.hypermap.bootstrap(
+        Some(last_saved_block),
+        vec![filter.clone()],
+        Some((5, 5)),
+        None,
+    ) {
         Err(e) => println!("bootstrap from cache failed: {e:?}"),
         Ok(mut logs) => {
             assert_eq!(logs.len(), 1);

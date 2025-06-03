@@ -8,6 +8,7 @@
             "eth:distro:sys",
             "http-server:distro:sys",
             "sign:sign:sys",
+            "terminal:terminal:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],
@@ -15,6 +16,7 @@
             "eth:distro:sys",
             "http-server:distro:sys",
             "sign:sign:sys",
+            "terminal:terminal:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],

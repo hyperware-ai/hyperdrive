@@ -1628,6 +1628,7 @@ dependencies = [
 name = "hypermap-cacher"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "alloy-primitives",
  "alloy-sol-types",
  "anyhow",
@@ -1635,6 +1636,7 @@ dependencies = [
  "hex",
  "hyperware_process_lib",
  "process_macros",
+ "rmp-serde",
  "serde",
  "serde_json",
  "wit-bindgen",
