@@ -560,7 +560,7 @@ impl State {
                 else {
                     continue;
                 };
-                if let Ok(NetResponse::Peer(_)) =
+                if let Ok(NetResponse::Peer(Some(_))) =
                     rmp_serde::from_slice::<NetResponse>(response.body())
                 {
                     nodes_not_yet_in_net.remove(&node);
