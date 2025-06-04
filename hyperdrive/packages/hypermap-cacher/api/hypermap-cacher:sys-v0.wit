@@ -32,6 +32,11 @@ interface hypermap-cacher {
         to-block: option<u64>, // If None, signifies to the latest available/relevant cached block.
     }
 
+    variant get-logs-by-range-ok-response {
+        logs(tuple<u64, string>),
+        latest(u64),
+    }
+
     // Defines the types of requests that can be sent to the Hypermap Cacher process.
     variant cacher-request {
         get-manifest,
@@ -61,7 +66,7 @@ interface hypermap-cacher {
         get-manifest(option<manifest>),
         get-log-cache-content(result<option<string>, string>),
         get-status(cacher-status),
-        get-logs-by-range(result<string, string>),
+        get-logs-by-range(result<get-logs-by-range-ok-response, string>),
         start-providing(result<string, string>),
         stop-providing(result<string, string>),
         rejected,

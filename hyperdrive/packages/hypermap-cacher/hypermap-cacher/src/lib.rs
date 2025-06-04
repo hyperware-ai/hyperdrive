@@ -9,7 +9,7 @@ use alloy_primitives::keccak256;
 use serde::{Deserialize, Serialize};
 
 use crate::hyperware::process::hypermap_cacher::{
-    CacherRequest, CacherResponse, CacherStatus, GetLogsByRangeRequest,
+    CacherRequest, CacherResponse, CacherStatus, GetLogsByRangeOkResponse, GetLogsByRangeRequest,
     LogsMetadata as WitLogsMetadata, Manifest as WitManifest, ManifestItem as WitManifestItem,
 };
 
@@ -595,20 +595,25 @@ impl State {
                 .send_and_await_response(15)
             {
                 Ok(Ok(response_msg)) => match response_msg.body().try_into() {
-                    Ok(CacherResponse::GetLogsByRange(Ok(json_string))) => {
-                        if let Ok(log_caches) =
-                            serde_json::from_str::<Vec<LogCacheInternal>>(&json_string)
-                        {
-                            self.process_received_log_caches(log_caches)?;
-                            return Ok(());
-                        } else {
-                            if let Ok(block) = json_string.parse::<u64>() {
+                    Ok(CacherResponse::GetLogsByRange(Ok(get_logs))) => {
+                        match get_logs {
+                            GetLogsByRangeOkResponse::Logs((block, json_string)) => {
+                                if let Ok(log_caches) =
+                                    serde_json::from_str::<Vec<LogCacheInternal>>(&json_string)
+                                {
+                                    self.process_received_log_caches(log_caches)?;
+                                }
                                 if block > self.last_cached_block {
                                     self.last_cached_block = block;
                                 }
-                                return Ok(());
+                            }
+                            GetLogsByRangeOkResponse::Latest(block) => {
+                                if block > self.last_cached_block {
+                                    self.last_cached_block = block;
+                                }
                             }
                         }
+                        return Ok(());
                     }
                     Ok(CacherResponse::GetLogsByRange(Err(e))) => {
                         warn!("Node {} returned error: {}", cacher_process_address, e);
@@ -1040,10 +1045,14 @@ fn handle_request(
                 .sort_by_key(|cache| cache.metadata.from_block.parse::<u64>().unwrap_or(0));
 
             if relevant_caches.is_empty() {
-                CacherResponse::GetLogsByRange(Ok(format!("{}", state.last_cached_block)))
+                CacherResponse::GetLogsByRange(Ok(GetLogsByRangeOkResponse::Latest(
+                    state.last_cached_block,
+                )))
             } else {
                 match serde_json::to_string(&relevant_caches) {
-                    Ok(json_string) => CacherResponse::GetLogsByRange(Ok(json_string)),
+                    Ok(json_string) => CacherResponse::GetLogsByRange(Ok(
+                        GetLogsByRangeOkResponse::Logs((state.last_cached_block, json_string)),
+                    )),
                     Err(e) => CacherResponse::GetLogsByRange(Err(format!(
                         "Failed to serialize relevant caches: {e}"
                     ))),
