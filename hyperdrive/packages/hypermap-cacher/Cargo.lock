@@ -1634,7 +1634,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "hex",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib?rev=57b0593)",
  "process_macros",
  "rmp-serde",
  "serde",
@@ -1646,6 +1646,30 @@ dependencies = [
 name = "hyperware_process_lib"
 version = "1.1.1"
 source = "git+https://github.com/hyperware-ai/process_lib?rev=40d3daf#40d3dafe77ef782b5067f66753434933f4a199a2"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "base64",
+ "bincode",
+ "http",
+ "mime_guess",
+ "rand 0.8.5",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "url",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "hyperware_process_lib"
+version = "1.1.1"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=57b0593#57b0593684814a1ba18cdd090ed2f8e198db9c55"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -3039,7 +3063,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 name = "start-providing"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib?rev=40d3daf)",
  "process_macros",
  "serde",
  "serde_json",
@@ -3056,7 +3080,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "stop-providing"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib?rev=40d3daf)",
  "process_macros",
  "serde",
  "serde_json",

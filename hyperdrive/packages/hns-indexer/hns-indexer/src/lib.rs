@@ -159,7 +159,7 @@ impl StateV1 {
     }
 
     fn fetch_and_process_logs(&mut self, nodes: HashSet<String>) {
-        let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
+        let (mints_filter, notes_filter) = make_filters();
 
         // confirm or try to get networking info for bootstrap nodes
         for node in nodes.iter() {
@@ -176,12 +176,18 @@ impl StateV1 {
 
         match self.hypermap.bootstrap(
             Some(self.last_block),
-            vec![mints_filter.clone(), notes_filter.clone()],
-            Some((5, 5)),
+            vec![mints_filter, notes_filter],
+            Some((5, None)),
             None,
         ) {
             Err(e) => println!("bootstrap from cache failed: {e:?}"),
-            Ok(mut logs) => {
+            Ok((block, mut logs)) => {
+                if block > self.last_block {
+                    self.last_block = block;
+                }
+                // make new filters with updated `last_block`
+                let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
+
                 assert_eq!(logs.len(), 2);
                 let maybe_notes_logs = logs.pop();
                 let maybe_mints_logs = logs.pop();
@@ -458,7 +464,9 @@ impl StateV1 {
         let block_number = self.hypermap.provider.get_block_number();
         if let Ok(block_number) = block_number {
             debug!("new block: {block_number}");
-            self.last_block = block_number;
+            if block_number > self.last_block {
+                self.last_block = block_number;
+            }
             if is_checkpoint {
                 self.is_checkpoint_timer_live = false;
                 self.save();

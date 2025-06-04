@@ -566,7 +566,7 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "bincode",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "rand",
  "serde",
@@ -932,7 +932,7 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "bincode",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=57b0593)",
  "process_macros",
  "rand",
  "serde",
@@ -1136,7 +1136,7 @@ name = "download"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "serde",
  "serde_json",
@@ -1148,7 +1148,7 @@ name = "downloads"
 version = "0.5.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "rand",
  "serde",
@@ -1324,7 +1324,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "bincode",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "rand",
  "serde",
@@ -1640,7 +1640,31 @@ dependencies = [
 [[package]]
 name = "hyperware_process_lib"
 version = "1.1.1"
-source = "git+https://github.com/hyperware-ai/process_lib.git?rev=befacd1#befacd1313cf9b5afdfc50e1f8ca2a223fda024b"
+source = "git+https://github.com/hyperware-ai/process_lib.git?rev=57b0593#57b0593684814a1ba18cdd090ed2f8e198db9c55"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "base64",
+ "bincode",
+ "http",
+ "mime_guess",
+ "rand",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "url",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "hyperware_process_lib"
+version = "1.1.1"
+source = "git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321#60e73210f22ff5684b7f7d715adafd8196e3bf97"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1842,7 +1866,7 @@ name = "install"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "serde",
  "serde_json",
@@ -2536,7 +2560,7 @@ name = "reset-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "serde",
  "serde_json",
@@ -3306,7 +3330,7 @@ name = "uninstall"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib",
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib.git?rev=60e7321)",
  "process_macros",
  "serde",
  "serde_json",

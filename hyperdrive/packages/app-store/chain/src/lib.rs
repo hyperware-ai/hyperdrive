@@ -839,14 +839,16 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
         .provider
         .subscribe_loop(SUBSCRIPTION_NUMBER, filter.clone(), 1, 0);
 
+    let mut maybe_block = None;
     match state.hypermap.bootstrap(
         Some(last_saved_block),
         vec![filter.clone()],
-        Some((5, 5)),
+        Some((5, None)),
         None,
     ) {
         Err(e) => println!("bootstrap from cache failed: {e:?}"),
-        Ok(mut logs) => {
+        Ok((block, mut logs)) => {
+            maybe_block = Some(block);
             assert_eq!(logs.len(), 1);
             if let Some(logs) = logs.pop() {
                 for log in logs {
@@ -862,14 +864,17 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
     //  need to update here so we can update block number or else `fetch_logs()`
     //  will grab blocks we just got from cache!
     update_all_metadata(state, last_saved_block);
-    // save updated last_saved_block
-    if let Ok(block_number) = state.hypermap.provider.get_block_number() {
-        state.last_saved_block = block_number;
-        if let Err(e) = state.db.set_last_saved_block(block_number) {
-            print_to_terminal(0, &format!("error saving last block after startup: {e}"));
+    if let Some(block) = maybe_block {
+        if block > state.last_saved_block {
+            // save updated last_saved_block
+            state.last_saved_block = block;
+            if let Err(e) = state.db.set_last_saved_block(block) {
+                print_to_terminal(0, &format!("error saving last block after startup: {e}"));
+            }
         }
     }
 
+    let block_from_cache = state.last_saved_block;
     // println!("fetching old logs from block {last_saved_block}");
     for log in fetch_logs(
         &state.hypermap.provider,
@@ -881,14 +886,7 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
     }
 
     // update metadata for any noncached elements
-    update_all_metadata(state, last_saved_block);
-    // save updated last_saved_block
-    if let Ok(block_number) = state.hypermap.provider.get_block_number() {
-        state.last_saved_block = block_number;
-        if let Err(e) = state.db.set_last_saved_block(block_number) {
-            print_to_terminal(0, &format!("error saving last block after startup: {e}"));
-        }
-    }
+    update_all_metadata(state, block_from_cache);
 }
 
 /// fetch logs from the chain with a given filter
