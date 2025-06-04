@@ -38,7 +38,7 @@ use hyperware_process_lib::{
     timer, Address, Message, PackageId, Request, Response,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 wit_bindgen::generate!({
@@ -858,6 +858,18 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
         }
     }
 
+    // update metadata for all cached elements:
+    //  need to update here so we can update block number or else `fetch_logs()`
+    //  will grab blocks we just got from cache!
+    update_all_metadata(state, last_saved_block);
+    // save updated last_saved_block
+    if let Ok(block_number) = state.hypermap.provider.get_block_number() {
+        state.last_saved_block = block_number;
+        if let Err(e) = state.db.set_last_saved_block(block_number) {
+            print_to_terminal(0, &format!("error saving last block after startup: {e}"));
+        }
+    }
+
     // println!("fetching old logs from block {last_saved_block}");
     for log in fetch_logs(
         &state.hypermap.provider,
@@ -868,6 +880,7 @@ pub fn fetch_and_subscribe_logs(our: &Address, state: &mut State, last_saved_blo
         };
     }
 
+    // update metadata for any noncached elements
     update_all_metadata(state, last_saved_block);
     // save updated last_saved_block
     if let Ok(block_number) = state.hypermap.provider.get_block_number() {

@@ -526,10 +526,9 @@ impl State {
         // Try to bootstrap from other nodes first
         if let Ok(()) = self.try_bootstrap_from_nodes() {
             info!("Successfully bootstrapped from other nodes");
-        } else {
-            info!("Failed to bootstrap from other nodes, falling back to RPC");
-            self.try_bootstrap_from_rpc(hypermap)?;
         }
+
+        self.try_bootstrap_from_rpc(hypermap)?;
 
         // Mark as no longer starting
         self.is_starting = false;
@@ -602,6 +601,13 @@ impl State {
                         {
                             self.process_received_log_caches(log_caches)?;
                             return Ok(());
+                        } else {
+                            if let Ok(block) = json_string.parse::<u64>() {
+                                if block > self.last_cached_block {
+                                    self.last_cached_block = block;
+                                }
+                                return Ok(());
+                            }
                         }
                     }
                     Ok(CacherResponse::GetLogsByRange(Err(e))) => {
@@ -975,7 +981,7 @@ fn handle_request(
             let req_from_block = req_params.from_block;
             // If req_params.to_block is None, we effectively want to go up to the highest block available in caches.
             // For simplicity in overlap calculation, we can treat None as u64::MAX here.
-            let req_to_block_opt = req_params.to_block;
+            let effective_req_to_block = req_params.to_block.unwrap_or(u64::MAX);
 
             for item in state.manifest.items.values() {
                 // Skip items that don't have an actual file (e.g., empty log ranges not written to disk).
@@ -1004,9 +1010,6 @@ fn handle_request(
                     }
                 };
 
-                // Determine effective request to_block for overlap check
-                let effective_req_to_block = req_to_block_opt.unwrap_or(u64::MAX);
-
                 // Check for overlap: max(start1, start2) <= min(end1, end2)
                 if max(req_from_block, cache_from) <= min(effective_req_to_block, cache_to) {
                     // This cache file overlaps with the requested range.
@@ -1027,7 +1030,7 @@ fn handle_request(
                             }
                             Err(e) => error!("Failed to read VFS file {}: {:?}", item.file_name, e),
                         },
-                        Err(e) => error!("Failed to open VFS file {}: {:?}", item.file_name, e),
+                        Err(e) => error!("Failed to open VFS file {}: {e:?}", item.file_name),
                     }
                 }
             }
@@ -1036,12 +1039,15 @@ fn handle_request(
             relevant_caches
                 .sort_by_key(|cache| cache.metadata.from_block.parse::<u64>().unwrap_or(0));
 
-            match serde_json::to_string(&relevant_caches) {
-                Ok(json_string) => CacherResponse::GetLogsByRange(Ok(json_string)),
-                Err(e) => CacherResponse::GetLogsByRange(Err(format!(
-                    "Failed to serialize relevant caches: {}",
-                    e
-                ))),
+            if relevant_caches.is_empty() {
+                CacherResponse::GetLogsByRange(Ok(format!("{}", state.last_cached_block)))
+            } else {
+                match serde_json::to_string(&relevant_caches) {
+                    Ok(json_string) => CacherResponse::GetLogsByRange(Ok(json_string)),
+                    Err(e) => CacherResponse::GetLogsByRange(Err(format!(
+                        "Failed to serialize relevant caches: {e}"
+                    ))),
+                }
             }
         }
         CacherRequest::StartProviding => {

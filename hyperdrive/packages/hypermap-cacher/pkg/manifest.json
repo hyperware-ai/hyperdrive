@@ -7,6 +7,7 @@
         "request_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
             "timer:distro:sys",
@@ -15,6 +16,7 @@
         "grant_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
             "timer:distro:sys",
