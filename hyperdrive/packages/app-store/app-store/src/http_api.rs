@@ -830,29 +830,29 @@ fn serve_paths(
             {
                 match kind {
                     SendErrorKind::Timeout => {
-                        let check_reponse = MirrorCheck {
+                        let check_response = MirrorCheck {
                             node: node.to_string(),
                             is_online: false,
                             error: Some(format!("node {} timed out", node).to_string()),
                         };
-                        return Ok((StatusCode::OK, None, serde_json::to_vec(&check_reponse)?));
+                        return Ok((StatusCode::OK, None, serde_json::to_vec(&check_response)?));
                     }
                     SendErrorKind::Offline => {
-                        let check_reponse = MirrorCheck {
+                        let check_response = MirrorCheck {
                             node: node.to_string(),
                             is_online: false,
                             error: Some(format!("node {} is offline", node).to_string()),
                         };
-                        return Ok((StatusCode::OK, None, serde_json::to_vec(&check_reponse)?));
+                        return Ok((StatusCode::OK, None, serde_json::to_vec(&check_response)?));
                     }
                 }
             } else {
-                let check_reponse = MirrorCheck {
+                let check_response = MirrorCheck {
                     node: node.to_string(),
                     is_online: true,
                     error: None,
                 };
-                return Ok((StatusCode::OK, None, serde_json::to_vec(&check_reponse)?));
+                return Ok((StatusCode::OK, None, serde_json::to_vec(&check_response)?));
             }
         }
         _ => Ok((
