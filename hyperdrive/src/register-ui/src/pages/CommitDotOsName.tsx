@@ -11,7 +11,8 @@ import { Tooltip } from "../components/Tooltip";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
 import { dotOsAbi, DOTOS } from "../abis";
-import { stringToHex, encodeAbiParameters, parseAbiParameters, keccak256 } from "viem";
+import { createPublicClient, http, stringToHex, encodeAbiParameters, parseAbiParameters, keccak256, BaseError, ContractFunctionRevertedError } from "viem";
+import { base } from 'viem/chains'
 import BackButton from "../components/BackButton";
 interface RegisterOsNameProps extends PageProps { }
 
@@ -76,13 +77,35 @@ function CommitDotOsName({
                 [stringToHex(name), address]
             )
         )
-        writeContract({
-            abi: dotOsAbi,
-            address: DOTOS,
-            functionName: 'commit',
-            args: [commit],
-            gas: 1000000n,
-        })
+
+        const publicClient = createPublicClient({
+            chain: base,
+            transport: http(),
+        });
+
+        try {
+            const { request } = await publicClient.simulateContract({
+                abi: dotOsAbi,
+                address: DOTOS,
+                functionName: 'commit',
+                args: [commit],
+                account: address
+            });
+
+            writeContract(request);
+        } catch (err) {
+            if (err instanceof BaseError) {
+                const revertError = err.walk(err => err instanceof ContractFunctionRevertedError)
+                if (revertError instanceof ContractFunctionRevertedError) {
+                    if (revertError?.data) {
+                        const errorName = revertError.data.errorName;
+                        const args = revertError.data.args;
+                        console.log(`Reverted with ${errorName}`, args);
+                    }
+                }
+            }
+            throw err;
+        }
 
     }, [name, direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
 

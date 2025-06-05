@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "hypermap-cacher",
+    "reset-cache",
+    "set-nodes",
+    "start-providing",
+    "stop-providing"
+]
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true

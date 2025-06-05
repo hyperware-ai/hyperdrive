@@ -3,19 +3,23 @@
         "process_name": "hns-indexer",
         "process_wasm_path": "/hns-indexer.wasm",
         "on_exit": "Restart",
-        "request_networking": false,
+        "request_networking": true,
         "request_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys",
             "kv:distro:sys",
             "net:distro:sys",
+            "sign:sign:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],
         "grant_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys",
             "kv:distro:sys",
+            "sign:sign:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],

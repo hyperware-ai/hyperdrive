@@ -11,7 +11,7 @@ use hyperware_process_lib::{
     Message, Request, Response,
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     str::FromStr,
 };
@@ -70,6 +70,7 @@ struct StateV1 {
     /// notes are under a mint; in case they come out of order, store till next block
     // #[serde(skip)] // TODO: ?
     pending_notes: PendingNotes,
+    #[serde(skip)]
     is_checkpoint_timer_live: bool,
 }
 
@@ -138,14 +139,15 @@ impl StateV1 {
         }
     }
 
-    /// loops through saved nodes, and sends them to net
+    /// sends saved nodes to net
+    ///
     /// called upon bootup
     fn send_nodes(&self) -> anyhow::Result<()> {
-        for node in self.nodes.values() {
-            Request::to(("our", "net", "distro", "sys"))
-                .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(node.clone()))?)
-                .send()?;
-        }
+        Request::to(("our", "net", "distro", "sys"))
+            .body(rmp_serde::to_vec(&net::NetAction::HnsBatchUpdate(
+                self.nodes.values().cloned().collect(),
+            ))?)
+            .send()?;
         Ok(())
     }
 
@@ -156,15 +158,67 @@ impl StateV1 {
         self.hypermap.provider.subscribe_loop(2, notes_filter, 1, 0);
     }
 
-    fn fetch_and_process_logs(&mut self) {
-        let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
+    fn fetch_and_process_logs(&mut self, nodes: HashSet<String>) {
+        let (mints_filter, notes_filter) = make_filters();
 
-        self.fetch_and_process_logs_filter(mints_filter);
-        self.fetch_and_process_logs_filter(notes_filter);
+        // confirm or try to get networking info for bootstrap nodes
+        for node in nodes.iter() {
+            match self.handle_node_info_request(node, &None) {
+                Err(e) => println!("bootstrap node {node} lookup failed: {e}"),
+                Ok(IndexerResponse::NodeInfo(Some(WitHnsUpdate { routers, .. }))) => {
+                    if !routers.is_empty() {
+                        println!("bootstrap node {node} is indirect; recommend using direct bootstrap nodes");
+                    }
+                }
+                Ok(_) => {}
+            }
+        }
+
+        match self.hypermap.bootstrap(
+            Some(self.last_block),
+            vec![mints_filter, notes_filter],
+            Some((5, None)),
+            None,
+        ) {
+            Err(e) => println!("bootstrap from cache failed: {e:?}"),
+            Ok((block, mut logs)) => {
+                if block > self.last_block {
+                    self.last_block = block;
+                }
+                // make new filters with updated `last_block`
+                let (mints_filter, notes_filter) = make_filters_with_from_to(Some(self.last_block));
+
+                assert_eq!(logs.len(), 2);
+                let maybe_notes_logs = logs.pop();
+                let maybe_mints_logs = logs.pop();
+                self.fetch_and_process_logs_filter(mints_filter, maybe_mints_logs);
+                self.fetch_and_process_logs_filter(notes_filter, maybe_notes_logs);
+            }
+        }
+
+        if let Err(e) = self.handle_pending_notes() {
+            error!(
+                "fetch_and_process_logs: failed to handle {} pending notes: {e:?}",
+                self.pending_notes.len()
+            );
+        }
     }
 
     /// Get logs for a filter then process them while taking pending notes into account.
-    fn fetch_and_process_logs_filter(&mut self, filter: eth::Filter) {
+    fn fetch_and_process_logs_filter(
+        &mut self,
+        filter: eth::Filter,
+        maybe_logs: Option<Vec<eth::Log>>,
+    ) {
+        if let Some(logs) = maybe_logs {
+            debug!("cached log len: {}", logs.len());
+            for log in logs {
+                if let Err(e) = self.handle_log(&log) {
+                    error!("log-handling error! {e:?}");
+                }
+            }
+        }
+
         loop {
             match self.hypermap.provider.get_logs(&filter) {
                 Ok(logs) => {
@@ -216,7 +270,9 @@ impl StateV1 {
 
     fn handle_log(&mut self, log: &eth::Log) -> anyhow::Result<()> {
         if let Some(block) = log.block_number {
-            self.last_block = block;
+            if block > self.last_block {
+                self.last_block = block;
+            }
         }
 
         match log.topics()[0] {
@@ -320,7 +376,20 @@ impl StateV1 {
                 }
             }
             "~routers" => {
-                let routers = self.decode_routers(data);
+                let Some(routers) = self.decode_routers(data) else {
+                    if let Some(block_number) = block_number {
+                        self.pending_notes.entry(block_number).or_default().push((
+                            parent_hash.to_string(),
+                            note.to_string(),
+                            data.clone(),
+                            attempt_number,
+                        ));
+                        debug!("note put into pending: {note}");
+                    } else {
+                        error!("note should go into pending, but no block_number given. dropping note. parent_hash, note: {parent_hash}, {note}");
+                    }
+                    return Ok(());
+                };
                 if let Some(node) = self.nodes.get_mut(parent_name) {
                     node.routers = routers;
                     // -> indirect
@@ -395,7 +464,9 @@ impl StateV1 {
         let block_number = self.hypermap.provider.get_block_number();
         if let Ok(block_number) = block_number {
             debug!("new block: {block_number}");
-            self.last_block = block_number;
+            if block_number > self.last_block {
+                self.last_block = block_number;
+            }
             if is_checkpoint {
                 self.is_checkpoint_timer_live = false;
                 self.save();
@@ -409,10 +480,10 @@ impl StateV1 {
 
     /// Decodes bytes under ~routers in hypermap into an array of keccak256 hashes (32 bytes each)
     /// and returns the associated node identities.
-    fn decode_routers(&self, data: &[u8]) -> Vec<String> {
+    fn decode_routers(&self, data: &[u8]) -> Option<Vec<String>> {
         if data.len() % 32 != 0 {
             warn!("got invalid data length for router hashes: {}", data.len());
-            return vec![];
+            return Some(vec![]);
         }
 
         let mut routers = Vec::new();
@@ -421,11 +492,14 @@ impl StateV1 {
 
             match self.names.get(&hash_str) {
                 Some(full_name) => routers.push(full_name.clone()),
-                None => error!("no name found for router hash {hash_str}"),
+                None => {
+                    error!("no name found for router hash {hash_str}");
+                    return None;
+                }
             }
         }
 
-        routers
+        Some(routers)
     }
 
     pub fn fetch_node(&self, timeout: &u64, name: &str) -> Option<net::HnsUpdate> {
@@ -452,7 +526,7 @@ impl StateV1 {
 
             let maybe_routers = hypermap
                 .get(&format!("~routers.{name}"))
-                .map(|(_, _, data)| data.map(|b| self.decode_routers(&b)));
+                .map(|(_, _, data)| data.and_then(|b| self.decode_routers(&b)));
 
             let mut ports = BTreeMap::new();
             if let Ok(Some(Ok(tcp_port))) = maybe_tcp_port {
@@ -502,31 +576,7 @@ impl StateV1 {
                 IndexerResponse::Name(self.names.get(hash).cloned())
             }
             IndexerRequest::NodeInfo(NodeInfoRequest { ref name, .. }) => {
-                match self.nodes.get(name) {
-                    Some(node) => IndexerResponse::NodeInfo(Some(node.clone().into())),
-                    None => {
-                        // we don't have the node in our state: try hypermap.get()
-                        //  to see if it exists onchain and the indexer missed it
-                        let mut response = IndexerResponse::NodeInfo(None);
-                        if let Some(timeout) = expects_response {
-                            if let Some(hns_update) = self.fetch_node(timeout, name) {
-                                response =
-                                    IndexerResponse::NodeInfo(Some(hns_update.clone().into()));
-                                // save the node to state
-                                self.nodes.insert(name.clone(), hns_update.clone());
-                                // produce namehash and save in names map
-                                self.names.insert(hypermap::namehash(name), name.clone());
-                                // send the node to net
-                                Request::to(("our", "net", "distro", "sys"))
-                                    .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(
-                                        hns_update,
-                                    ))?)
-                                    .send()?;
-                            }
-                        }
-                        response
-                    }
-                }
+                self.handle_node_info_request(name, expects_response)?
             }
             IndexerRequest::Reset => {
                 // check for root capability
@@ -551,6 +601,35 @@ impl StateV1 {
         }
 
         Ok(is_reset)
+    }
+
+    fn handle_node_info_request(
+        &mut self,
+        name: &str,
+        timeout: &Option<u64>,
+    ) -> anyhow::Result<IndexerResponse> {
+        match self.nodes.get(name) {
+            Some(node) => Ok(IndexerResponse::NodeInfo(Some(node.clone().into()))),
+            None => {
+                // we don't have the node in our state: try hypermap.get()
+                //  to see if it exists onchain and the indexer missed it
+                let mut response = IndexerResponse::NodeInfo(None);
+                let timeout = timeout.unwrap_or_else(|| 5);
+                if let Some(hns_update) = self.fetch_node(&timeout, name) {
+                    response = IndexerResponse::NodeInfo(Some(hns_update.clone().into()));
+                    // save the node to state
+                    self.nodes.insert(name.to_string(), hns_update.clone());
+                    // produce namehash and save in names map
+                    self.names
+                        .insert(hypermap::namehash(name), name.to_string());
+                    // send the node to net
+                    Request::to(("our", "net", "distro", "sys"))
+                        .body(rmp_serde::to_vec(&net::NetAction::HnsUpdate(hns_update))?)
+                        .send()?;
+                }
+                Ok(response)
+            }
+        }
     }
 }
 
@@ -716,7 +795,8 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     // if block in state is < current_block, get logs from that part.
     info!("syncing old logs from block: {}", state.last_block);
 
-    state.fetch_and_process_logs();
+    let nodes: HashSet<String> = ["nick.hypr".to_string()].into_iter().collect();
+    state.fetch_and_process_logs(nodes);
 
     // set a timer tick so any pending logs will be processed
     timer::set_timer(DELAY_MS, None);
