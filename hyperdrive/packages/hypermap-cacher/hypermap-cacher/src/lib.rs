@@ -785,6 +785,12 @@ impl State {
         let current_chain_head = hypermap.provider.get_block_number()?;
         if self.last_cached_block < current_chain_head {
             self.cache_logs_and_update_manifest(hypermap)?;
+
+            // run it twice for fresh boot case:
+            // - initial bootstrap takes much time
+            // - in that time, the block you are updating to is no longer the head of the chain
+            // - so run again to get to the head of the chain
+            self.cache_logs_and_update_manifest(hypermap)?;
         } else {
             info!(
                 "Already caught up to chain head ({}), no RPC bootstrap needed",
