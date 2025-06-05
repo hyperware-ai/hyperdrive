@@ -36,6 +36,7 @@
             "http-client:distro:sys",
             "hypermap-cacher:hypermap-cacher:sys",
             "main:app-store:sys",
+            "sign:sign:sys",
             "sqlite:distro:sys",
             "terminal:terminal:sys",
             {
@@ -50,6 +51,7 @@
             "hns-indexer:hns-indexer:sys",
             "http-client:distro:sys",
             "hypermap-cacher:hypermap-cacher:sys",
+            "sign:sign:sys",
             "sqlite:distro:sys",
             "terminal:terminal:sys",
             "timer:distro:sys"

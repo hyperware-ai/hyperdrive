@@ -10,6 +10,7 @@
             "hypermap-cacher:hypermap-cacher:sys",
             "kv:distro:sys",
             "net:distro:sys",
+            "sign:sign:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],
@@ -18,6 +19,7 @@
             "http-server:distro:sys",
             "hypermap-cacher:hypermap-cacher:sys",
             "kv:distro:sys",
+            "sign:sign:sys",
             "timer:distro:sys",
             "vfs:distro:sys"
         ],
