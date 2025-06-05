@@ -1601,7 +1601,7 @@ dependencies = [
 [[package]]
 name = "hyperware_process_lib"
 version = "1.1.1"
-source = "git+https://github.com/hyperware-ai/process_lib.git?rev=57b0593#57b0593684814a1ba18cdd090ed2f8e198db9c55"
+source = "git+https://github.com/hyperware-ai/process_lib.git?rev=cfb1652#cfb1652eb3aab62eb6fd29e79266fefacb8b4636"
 dependencies = [
  "alloy",
  "alloy-primitives",

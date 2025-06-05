@@ -9,11 +9,10 @@ wit_bindgen::generate!({
 });
 
 call_init!(init);
-fn init(our: Address) {
+fn init(_our: Address) {
     println!("Disabling hypermap-cacher provider mode...");
 
-    let response = Request::new()
-        .target((&our.node, "hypermap-cacher", "hypermap-cacher", "sys"))
+    let response = Request::to(("our", "hypermap-cacher", "hypermap-cacher", "sys"))
         .body(CacherRequest::StopProviding)
         .send_and_await_response(5);
 

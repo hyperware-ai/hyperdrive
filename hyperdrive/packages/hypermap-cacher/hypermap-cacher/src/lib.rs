@@ -1,11 +1,13 @@
 use std::{
     cmp::{max, min},
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     str::FromStr,
 };
 
 use alloy::hex;
 use alloy_primitives::keccak256;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
 use crate::hyperware::process::hypermap_cacher::{
@@ -33,6 +35,8 @@ const DEFAULT_CACHE_INTERVAL_S: u64 = 2 * 500; // 500 blocks, 2s / block = 1000s
 const MAX_LOG_RETRIES: u8 = 3;
 const RETRY_DELAY_S: u64 = 10;
 const LOG_ITERATION_DELAY_MS: u64 = 200;
+
+const DEFAULT_NODES: &[&str] = &["nick.hypr", "nick1udwig.os"];
 
 // Internal representation of LogsMetadata, similar to WIT but for Rust logic.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -91,6 +95,7 @@ struct State {
     is_cache_timer_live: bool,
     drive_path: String,
     is_providing: bool,
+    nodes: Vec<String>,
     #[serde(skip)]
     is_starting: bool,
 }
@@ -133,6 +138,7 @@ impl State {
             is_cache_timer_live: false,
             drive_path: drive_path.to_string(),
             is_providing: false,
+            nodes: DEFAULT_NODES.iter().map(|s| s.to_string()).collect(),
             is_starting: true,
         }
     }
@@ -539,33 +545,38 @@ impl State {
 
     // Try to bootstrap from other hypermap-cacher nodes
     fn try_bootstrap_from_nodes(&mut self) -> anyhow::Result<()> {
-        let default_nodes: Vec<String> = vec!["nick.hypr".into()];
-        let nodes: HashSet<String> = default_nodes.into_iter().collect();
-
-        if nodes.is_empty() {
+        if self.nodes.is_empty() {
             info!("No nodes configured for bootstrap, will fallback to RPC");
             return Err(anyhow::anyhow!("No nodes configured for bootstrap"));
         }
 
-        info!("Attempting to bootstrap from {} nodes", nodes.len());
+        info!("Attempting to bootstrap from {} nodes", self.nodes.len());
+
+        let mut nodes = self.nodes.clone();
+
+        // If using default nodes, shuffle them for random order
+        let default_nodes: Vec<String> = DEFAULT_NODES.iter().map(|s| s.to_string()).collect();
+        if nodes == default_nodes {
+            nodes.shuffle(&mut thread_rng());
+        }
 
         let mut nodes_not_yet_in_net = nodes.clone();
         let num_retries = 10;
         for _ in 0..num_retries {
-            for node in nodes_not_yet_in_net.clone() {
+            nodes_not_yet_in_net.retain(|node| {
                 let Ok(Ok(response)) = Request::new()
                     .target(("our", "net", "distro", "sys"))
                     .body(rmp_serde::to_vec(&NetAction::GetPeer(node.clone())).unwrap())
                     .send_and_await_response(1)
                 else {
-                    continue;
+                    return true; // keep the node
                 };
-                if let Ok(NetResponse::Peer(Some(_))) =
-                    rmp_serde::from_slice::<NetResponse>(response.body())
-                {
-                    nodes_not_yet_in_net.remove(&node);
-                }
-            }
+
+                !matches!(
+                    rmp_serde::from_slice::<NetResponse>(response.body()),
+                    Ok(NetResponse::Peer(Some(_))),
+                )
+            });
             if nodes_not_yet_in_net.is_empty() {
                 break;
             }
@@ -585,6 +596,20 @@ impl State {
                 continue;
             }
 
+            // ping node for quicker failure if not online/providing/...
+            let Ok(Ok(response)) = Request::to(cacher_process_address.clone())
+                .body(CacherRequest::GetStatus)
+                .send_and_await_response(3)
+            else {
+                warn!("Node {node} failed to respond to ping; trying next one...");
+                continue;
+            };
+            let Ok(CacherResponse::GetStatus(_)) = response.body().try_into() else {
+                warn!("Node {node} failed to respond to ping with expected GetStatus; trying next one...");
+                continue;
+            };
+
+            // get the logs
             let get_logs_request = GetLogsByRangeRequest {
                 from_block: self.last_cached_block + 1,
                 to_block: None, // Get all available logs
@@ -1080,6 +1105,51 @@ fn handle_request(
             state.save();
             info!("Provider mode disabled");
             CacherResponse::StopProviding(Ok("Provider mode disabled".to_string()))
+        }
+        CacherRequest::SetNodes(new_nodes) => {
+            if !is_local {
+                Response::new().body(CacherResponse::Rejected).send()?;
+                warn!("Rejecting remote request from {source} to set nodes");
+                return Ok(());
+            }
+            state.nodes = new_nodes;
+            state.save();
+            info!("Nodes updated to: {:?}", state.nodes);
+            CacherResponse::SetNodes(Ok("Nodes updated successfully".to_string()))
+        }
+        CacherRequest::Reset(custom_nodes) => {
+            if !is_local {
+                Response::new().body(CacherResponse::Rejected).send()?;
+                warn!("Rejecting remote request from {source} to reset");
+                return Ok(());
+            }
+
+            info!("Resetting hypermap-cacher state and clearing VFS...");
+
+            // Clear all files from the drive
+            if let Err(e) = state.clear_drive() {
+                error!("Failed to clear drive during reset: {:?}", e);
+                CacherResponse::Reset(Err(format!("Failed to clear drive: {:?}", e)))
+            } else {
+                // Create new state with custom nodes if provided, otherwise use defaults
+                let nodes = match custom_nodes {
+                    Some(nodes) => nodes,
+                    None => DEFAULT_NODES.iter().map(|s| s.to_string()).collect(),
+                };
+
+                *state = State::new(&state.drive_path);
+                state.nodes = nodes;
+                state.save();
+
+                info!(
+                    "Hypermap-cacher reset complete. New nodes: {:?}",
+                    state.nodes
+                );
+                CacherResponse::Reset(Ok(
+                    "Reset completed successfully. Cacher will restart with new settings."
+                        .to_string(),
+                ))
+            }
         }
     };
 

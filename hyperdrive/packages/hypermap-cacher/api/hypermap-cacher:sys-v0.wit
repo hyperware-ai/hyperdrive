@@ -45,8 +45,8 @@ interface hypermap-cacher {
         get-logs-by-range(get-logs-by-range-request),
         start-providing,
         stop-providing,
-        // // Request to trigger a cache update manually (optional, primarily timer-driven).
-        // trigger-cache-update,
+        set-nodes(list<string>),
+        reset(option<list<string>>),
     }
 
     // Represents the operational status of the cacher.
@@ -69,6 +69,8 @@ interface hypermap-cacher {
         get-logs-by-range(result<get-logs-by-range-ok-response, string>),
         start-providing(result<string, string>),
         stop-providing(result<string, string>),
+        set-nodes(result<string, string>),
+        reset(result<string, string>),
         rejected,
         is-starting,
     }

@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "hypermap-cacher",
+    "reset-cache",
+    "set-nodes",
     "start-providing",
     "stop-providing"
 ]

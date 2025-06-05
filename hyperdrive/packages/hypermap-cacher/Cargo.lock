@@ -1636,6 +1636,7 @@ dependencies = [
  "hex",
  "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib?rev=57b0593)",
  "process_macros",
+ "rand 0.8.5",
  "rmp-serde",
  "serde",
  "serde_json",
@@ -2654,6 +2655,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "reset-cache"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib?rev=40d3daf)",
+ "process_macros",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "rfc6979"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2948,6 +2960,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "set-nodes"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib 1.1.1 (git+https://github.com/hyperware-ai/process_lib?rev=40d3daf)",
+ "process_macros",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
 ]
 
 [[package]]
