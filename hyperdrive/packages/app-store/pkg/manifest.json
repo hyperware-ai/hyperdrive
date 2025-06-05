@@ -28,7 +28,7 @@
         "process_name": "chain",
         "process_wasm_path": "/chain.wasm",
         "on_exit": "Restart",
-        "request_networking": true,
+        "request_networking": false,
         "request_capabilities": [
             "downloads:app-store:sys",
             "eth:distro:sys",
@@ -36,7 +36,6 @@
             "http-client:distro:sys",
             "hypermap-cacher:hypermap-cacher:sys",
             "main:app-store:sys",
-            "sign:sign:sys",
             "sqlite:distro:sys",
             "terminal:terminal:sys",
             {
@@ -51,7 +50,6 @@
             "hns-indexer:hns-indexer:sys",
             "http-client:distro:sys",
             "hypermap-cacher:hypermap-cacher:sys",
-            "sign:sign:sys",
             "sqlite:distro:sys",
             "terminal:terminal:sys",
             "timer:distro:sys"
