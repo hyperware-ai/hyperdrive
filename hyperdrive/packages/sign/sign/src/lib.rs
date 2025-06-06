@@ -111,7 +111,7 @@ fn handle_make_message(source: &Address) -> Result<()> {
             mime: None,
             bytes: message,
         })
-        .body(sign::Response::NetKeySign)
+        .body(sign::Response::NetKeyMakeMessage)
         .send()?;
     Ok(())
 }
