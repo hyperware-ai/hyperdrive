@@ -28,7 +28,9 @@
             },
             "kv:distro:sys",
             "net:distro:sys",
+            "sign:sign:sys",
             "sqlite:distro:sys",
+            "timer:distro:sys",
             "vfs:distro:sys",
             {
                 "process": "vfs:distro:sys",

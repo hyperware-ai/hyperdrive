@@ -41,7 +41,7 @@ fn handle_message(message: &Message) -> Result<()> {
     let source = message.source();
     match body.try_into()? {
         sign::Request::NetKeySign => handle_sign(source),
-        sign::Request::NetKeyVerify(req) => handle_verify(source, req),
+        sign::Request::NetKeyVerify(req) => handle_verify(req),
         sign::Request::NetKeyMakeMessage => handle_make_message(source),
     }
 }
@@ -73,13 +73,14 @@ fn handle_sign(source: &Address) -> Result<()> {
     Ok(())
 }
 
-fn handle_verify(source: &Address, req: sign::NetKeyVerifyRequest) -> Result<()> {
-    let Some(blob) = get_blob() else {
-        return Err(anyhow!("no blob"));
-    };
-    let message = make_message(source, &blob);
+fn handle_verify(req: sign::NetKeyVerifyRequest) -> Result<()> {
+    let blob = get_blob().unwrap_or(LazyLoadBlob::default());
+
+    let source = req.node.parse()?;
+    let message = make_message(&source, &blob);
+
     let body = rmp_serde::to_vec(&NetAction::Verify {
-        from: our(),
+        from: Address::new(source.node(), ("sign", "sign", "sys")),
         signature: req.signature,
     })?;
     let res = Request::to(("our", "net", "distro", "sys"))
@@ -110,7 +111,7 @@ fn handle_make_message(source: &Address) -> Result<()> {
             mime: None,
             bytes: message,
         })
-        .body(sign::Response::NetKeySign)
+        .body(sign::Response::NetKeyMakeMessage)
         .send()?;
     Ok(())
 }

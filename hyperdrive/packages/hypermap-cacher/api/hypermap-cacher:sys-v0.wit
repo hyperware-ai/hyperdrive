@@ -1,0 +1,83 @@
+interface hypermap-cacher {
+    // Metadata associated with a batch of Ethereum logs.
+    record logs-metadata {
+        chain-id: string,
+        from-block: string,
+        to-block: string,
+        time-created: string,
+        created-by: string,
+        signature: string,
+    }
+
+    // Represents an item in the manifest, detailing a single log cache file.
+    record manifest-item {
+        metadata: logs-metadata,
+        is-empty: bool,
+        file-hash: string,
+        file-name: string,
+    }
+
+    // The main manifest structure, listing all available log cache files.
+    // WIT does not support direct map types, so a list of key-value tuples is used.
+    record manifest {
+        // The key is the filename of the log cache.
+        items: list<tuple<string, manifest-item>>,
+        manifest-filename: string,
+        chain-id: string,
+        protocol-version: string,
+    }
+
+    record get-logs-by-range-request {
+        from-block: u64,
+        to-block: option<u64>, // If None, signifies to the latest available/relevant cached block.
+    }
+
+    variant get-logs-by-range-ok-response {
+        logs(tuple<u64, string>),
+        latest(u64),
+    }
+
+    // Defines the types of requests that can be sent to the Hypermap Cacher process.
+    variant cacher-request {
+        get-manifest,
+        get-log-cache-content(string),
+        get-status,
+        get-logs-by-range(get-logs-by-range-request),
+        start-providing,
+        stop-providing,
+        set-nodes(list<string>),
+        reset(option<list<string>>),
+    }
+
+    // Represents the operational status of the cacher.
+    record cacher-status {
+        last-cached-block: u64,
+        chain-id: string,
+        protocol-version: string,
+        next-cache-attempt-in-seconds: option<u64>,
+        manifest-filename: string,
+        log-files-count: u32,
+        our-address: string,
+        is-providing: bool,
+    }
+
+    // Defines the types of responses the Hypermap Cacher process can send.
+    variant cacher-response {
+        get-manifest(option<manifest>),
+        get-log-cache-content(result<option<string>, string>),
+        get-status(cacher-status),
+        get-logs-by-range(result<get-logs-by-range-ok-response, string>),
+        start-providing(result<string, string>),
+        stop-providing(result<string, string>),
+        set-nodes(result<string, string>),
+        reset(result<string, string>),
+        rejected,
+        is-starting,
+    }
+}
+
+world hypermap-cacher-sys-v0 {
+    import sign;
+    import hypermap-cacher;
+    include process-v1;
+}

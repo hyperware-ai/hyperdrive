@@ -1,0 +1,28 @@
+[
+    {
+        "process_name": "hypermap-cacher",
+        "process_wasm_path": "/hypermap-cacher.wasm",
+        "on_exit": "Restart",
+        "request_networking": true,
+        "request_capabilities": [
+            "eth:distro:sys",
+            "http-server:distro:sys",
+            "net:distro:sys",
+            "sign:sign:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys"
+        ],
+        "grant_capabilities": [
+            "eth:distro:sys",
+            "http-server:distro:sys",
+            "net:distro:sys",
+            "sign:sign:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys"
+        ],
+        "public": false,
+        "wit_version": 1
+    }
+]

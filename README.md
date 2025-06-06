@@ -13,8 +13,8 @@ This repo contains the core runtime and processes.
 Most developers need not build the runtime.
 Instead, check out the [Hyperware Book](https://book.hyperware.ai/), and in particular the ["My First App" tutorial](https://book.hyperware.ai/my_first_app/chapter_1.html).
 
-If you want to get on the network, you can download a binary, rather than building it yourself, from [the releases page](https://github.com/hyperware-ai/hyperware/tags).
-Then follow the instructions to [install it](https://book.hyperware.ai/install.html) and [join the network](https://book.hyperware.ai/login.html).
+If you want to get on the network, you can download a binary, rather than building it yourself, from [the releases page](https://github.com/hyperware-ai/hyperdrive/tags).
+Then follow the instructions to [install it](https://book.hyperware.ai/getting_started/install.html) and [join the network](https://book.hyperware.ai/getting_started/login.html).
 
 If you have questions, join the [Hyperware discord](https://discord.com/invite/KaPXX7SFTD) and drop us a line in `#dev-support`.
 
@@ -72,7 +72,7 @@ The `--` here separates cargo arguments from binary arguments.
 cargo run -p hyperdrive -- home
 ```
 
-On boot you will be prompted to navigate to `localhost:8080` or whatever HTTP port your node bound to: it will try 8080 and go up from there, or use the port passed with the `--port` boot flag. Make sure your browser wallet matches the network that the node is being booted on. Follow the registration UI -- if you want to register a new ID you will either need Optimism ETH or an invite code.
+On boot you will be prompted to navigate to `localhost:8080` or whatever HTTP port your node bound to: it will try 8080 and go up from there, or use the port passed with the `--port` boot flag. Make sure your browser wallet matches the network that the node is being booted on. Follow the registration UI -- if you want to register a new ID you will either need Base ETH or an invite code.
 
 #### Boot Flags
 
@@ -169,7 +169,7 @@ Use this message format to add a provider -- this will make your node's performa
 m our@eth:distro:sys '{"AddProvider": {"chain_id": <SOME_CHAIN_ID>, "trusted": true, "provider": {"RpcUrl": "<WS_RPC_URL>"}}}'
 ```
 
-You can also do the same thing by using the `--rpc` boot flag with an Optimism WebSockets RPC URL, or going to the Settings app once booted into a node.
+You can also do the same thing by using the `--rpc` boot flag with an Base WebSockets RPC URL, or going to the Settings app once booted into a node.
 
 ## Distro and Runtime processes
 
@@ -202,13 +202,18 @@ The distro userspace packages are:
 - `contacts:sys`
 - `homepage:sys`
 - `hns-indexer:sys`
+- `hypermap-cacher:sys`
 - `settings:sys`
+- `sign:sys`
 - `terminal:sys`
 - `tester:sys` (used with `kit` for running test suites, only installed in `simulation-mode`)
 
 The `sys` publisher is not a real node ID, but it's also not a special case value.
 Packages, whether runtime or userspace, installed from disk when a node bootstraps do not have their package ID or publisher node ID validated.
 Packages installed (not injected locally, as is done during development) after a node has booted will have their publisher field validated.
+
+Distro userspace packages may have their dependencies satisfied by specifying them as local dependencies in `hyperdrive/packages-local-dependencies.json`.
+For example, `hypermap-cacher:sys` depends on `sign:sys`, and so has an entry whose key is `hypermap-cacher` (the dir name) and whose value is an array with one item: `sign` (the dir name).
 
 ## Terminal syntax
 
