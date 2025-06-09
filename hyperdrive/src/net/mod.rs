@@ -9,7 +9,7 @@ use types::{
     ActivePassthroughs, IdentityExt, NetData, OnchainPKI, Peers, PendingPassthroughs, TCP_PROTOCOL,
     WS_PROTOCOL,
 };
-use {dashmap::DashMap, ring::signature::Ed25519KeyPair, std::sync::Arc, tokio::task::JoinSet};
+use {dashmap::DashMap, ring::signature::{Ed25519KeyPair, KeyPair}, std::sync::Arc, tokio::task::JoinSet};
 
 mod connect;
 mod indirect;
@@ -302,7 +302,7 @@ async fn handle_local_request(
                     .concat();
                     (
                         NetResponse::Verified(utils::validate_signature(
-                            &from.node, &signature, &message, &data.pki,
+                            &from.node, &signature, &message, &data.pki, ext.keypair.public_key().as_ref().to_vec(),
                         )),
                         None,
                     )
