@@ -25,6 +25,8 @@ On certain operating systems, you may need to install these dependencies if they
 - openssl-sys: https://docs.rs/crate/openssl-sys/0.9.19
 - libclang 5.0: https://rust-lang.github.io/rust-bindgen/requirements.html
 
+Rust must be between versions 1.81 and 1.85.1.
+
 ```bash
 # Clone the repo.
 
@@ -34,8 +36,11 @@ git clone git@github.com:hyperware-ai/hyperware.git
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install wasm-tools
+
+# Get Rust version 1.85.1
+rustup update 1.85.1
+
 rustup target add wasm32-wasip1
-cargo install cargo-wasi
 
 # Install NPM so we can build frontends for "distro" packages.
 # https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
