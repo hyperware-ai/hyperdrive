@@ -7,10 +7,10 @@ edition = "2021"
 simulation-mode = []
 
 [dependencies]
-hyperware_process_lib = "1.2.0"
+hyperware_process_lib = { git = "https://github.com/hyperware-ai/process_lib", rev = "8dc6719" }
 rmp-serde = "1.1.2"
 serde = { version = "1.0", features = ["derive"] }
-wit-bindgen = "0.36.0"
+wit-bindgen = "0.42.1"
 
 [lib]
 crate-type = ["cdylib"]
