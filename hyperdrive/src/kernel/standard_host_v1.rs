@@ -458,7 +458,6 @@ async fn send_and_await_response(
 ///
 /// create the process API. this is where the functions that a process can use live.
 ///
-#[async_trait::async_trait]
 impl StandardHost for process::ProcessWasiV1 {
     //
     // system utils:
