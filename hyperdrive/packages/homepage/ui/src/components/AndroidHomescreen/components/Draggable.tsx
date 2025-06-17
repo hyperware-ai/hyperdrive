@@ -10,12 +10,13 @@ interface DraggableProps {
   className?: string;
 }
 
-export const Draggable: React.FC<DraggableProps> = ({ 
-  position, 
-  onMove, 
-  isEditMode, 
-  children, 
-  className = '' 
+export const Draggable: React.FC<DraggableProps> = ({
+  id,
+  position,
+  onMove,
+  isEditMode,
+  children,
+  className = ''
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -32,8 +33,19 @@ export const Draggable: React.FC<DraggableProps> = ({
 
   const handleMove = (clientX: number, clientY: number) => {
     if (!isDragging) return;
-    const newX = Math.max(0, Math.min(window.innerWidth - 100, clientX - dragOffset.x));
-    const newY = Math.max(40, Math.min(window.innerHeight - 100, clientY - dragOffset.y));
+
+    // Get element dimensions
+    const element = elementRef.current;
+    if (!element) return;
+
+    const rect = element.getBoundingClientRect();
+    const elementWidth = rect.width;
+    const elementHeight = rect.height;
+
+    // Calculate new position with bounds checking
+    const newX = Math.max(0, Math.min(window.innerWidth - elementWidth, clientX - dragOffset.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - elementHeight, clientY - dragOffset.y));
+
     onMove({ x: newX, y: newY });
   };
 
@@ -65,6 +77,12 @@ export const Draggable: React.FC<DraggableProps> = ({
     };
   }, [isDragging, dragOffset, handleMove]);
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!isEditMode) return;
+    e.dataTransfer.setData('appId', id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
     <div
       ref={elementRef}
@@ -75,6 +93,8 @@ export const Draggable: React.FC<DraggableProps> = ({
         cursor: isEditMode ? 'move' : 'default',
         touchAction: isEditMode ? 'none' : 'auto',
       }}
+      draggable={isEditMode}
+      onDragStart={handleDragStart}
       onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
       onTouchStart={(e) => {
         const touch = e.touches[0];

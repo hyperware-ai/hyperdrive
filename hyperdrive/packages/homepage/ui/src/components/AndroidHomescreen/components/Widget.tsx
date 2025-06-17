@@ -40,9 +40,18 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
     const startHeight = size.height;
 
     const handleMouseMove = (e: MouseEvent) => {
+      // Calculate new size with minimum constraints
       const newWidth = Math.max(200, startWidth + e.clientX - startX);
       const newHeight = Math.max(150, startHeight + e.clientY - startY);
-      setWidgetSize(app.id, { width: newWidth, height: newHeight });
+
+      // Ensure widget doesn't extend beyond screen boundaries
+      const maxWidth = window.innerWidth - position.x;
+      const maxHeight = window.innerHeight - position.y;
+
+      const constrainedWidth = Math.min(newWidth, maxWidth);
+      const constrainedHeight = Math.min(newHeight, maxHeight);
+
+      setWidgetSize(app.id, { width: constrainedWidth, height: constrainedHeight });
     };
 
     const handleMouseUp = () => {

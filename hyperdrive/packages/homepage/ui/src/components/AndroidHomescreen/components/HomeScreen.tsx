@@ -1,14 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../../stores/appStore';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import { Draggable } from './Draggable';
 import { AppIcon } from './AppIcon';
 import { Widget } from './Widget';
+import type { HomepageApp } from '../../../types/app.types';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
-  const { homeScreenApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage } = usePersistenceStore();
+  const { homeScreenApps, dockApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { toggleAppDrawer } = useNavigationStore();
 
@@ -24,6 +25,76 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
+  const handleDockDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const appId = e.dataTransfer.getData('appId');
+    if (appId) {
+      addToDock(appId, index);
+    }
+  };
+
+  const handleDockDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  // Handle window resize to keep apps on screen
+  useEffect(() => {
+    const handleResize = () => {
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+
+      // Check and reposition apps
+      Object.entries(appPositions).forEach(([appId, position]) => {
+        let needsUpdate = false;
+        let newX = position.x;
+        let newY = position.y;
+
+        // Assuming app icons are roughly 80px wide/tall (including padding)
+        const appSize = 80;
+
+        if (position.x + appSize > windowWidth) {
+          newX = Math.max(0, windowWidth - appSize);
+          needsUpdate = true;
+        }
+
+        if (position.y + appSize > windowHeight) {
+          newY = Math.max(0, windowHeight - appSize);
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          moveItem(appId, { x: newX, y: newY });
+        }
+      });
+
+      // Check and reposition widgets
+      Object.entries(widgetSettings).forEach(([appId, settings]) => {
+        if (settings.position && settings.size) {
+          let needsUpdate = false;
+          let newX = settings.position.x;
+          let newY = settings.position.y;
+
+          if (settings.position.x + settings.size.width > windowWidth) {
+            newX = Math.max(0, windowWidth - settings.size.width);
+            needsUpdate = true;
+          }
+
+          if (settings.position.y + settings.size.height > windowHeight) {
+            newY = Math.max(0, windowHeight - settings.size.height);
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            usePersistenceStore.getState().setWidgetPosition(appId, { x: newX, y: newY });
+          }
+        }
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [appPositions, widgetSettings, moveItem]);
+
   const homeApps = useMemo(() => {
     return apps.filter(app => homeScreenApps.includes(app.id));
   }, [apps, homeScreenApps]);
@@ -32,20 +103,20 @@ export const HomeScreen: React.FC = () => {
     return homeApps.filter(app => app.widget && !widgetSettings[app.id]?.hide);
   }, [homeApps, widgetSettings]);
 
-  // Dock apps are the first 5 apps marked as favorites or just first 5
-  const dockApps = useMemo(() => {
-    const favoriteApps = homeApps.filter(app => app.favorite).slice(0, 5);
-    return favoriteApps.length > 0 ? favoriteApps : homeApps.slice(0, 5);
-  }, [homeApps]);
+  // Get actual dock app objects from IDs
+  const dockAppsList = useMemo(() => {
+    return dockApps
+      .map(id => apps.find(app => app.id === id))
+      .filter(Boolean) as HomepageApp[];
+  }, [apps, dockApps]);
 
   // Floating apps are all home apps that aren't in the dock
   const floatingApps = useMemo(() => {
-    const dockAppIds = dockApps.map(app => app.id);
-    return homeApps.filter(app => !dockAppIds.includes(app.id));
+    return homeApps.filter(app => !dockApps.includes(app.id));
   }, [homeApps, dockApps]);
 
   return (
-    <div 
+    <div
       className="h-full w-full relative"
       style={{
         backgroundColor: backgroundImage ? 'transparent' : '#353534',
@@ -61,12 +132,26 @@ export const HomeScreen: React.FC = () => {
       )}
 
       {/* Content */}
-      <div className="relative z-10 h-full">
+      <div
+        className="relative z-10 h-full"
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const appId = e.dataTransfer.getData('appId');
+          if (appId && dockApps.includes(appId)) {
+            removeFromDock(appId);
+            moveItem(appId, { x: e.clientX - 40, y: e.clientY - 40 });
+          }
+        }}
+      >
         {/* Floating apps on canvas */}
         {floatingApps.map(app => {
           const position = appPositions[app.id] || {
-            x: Math.random() * (window.innerWidth - 100),
-            y: window.innerHeight - 200 - Math.random() * 100
+            x: Math.min(Math.random() * (window.innerWidth - 100), window.innerWidth - 80),
+            y: Math.min(window.innerHeight - 200 - Math.random() * 100, window.innerHeight - 80)
           };
 
           return (
@@ -88,11 +173,48 @@ export const HomeScreen: React.FC = () => {
         ))}
 
         {/* Dock at bottom */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-          <div className="bg-black/60 backdrop-blur-xl rounded-3xl p-3 flex items-center gap-2 shadow-2xl border border-white/20">
-            {dockApps.map(app => (
-              <AppIcon key={app.id} app={app} isEditMode={false} showLabel={false} />
-            ))}
+        <div
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2"
+          onDragOver={handleDockDragOver}
+          onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
+        >
+          <div className="bg-black/60 backdrop-blur-xl rounded-3xl p-3 flex items-center gap-2 shadow-2xl border border-white/20 min-w-[380px]">
+            {/* Dock slots */}
+            {Array.from({ length: 5 }).map((_, index) => {
+              const app = dockAppsList[index];
+              return (
+                <div
+                  key={`slot-${index}`}
+                  className="w-16 h-16 relative"
+                  onDragOver={handleDockDragOver}
+                  onDrop={(e) => {
+                    e.stopPropagation();
+                    handleDockDrop(e, index);
+                  }}
+                >
+                  {app ? (
+                    isEditMode ? (
+                      <div
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('appId', app.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragEnd={() => {
+                          // If dropped outside, it's handled by floating area
+                        }}
+                      >
+                        <AppIcon app={app} isEditMode={false} showLabel={false} />
+                      </div>
+                    ) : (
+                      <AppIcon app={app} isEditMode={false} showLabel={false} />
+                    )
+                  ) : (
+                    <div className="w-full h-full border-2 border-dashed border-white/20 rounded-2xl" />
+                  )}
+                </div>
+              );
+            })}
             <div className="w-px h-12 bg-white/20 mx-1" />
             <button
               onClick={toggleAppDrawer}
@@ -129,7 +251,7 @@ export const HomeScreen: React.FC = () => {
                       className="hidden"
                       id="background-upload"
                     />
-                    <label 
+                    <label
                       htmlFor="background-upload"
                       className="mt-1 w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm cursor-pointer hover:bg-white/20 transition-all flex items-center justify-center"
                     >

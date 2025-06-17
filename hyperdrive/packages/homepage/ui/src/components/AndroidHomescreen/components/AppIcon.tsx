@@ -52,11 +52,13 @@ export const AppIcon: React.FC<AppIconProps> = ({
         </button>
       )}
 
-      <div className="w-16 h-16 mb-1 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-600 dark:to-blue-800 flex items-center justify-center shadow-lg">
+      <div className="w-16 h-16 mb-1 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg">
         {app.base64_icon ? (
           <img src={app.base64_icon} alt={app.label} className="w-full h-full object-cover" />
         ) : (
-          <div className="text-2xl text-white font-bold">{app.label[0]}</div>
+          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+            <span className="text-2xl text-white font-bold">{app.label[0]}</span>
+          </div>
         )}
       </div>
 
