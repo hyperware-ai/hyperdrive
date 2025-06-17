@@ -96,7 +96,7 @@ export default function AndroidHomescreen() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden">
       {/* Home Screen */}
       <HomeScreen />
 

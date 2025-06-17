@@ -8,9 +8,21 @@ import { Widget } from './Widget';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
-  const { homeScreenApps, appPositions, widgetSettings, toggleWidget, moveItem } = usePersistenceStore();
+  const { homeScreenApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { toggleAppDrawer } = useNavigationStore();
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setBackgroundImage(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const homeApps = useMemo(() => {
     return apps.filter(app => homeScreenApps.includes(app.id));
@@ -33,13 +45,20 @@ export const HomeScreen: React.FC = () => {
   }, [homeApps, dockApps]);
 
   return (
-    <div className="flex-1 relative bg-gradient-to-br from-purple-900 via-blue-900 to-black">
-      {/* Animated background */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full filter blur-3xl opacity-20 animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full filter blur-3xl opacity-20 animate-pulse" />
-      </div>
+    <div 
+      className="h-full w-full relative"
+      style={{
+        backgroundColor: backgroundImage ? 'transparent' : '#353534',
+        backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Background overlay for better text readability */}
+      {backgroundImage && (
+        <div className="absolute inset-0 bg-black/20" />
+      )}
 
       {/* Content */}
       <div className="relative z-10 h-full">
@@ -85,7 +104,7 @@ export const HomeScreen: React.FC = () => {
         </div>
 
         {/* Edit mode toggle and widget settings */}
-        <div className="absolute top-4 right-4 flex items-start gap-2">
+        <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
           {!isEditMode && (
             <button
               onClick={() => setEditMode(true)}
@@ -96,7 +115,48 @@ export const HomeScreen: React.FC = () => {
           )}
 
           {isEditMode && (
-            <>
+            <div className="flex items-start gap-2">
+              {/* Background Settings */}
+              <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
+                <h3 className="text-white text-sm font-semibold mb-3">Background</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-white/80 text-xs">Upload Image:</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="background-upload"
+                    />
+                    <label 
+                      htmlFor="background-upload"
+                      className="mt-1 w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm cursor-pointer hover:bg-white/20 transition-all flex items-center justify-center"
+                    >
+                      Choose Image
+                    </label>
+                  </div>
+                  <div className="text-white/60 text-xs text-center">OR</div>
+                  <div>
+                    <label className="text-white/80 text-xs">Image URL:</label>
+                    <input
+                      type="text"
+                      value={backgroundImage && !backgroundImage.startsWith('data:') ? backgroundImage : ''}
+                      onChange={(e) => setBackgroundImage(e.target.value || null)}
+                      placeholder="Enter image URL"
+                      className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-white/40 focus:outline-none focus:border-white/40"
+                    />
+                  </div>
+                  {backgroundImage && (
+                    <button
+                      onClick={() => setBackgroundImage(null)}
+                      className="w-full px-3 py-1.5 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white text-sm font-medium transition-all"
+                    >
+                      Remove Background
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20">
                 <h3 className="text-white text-sm font-semibold mb-3">Widget Manager</h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -127,7 +187,7 @@ export const HomeScreen: React.FC = () => {
               >
                 Done
               </button>
-            </>
+            </div>
           )}
         </div>
 

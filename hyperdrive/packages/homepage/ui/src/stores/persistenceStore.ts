@@ -6,6 +6,7 @@ interface PersistenceStore {
   homeScreenApps: string[];
   appPositions: { [key: string]: Position };
   widgetSettings: { [key: string]: { hide?: boolean; position?: Position; size?: Size } };
+  backgroundImage: string | null;
 
   addToHomeScreen: (appId: string) => void;
   removeFromHomeScreen: (appId: string) => void;
@@ -13,6 +14,7 @@ interface PersistenceStore {
   toggleWidget: (appId: string) => void;
   setWidgetPosition: (appId: string, position: Position) => void;
   setWidgetSize: (appId: string, size: Size) => void;
+  setBackgroundImage: (imageUrl: string | null) => void;
 }
 
 export const usePersistenceStore = create<PersistenceStore>()(
@@ -21,6 +23,7 @@ export const usePersistenceStore = create<PersistenceStore>()(
       homeScreenApps: [],
       appPositions: {},
       widgetSettings: {},
+      backgroundImage: null,
 
       addToHomeScreen: (appId) => {
         set((state) => ({
@@ -94,6 +97,10 @@ export const usePersistenceStore = create<PersistenceStore>()(
             },
           },
         }));
+      },
+
+      setBackgroundImage: (imageUrl) => {
+        set({ backgroundImage: imageUrl });
       },
     }),
     {
