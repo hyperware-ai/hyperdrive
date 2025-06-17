@@ -6,13 +6,6 @@ interface AppContainerProps {
   isVisible: boolean;
 }
 
-const generateSubdomain = (process: string, publisher: string) => {
-  return `${process}-${publisher}`.toLowerCase()
-    .split('')
-    .map(c => c.match(/[a-zA-Z0-9]/) ? c : '-')
-    .join('');
-};
-
 export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hasError, setHasError] = useState(false);
@@ -29,37 +22,6 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
 
   const handleLoad = () => {
     setIsLoading(false);
-
-    // Handle subdomain redirects
-    try {
-      const iframe = iframeRef.current;
-      if (iframe && iframe.contentWindow) {
-        // Check if we need to redirect to subdomain
-        const currentHost = window.location.host;
-        const expectedSubdomain = generateSubdomain(app.package_name, app.publisher);
-
-        if (!currentHost.startsWith(expectedSubdomain)) {
-          // Redirect to subdomain version
-          const protocol = window.location.protocol;
-          const port = window.location.port ? `:${window.location.port}` : '';
-          if (currentHost.includes("localhost")) {
-            const baseDomain = currentHost.split('.').slice(0).join('.');
-            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
-
-            // Use window.location for redirect to handle authentication
-            window.location.href = subdomainUrl;
-          } else {
-            const baseDomain = currentHost.split('.').slice(1).join('.');
-            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
-
-            // Use window.location for redirect to handle authentication
-            window.location.href = subdomainUrl;
-          }
-        }
-      }
-    } catch (e) {
-      // Iframe might be cross-origin, that's ok
-    }
   };
 
   return (
