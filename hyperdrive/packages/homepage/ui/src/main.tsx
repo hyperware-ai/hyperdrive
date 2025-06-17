@@ -1,6 +1,5 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-//import Homepage from './pages/Homepage.tsx'
 import AndroidHomescreen from './pages/AndroidHomescreen.tsx'
 import './index.css'
 import 'uno.css'
