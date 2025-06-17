@@ -21,7 +21,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
   isAppDrawerOpen: false,
   isRecentAppsOpen: false,
 
-  openApp: (app) => {
+  openApp: async (app) => {
     console.log('openApp called with:', app);
 
     // Don't open apps without a valid path
@@ -30,7 +30,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       return;
     }
 
-    // Check if we need to open in a new tab (localhost with subdomain)
+    // Check if we need to open in a new tab (localhost with secure subdomain)
     const currentHost = window.location.host;
     const isLocalhost = currentHost.includes("localhost");
 
@@ -46,40 +46,72 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       const needsSubdomain = !currentHost.startsWith(expectedSubdomain);
 
       if (needsSubdomain) {
-        // Open in new tab for localhost
+        // Check if this app requires a secure subdomain by testing for redirect
         const appUrl = app.path || `/app:${app.process}:${app.publisher}.os/`;
-        const protocol = window.location.protocol;
-        const port = window.location.port ? `:${window.location.port}` : '';
 
-        // Fix: Extract just the hostname without port for localhost
-        const hostname = currentHost.split(':')[0]; // 'localhost' from 'localhost:3000'
-        const baseDomain = hostname; // For localhost, we just use 'localhost'
+        try {
+          // Create AbortController for 0.1 second timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 100);
 
-        const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
+          // Use fetch with redirect: 'manual' to detect redirects without following them
+          const response = await fetch(appUrl, {
+            method: 'HEAD',
+            redirect: 'manual',
+            signal: controller.signal
+          });
 
-        // Debug logging
-        console.log('Navigation Debug:', {
-          app: app.label,
-          currentHost,
-          hostname,
-          baseDomain,
-          expectedSubdomain,
-          needsSubdomain,
-          subdomainUrl,
-          protocol,
-          port
-        });
+          // Clear the timeout if fetch completes
+          clearTimeout(timeoutId);
 
-        const newWindow = window.open(subdomainUrl, '_blank');
-        console.log('window.open result:', newWindow);
+          // If we get a 307 redirect, this is a secure subdomain app
+          const isSecureSubdomainApp = response.type === 'opaqueredirect';
 
-        if (!newWindow) {
-          console.error('Failed to open new window - possibly blocked by popup blocker');
+          console.log('Subdomain check:', {
+            app: app.label,
+            type: response.type,
+            isSecureSubdomainApp
+          });
+
+          if (isSecureSubdomainApp) {
+            // Open in new tab for localhost secure subdomain apps
+            const protocol = window.location.protocol;
+            const port = window.location.port ? `:${window.location.port}` : '';
+
+            // Fix: Extract just the hostname without port for localhost
+            const hostname = currentHost.split(':')[0]; // 'localhost' from 'localhost:3000'
+            const baseDomain = hostname; // For localhost, we just use 'localhost'
+
+            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
+
+            // Debug logging
+            console.log('Opening secure subdomain app in new tab:', {
+              app: app.label,
+              currentHost,
+              hostname,
+              baseDomain,
+              expectedSubdomain,
+              subdomainUrl,
+              protocol,
+              port
+            });
+
+            const newWindow = window.open(subdomainUrl, '_blank');
+            console.log('window.open result:', newWindow);
+
+            if (!newWindow) {
+              console.error('Failed to open new window - possibly blocked by popup blocker');
+            }
+
+            // Close overlays to return to homepage
+            set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
+            return;
+          }
+          // If not a secure subdomain app, continue with normal iframe behavior
+        } catch (error) {
+          console.error('Error checking for secure subdomain:', error);
+          // On error, continue with normal iframe behavior
         }
-
-        // Close overlays to return to homepage
-        set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
-        return;
       }
     }
 
