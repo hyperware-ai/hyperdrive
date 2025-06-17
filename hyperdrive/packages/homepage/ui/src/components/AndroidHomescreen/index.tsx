@@ -6,19 +6,21 @@ import { AppContainer } from './components/AppContainer';
 import { AppDrawer } from './components/AppDrawer';
 import { RecentApps } from './components/RecentApps';
 import { GestureZone } from './components/GestureZone';
+import PWAUpdateNotification from '../PWAUpdateNotification';
+import PWAInstallPrompt from '../PWAInstallPrompt';
 import './styles/animations.css';
 
 export default function AndroidHomescreen() {
   const { setApps } = useAppStore();
-  const { 
-    runningApps, 
-    currentAppId, 
-    isAppDrawerOpen, 
-    isRecentAppsOpen, 
-    toggleRecentApps, 
-    switchToApp, 
-    toggleAppDrawer, 
-    closeAllOverlays 
+  const {
+    runningApps,
+    currentAppId,
+    isAppDrawerOpen,
+    isRecentAppsOpen,
+    toggleRecentApps,
+    switchToApp,
+    toggleAppDrawer,
+    closeAllOverlays
   } = useNavigationStore();
   const [loading, setLoading] = useState(true);
 
@@ -115,6 +117,12 @@ export default function AndroidHomescreen() {
 
       {/* Gesture Zone */}
       <GestureZone />
+
+      {/* PWA Update Notification */}
+      <PWAUpdateNotification />
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 }

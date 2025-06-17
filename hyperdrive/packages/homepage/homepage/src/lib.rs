@@ -127,6 +127,15 @@ fn init(our: Address) {
             include_str!("../../pkg/h-plain.svg").into(),
         )
         .expect("failed to bind /h-plain.svg");
+    http_server
+        .bind_http_static_path(
+            "/manifest.json",
+            false, // manifest.json is not auth'd so that PWA works properly
+            false,
+            Some("application/json".to_string()),
+            include_str!("../../pkg/ui/manifest.json").into(),
+        )
+        .expect("failed to bind /h-plain.svg");
 
     // because boot uses this path to check if homepage is served yet,
     // it's best to respond dynamically and only serve this path once
