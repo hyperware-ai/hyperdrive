@@ -6,6 +6,13 @@ interface AppContainerProps {
   isVisible: boolean;
 }
 
+const generateSubdomain = (process: string, publisher: string) => {
+  return `${process}-${publisher}`.toLowerCase()
+    .split('')
+    .map(c => c.match(/[a-zA-Z0-9]/) ? c : '-')
+    .join('');
+};
+
 export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hasError, setHasError] = useState(false);
@@ -29,7 +36,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
       if (iframe && iframe.contentWindow) {
         // Check if we need to redirect to subdomain
         const currentHost = window.location.host;
-        const expectedSubdomain = generateSubdomain(app.process, app.publisher);
+        const expectedSubdomain = generateSubdomain(app.package_name, app.publisher);
 
         if (!currentHost.startsWith(expectedSubdomain)) {
           // Redirect to subdomain version
@@ -53,13 +60,6 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
     } catch (e) {
       // Iframe might be cross-origin, that's ok
     }
-  };
-
-  const generateSubdomain = (process: string, publisher: string) => {
-    return `${process}-${publisher}`.toLowerCase()
-      .split('')
-      .map(c => c.match(/[a-zA-Z0-9]/) ? c : '-')
-      .join('');
   };
 
   return (
