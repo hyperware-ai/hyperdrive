@@ -8,6 +8,7 @@ interface DraggableProps {
   isEditMode: boolean;
   children: React.ReactNode;
   className?: string;
+  enableHtmlDrag?: boolean; // For app icons that need dock functionality
 }
 
 export const Draggable: React.FC<DraggableProps> = ({
@@ -16,7 +17,8 @@ export const Draggable: React.FC<DraggableProps> = ({
   onMove,
   isEditMode,
   children,
-  className = ''
+  className = '',
+  enableHtmlDrag = true
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -52,21 +54,31 @@ export const Draggable: React.FC<DraggableProps> = ({
   };
 
   const handleEnd = () => {
-    setIsDragging(false);
+    if (isDragging) {
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+    }
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
       const touch = e.touches[0];
       handleMove(touch.clientX, touch.clientY);
     };
-    const handleMouseUp = () => handleEnd();
-    const handleTouchEnd = () => handleEnd();
+    const handleMouseUp = (e: MouseEvent) => {
+      e.preventDefault();
+      handleEnd();
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      handleEnd();
+    };
 
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
       document.addEventListener('mouseup', handleMouseUp);
       document.addEventListener('touchend', handleTouchEnd);
     }
@@ -83,6 +95,11 @@ export const Draggable: React.FC<DraggableProps> = ({
     if (!isEditMode) return;
     e.dataTransfer.setData('appId', id);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnd = () => {
+    // Cleanup if needed
   };
 
   return (
@@ -94,11 +111,21 @@ export const Draggable: React.FC<DraggableProps> = ({
         top: `${position.y}px`,
         cursor: isEditMode ? 'move' : 'default',
         touchAction: isEditMode ? 'none' : 'auto',
+        pointerEvents: 'auto',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
-      draggable={isEditMode}
+      draggable={isEditMode && enableHtmlDrag}
       onDragStart={handleDragStart}
-      onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
+      onDragEnd={handleDragEnd}
+      onMouseDown={(e) => {
+        // Use custom drag for widgets, HTML5 drag for apps
+        if (!enableHtmlDrag && isEditMode) {
+          handleStart(e.clientX, e.clientY);
+        }
+      }}
       onTouchStart={(e) => {
+        e.preventDefault();
         const touch = e.touches[0];
         handleStart(touch.clientX, touch.clientY);
       }}

@@ -37,7 +37,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
         ${isPressed ? 'scale-95' : 'scale-100'}
         ${isEditMode && isFloating ? 'animate-wiggle' : ''}
         ${!isEditMode && isFloating ? 'hover:scale-110' : ''}
-        ${!app.path && !(app.process && app.publisher) ? 'opacity-50' : ''}`}
+        ${!app.path && !(app.process && app.publisher) && !app.base64_icon ? 'opacity-50' : ''}`}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onMouseLeave={() => setIsPressed(false)}
@@ -56,7 +56,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
         {app.base64_icon ? (
           <img src={app.base64_icon} alt={app.label} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#004FFF', border: '2px solid #353534' }}>
             <span className="text-2xl text-white font-bold">{app.label[0]}</span>
           </div>
         )}

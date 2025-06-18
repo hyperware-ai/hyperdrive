@@ -30,19 +30,20 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
     setIsLoading(false);
   };
 
-  const handleResize = (e: React.MouseEvent) => {
+  const handleResize = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!isEditMode) return;
 
-    const startX = e.clientX;
-    const startY = e.clientY;
+    const isTouch = 'touches' in e;
+    const startX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+    const startY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
     const startWidth = size.width;
     const startHeight = size.height;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number, clientY: number) => {
       // Calculate new size with minimum constraints
-      const newWidth = Math.max(200, startWidth + e.clientX - startX);
-      const newHeight = Math.max(150, startHeight + e.clientY - startY);
+      const newWidth = Math.max(200, startWidth + clientX - startX);
+      const newHeight = Math.max(150, startHeight + clientY - startY);
 
       // Ensure widget doesn't extend beyond screen boundaries
       const maxWidth = window.innerWidth - position.x;
@@ -54,15 +55,25 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
       setWidgetSize(app.id, { width: constrainedWidth, height: constrainedHeight });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
+
+    const handleEnd = () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchend', handleEnd);
       setIsResizing(false);
     };
 
     setIsResizing(true);
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchend', handleEnd);
   };
 
   return (
@@ -71,6 +82,7 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
       position={position}
       onMove={(pos) => setWidgetPosition(app.id, pos)}
       isEditMode={isEditMode}
+      enableHtmlDrag={false}
     >
       <div
         className={`bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl border border-white/20
@@ -133,8 +145,10 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
         {isEditMode && (
           <div
             ref={resizeRef}
-            className="absolute bottom-0 right-0 w-4 h-4 bg-blue-400 cursor-se-resize rounded-tl-lg"
+            className="absolute bottom-0 right-0 w-6 h-6 bg-blue-400 cursor-se-resize rounded-tl-lg touch-action-none"
             onMouseDown={handleResize}
+            onTouchStart={handleResize}
+            style={{ touchAction: 'none' }}
           />
         )}
       </div>

@@ -27,14 +27,18 @@ export const HomeScreen: React.FC = () => {
 
   const handleDockDrop = (e: React.DragEvent, index: number) => {
     e.preventDefault();
+    e.stopPropagation();
     const appId = e.dataTransfer.getData('appId');
     if (appId) {
+      // Add to dock at the specified index
+      // The addToDock function handles removing from existing position if needed
       addToDock(appId, index);
     }
   };
 
   const handleDockDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   // Handle window resize to keep apps on screen
@@ -118,13 +122,14 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <div
-      className="h-full w-full relative"
+      className="h-full w-full relative overflow-hidden"
       style={{
         backgroundColor: backgroundImage ? 'transparent' : '#353534',
         backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        backgroundRepeat: 'no-repeat',
+        touchAction: 'pan-y pinch-zoom'
       }}
     >
       {/* Background overlay for better text readability */}
@@ -142,8 +147,12 @@ export const HomeScreen: React.FC = () => {
         onDrop={(e) => {
           e.preventDefault();
           const appId = e.dataTransfer.getData('appId');
-          if (appId && dockApps.includes(appId)) {
-            removeFromDock(appId);
+          // Only handle drops from dock apps or if dropping outside dock area
+          const isDroppingOnDock = (e.target as HTMLElement).closest('.dock-area');
+          if (appId && !isDroppingOnDock) {
+            if (dockApps.includes(appId)) {
+              removeFromDock(appId);
+            }
             // Ensure dropped app doesn't go behind dock
             const dockHeight = 120;
             const maxY = window.innerHeight - 80 - dockHeight; // 80 is app icon height
@@ -151,6 +160,13 @@ export const HomeScreen: React.FC = () => {
               x: e.clientX - 40, 
               y: Math.min(e.clientY - 40, maxY) 
             });
+          }
+        }}
+        onTouchMove={(e) => {
+          const touch = e.touches[0];
+          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (element?.closest('.dock-area')) {
+            e.preventDefault();
           }
         }}
       >
@@ -181,7 +197,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* Dock at bottom */}
         <div
-          className="absolute bottom-4 left-1/2 transform -translate-x-1/2"
+          className="dock-area absolute bottom-4 left-1/2 transform -translate-x-1/2"
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
@@ -217,7 +233,7 @@ export const HomeScreen: React.FC = () => {
                       <AppIcon app={app} isEditMode={false} showLabel={false} />
                     )
                   ) : (
-                    <div className="w-full h-full border-2 border-dashed border-white/20 rounded-2xl" />
+                    <div className="w-full h-full border-2 border-dashed border-white/20 rounded-2xl transition-all hover:border-white/40 hover:bg-white/5" />
                   )}
                 </div>
               );

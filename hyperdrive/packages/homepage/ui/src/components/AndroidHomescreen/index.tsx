@@ -98,7 +98,7 @@ export default function AndroidHomescreen() {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden" style={{ touchAction: 'pan-y pinch-zoom' }}>
       {/* Home Screen */}
       <HomeScreen />
 
