@@ -67,7 +67,7 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
 
   return (
     <Draggable
-      id={app.id}
+      id={`widget-${app.id}`}
       position={position}
       onMove={(pos) => setWidgetPosition(app.id, pos)}
       isEditMode={isEditMode}
@@ -80,15 +80,17 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
       >
         <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-2 border-b border-white/10">
           <span className="text-white/90 text-sm font-medium">{app.label}</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleWidget(app.id);
-            }}
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            ×
-          </button>
+          {isEditMode && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWidget(app.id);
+              }}
+              className="w-6 h-6 bg-red-500 text-white rounded-md flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         <div className="relative w-full h-[calc(100%-40px)]">

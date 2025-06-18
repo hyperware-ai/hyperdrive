@@ -121,9 +121,9 @@ export const usePersistenceStore = create<PersistenceStore>()(
           } else {
             newDockApps.push(appId);
           }
-          // Limit dock to 5 apps
-          if (newDockApps.length > 5) {
-            newDockApps.length = 5;
+          // Limit dock to 4 apps
+          if (newDockApps.length > 4) {
+            newDockApps.length = 4;
           }
           return { dockApps: newDockApps };
         });

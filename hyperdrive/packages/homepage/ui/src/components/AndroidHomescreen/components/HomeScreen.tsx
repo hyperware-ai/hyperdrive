@@ -51,14 +51,15 @@ export const HomeScreen: React.FC = () => {
 
         // Assuming app icons are roughly 80px wide/tall (including padding)
         const appSize = 80;
+        const dockHeight = 120; // Reserve space for dock
 
         if (position.x + appSize > windowWidth) {
           newX = Math.max(0, windowWidth - appSize);
           needsUpdate = true;
         }
 
-        if (position.y + appSize > windowHeight) {
-          newY = Math.max(0, windowHeight - appSize);
+        if (position.y + appSize > windowHeight - dockHeight) {
+          newY = Math.max(0, windowHeight - appSize - dockHeight);
           needsUpdate = true;
         }
 
@@ -143,7 +144,13 @@ export const HomeScreen: React.FC = () => {
           const appId = e.dataTransfer.getData('appId');
           if (appId && dockApps.includes(appId)) {
             removeFromDock(appId);
-            moveItem(appId, { x: e.clientX - 40, y: e.clientY - 40 });
+            // Ensure dropped app doesn't go behind dock
+            const dockHeight = 120;
+            const maxY = window.innerHeight - 80 - dockHeight; // 80 is app icon height
+            moveItem(appId, { 
+              x: e.clientX - 40, 
+              y: Math.min(e.clientY - 40, maxY) 
+            });
           }
         }}
       >
@@ -178,9 +185,9 @@ export const HomeScreen: React.FC = () => {
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
-          <div className="bg-black/60 backdrop-blur-xl rounded-3xl p-3 flex items-center gap-2 shadow-2xl border border-white/20 min-w-[380px]">
+          <div className="bg-black/60 backdrop-blur-xl rounded-3xl p-3 flex items-center gap-2 shadow-2xl border border-white/20">
             {/* Dock slots */}
-            {Array.from({ length: 5 }).map((_, index) => {
+            {Array.from({ length: 4 }).map((_, index) => {
               const app = dockAppsList[index];
               return (
                 <div
@@ -290,7 +297,7 @@ export const HomeScreen: React.FC = () => {
                         className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                           widgetSettings[app.id]?.hide
                             ? 'bg-white/10 hover:bg-white/20'
-                            : 'bg-green-500/50 hover:bg-green-500/70'
+                            : 'bg-gray-600/50 hover:bg-gray-600/70'
                         }`}
                       >
                         {widgetSettings[app.id]?.hide ? 'Show' : 'Hide'}
@@ -305,7 +312,7 @@ export const HomeScreen: React.FC = () => {
 
               <button
                 onClick={() => setEditMode(false)}
-                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 rounded-full text-white text-sm font-medium hover:shadow-lg transition-all shadow-lg"
+                className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full text-white text-sm font-medium hover:shadow-lg transition-all shadow-lg"
               >
                 Done
               </button>

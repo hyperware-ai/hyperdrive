@@ -46,7 +46,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
       {isEditMode && isFloating && (
         <button
           onClick={handleRemove}
-          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs z-10 shadow-lg"
+          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs z-10 shadow-lg hover:bg-red-600 transition-colors"
         >
           ×
         </button>

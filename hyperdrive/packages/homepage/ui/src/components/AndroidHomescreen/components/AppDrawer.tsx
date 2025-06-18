@@ -7,7 +7,7 @@ import { AppIcon } from './AppIcon';
 
 export const AppDrawer: React.FC = () => {
   const { apps } = useAppStore();
-  const { isAppDrawerOpen, toggleAppDrawer } = useNavigationStore();
+  const { isAppDrawerOpen, toggleAppDrawer, openApp } = useNavigationStore();
   const { homeScreenApps, addToHomeScreen } = usePersistenceStore();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -46,14 +46,16 @@ export const AppDrawer: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-6 gap-6">
           {filteredApps.map(app => (
             <div key={app.id} className="relative group">
-              <AppIcon app={app} isEditMode={false} />
+              <div onClick={() => openApp(app)}>
+                <AppIcon app={app} isEditMode={false} />
+              </div>
               {!homeScreenApps.includes(app.id) && (
                 <button
                   onClick={() => handleAddToHome(app)}
-                  className="absolute -top-2 -right-2 w-7 h-7 bg-green-500 text-white rounded-full flex items-center justify-center text-sm shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-3 -right-3 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg hover:bg-green-600 transition-colors"
                 >
                   +
                 </button>
@@ -65,7 +67,7 @@ export const AppDrawer: React.FC = () => {
 
       <button
         onClick={toggleAppDrawer}
-        className="p-6 text-white/70 text-center hover:text-white transition-colors"
+        className="m-4 p-4 bg-[#353534] text-white text-center rounded-xl hover:bg-[#454544] transition-colors"
       >
         Close
       </button>

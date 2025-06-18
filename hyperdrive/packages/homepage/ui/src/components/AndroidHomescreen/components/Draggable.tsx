@@ -43,8 +43,10 @@ export const Draggable: React.FC<DraggableProps> = ({
     const elementHeight = rect.height;
 
     // Calculate new position with bounds checking
+    // Reserve 120px at the bottom for the dock (dock height + padding)
+    const dockHeight = 120;
     const newX = Math.max(0, Math.min(window.innerWidth - elementWidth, clientX - dragOffset.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - elementHeight, clientY - dragOffset.y));
+    const newY = Math.max(0, Math.min(window.innerHeight - elementHeight - dockHeight, clientY - dragOffset.y));
 
     onMove({ x: newX, y: newY });
   };
@@ -75,7 +77,7 @@ export const Draggable: React.FC<DraggableProps> = ({
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isDragging, dragOffset, handleMove]);
+  }, [isDragging, dragOffset, onMove]);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (!isEditMode) return;
