@@ -11,7 +11,8 @@ use wasmtime::{
     Engine, Store,
 };
 use wasmtime_wasi::{
-    DirPerms, FilePerms, p2::{pipe::MemoryOutputPipe, IoView, WasiCtx, WasiCtxBuilder, WasiView}
+    p2::{pipe::MemoryOutputPipe, IoView, WasiCtx, WasiCtxBuilder, WasiView},
+    DirPerms, FilePerms,
 };
 
 use super::RestartBackoff;
