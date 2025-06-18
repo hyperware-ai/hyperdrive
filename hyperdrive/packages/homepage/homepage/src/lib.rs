@@ -135,7 +135,25 @@ fn init(our: Address) {
             Some("application/json".to_string()),
             include_str!("../../pkg/ui/manifest.json").into(),
         )
-        .expect("failed to bind /h-plain.svg");
+        .expect("failed to bind /manifest.json");
+    http_server
+        .bind_http_static_path(
+            "/icon.svg",
+            false, // icon.svg is not auth'd so that PWA works properly
+            false,
+            Some("image/svg+xml".to_string()),
+            include_str!("../../pkg/ui/icon.svg").into(),
+        )
+        .expect("failed to bind /icon.svg");
+    http_server
+        .bind_http_static_path(
+            "/icon-180.png",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("image/png".to_string()),
+            include_bytes!("../../pkg/ui/icon-180.png").into(),
+        )
+        .expect("failed to bind /icon.svg");
 
     // because boot uses this path to check if homepage is served yet,
     // it's best to respond dynamically and only serve this path once
