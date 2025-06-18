@@ -31,6 +31,7 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
   };
 
   const handleResize = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     if (!isEditMode) return;
 

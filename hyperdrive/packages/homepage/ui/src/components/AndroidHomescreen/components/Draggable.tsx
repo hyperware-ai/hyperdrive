@@ -125,9 +125,13 @@ export const Draggable: React.FC<DraggableProps> = ({
         }
       }}
       onTouchStart={(e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        handleStart(touch.clientX, touch.clientY);
+        // Only handle touch for widgets (when enableHtmlDrag is false)
+        if (isEditMode && !enableHtmlDrag) {
+          e.preventDefault();
+          e.stopPropagation();
+          const touch = e.touches[0];
+          handleStart(touch.clientX, touch.clientY);
+        }
       }}
     >
       {children}

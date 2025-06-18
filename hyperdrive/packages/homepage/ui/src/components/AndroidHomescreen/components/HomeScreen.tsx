@@ -12,6 +12,9 @@ export const HomeScreen: React.FC = () => {
   const { homeScreenApps, dockApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { toggleAppDrawer } = useNavigationStore();
+  const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
+  const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
+  const [showEditPanels, setShowEditPanels] = React.useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,6 +42,58 @@ export const HomeScreen: React.FC = () => {
   const handleDockDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+  };
+
+  // Touch drag handlers for mobile
+  const handleTouchStart = (appId: string) => (e: React.TouchEvent) => {
+    if (!isEditMode) return;
+    e.stopPropagation();
+    setDraggedAppId(appId);
+    const touch = e.touches[0];
+    setTouchDragPosition({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!draggedAppId || !touchDragPosition) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    setTouchDragPosition({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!draggedAppId || !touchDragPosition) return;
+    
+    const touch = e.changedTouches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    // Check if dropped on dock area
+    const dockElement = element?.closest('.dock-area');
+    if (dockElement) {
+      // Find which dock slot was targeted
+      const dockSlots = dockElement.querySelectorAll('[data-dock-index]');
+      let targetIndex = dockApps.length;
+      
+      dockSlots.forEach((slot, index) => {
+        const rect = slot.getBoundingClientRect();
+        if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+            touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+          targetIndex = index;
+        }
+      });
+      
+      addToDock(draggedAppId, targetIndex);
+    } else {
+      // If not dropped on dock, just move the app to the new position
+      const dockHeight = 120;
+      const maxY = window.innerHeight - 80 - dockHeight;
+      moveItem(draggedAppId, { 
+        x: touch.clientX - 40, 
+        y: Math.min(touch.clientY - 40, maxY) 
+      });
+    }
+    
+    setDraggedAppId(null);
+    setTouchDragPosition(null);
   };
 
   // Handle window resize to keep apps on screen
@@ -129,7 +184,7 @@ export const HomeScreen: React.FC = () => {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        touchAction: 'pan-y pinch-zoom'
+        touchAction: 'none'
       }}
     >
       {/* Background overlay for better text readability */}
@@ -185,7 +240,13 @@ export const HomeScreen: React.FC = () => {
               onMove={(pos) => moveItem(app.id, pos)}
               isEditMode={isEditMode}
             >
-              <AppIcon app={app} isEditMode={isEditMode} isFloating={true} />
+              <div
+                onTouchStart={handleTouchStart(app.id)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <AppIcon app={app} isEditMode={isEditMode} isFloating={true} />
+              </div>
             </Draggable>
           );
         })}
@@ -208,6 +269,7 @@ export const HomeScreen: React.FC = () => {
               return (
                 <div
                   key={`slot-${index}`}
+                  data-dock-index={index}
                   className="w-16 h-16 relative"
                   onDragOver={handleDockDragOver}
                   onDrop={(e) => {
@@ -225,6 +287,29 @@ export const HomeScreen: React.FC = () => {
                         }}
                         onDragEnd={() => {
                           // If dropped outside, it's handled by floating area
+                        }}
+                        onTouchStart={handleTouchStart(app.id)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={(e) => {
+                          if (!draggedAppId || !touchDragPosition) return;
+                          
+                          const touch = e.changedTouches[0];
+                          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                          
+                          // If not dropped on dock, remove from dock
+                          if (!element?.closest('.dock-area')) {
+                            removeFromDock(app.id);
+                            // Place at drop position
+                            const dockHeight = 120;
+                            const maxY = window.innerHeight - 80 - dockHeight;
+                            moveItem(app.id, { 
+                              x: touch.clientX - 40, 
+                              y: Math.min(touch.clientY - 40, maxY) 
+                            });
+                          }
+                          
+                          setDraggedAppId(null);
+                          setTouchDragPosition(null);
                         }}
                       >
                         <AppIcon app={app} isEditMode={false} showLabel={false} />
@@ -248,6 +333,23 @@ export const HomeScreen: React.FC = () => {
           </div>
         </div>
 
+        {/* Touch drag preview */}
+        {draggedAppId && touchDragPosition && (
+          <div
+            className="fixed z-50 pointer-events-none opacity-75"
+            style={{
+              left: touchDragPosition.x - 40,
+              top: touchDragPosition.y - 40,
+            }}
+          >
+            <AppIcon 
+              app={apps.find(a => a.id === draggedAppId)!} 
+              isEditMode={false} 
+              showLabel={false} 
+            />
+          </div>
+        )}
+
         {/* Edit mode toggle and widget settings */}
         <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
           {!isEditMode && (
@@ -260,9 +362,30 @@ export const HomeScreen: React.FC = () => {
           )}
 
           {isEditMode && (
-            <div className="flex items-start gap-2">
-              {/* Background Settings */}
-              <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEditPanels(!showEditPanels)}
+                  className="w-10 h-10 bg-white/10 backdrop-blur-xl rounded-full text-white hover:bg-white/20 transition-all shadow-lg border border-white/20 flex items-center justify-center"
+                  title="Settings"
+                >
+                  ⚙️
+                </button>
+                <button
+                  onClick={() => {
+                    setEditMode(false);
+                    setShowEditPanels(false);
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full text-white text-sm font-medium hover:shadow-lg transition-all shadow-lg"
+                >
+                  Done
+                </button>
+              </div>
+              
+              {showEditPanels && (
+                <div className="flex items-start gap-2">
+                  {/* Background Settings */}
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
                 <h3 className="text-white text-sm font-semibold mb-3">Background</h3>
                 <div className="space-y-3">
                   <div>
@@ -325,13 +448,8 @@ export const HomeScreen: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              <button
-                onClick={() => setEditMode(false)}
-                className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full text-white text-sm font-medium hover:shadow-lg transition-all shadow-lg"
-              >
-                Done
-              </button>
+                </div>
+              )}
             </div>
           )}
         </div>
