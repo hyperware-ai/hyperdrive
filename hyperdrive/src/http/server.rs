@@ -353,12 +353,14 @@ async fn login_handler(
 
     println!("login_handler: got info {info:?}\r");
 
+    let is_localhost = host.as_ref().unwrap_or(&warp::host::Authority::from_static("localhost")).host().contains("localhost");
+
     match keygen::decode_keyfile(&encoded_keyfile, &info.password_hash) {
         Ok(keyfile) => {
             let token = match keygen::generate_jwt(
                 &keyfile.jwt_secret_bytes,
                 our.as_ref(),
-                &info.subdomain,
+                if is_localhost { &info.subdomain } else { &None },
             ) {
                 Some(token) => token,
                 None => {
@@ -381,7 +383,7 @@ async fn login_handler(
             };
 
             let cookie = match info.subdomain.unwrap_or_default().as_str() {
-                "" => format!("hyperware-auth_{our}={token};"),
+                "" => format!("hyperware-auth_{our}={token}; domain=.{};", host.as_ref().unwrap().host()),
                 subdomain => {
                     // enforce that subdomain string only contains a-z, 0-9, ., :, and -
                     let subdomain = subdomain
@@ -492,6 +494,8 @@ async fn ws_handler(
         return Err(warp::reject::not_found());
     };
 
+    let is_localhost = host.as_ref().unwrap_or(&warp::host::Authority::from_static("localhost")).host().contains("localhost");
+
     if bound_path.authenticated {
         let Some(auth_token) = serialized_headers.get("cookie") else {
             return Err(warp::reject::not_found());
@@ -506,7 +510,7 @@ async fn ws_handler(
             // parse out subdomain from host (there can only be one)
             let request_subdomain = host.host().split('.').next().unwrap_or("");
             if request_subdomain != subdomain
-                || !utils::auth_token_valid(&our, Some(&app), auth_token, &jwt_secret_bytes)
+                || !utils::auth_token_valid(&our, if is_localhost { Some(&app) } else { None }, auth_token, &jwt_secret_bytes)
             {
                 return Err(warp::reject::not_found());
             }
@@ -615,6 +619,8 @@ async fn http_handler(
 
     let host = host.unwrap_or(warp::host::Authority::from_static("localhost"));
 
+    let is_localhost = host.as_ref().contains("localhost");
+
     if bound_path.authenticated {
         if let Some(ref subdomain) = bound_path.secure_subdomain {
             let request_subdomain = host.host().split('.').next().unwrap_or("");
@@ -668,7 +674,7 @@ async fn http_handler(
 
             if !utils::auth_token_valid(
                 &our,
-                Some(&app),
+                if is_localhost { Some(&app) } else { None },
                 serialized_headers.get("cookie").unwrap_or(&"".to_string()),
                 &jwt_secret_bytes,
             ) {
