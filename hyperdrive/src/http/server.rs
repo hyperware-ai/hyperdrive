@@ -15,7 +15,11 @@ use lib::types::core::{
 };
 use route_recognizer::Router;
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+    sync::Arc,
+};
 use tokio::sync::RwLock;
 use warp::{
     http::{
@@ -49,6 +53,7 @@ type WebSocketSender = tokio::sync::mpsc::Sender<warp::ws::Message>;
 
 type PathBindings = Arc<RwLock<Router<BoundPath>>>;
 type WsPathBindings = Arc<RwLock<Router<BoundWsPath>>>;
+type SecureSubdomains = Arc<RwLock<HashSet<String>>>;
 
 struct BoundPath {
     pub app: Option<ProcessId>, // if None, path has been unbound
@@ -203,6 +208,7 @@ pub async fn http_server(
 
     let path_bindings: PathBindings = Arc::new(RwLock::new(bindings_map));
     let ws_path_bindings: WsPathBindings = Arc::new(RwLock::new(Router::new()));
+    let secure_subdomains: SecureSubdomains = Arc::new(RwLock::new(HashSet::new()));
 
     tokio::spawn(serve(
         Arc::new(our_name),
@@ -211,6 +217,7 @@ pub async fn http_server(
         path_bindings.clone(),
         ws_path_bindings.clone(),
         ws_senders.clone(),
+        secure_subdomains.clone(),
         Arc::new(encoded_keyfile),
         Arc::new(jwt_secret_bytes),
         send_to_loop.clone(),
@@ -224,6 +231,7 @@ pub async fn http_server(
             path_bindings.clone(),
             ws_path_bindings.clone(),
             ws_senders.clone(),
+            secure_subdomains.clone(),
             send_to_loop.clone(),
             print_tx.clone(),
         )
@@ -241,6 +249,7 @@ async fn serve(
     path_bindings: PathBindings,
     ws_path_bindings: WsPathBindings,
     ws_senders: WebSocketSenders,
+    secure_subdomains: SecureSubdomains,
     encoded_keyfile: Arc<Vec<u8>>,
     jwt_secret_bytes: Arc<Vec<u8>>,
     send_to_loop: MessageSender,
@@ -303,6 +312,7 @@ async fn serve(
         .and(warp::any().map(move || our.clone()))
         .and(warp::any().map(move || http_response_senders.clone()))
         .and(warp::any().map(move || path_bindings.clone()))
+        .and(warp::any().map(move || secure_subdomains.clone()))
         .and(warp::any().map(move || jwt_secret_bytes.clone()))
         .and(warp::any().map(move || send_to_loop.clone()))
         .and(warp::any().map(move || print_tx.clone()))
@@ -500,6 +510,11 @@ async fn ws_handler(
             {
                 return Err(warp::reject::not_found());
             }
+
+            let expected_subdomain = utils::generate_secure_subdomain(&app);
+            if subdomain != &expected_subdomain {
+                return Err(warp::reject::not_found());
+            }
         } else {
             if !utils::auth_token_valid(&our, None, auth_token, &jwt_secret_bytes) {
                 return Err(warp::reject::not_found());
@@ -555,6 +570,7 @@ async fn http_handler(
     our: Arc<String>,
     http_response_senders: HttpResponseSenders,
     path_bindings: PathBindings,
+    secure_subdomains: SecureSubdomains,
     jwt_secret_bytes: Arc<Vec<u8>>,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
@@ -640,6 +656,16 @@ async fn http_handler(
                     .body(vec![])
                     .into_response());
             }
+
+            let expected_subdomain = utils::generate_secure_subdomain(&app);
+            if subdomain != &expected_subdomain {
+                return Ok(warp::reply::with_status(
+                    "secure subdomain can only serve its associated package",
+                    StatusCode::FORBIDDEN,
+                )
+                .into_response());
+            }
+
             if !utils::auth_token_valid(
                 &our,
                 Some(&app),
@@ -653,6 +679,23 @@ async fn http_handler(
                     .into_response());
             }
         } else {
+            // Check if the request is coming through a secure subdomain
+            let request_subdomain = host.host().split('.').next().unwrap_or("");
+            if !request_subdomain.is_empty() {
+                let secure_subdomains = secure_subdomains.read().await;
+                if secure_subdomains.contains(request_subdomain) {
+                    // This is a request to a secure subdomain, so enforce package restriction
+                    let expected_subdomain = utils::generate_secure_subdomain(&app);
+                    if request_subdomain != expected_subdomain {
+                        return Ok(warp::reply::with_status(
+                            "secure subdomain can only serve its associated package",
+                            StatusCode::FORBIDDEN,
+                        )
+                        .into_response());
+                    }
+                }
+            }
+
             if !utils::auth_token_valid(
                 &our,
                 None,
@@ -1111,6 +1154,7 @@ async fn handle_app_message(
     path_bindings: PathBindings,
     ws_path_bindings: WsPathBindings,
     ws_senders: WebSocketSenders,
+    secure_subdomains: SecureSubdomains,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
 ) {
@@ -1265,6 +1309,15 @@ async fn handle_app_message(
                     }
                     let path = utils::format_path_with_process(&km.source.process, &path);
                     let subdomain = utils::generate_secure_subdomain(&km.source.process);
+
+                    // Add subdomain to the set of secure subdomains
+                    //
+                    // In block to drop write lock ASAP
+                    {
+                        let mut secure_subs = secure_subdomains.write().await;
+                        secure_subs.insert(subdomain.clone());
+                    }
+
                     let mut path_bindings = path_bindings.write().await;
                     Printout::new(
                         3,
@@ -1369,6 +1422,15 @@ async fn handle_app_message(
                     }
                     let path = utils::format_path_with_process(&km.source.process, &path);
                     let subdomain = utils::generate_secure_subdomain(&km.source.process);
+
+                    // Add subdomain to the set of secure subdomains
+                    //
+                    // In block to drop write lock ASAP
+                    {
+                        let mut secure_subs = secure_subdomains.write().await;
+                        secure_subs.insert(subdomain.clone());
+                    }
+
                     let mut ws_path_bindings = ws_path_bindings.write().await;
                     ws_path_bindings.add(
                         &path,
