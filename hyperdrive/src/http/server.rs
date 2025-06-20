@@ -15,7 +15,11 @@ use lib::types::core::{
 };
 use route_recognizer::Router;
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+    sync::Arc,
+};
 use tokio::sync::RwLock;
 use warp::{
     http::{
@@ -49,6 +53,7 @@ type WebSocketSender = tokio::sync::mpsc::Sender<warp::ws::Message>;
 
 type PathBindings = Arc<RwLock<Router<BoundPath>>>;
 type WsPathBindings = Arc<RwLock<Router<BoundWsPath>>>;
+type SecureSubdomains = Arc<RwLock<HashSet<String>>>;
 
 struct BoundPath {
     pub app: Option<ProcessId>, // if None, path has been unbound
@@ -203,6 +208,7 @@ pub async fn http_server(
 
     let path_bindings: PathBindings = Arc::new(RwLock::new(bindings_map));
     let ws_path_bindings: WsPathBindings = Arc::new(RwLock::new(Router::new()));
+    let secure_subdomains: SecureSubdomains = Arc::new(RwLock::new(HashSet::new()));
 
     tokio::spawn(serve(
         Arc::new(our_name),
@@ -211,6 +217,7 @@ pub async fn http_server(
         path_bindings.clone(),
         ws_path_bindings.clone(),
         ws_senders.clone(),
+        secure_subdomains.clone(),
         Arc::new(encoded_keyfile),
         Arc::new(jwt_secret_bytes),
         send_to_loop.clone(),
@@ -224,6 +231,7 @@ pub async fn http_server(
             path_bindings.clone(),
             ws_path_bindings.clone(),
             ws_senders.clone(),
+            secure_subdomains.clone(),
             send_to_loop.clone(),
             print_tx.clone(),
         )
@@ -241,6 +249,7 @@ async fn serve(
     path_bindings: PathBindings,
     ws_path_bindings: WsPathBindings,
     ws_senders: WebSocketSenders,
+    secure_subdomains: SecureSubdomains,
     encoded_keyfile: Arc<Vec<u8>>,
     jwt_secret_bytes: Arc<Vec<u8>>,
     send_to_loop: MessageSender,
@@ -303,6 +312,7 @@ async fn serve(
         .and(warp::any().map(move || our.clone()))
         .and(warp::any().map(move || http_response_senders.clone()))
         .and(warp::any().map(move || path_bindings.clone()))
+        .and(warp::any().map(move || secure_subdomains.clone()))
         .and(warp::any().map(move || jwt_secret_bytes.clone()))
         .and(warp::any().map(move || send_to_loop.clone()))
         .and(warp::any().map(move || print_tx.clone()))
@@ -343,12 +353,18 @@ async fn login_handler(
 
     println!("login_handler: got info {info:?}\r");
 
+    let is_localhost = host
+        .as_ref()
+        .unwrap_or(&warp::host::Authority::from_static("localhost"))
+        .host()
+        .contains("localhost");
+
     match keygen::decode_keyfile(&encoded_keyfile, &info.password_hash) {
         Ok(keyfile) => {
             let token = match keygen::generate_jwt(
                 &keyfile.jwt_secret_bytes,
                 our.as_ref(),
-                &info.subdomain,
+                if is_localhost { &info.subdomain } else { &None },
             ) {
                 Some(token) => token,
                 None => {
@@ -371,7 +387,10 @@ async fn login_handler(
             };
 
             let cookie = match info.subdomain.unwrap_or_default().as_str() {
-                "" => format!("hyperware-auth_{our}={token};"),
+                "" => format!(
+                    "hyperware-auth_{our}={token}; domain=.{};",
+                    host.as_ref().unwrap().host()
+                ),
                 subdomain => {
                     // enforce that subdomain string only contains a-z, 0-9, ., :, and -
                     let subdomain = subdomain
@@ -482,6 +501,12 @@ async fn ws_handler(
         return Err(warp::reject::not_found());
     };
 
+    let is_localhost = host
+        .as_ref()
+        .unwrap_or(&warp::host::Authority::from_static("localhost"))
+        .host()
+        .contains("localhost");
+
     if bound_path.authenticated {
         let Some(auth_token) = serialized_headers.get("cookie") else {
             return Err(warp::reject::not_found());
@@ -496,8 +521,18 @@ async fn ws_handler(
             // parse out subdomain from host (there can only be one)
             let request_subdomain = host.host().split('.').next().unwrap_or("");
             if request_subdomain != subdomain
-                || !utils::auth_token_valid(&our, Some(&app), auth_token, &jwt_secret_bytes)
+                || !utils::auth_token_valid(
+                    &our,
+                    if is_localhost { Some(&app) } else { None },
+                    auth_token,
+                    &jwt_secret_bytes,
+                )
             {
+                return Err(warp::reject::not_found());
+            }
+
+            let expected_subdomain = utils::generate_secure_subdomain(&app);
+            if subdomain != &expected_subdomain {
                 return Err(warp::reject::not_found());
             }
         } else {
@@ -555,6 +590,7 @@ async fn http_handler(
     our: Arc<String>,
     http_response_senders: HttpResponseSenders,
     path_bindings: PathBindings,
+    secure_subdomains: SecureSubdomains,
     jwt_secret_bytes: Arc<Vec<u8>>,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
@@ -599,6 +635,8 @@ async fn http_handler(
 
     let host = host.unwrap_or(warp::host::Authority::from_static("localhost"));
 
+    let is_localhost = host.as_ref().contains("localhost");
+
     if bound_path.authenticated {
         if let Some(ref subdomain) = bound_path.secure_subdomain {
             let request_subdomain = host.host().split('.').next().unwrap_or("");
@@ -640,9 +678,19 @@ async fn http_handler(
                     .body(vec![])
                     .into_response());
             }
+
+            let expected_subdomain = utils::generate_secure_subdomain(&app);
+            if subdomain != &expected_subdomain {
+                return Ok(warp::reply::with_status(
+                    "secure subdomain can only serve its associated package",
+                    StatusCode::FORBIDDEN,
+                )
+                .into_response());
+            }
+
             if !utils::auth_token_valid(
                 &our,
-                Some(&app),
+                if is_localhost { Some(&app) } else { None },
                 serialized_headers.get("cookie").unwrap_or(&"".to_string()),
                 &jwt_secret_bytes,
             ) {
@@ -653,6 +701,23 @@ async fn http_handler(
                     .into_response());
             }
         } else {
+            // Check if the request is coming through a secure subdomain
+            let request_subdomain = host.host().split('.').next().unwrap_or("");
+            if !request_subdomain.is_empty() {
+                let secure_subdomains = secure_subdomains.read().await;
+                if secure_subdomains.contains(request_subdomain) {
+                    // This is a request to a secure subdomain, so enforce package restriction
+                    let expected_subdomain = utils::generate_secure_subdomain(&app);
+                    if request_subdomain != expected_subdomain {
+                        return Ok(warp::reply::with_status(
+                            "secure subdomain can only serve its associated package",
+                            StatusCode::FORBIDDEN,
+                        )
+                        .into_response());
+                    }
+                }
+            }
+
             if !utils::auth_token_valid(
                 &our,
                 None,
@@ -1111,6 +1176,7 @@ async fn handle_app_message(
     path_bindings: PathBindings,
     ws_path_bindings: WsPathBindings,
     ws_senders: WebSocketSenders,
+    secure_subdomains: SecureSubdomains,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
 ) {
@@ -1265,6 +1331,15 @@ async fn handle_app_message(
                     }
                     let path = utils::format_path_with_process(&km.source.process, &path);
                     let subdomain = utils::generate_secure_subdomain(&km.source.process);
+
+                    // Add subdomain to the set of secure subdomains
+                    //
+                    // In block to drop write lock ASAP
+                    {
+                        let mut secure_subs = secure_subdomains.write().await;
+                        secure_subs.insert(subdomain.clone());
+                    }
+
                     let mut path_bindings = path_bindings.write().await;
                     Printout::new(
                         3,
@@ -1369,6 +1444,15 @@ async fn handle_app_message(
                     }
                     let path = utils::format_path_with_process(&km.source.process, &path);
                     let subdomain = utils::generate_secure_subdomain(&km.source.process);
+
+                    // Add subdomain to the set of secure subdomains
+                    //
+                    // In block to drop write lock ASAP
+                    {
+                        let mut secure_subs = secure_subdomains.write().await;
+                        secure_subs.insert(subdomain.clone());
+                    }
+
                     let mut ws_path_bindings = ws_path_bindings.write().await;
                     ws_path_bindings.add(
                         &path,

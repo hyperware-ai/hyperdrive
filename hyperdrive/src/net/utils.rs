@@ -270,7 +270,13 @@ pub fn ingest_log(log: HnsUpdate, pki: &OnchainPKI) {
     );
 }
 
-pub fn validate_signature(from: &str, signature: &[u8], message: &[u8], pki: &OnchainPKI, our_key: Vec<u8>) -> bool {
+pub fn validate_signature(
+    from: &str,
+    signature: &[u8],
+    message: &[u8],
+    pki: &OnchainPKI,
+    our_key: Vec<u8>,
+) -> bool {
     if let Some(peer_id) = pki.get(from) {
         let their_networking_key = signature::UnparsedPublicKey::new(
             &signature::ED25519,
@@ -278,10 +284,7 @@ pub fn validate_signature(from: &str, signature: &[u8], message: &[u8], pki: &On
         );
         their_networking_key.verify(message, signature).is_ok()
     } else {
-        let our_key = signature::UnparsedPublicKey::new(
-            &signature::ED25519,
-            our_key,
-        );
+        let our_key = signature::UnparsedPublicKey::new(&signature::ED25519, our_key);
         our_key.verify(message, signature).is_ok()
     }
 }

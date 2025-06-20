@@ -39,6 +39,7 @@ cargo install wasm-tools
 
 # Get Rust version 1.85.1
 rustup update 1.85.1
+rustup default 1.85.1
 
 rustup target add wasm32-wasip1
 
