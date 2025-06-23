@@ -158,7 +158,6 @@ fn init(our: Address) {
         )
         .expect("failed to bind /chaneyextended.woff2");
 
-        
     http_server
         .bind_http_static_path(
             "/icon.svg",
@@ -179,17 +178,15 @@ fn init(our: Address) {
         )
         .expect("failed to bind /icon.svg");
 
-
-        
     http_server
-    .bind_http_static_path(
-        "/chaneyextended.woff2",
-        false, // icon-180.png is not auth'd so that PWA works properly
-        false,
-        Some("image/png".to_string()),
-        include_bytes!("../../pkg/ui/chaneyextended.woff2").into(),
-    )
-    .expect("failed to bind /icon.svg");
+        .bind_http_static_path(
+            "/chaneyextended.woff2",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("image/png".to_string()),
+            include_bytes!("../../pkg/ui/chaneyextended.woff2").into(),
+        )
+        .expect("failed to bind /icon.svg");
 
     // because boot uses this path to check if homepage is served yet,
     // it's best to respond dynamically and only serve this path once
