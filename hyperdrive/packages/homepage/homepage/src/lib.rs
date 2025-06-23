@@ -110,25 +110,6 @@ fn init(our: Address) {
 
     http_server
         .bind_http_static_path(
-            "/h-green.svg",
-            false, // h-green.svg is not auth'd so that apps on subdomains can use it too!
-            false,
-            Some("image/svg+xml".to_string()),
-            include_str!("../../pkg/h-green.svg").into(),
-        )
-        .expect("failed to bind /h-green.svg");
-
-    http_server
-        .bind_http_static_path(
-            "/h-plain.svg",
-            false, // h-plain.svg is not auth'd so that apps on subdomains can use it too!
-            false,
-            Some("image/svg+xml".to_string()),
-            include_str!("../../pkg/h-plain.svg").into(),
-        )
-        .expect("failed to bind /h-plain.svg");
-    http_server
-        .bind_http_static_path(
             "/manifest.json",
             false, // manifest.json is not auth'd so that PWA works properly
             false,
@@ -136,6 +117,47 @@ fn init(our: Address) {
             include_str!("../../pkg/ui/manifest.json").into(),
         )
         .expect("failed to bind /manifest.json");
+
+    http_server
+        .bind_http_static_path(
+            "/ClashDisplay-Variable.woff2",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("font/woff2".to_string()),
+            include_bytes!("../../pkg/ui/ClashDisplay-Variable.woff2").into(),
+        )
+        .expect("failed to bind /ClashDisplay-Variable.woff2");
+
+    http_server
+        .bind_http_static_path(
+            "/NHaasGroteskTXPro-55Rg.woff",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("font/woff".to_string()),
+            include_bytes!("../../pkg/ui/NHaasGroteskTXPro-55Rg.woff").into(),
+        )
+        .expect("failed to bind /NHaasGroteskTXPro-55Rg.woff");
+
+    http_server
+        .bind_http_static_path(
+            "/NHaasGroteskTXPro-75Bd.woff",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("font/woff".to_string()),
+            include_bytes!("../../pkg/ui/NHaasGroteskTXPro-75Bd.woff").into(),
+        )
+        .expect("failed to bind /NHaasGroteskTXPro-75Bd.woff");
+
+    http_server
+        .bind_http_static_path(
+            "/chaneyextended.woff2",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("font/woff".to_string()),
+            include_bytes!("../../pkg/ui/chaneyextended.woff2").into(),
+        )
+        .expect("failed to bind /chaneyextended.woff2");
+
     http_server
         .bind_http_static_path(
             "/icon.svg",
@@ -145,6 +167,7 @@ fn init(our: Address) {
             include_str!("../../pkg/ui/icon.svg").into(),
         )
         .expect("failed to bind /icon.svg");
+
     http_server
         .bind_http_static_path(
             "/icon-180.png",
@@ -152,6 +175,16 @@ fn init(our: Address) {
             false,
             Some("image/png".to_string()),
             include_bytes!("../../pkg/ui/icon-180.png").into(),
+        )
+        .expect("failed to bind /icon.svg");
+
+    http_server
+        .bind_http_static_path(
+            "/chaneyextended.woff2",
+            false, // icon-180.png is not auth'd so that PWA works properly
+            false,
+            Some("image/png".to_string()),
+            include_bytes!("../../pkg/ui/chaneyextended.woff2").into(),
         )
         .expect("failed to bind /icon.svg");
 

@@ -23,7 +23,12 @@ function populate_contacts(contacts) {
         const li = document.createElement('li');
         const div = document.createElement('div');
         div.classList.add('contact');
-        div.innerHTML = `<h3>${node}</h3>
+        div.innerHTML = `<h3>
+        <span>${node}</span>
+        <form class="delete-contact" id="${node}">
+            <button type="submit">❌</button>
+        </form>
+        </h3>
         <ul>
         ${Object.entries(contact).sort((a, b) => a[0].localeCompare(b[0])).map(([field, value]) => `
             <li>
@@ -32,9 +37,6 @@ function populate_contacts(contacts) {
             </li>
         `).join('')}
         </ul>
-        <form class="delete-contact" id="${node}">
-            <button type="submit">delete</button>
-        </form>
         <form class="add-field" id="${node}">
             <input type="text" name="field" placeholder="field (e.g. name)">
             <input type="text" name="value" placeholder="value (e.g. John Doe)" title="Enter any valid JSON value (e.g. &quot;John Doe&quot;, 42, true, [1,2,3], {&quot;key&quot;:&quot;value&quot;})">
@@ -48,10 +50,12 @@ function populate_contacts(contacts) {
     ul.querySelectorAll('.delete-contact').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-            const node = this.getAttribute('id');
-            api_call({
-                "RemoveContact": node
-            });
+            if (confirm('Are you sure you want to remove this contact?')) {
+                const node = this.getAttribute('id');
+                api_call({
+                    "RemoveContact": node
+                });
+            }
         });
     });
 
@@ -112,9 +116,11 @@ document.getElementById('add-contact').addEventListener('submit', (e) => {
 })
 
 function removeField(node, field) {
-    api_call({
-        "RemoveField": [node, field]
-    });
+    if (confirm('Are you sure you want to remove this field?')) {
+        api_call({
+            "RemoveField": [node, field]
+        });
+    }
 }
 
 // Setup WebSocket connection
