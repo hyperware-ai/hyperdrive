@@ -12,16 +12,24 @@
         document.title = "contacts - " + window.our.node;
     </script>
     <style>
+        body {
+            background-color: #004fff;
+        }
+
         h1,
         h2,
         h3,
         h4,
         h5,
-        h6,
+        h6 {
+            font-family: 'Clash Display', sans-serif;
+            font-weight: 500;
+        }
+
         p,
         a,
         li {
-            font-family: 'Space Grotesk', monospace;
+            font-family: 'Neue Haas Grotesk', sans-serif;
         }
 
         #title {
@@ -31,6 +39,7 @@
             max-width: 720px;
             min-width: 300px;
             margin: 0 auto;
+            color: #fff;
         }
 
         #title h1 {
@@ -45,52 +54,44 @@
 
         #edit {
             max-width: 720px;
-            margin: 0 auto;
-        }
-
-        #contacts-article {
-            margin: 20px;
         }
 
         main {
+            position: relative;
             margin: 0 auto;
             padding: 20px;
-            max-width: 960px;
-            min-width: 300px;
-        }
-
-        form.add-contact {
-            max-width: 400px;
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 1;
         }
 
         #contacts {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
             list-style: none;
-        }
-
-        .contact:first-of-type {
-            margin-top: 10px;
         }
 
         .contact {
             padding: 10px;
-            border: 1px solid var(--tasteful-dark);
+            border: 1px solid var(--neon-green);
             border-radius: 5px;
-            margin-bottom: 10px;
-            display: grid;
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            grid-auto-flow: row;
-            grid-template-areas:
-                "name name delete"
-                "fields fields fields"
-                "add-field add-field add-field";
+            background-color: var(--white);
         }
 
         .contact h3 {
-            grid-area: name;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .contact ul {
-            grid-area: fields;
             list-style: none;
             max-width: 100%;
             min-width: 0;
@@ -101,12 +102,19 @@
         }
 
         form.delete-contact {
-            grid-area: delete;
+            margin-left: auto;
+        }
+
+        .delete-contact button {
+
+            background-color: transparent !important;
+            color: var(--magenta);
         }
 
         form.add-field {
-            grid-area: add-field;
-            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .remove-field {
@@ -114,10 +122,47 @@
             font-size: 0.8em;
             padding: 3px 10px;
         }
+
+        input[type="text"] {
+            background-color: #0001;
+            border: 1px solid var(--neon-green);
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1em;
+            font-family: 'Neue Haas Grotesk', sans-serif;
+            font-weight: 500;
+            font-style: normal;
+        }
     </style>
 </head>
 
 <body>
+    <svg width="393" height="356" viewBox="0 0 393 356" fill="none" xmlns="http://www.w3.org/2000/svg"
+        style="position: absolute; bottom: 0; left: 0; width: 100%;  background-position: center; background-size: cover; pointer-events: none; z-index: 0;">
+        <g clip-path="url(#clip0_1483_2725)">
+            <path
+                d="M339.268 685.316L339.268 535.649L454.813 461.579L454.813 396.535L512.8 359.361C533.086 346.359 559.152 346.359 579.438 359.361L658.066 409.776"
+                stroke="#DCFF71" stroke-width="2" stroke-miterlimit="10" />
+            <path d="M56.1093 299.808L-283.025 517.208" stroke="#DCFF71" stroke-width="2" stroke-miterlimit="10" />
+            <path
+                d="M56.1089 299.807L56.1089 117.788L106.584 85.4356C120.47 76.524 138.29 76.524 152.19 85.4356L202.652 117.788L202.652 299.807L152.19 267.455C138.303 258.543 120.483 258.543 106.584 267.455L56.1089 299.807Z"
+                stroke="#DCFF71" stroke-width="2" stroke-miterlimit="10" />
+            <path d="M454.811 461.492L454.811 279.422L202.652 117.789" stroke="#DCFF71" stroke-width="2"
+                stroke-miterlimit="10" />
+            <path
+                d="M339.267 535.636L322.661 546.29L289.197 524.844L221.775 481.649C209.874 474 202.665 460.847 202.665 446.735L202.665 299.794L305.259 365.584L404.16 428.987L454.824 461.478L454.824 461.567"
+                stroke="#DCFF71" stroke-width="2" stroke-miterlimit="10" />
+            <path
+                d="M56.109 299.808L56.109 446.748C56.109 460.861 48.9128 474.013 37.0118 481.663L-59.4357 543.489L-117.41 580.65C-137.722 593.651 -163.762 593.651 -184.074 580.65L-283.025 517.221L-283.025 335.189L56.0964 117.801L56.0964 299.82"
+                stroke="#DCFF71" stroke-width="2" stroke-miterlimit="10" />
+        </g>
+        <defs>
+            <clipPath id="clip0_1483_2725">
+                <rect width="393" height="356" fill="white" transform="translate(393 356) rotate(-180)" />
+            </clipPath>
+        </defs>
+    </svg>
     <span id="title">
         <button id="back-button"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512"
                 height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
@@ -128,6 +173,41 @@
         <h1>contacts</h1>
     </span>
     <main>
+        <?xml version="1.0" encoding="UTF-8"?>
+        <svg id="Hyperware Logo" data-name="Hyperware Logo" xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 622.27 595.09" style="width: 64px; margin: 0 auto;">
+            <defs>
+                <style>
+                    .cls-1 {
+                        fill: #dcff71;
+                    }
+                </style>
+            </defs>
+            <g id="Capa_1" data-name="Capa 1">
+                <g>
+                    <g>
+                        <g>
+                            <path class="cls-1"
+                                d="M99.56,188.21L0,476.27l93.56.03c10.8,0,20.4-6.84,23.93-17.05l53.59-155.07c3.79-10.97,1.73-23.11-5.45-32.22l-66.06-83.76Z" />
+                            <path class="cls-1"
+                                d="M420.78,118.82l-30.14,87.1c-3.74,10.8-13.91,18.04-25.34,18.04h-70.48c-10.46,0-20.34-4.76-26.81-12.97l-72.67-92.17h225.44Z" />
+                        </g>
+                        <path class="cls-1"
+                            d="M101.63,0l-42.74,123.61c-1.85,5.35-.99,11.28,2.3,15.93l38.37,48.67,17.69-51.16c3.77-10.91,14.05-18.23,25.59-18.23h52.5L101.63,0Z" />
+                    </g>
+                    <g>
+                        <g>
+                            <path class="cls-1"
+                                d="M522.71,406.88l99.56-288.06-93.56-.03c-10.8,0-20.4,6.84-23.93,17.05l-53.59,155.07c-3.79,10.97-1.73,23.11,5.45,32.22l66.06,83.76Z" />
+                            <path class="cls-1"
+                                d="M201.49,476.27l30.14-87.1c3.74-10.8,13.91-18.04,25.34-18.04h70.48c10.46,0,20.34,4.76,26.81,12.97l72.67,92.17h-225.44Z" />
+                        </g>
+                        <path class="cls-1"
+                            d="M520.64,595.09l42.74-123.61c1.85-5.35.99-11.28-2.3-15.93l-38.37-48.67-17.69,51.16c-3.77,10.91-14.05,18.23-25.59,18.23h-52.5l93.71,118.82Z" />
+                    </g>
+                </g>
+            </g>
+        </svg>
         <article id="edit">
             <form id="add-contact">
                 <input type="text" name="node" placeholder="node name (e.g. my-friend.os)">

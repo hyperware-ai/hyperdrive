@@ -84,7 +84,7 @@ fn make_widget() -> String {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Space Grotesk', monospace;
+            font-family: 'Neue Haas Grotesk', monospace;
         }
 
         body {

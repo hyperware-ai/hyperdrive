@@ -27,6 +27,7 @@ const config = {
             white: '#f6f6f6',
             neon: '#dcff71',
             blue: '#004fff',
+            iris: '#004fff',
             orange: '#dd6e42',
             magenta: '#bf1363',
             transparent: 'transparent',
