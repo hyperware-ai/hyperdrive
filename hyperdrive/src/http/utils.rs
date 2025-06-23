@@ -7,7 +7,12 @@ use std::collections::HashMap;
 use tokio::net::TcpListener;
 use warp::http::{header::HeaderName, header::HeaderValue, HeaderMap};
 
-const REVERSE_PROXY_HEADERS: &[&str; 4] = &["x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "x-real-ip"];
+const REVERSE_PROXY_HEADERS: &[&str; 4] = &[
+    "x-forwarded-for",
+    "x-forwarded-proto",
+    "x-forwarded-host",
+    "x-real-ip",
+];
 
 #[derive(Serialize, Deserialize)]
 pub struct RpcMessage {
