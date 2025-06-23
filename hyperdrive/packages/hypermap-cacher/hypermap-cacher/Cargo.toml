@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[features]
+simulation-mode = ["hyperware_process_lib/simulation-mode"]
+
 [dependencies]
 anyhow = "1.0"
 alloy-primitives = "0.8.15"

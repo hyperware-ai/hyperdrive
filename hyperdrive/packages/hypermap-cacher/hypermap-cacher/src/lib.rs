@@ -36,7 +36,10 @@ const MAX_LOG_RETRIES: u8 = 3;
 const RETRY_DELAY_S: u64 = 10;
 const LOG_ITERATION_DELAY_MS: u64 = 200;
 
+#[cfg(not(feature = "simulation-mode"))]
 const DEFAULT_NODES: &[&str] = &["nick.hypr", "nick1udwig.os"];
+#[cfg(feature = "simulation-mode")]
+const DEFAULT_NODES: &[&str] = &["fake.os"];
 
 // Internal representation of LogsMetadata, similar to WIT but for Rust logic.
 #[derive(Serialize, Deserialize, Debug, Clone)]
