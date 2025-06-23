@@ -546,7 +546,9 @@ async fn ws_handler(
         .map(|addr| addr.ip().is_loopback())
         .unwrap_or(false);
 
-    if bound_path.extension && !is_local {
+    let is_behind_reverse_proxy = utils::is_behind_reverse_proxy(&headers);
+
+    if bound_path.extension && (!is_local || is_behind_reverse_proxy) {
         return Err(warp::reject::reject());
     }
 
@@ -737,7 +739,9 @@ async fn http_handler(
         .map(|addr| addr.ip().is_loopback())
         .unwrap_or(false);
 
-    if bound_path.local_only && !is_local {
+    let is_behind_reverse_proxy = utils::is_behind_reverse_proxy(&headers);
+
+    if bound_path.local_only && (!is_local || is_behind_reverse_proxy) {
         return Ok(warp::reply::with_status(vec![], StatusCode::FORBIDDEN).into_response());
     }
 
