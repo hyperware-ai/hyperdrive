@@ -106,6 +106,8 @@ async fn main() {
             .expect("failed to parse given --process-verbosity. Must be JSON Object with keys `ProcessId`s and values either `{\"U8\": <verbosity>}` or `\"Muted\"`")
     };
 
+    let expose_local = *matches.get_one::<bool>("expose-local").unwrap();
+
     #[cfg(feature = "simulation-mode")]
     let (fake_node_name, fakechain_port) = (
         matches.get_one::<String>("fake-node-name"),
@@ -458,6 +460,7 @@ async fn main() {
         http_server_receiver,
         kernel_message_sender.clone(),
         print_sender.clone(),
+        expose_local,
     ));
     tasks.spawn(http::client::http_client(
         our.name.clone(),
@@ -784,6 +787,10 @@ fn build_command() -> Command {
         .arg(
             arg!(--"process-verbosity" <JSON_STRING> "ProcessId: verbosity JSON object")
                 .default_value("")
+        )
+        .arg(
+            arg!(--"expose-local" <EXPOSE_LOCAL> "Expose local-only and RPC endpoints. WARNING: If behind a reverse proxy, ensure proxy is set to put `x-forwarded-for` headers or this will allow your node to be controlled remotely without authentication! (caddy adds these headers by default and so is strongly recommended)")
+                .action(clap::ArgAction::SetTrue),
         );
 
     #[cfg(feature = "simulation-mode")]

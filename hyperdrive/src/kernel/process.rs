@@ -11,7 +11,8 @@ use wasmtime::{
     Engine, Store,
 };
 use wasmtime_wasi::{
-    pipe::MemoryOutputPipe, DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiView,
+    p2::{pipe::MemoryOutputPipe, IoView, WasiCtx, WasiCtxBuilder, WasiView},
+    DirPerms, FilePerms,
 };
 
 use super::RestartBackoff;
@@ -62,10 +63,13 @@ pub struct ProcessWasiV1 {
     wasi: WasiCtx,
 }
 
-impl WasiView for ProcessWasiV1 {
+impl IoView for ProcessWasiV1 {
     fn table(&mut self) -> &mut Table {
         &mut self.table
     }
+}
+
+impl WasiView for ProcessWasiV1 {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi
     }
@@ -129,7 +133,7 @@ async fn make_component_v1(
     let mut linker = Linker::new(&engine);
     ProcessV1::add_to_linker(&mut linker, |state: &mut ProcessWasiV1| state).unwrap();
     let (table, wasi, wasi_stderr) = make_table_and_wasi(home_directory_path, &process_state).await;
-    wasmtime_wasi::add_to_linker_async(&mut linker).unwrap();
+    wasmtime_wasi::p2::add_to_linker_async(&mut linker).unwrap();
 
     let our_process_id = process_state.metadata.our.process.clone();
     let send_to_terminal = process_state.send_to_terminal.clone();

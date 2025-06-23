@@ -7,6 +7,13 @@ use std::collections::HashMap;
 use tokio::net::TcpListener;
 use warp::http::{header::HeaderName, header::HeaderValue, HeaderMap};
 
+const REVERSE_PROXY_HEADERS: &[&str; 4] = &[
+    "x-forwarded-for",
+    "x-forwarded-proto",
+    "x-forwarded-host",
+    "x-real-ip",
+];
+
 #[derive(Serialize, Deserialize)]
 pub struct RpcMessage {
     pub node: Option<String>,
@@ -141,4 +148,13 @@ pub async fn is_port_available(bind_addr: &str) -> Option<TcpListener> {
 
 pub fn _binary_encoded_string_to_bytes(s: &str) -> Vec<u8> {
     s.chars().map(|c| c as u8).collect()
+}
+
+pub fn is_behind_reverse_proxy(headers: &warp::http::HeaderMap) -> bool {
+    for reverse_proxy_header in REVERSE_PROXY_HEADERS {
+        if headers.contains_key(*reverse_proxy_header) {
+            return true;
+        }
+    }
+    return false;
 }
