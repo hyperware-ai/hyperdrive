@@ -187,6 +187,7 @@ pub async fn http_server(
     mut recv_in_server: MessageReceiver,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
+    expose_local: bool,
 ) -> anyhow::Result<()> {
     let http_response_senders: HttpResponseSenders = Arc::new(DashMap::new());
     let ws_senders: WebSocketSenders = Arc::new(DashMap::new());
@@ -222,6 +223,7 @@ pub async fn http_server(
         Arc::new(jwt_secret_bytes),
         send_to_loop.clone(),
         print_tx.clone(),
+        expose_local,
     ));
 
     while let Some(km) = recv_in_server.recv().await {
@@ -254,6 +256,7 @@ async fn serve(
     jwt_secret_bytes: Arc<Vec<u8>>,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
+    expose_local: bool,
 ) {
     // filter to receive websockets
     let cloned_our = our.clone();
@@ -271,6 +274,7 @@ async fn serve(
         .and(warp::any().map(move || ws_path_bindings.clone()))
         .and(warp::any().map(move || cloned_msg_tx.clone()))
         .and(warp::any().map(move || cloned_print_tx.clone()))
+        .and(warp::any().map(move || expose_local.clone()))
         .and_then(ws_handler);
 
     #[cfg(feature = "simulation-mode")]
@@ -317,6 +321,7 @@ async fn serve(
         .and(warp::any().map(move || send_to_loop.clone()))
         .and(warp::any().map(move || print_tx.clone()))
         .and(warp::any().map(move || login_html.clone()))
+        .and(warp::any().map(move || expose_local.clone()))
         .and_then(http_handler);
 
     let filter_with_ws = ws_route.or(login).or(filter);
@@ -465,6 +470,7 @@ async fn ws_handler(
     ws_path_bindings: WsPathBindings,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
+    expose_local: bool,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let original_path = utils::normalize_path(path.as_str());
     Printout::new(
@@ -548,7 +554,7 @@ async fn ws_handler(
 
     let is_behind_reverse_proxy = utils::is_behind_reverse_proxy(&headers);
 
-    if bound_path.extension && (!is_local || is_behind_reverse_proxy) {
+    if bound_path.extension && (!is_local || is_behind_reverse_proxy || !expose_local) {
         return Err(warp::reject::reject());
     }
 
@@ -597,6 +603,7 @@ async fn http_handler(
     send_to_loop: MessageSender,
     print_tx: PrintSender,
     login_html: Arc<String>,
+    expose_local: bool,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let original_path = utils::normalize_path(path.as_str());
     let base_path = original_path.split('/').skip(1).next().unwrap_or("");
@@ -741,7 +748,7 @@ async fn http_handler(
 
     let is_behind_reverse_proxy = utils::is_behind_reverse_proxy(&headers);
 
-    if bound_path.local_only && (!is_local || is_behind_reverse_proxy) {
+    if bound_path.local_only && (!is_local || is_behind_reverse_proxy || !expose_local) {
         return Ok(warp::reply::with_status(vec![], StatusCode::FORBIDDEN).into_response());
     }
 
