@@ -8,7 +8,7 @@ simulation-mode = []
 
 [dependencies]
 anyhow = "1.0"
-hyperware_process_lib = "1.2.0"
+hyperware_process_lib = "2.0.0"
 process_macros = "0.1"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
@@ -17,7 +17,7 @@ sha2 = "0.10.8"
 sha3 = "0.10.8"
 url = "2.4.1"
 urlencoding = "2.1.0"
-wit-bindgen = "0.36.0"
+wit-bindgen = "0.42.1"
 zip = { version = "1.1.4", default-features = false, features = ["deflate"] }
 
 [lib]

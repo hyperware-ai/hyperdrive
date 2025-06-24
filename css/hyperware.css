@@ -1,4 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap');
+@font-face {
+    font-family: 'chaneyextended';
+    src: url('/chaneyextended.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Clash Display';
+    src: url('/ClashDisplay-Variable.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Neue Haas Grotesk';
+    src: url('/NHaasGroteskTXPro-55Rg.woff') format('woff');
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: 'Neue Haas Grotesk';
+    src: url('/NHaasGroteskTXPro-75Bd.woff') format('woff');
+    font-weight: 700;
+}
+
+.display {
+    font-family: 'chaneyextended', sans-serif;
+}
+
+.prose {
+    font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+.clash {
+    font-family: 'Clash Display', sans-serif;
+}
 
 /* Variables */
 :root {
@@ -34,7 +66,7 @@
 
     --link-color: light-dark(var(--secondary-color), var(--primary-color));
 
-    --font-family-main: 'Space Grotesk', monospace;
+    --font-family-main: 'Neue Haas Grotesk', monospace;
 
     /* Add modern CSS variables */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -89,7 +121,7 @@ html {
 }
 
 body {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Neue Haas Grotesk', sans-serif;
     margin: 0;
     overflow-x: hidden;
     padding: 0;

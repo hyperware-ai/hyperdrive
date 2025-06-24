@@ -626,7 +626,6 @@ pub async fn kernel(
     default_pki_entries: Vec<t::HnsUpdate>,
 ) -> anyhow::Result<()> {
     let mut config = Config::new();
-    config.cache_config_load_default().unwrap();
     config.wasm_backtrace_details(WasmBacktraceDetails::Enable);
     config.wasm_component_model(true);
     config.async_support(true);
