@@ -61,7 +61,6 @@ function App() {
   const [showHyperwareCss, setShowHyperwareCss] = useState(false);
   const [showPing, setShowPing] = useState(false);
 
-  const isMobile = window.innerWidth < 768;
 
   const { address } = useAccount();
 
@@ -186,11 +185,11 @@ function App() {
     }
   };
 
-  const articleClass = "shadow-xl flex flex-col gap-2 items-stretch rounded-lg grow self-stretch p-4 max-w-md";
-  const h2Class = "text-sm flex items-center justify-between prose gap-2";
+  const articleClass = "shadow-xl flex flex-col gap-2 items-stretch rounded-lg  self-stretch p-2 max-w-md";
+  const h2Class = "text-lg font-bold flex items-center justify-between prose gap-2";
   const showHideButton = (show: boolean, setShow: (show: boolean) => void) => (
     <button
-      className="clear text-xl"
+      className="clear thin text-xl"
       onClick={() => setShow(!show)}
     >
       {show ? <PiEyeSlash className="opacity-50" /> : <PiEye className="opacity-50" />}
@@ -202,35 +201,32 @@ function App() {
     return subdomainDomain;
   }, []);
 
+
   return (
-    <div className='max-w-screen'>
+    <div className='max-w-screen grow self-stretch min-h-screen flex flex-col bg-black/5'>
       <div
         id="header"
         className="bg-neon flex flex-col gap-2 items-stretch p-4"
       >
         <div className="flex self-stretch items-center justify-between gap-4">
-          <button
-            className="mr-auto w-fit clear"
+          <img
+            src={`//${NODE_BASE_URL}/Logomark Iris.svg`}
+            alt="back"
+            className="h-8 cursor-pointer"
+            data-base-url={import.meta.env.BASE_URL}
             onClick={() => {
               window.history.back();
             }}
-          >
-            <img
-              src={`${NODE_BASE_URL}/Logomark Iris.svg`}
-              alt="back"
-              className="w-8 h-8"
-              data-base-url={import.meta.env.BASE_URL}
-            />
-          </button>
+          />
           <ConnectButton />
         </div>
         <h1 className="font-bold uppercase">system diagnostics & settings</h1>
-        <span className="text-xs bg-stone text-neon font-bold">{window?.our?.node}</span>
+        <div className="flex items-center justify-between gap-2">
+
+          <span className="text-xs bg-stone text-neon font-bold self-start rounded px-2">{window?.our?.node}</span>
+        </div>
       </div>
-      <main className={classNames("bg-black/5 grid gap-4 p-4", {
-        "grid-cols-1": isMobile,
-        "grid-cols-2": !isMobile,
-      })}>
+      <main className=" grid gap-4 p-4  self-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <article
           id="net-diagnostics"
           className={articleClass}
@@ -295,7 +291,7 @@ function App() {
             "h-0 overflow-hidden invisible": !showPing,
             'h-auto': showPing,
           })}>
-            <form id="get-peer-pki" onSubmit={handlePeerPki}>
+            <form id="get-peer-pki" className="flex flex-col items-stretch gap-2" onSubmit={handlePeerPki}>
               <input type="text" name="peer" placeholder="peer-name.os" />
               <button type="submit">get peer info</button>
             </form>
@@ -303,7 +299,7 @@ function App() {
             <h2 className={h2Class}>
               <span>ping a node</span>
             </h2>
-            <form id="ping-peer" onSubmit={handlePeerPing}>
+            <form id="ping-peer" className="flex flex-col items-stretch gap-2" onSubmit={handlePeerPing}>
               <input type="text" name="peer" placeholder="peer-name.os" />
               <input type="text" name="content" placeholder="message" />
               <input type="number" name="timeout" placeholder="timeout (seconds)" />
@@ -324,12 +320,12 @@ function App() {
             "h-0 overflow-hidden invisible": !showEthRpcProviders,
             'h-auto': showEthRpcProviders,
           })}>
-            <form id="add-eth-provider" onSubmit={handleAddEthProvider}>
+            <form id="add-eth-provider" className="flex flex-col items-stretch gap-2" onSubmit={handleAddEthProvider}>
               <input type="number" name="chain-id" placeholder="1" />
               <input type="text" name="rpc-url" placeholder="wss://rpc-url.com" />
               <button type="submit">add provider</button>
             </form>
-            <form id="remove-eth-provider" onSubmit={handleRemoveEthProvider}>
+            <form id="remove-eth-provider" className="flex flex-col items-stretch gap-2" onSubmit={handleRemoveEthProvider}>
               <input type="number" name="chain-id" placeholder="1" />
               <input type="text" name="rpc-url" placeholder="wss://rpc-url.com" />
               <button type="submit">remove provider</button>
@@ -395,12 +391,21 @@ function App() {
             'h-auto': showProcesses,
           })}>
             {Object.entries(appState.process_map || {}).map(([id, process]) => (
-              <li key={id}>
-                <button onClick={(e) => {
-                  const details = e.currentTarget.nextElementSibling as HTMLElement;
-                  details.style.display = details.style.display === 'none' ? 'block' : 'none';
-                }}>{id}</button>
-                <div style={{ display: 'none' }}>
+              <li
+                className="list-none"
+                key={id}
+              >
+                <button
+                  onClick={(e) => {
+                    const details = e.currentTarget.nextElementSibling as HTMLElement;
+                    details.style.display = details.style.display === 'none' ? 'block' : 'none';
+                  }}
+                >
+                  {id}
+                </button>
+                <div
+                  style={{ display: 'none' }}
+                >
                   <p>public: {String(process.public)}</p>
                   <p>on_exit: {process.on_exit}</p>
                   {process.wit_version && <p>wit_version: {process.wit_version}</p>}
@@ -429,17 +434,17 @@ function App() {
           })}>
             <p>Only use this utility if you *really* know what you're doing. If edited incorrectly, your node may be unable to connect to the network and require re-registration.</p>
             <br />
-            <p>{appState.our_owner && address ? (address.toLowerCase() === appState.our_owner.toLowerCase() ? 'Connected as node owner.' : '**Not connected as node owner. Change wallet to edit node identity.**') : ''}</p>
-            <p>TBA: {appState.our_tba}</p>
-            <p>Owner: {appState.our_owner}</p>
+            <p className="font-mono break-all">{appState.our_owner && address ? (address.toLowerCase() === appState.our_owner.toLowerCase() ? 'Connected as node owner.' : '**Not connected as node owner. Change wallet to edit node identity.**') : ''}</p>
+            <p className="font-mono break-all">TBA: {appState.our_tba}</p>
+            <p className="font-mono break-all">Owner: {appState.our_owner}</p>
             <br />
-            <p>Routers: {appState.routers || 'none currently, direct node'}</p>
+            <p className="font-mono break-all">Routers: {appState.routers || 'none currently, direct node'}</p>
             <EditNote label="~routers" tba={appState.our_tba || ''} field_placeholder="router names, separated by commas (no spaces!)" />
-            <p>IP: {appState.ip || 'none currently, indirect node'}</p>
+            <p className="font-mono break-all">IP: {appState.ip || 'none currently, indirect node'}</p>
             <EditNote label="~ip" tba={appState.our_tba || ''} field_placeholder="ip address encoded as hex" />
-            <p>TCP port: {appState.tcp_port || 'none currently, indirect node'}</p>
+            <p className="font-mono break-all">TCP port: {appState.tcp_port || 'none currently, indirect node'}</p>
             <EditNote label="~tcp-port" tba={appState.our_tba || ''} field_placeholder="tcp port as a decimal number (e.g. 8080)" />
-            <p>WS port: {appState.ws_port || 'none currently, indirect node'}</p>
+            <p className="font-mono break-all">WS port: {appState.ws_port || 'none currently, indirect node'}</p>
             <EditNote label="~ws-port" tba={appState.our_tba || ''} field_placeholder="ws port as a decimal number (e.g. 8080)" />
             <p>Add a brand new note to your node ID</p>
             <EditNote tba={appState.our_tba || ''} field_placeholder="note content" />
@@ -455,7 +460,7 @@ function App() {
             "h-0 overflow-hidden invisible": !showHyperwareCss,
             'h-auto': showHyperwareCss,
           })}>
-            <textarea id="stylesheet-editor" defaultValue={appState.stylesheet} className="grow self-stretch" />
+            <textarea id="stylesheet-editor" defaultValue={appState.stylesheet} className="grow self-stretch min-h-64 font-mono" />
             <button id="save-stylesheet" onClick={handleSaveStylesheet}>update hyperware.css</button>
           </div>
         </article>

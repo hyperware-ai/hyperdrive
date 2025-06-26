@@ -140,7 +140,7 @@ fn init(our: Address) {
 
     http_server
         .bind_http_static_path(
-            "/Logomark Iris.svg",
+            "/Logomark%20Iris.svg",
             false, // Logomark Iris.svg is not auth'd so that PWA works properly
             false,
             Some("image/svg+xml".to_string()),

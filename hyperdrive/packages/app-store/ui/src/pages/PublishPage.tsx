@@ -8,6 +8,7 @@ import { hyperhash } from '../utils/hyperhash';
 import useAppsStore from "../store";
 import { PackageSelector } from "../components";
 import { Tooltip } from '../components/Tooltip';
+import { FaCircleNotch } from "react-icons/fa6";
 
 const NAME_INVALID = "Package name must contain only valid characters (a-z, 0-9, -, and .)";
 
@@ -276,8 +277,8 @@ export default function PublishPage() {
       )}
 
       {isConfirming ? (
-        <div className="message info">
-          <div className="loading-spinner"></div>
+        <div className="flex items-center font-bold p-4 rounded-lg bg-iris text-white">
+          <FaCircleNotch className="animate-spin" />
           <span>Publishing...</span>
         </div>
       ) : !address || !isConnected ? (
@@ -285,7 +286,7 @@ export default function PublishPage() {
           <h4>Connect your wallet to publish an app.</h4>
         </div>
       ) : isConnecting ? (
-        <div className="message info">
+        <div className="flex items-center font-bold p-4 rounded-lg bg-iris text-white">
           <div className="loading-spinner"></div>
           <span>Waiting for wallet connection...</span>
         </div>
@@ -333,12 +334,12 @@ export default function PublishPage() {
       )}
 
       {isConfirmed && (
-        <div className="message success">
+        <div className="flex items-center font-bold p-4 rounded-lg bg-neon text-black">
           App published successfully!
         </div>
       )}
       {error && (
-        <div className="message error">
+        <div className="flex items-center font-bold p-4 rounded-lg bg-red text-white">
           <pre>
             Error: {error.message}
           </pre>

@@ -308,7 +308,7 @@ input {
     border: none;
     border-radius: 0.5rem;
     outline: none;
-    background-color: light-dark(var(--black-xlight), var(--white-xlight));
+    background-color: light-dark(var(--black-light), var(--white-light));
     padding: 0.5rem 1rem;
     align-self: stretch;
 }
@@ -319,7 +319,7 @@ textarea {
     border: none;
     border-radius: 0.5rem;
     outline: none;
-    background-color: light-dark(var(--black-xlight), var(--white-xlight));
+    background-color: light-dark(var(--black-light), var(--white-light));
     padding: 0.5rem 1rem;
     align-self: stretch;
 }
@@ -820,4 +820,38 @@ td:nth-child(even) {
 
 .bg-stone {
     background-color: var(--stone);
+}
+
+.px-2 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.px-1 {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+.self-start {
+    align-self: start;
+}
+
+.self-end {
+    align-self: end;
+}
+
+.self-stretch {
+    align-self: stretch;
+}
+
+.w-8 {
+    width: 2rem;
+}
+
+.h-8 {
+    height: 2rem;
+}
+
+.min-h-64 {
+    min-height: 16rem;
 }

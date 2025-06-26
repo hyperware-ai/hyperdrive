@@ -4,6 +4,7 @@ import Loader from "../components/Loader";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from "../components/Tooltip";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
+import { HyperwareLogo } from "../components/HyperwareLogo";
 
 interface LoginProps extends PageProps { }
 
@@ -53,12 +54,14 @@ function Login({
           const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
           console.log(salt);
 
+          //@ts-ignore
           const h = await argon2.hash({
             pass: pw,
             salt: salt,
             hashLen: 32,
             time: 2,
             mem: 19456,
+            //@ts-ignore
             type: argon2.ArgonType.Argon2id
           });
 
@@ -93,19 +96,20 @@ function Login({
 
   return (
     <>
+      <HyperwareLogo className="w-48 h-48 mb-8" />
       {loading ? (
         <Loader msg={loading} />
       ) : (
         <form
-          id="signup-form"
-          className="form"
+          id="registerui--login-form"
+          className="flex flex-col gap-2 items-stretch"
           onSubmit={handleLogin}
         >
+
           <div className="form-group">
             <div className="form-header">
-              <Tooltip text={`(${isDirect ? "direct" : "indirect"} node)`}>
-                <h3>{hnsName}</h3>
-              </Tooltip>
+              <h3 className="text-iris dark:text-neon font-bold">{hnsName}</h3>
+              <div className="text-xs opacity-50">Login - {isDirect ? "direct" : "indirect"} node</div>
             </div>
             <input
               type="password"
@@ -131,7 +135,7 @@ function Login({
           <button type="submit">Log in</button>
 
           <button
-            className="alt"
+            className="clear "
             onClick={() => navigate('/reset')}
           >
             Reset Password & Networking Info
