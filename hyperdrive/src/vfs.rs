@@ -303,13 +303,21 @@ async fn handle_request(
     let request: VfsRequest =
         serde_json::from_slice(&body).map_err(|_| VfsError::MalformedRequest)?;
 
-    // special case for root reading list of all drives.
-    if request.action == VfsAction::ReadDir && request.path == "/" {
+    // special case for root reading list drives
+    let normalize_path_result = parse_package_and_drive(&request.path, vfs_path);
+    if request.action == VfsAction::ReadDir
+        && (request.path == "/" || normalize_path_result.is_err())
+    {
         // check if src has root
         let has_root_cap =
             read_capability("", "", true, our_node, &km.source, send_to_caps_oracle).await;
         if has_root_cap {
-            let mut dir = fs::read_dir(&vfs_path).await?;
+            let path = if request.path == "/" {
+                vfs_path.clone()
+            } else {
+                vfs_path.join(normalize_relative_path(&request.path, vfs_path)?)
+            };
+            let mut dir = fs::read_dir(&path).await?;
             let mut entries = Vec::new();
             while let Some(entry) = dir.next_entry().await? {
                 let entry_path = entry.path();
@@ -317,8 +325,19 @@ async fn handle_request(
 
                 let metadata = entry.metadata().await?;
                 let file_type = get_file_type(&metadata);
+
+                #[cfg(unix)]
+                let relative_path = relative_path.display().to_string();
+                #[cfg(target_os = "windows")]
+                let relative_path = {
+                    let internal_path = internal_path
+                        .strip_prefix(vfs_path)
+                        .unwrap_or(&internal_path);
+                    replace_path_prefix(&internal_path, &relative_path)
+                };
+
                 let dir_entry = DirEntry {
-                    path: relative_path.display().to_string(),
+                    path: relative_path,
                     file_type,
                 };
                 entries.push(dir_entry);
@@ -644,20 +663,7 @@ fn parse_package_and_drive(
     path: &str,
     vfs_path: &PathBuf,
 ) -> Result<(PackageId, String, PathBuf), VfsError> {
-    let joined_path = join_paths_safely(&vfs_path, path);
-
-    // sanitize path..
-    let normalized_path = normalize_path(&joined_path);
-    if !normalized_path.starts_with(vfs_path) {
-        return Err(VfsError::MalformedRequest);
-    }
-
-    // extract original path.
-    let path = normalized_path
-        .strip_prefix(vfs_path)
-        .map_err(|_| VfsError::MalformedRequest)?
-        .display()
-        .to_string();
+    let path = normalize_relative_path(path, vfs_path)?;
 
     #[cfg(unix)]
     let mut parts: Vec<&str> = path.split('/').collect();
@@ -1017,6 +1023,25 @@ fn join_paths_safely<P: AsRef<Path>>(base: &PathBuf, extension: P) -> PathBuf {
 
     let extension_path = Path::new(extension_str);
     base.join(extension_path)
+}
+
+fn normalize_relative_path(path: &str, vfs_path: &PathBuf) -> Result<String, VfsError> {
+    let joined_path = join_paths_safely(&vfs_path, path);
+
+    // sanitize path..
+    let normalized_path = normalize_path(&joined_path);
+    if !normalized_path.starts_with(vfs_path) {
+        return Err(VfsError::MalformedRequest);
+    }
+
+    // extract original path.
+    let path = normalized_path
+        .strip_prefix(vfs_path)
+        .map_err(|_| VfsError::MalformedRequest)?
+        .display()
+        .to_string();
+
+    Ok(path)
 }
 
 async fn handle_fd_request(km: KernelMessage, files: &mut Files) -> anyhow::Result<()> {
