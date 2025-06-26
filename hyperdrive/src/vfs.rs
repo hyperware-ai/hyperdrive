@@ -305,7 +305,9 @@ async fn handle_request(
 
     // special case for root reading list drives
     let normalize_path_result = parse_package_and_drive(&request.path, vfs_path);
-    if request.action == VfsAction::ReadDir && (request.path == "/" || normalize_path_result.is_err()) {
+    if request.action == VfsAction::ReadDir
+        && (request.path == "/" || normalize_path_result.is_err())
+    {
         // check if src has root
         let has_root_cap =
             read_capability("", "", true, our_node, &km.source, send_to_caps_oracle).await;
