@@ -62,14 +62,16 @@ function ImportKeyfile({
           const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
           console.log(salt);
 
+          //@ts-ignore
           argon2.hash({
             pass: pw,
             salt: salt,
             hashLen: 32,
             time: 2,
             mem: 19456,
+            //@ts-ignore
             type: argon2.ArgonType.Argon2id
-          }).then(async h => {
+          }).then(async (h: any) => {
             const hashed_password_hex = `0x${h.hashHex}`;
 
             const result = await fetch("/import-keyfile", {
@@ -86,7 +88,7 @@ function ImportKeyfile({
               throw new Error("Incorrect password");
             }
             redirectToHomepage();
-          }).catch(err => {
+          }).catch((err: any) => {
             window.alert(String(err));
             setLoading(false);
           });

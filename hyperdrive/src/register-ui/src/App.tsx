@@ -12,6 +12,7 @@ import ImportKeyfile from "./pages/ImportKeyfile";
 import { UnencryptedIdentity } from "./lib/types";
 import Header from "./components/Header";
 import ProgressBar from "./components/ProgressBar";
+import { LargeBackgroundVector } from "./components/LargeBackgroundVector";
 
 function App() {
   const params = useParams()
@@ -97,9 +98,12 @@ function App() {
   return (
     <>
       <Header />
-      <div id="signup-page" className="place-items-center place-content-center h-screen container">
+      <div id="register-ui--app"
+        className="place-items-center place-content-center h-screen relative flex flex-col gap-4"
+      >
         <Router>
-          <main>
+          <LargeBackgroundVector />
+          <main className="relative z-10 bg-white p-4 rounded-lg dark:bg-black">
             <Routes>
               <Route path="/" element={navigateToLogin
                 ? <Navigate to="/login" replace />
