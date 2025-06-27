@@ -267,8 +267,8 @@ export default function AppPage() {
 
   if (isLoading) {
     return (
-      <div className="app-page" style={{ minHeight: '100vh' }}>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-page min-h-screen">
+        <div className="h-40 flex items-center justify-center">
           <h4>Loading app details...</h4>
         </div>
       </div>
@@ -277,8 +277,8 @@ export default function AppPage() {
 
   if (error) {
     return (
-      <div className="app-page" style={{ minHeight: '100vh' }}>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-page min-h-screen">
+        <div className="h-40 flex items-center justify-center">
           <h4>{error}</h4>
         </div>
       </div>
@@ -287,8 +287,8 @@ export default function AppPage() {
 
   if (!app) {
     return (
-      <div className="app-page" style={{ minHeight: '100vh' }}>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-page min-h-screen">
+        <div className="h-40 flex items-center justify-center">
           <h4>App details not found for {id}</h4>
         </div>
       </div>
@@ -299,11 +299,11 @@ export default function AppPage() {
   const canDownload = !isDownloading && !isDownloaded;
 
   return (
-    <div className="app-page" style={{ minHeight: '100vh' }}>
+    <div className="app-page min-h-screen">
       {showCapApproval && manifestResponse && (
         <div className="cap-approval-popup">
           <div className="cap-approval-content">
-            <h3>Approve Capabilities</h3>
+            <h3 className="prose">Approve Capabilities</h3>
             <ManifestDisplay manifestResponse={manifestResponse} />
             <div className="approval-buttons">
               <button onClick={() => {
@@ -318,20 +318,20 @@ export default function AppPage() {
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between gap-2 flex-wrap" style={{ minHeight: '200px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '128px', height: '128px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap min-h-60">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-32 h-32 flex items-center justify-center">
             <img
               src={app.metadata?.image || '/h-green.svg'}
               alt={app.metadata?.name || app.package_id.package_name}
-              className="w-24 h-24 object-cover rounded-lg"
+              className="w-32 h-32 object-cover rounded-lg"
             />
           </div>
           <div className="app-title">
             <h2>{app.metadata?.name || app.package_id.package_name}</h2>
           </div>
         </div>
-        <ul className="detail-list" style={{ minHeight: '150px' }}>
+        <ul className="detail-list min-h-40">
           <li>
             <span>Installed:</span>
             <span className="status-icon">
@@ -432,7 +432,7 @@ export default function AppPage() {
 
       {app.metadata?.properties?.screenshots && (
         <div className="app-screenshots">
-          <h3>Screenshots</h3>
+          <h3 className="prose">Screenshots</h3>
           <div className="screenshot-container" style={{ minHeight: '200px' }}>
             {app.metadata.properties.screenshots.map((screenshot, index) => (
               <div key={index} style={{ aspectRatio: '16/9', width: '100%', maxWidth: '600px' }}>
@@ -449,7 +449,7 @@ export default function AppPage() {
         </div>
       )}
 
-      <div className="app-description" style={{ minHeight: '100px' }}>
+      <div className="app-description min-h-40">
         {app.metadata?.description || "No description available"}
       </div>
 
@@ -459,35 +459,33 @@ export default function AppPage() {
             {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Download Options
           </button>
           {showAdvanced && (
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold mb-2">Advanced Options</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Mirror Selection</label>
-                  <MirrorSelector
-                    packageId={id}
-                    onMirrorSelect={handleMirrorSelect}
-                    onError={handleMirrorError}
-                  />
-                  {mirrorError && (
-                    <p className="mt-1 text-sm text-red-600">{mirrorError}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Version Selection</label>
-                  <select
-                    value={selectedVersion}
-                    onChange={(e) => setSelectedVersion(e.target.value)}
-                    className="version-selector"
-                  >
-                    <option value="">Select version</option>
-                    {sortedVersions.map((version) => (
-                      <option key={version.version} value={version.version}>
-                        {version.version}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="flex flex-col gap-4">
+              <h3 className="prose">Advanced Options</h3>
+              <div>
+                <label className="block text-sm font-medium mb-1">Mirror Selection</label>
+                <MirrorSelector
+                  packageId={id}
+                  onMirrorSelect={handleMirrorSelect}
+                  onError={handleMirrorError}
+                />
+                {mirrorError && (
+                  <p className="mt-1 text-sm text-red-600">{mirrorError}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Version Selection</label>
+                <select
+                  value={selectedVersion}
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  className="version-selector"
+                >
+                  <option value="">Select version</option>
+                  {sortedVersions.map((version) => (
+                    <option key={version.version} value={version.version}>
+                      {version.version}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           )}

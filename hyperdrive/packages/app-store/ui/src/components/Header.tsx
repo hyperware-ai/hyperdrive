@@ -2,46 +2,60 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH } from '../constants/path';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { FaChevronLeft } from "react-icons/fa";
 import NotificationBay from './NotificationBay';
 import useAppsStore from '../store';
 import classNames from 'classnames';
+import { BsLightning, BsLayers, BsCloudArrowUp } from 'react-icons/bs';
 const Header: React.FC = () => {
     const location = useLocation();
     const { updates } = useAppsStore();
     const updateCount = Object.keys(updates || {}).length;
-    const isMobile = window.innerWidth < 768;
+
+    const lesBoutons = <>
+        <Link
+            to={STORE_PATH}
+            className={classNames('button text-sm md:text-base flex-col md:flex-row', { clear: location.pathname !== STORE_PATH })}
+        >
+            <BsLightning className="text-xl" />
+            <span>Store</span></Link>
+        <Link
+            to={MY_APPS_PATH}
+            className={classNames('button text-sm md:text-base flex-col md:flex-row relative', { clear: location.pathname !== MY_APPS_PATH })}
+        >
+            <BsLayers className="text-xl" />
+            <span>My Apps</span>
+            {updateCount > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">{updateCount}</span>}
+        </Link>
+        <Link
+            to={PUBLISH_PATH}
+            className={classNames('button text-sm md:text-base flex-col md:flex-row', { clear: location.pathname !== PUBLISH_PATH })}
+        >
+            <BsCloudArrowUp className="text-xl" />
+            <span>Publish</span>
+        </Link>
+    </>
 
     return (
-        <header className={classNames("flex items-center justify-between gap-2 flex-wrap py-2 px-4", { "flex-col": isMobile })}>
-            <div className="flex items-center gap-2 self-stretch flex-wrap">
-                <nav className="flex items-center gap-2 self-stretch flex-wrap">
-                    <button
-                        onClick={() => window.location.href = window.location.origin.replace('//app-store-sys.', '//') + '/'}
-                        className="alt"
-                    >
-                        <FaChevronLeft />
-                    </button>
-                    <Link
-                        to={STORE_PATH}
-                        className={classNames('button', { clear: location.pathname !== STORE_PATH })}
-                    >Store</Link>
-                    <Link
-                        to={MY_APPS_PATH}
-                        className={classNames('button', { clear: location.pathname !== MY_APPS_PATH })}
-                    >
-                        My Apps
-                        {updateCount > 0 && <span className="update-badge">{updateCount}</span>}
-                    </Link>
-                    <Link
-                        to={PUBLISH_PATH}
-                        className={classNames('button', { clear: location.pathname !== PUBLISH_PATH })}
-                    >
-                        Publish
-                    </Link>
-                </nav>
-            </div>
-            <div className="flex items-center gap-2 self-stretch">
+        <header className={classNames("flex items-center justify-between gap-2 py-2 px-4")}>
+            <h1 className="prose flex items-center gap-2 font-bold !text-xl">
+                <span className={classNames({
+                    'opacity-50': location.pathname !== STORE_PATH,
+                })}>App Store</span>
+                {location.pathname !== STORE_PATH && <>
+                    <span>/</span>
+                    <span>
+                        {location.pathname === MY_APPS_PATH && 'My Apps'}
+                        {location.pathname === PUBLISH_PATH && 'Publish'}
+                    </span>
+                </>}
+            </h1>
+            <nav className="hidden md:flex items-center gap-2 self-stretch flex-wrap ml-auto">
+                {lesBoutons}
+            </nav>
+            <nav className="fixed md:hidden bottom-0 left-0 right-0 p-2 bg-iris flex items-center gap-2 justify-center flex-wrap">
+                {lesBoutons}
+            </nav>
+            <div className="flex items-center ml-auto  gap-2 self-stretch">
                 <ConnectButton />
                 <NotificationBay />
             </div>

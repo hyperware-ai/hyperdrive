@@ -137,7 +137,7 @@ function EnterHnsName({
         </span>}
       </div>
       {nameValidities.map((x, i) => (
-        <p key={i} className="error-message">{x}</p>
+        <p key={i} className="text-red-500 wrap-anywhere mt-2">{x}</p>
       ))}
       {isPunyfied !== '' && <p className="puny-warning">special characters will be converted to punycode: {isPunyfied}</p>}
     </div>

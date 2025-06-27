@@ -32,8 +32,11 @@ const ResetButton: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="modal-overlay" onClick={() => setIsOpen(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                    onClick={() => setIsOpen(false)}>
+                    <div
+                        className="bg-black/50 p-4 rounded-lg relative max-w-md max-h-screen overflow-y-auto"
+                        onClick={e => e.stopPropagation()}>
                         <button className="modal-close" onClick={() => setIsOpen(false)}>×</button>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                             <FaExclamationTriangle size={24} style={{ color: 'var(--red)' }} />

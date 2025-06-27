@@ -336,7 +336,7 @@ export default function DownloadPage() {
             {showCapApproval && manifestResponse && (
                 <div className="cap-approval-popup">
                     <div className="cap-approval-content">
-                        <h3>Approve Capabilities</h3>
+                        <h3 className="prose">Approve Capabilities</h3>
                         <ManifestDisplay manifestResponse={manifestResponse} />
                         <div className="approval-buttons">
                             <button onClick={() => setShowCapApproval(false)}>Cancel</button>
@@ -349,7 +349,7 @@ export default function DownloadPage() {
             )}
 
             <div className="app-details">
-                <h3>App Details</h3>
+                <h3 className="prose">App Details</h3>
                 <button onClick={() => setShowMetadata(!showMetadata)}>
                     {showMetadata ? <FaChevronUp /> : <FaChevronDown />} Metadata
                 </button>
