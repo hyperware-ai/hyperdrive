@@ -114,24 +114,26 @@ h6 {
   font-size: 0.875rem;
 }
 
-button {
-  @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200;
+button,
+.button {
+  @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
 
   &.clear {
-    @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon hover:outline-2;
+    @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
   }
 
   &.thin {
     @apply px-2 py-1;
+  }
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 }
 
 input {
   @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
 
-  &:focus {
-    @apply outline-2 outline-neon outline-offset-2;
-  }
 }
 
 input,
@@ -143,6 +145,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
+  @apply outline-2 outline-neon outline-offset-2;
   animation: shine 0.4s ease-out;
   background-size: 200% 100%;
   background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
@@ -178,6 +181,10 @@ pre {
 
 
 /* forms */
+.form {
+  @apply flex flex-col gap-2 items-stretch;
+}
+
 .form-group {
   @apply flex flex-col gap-2 items-stretch;
 }
@@ -225,17 +232,9 @@ pre {
 }
 
 .section {
-  @apply max-w-screen-sm relative px-6 py-3 overflow-hidden rounded-lg bg-white dark:bg-black shadow-md;
+  @apply max-w-md relative px-2 py-1 md:px-4 md:py-2 overflow-hidden rounded-lg bg-white dark:bg-black shadow-md;
 }
 
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 1rem;
-  max-width: 100%;
-  width: 100%;
-}
 
 .text-center {
   text-align: center;
@@ -257,22 +256,7 @@ pre {
   z-index: 1000;
 }
 
-.connect-wallet {
-  display: flex;
-  justify-content: flex-end;
-}
 
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.error-message {
-  color: var(--neon-red);
-  margin-top: 0.5rem;
-  overflow-wrap: break-word;
-}
 
 
 
@@ -305,8 +289,8 @@ pre {
   height: 1px;
   background: linear-gradient(90deg,
       transparent,
-      var(--secondary-color),
-      var(--secondary-color),
+      light-dark(var(--iris), var(--neon-green)),
+      light-dark(var(--iris), var(--neon-green)),
       transparent);
 }
 

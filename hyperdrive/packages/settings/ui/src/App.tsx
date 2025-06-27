@@ -265,7 +265,7 @@ function App() {
               <button
                 onClick={handleShutdown}
                 id="shutdown"
-                className="bg-red text-white"
+                className="bg-red-500  text-white"
               >
                 Shutdown Node
               </button>

@@ -114,24 +114,26 @@ h6 {
     font-size: 0.875rem;
 }
 
-button {
-    @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon;
+button,
+.button {
+    @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
 
     &.clear {
-        @apply bg-transparent text-black dark:text-white border-none;
+        @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
     }
 
     &.thin {
         @apply px-2 py-1;
+    }
+
+    &:disabled {
+        @apply opacity-50 cursor-not-allowed;
     }
 }
 
 input {
     @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
 
-    &:focus {
-        @apply outline-2 outline-neon outline-offset-2;
-    }
 }
 
 input,
@@ -143,6 +145,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
+    @apply outline-2 outline-neon outline-offset-2;
     animation: shine 0.4s ease-out;
     background-size: 200% 100%;
     background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
@@ -168,4 +171,8 @@ select:focus {
 
 .clash {
     font-family: 'Clash Display', sans-serif;
+}
+
+pre {
+    white-space: pre-wrap;
 }

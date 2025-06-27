@@ -141,9 +141,10 @@ function SetPassword({
       ) : (
         <form className="form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <Tooltip text="This password will be used to log in when you restart your node or switch browsers.">
-              <label className="form-label" htmlFor="password">Set password for {hnsName}</label>
-            </Tooltip>
+            <h3 className="form-label">Set password for {hnsName}</h3>
+            <p className="text-sm text-gray-500">
+              This password will be used to log in when you restart your node or switch browsers.
+            </p>
             <input
               type="password"
               id="password"
@@ -169,7 +170,7 @@ function SetPassword({
               onChange={(e) => setPw2(e.target.value)}
             />
           </div>
-          {Boolean(error) && <p className="error-message">{error}</p>}
+          {Boolean(error) && <p className="text-red-500 wrap-anywhere mt-2">{error}</p>}
           <button type="submit" className="button">Submit</button>
         </form>
       )}

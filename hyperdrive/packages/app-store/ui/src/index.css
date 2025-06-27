@@ -114,24 +114,26 @@ h6 {
     font-size: 0.875rem;
 }
 
-button {
-    @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon;
+button,
+.button {
+    @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
 
     &.clear {
-        @apply bg-transparent text-black dark:text-white border-none;
+        @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
     }
 
     &.thin {
         @apply px-2 py-1;
+    }
+
+    &:disabled {
+        @apply opacity-50 cursor-not-allowed;
     }
 }
 
 input {
     @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
 
-    &:focus {
-        @apply outline-2 outline-neon outline-offset-2;
-    }
 }
 
 input,
@@ -143,6 +145,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
+    @apply outline-2 outline-neon outline-offset-2;
     animation: shine 0.4s ease-out;
     background-size: 200% 100%;
     background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
@@ -172,6 +175,10 @@ select:focus {
 
 pre {
     white-space: pre-wrap;
+}
+
+a {
+    @apply text-iris dark:text-neon hover:underline;
 }
 
 
@@ -239,18 +246,6 @@ pre {
     gap: 0.5rem;
 }
 
-/* Shared page styles */
-.store-page,
-.app-page,
-.my-apps-page,
-.downloads-page,
-.publish-page {
-    padding: 1rem;
-    background: light-dark(var(--off-white), var(--off-black));
-    border-radius: var(--radius-lg);
-    max-width: 960px;
-    margin: 0 auto;
-}
 
 .store-page>p,
 .store-page>.button.tertiary {
@@ -574,19 +569,6 @@ pre {
     color: light-dark(var(--text-light), var(--text-dark));
 }
 
-.notification-details {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 320px;
-    max-height: 400px;
-    overflow-y: auto;
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    border-radius: var(--radius-lg);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    padding: 0.5rem;
-}
 
 .badge {
     background-color: var(--primary-color);
@@ -635,19 +617,6 @@ pre {
     margin-left: auto;
 }
 
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1100;
-}
 
 .modal-content {
     background-color: light-dark(var(--surface-light), var(--surface-dark));
@@ -749,49 +718,6 @@ pre {
     margin-bottom: 2rem;
 }
 
-.connect-wallet {
-    text-align: center;
-    padding: 2rem;
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    border-radius: var(--radius-lg);
-    margin-bottom: 2rem;
-}
-
-.publish-form {
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-    margin-bottom: 2rem;
-}
-
-.package-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 1rem;
-}
-
-.package-list li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    border-radius: var(--radius-lg);
-}
-
-.package-list .app-name {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: inherit;
-    text-decoration: none;
-}
-
-.package-list .app-name:hover {
-    color: var(--primary-color);
-}
 
 .package-icon {
     width: 32px;
@@ -804,24 +730,6 @@ pre {
     padding: 2rem;
     background: light-dark(var(--surface-light), var(--surface-dark));
     border-radius: var(--radius-lg);
-}
-
-/* Update badge */
-.update-badge {
-    background: var(--red);
-    color: var(--text-light);
-    border-radius: 50%;
-    padding: 0.15rem 0.4rem;
-    font-size: 0.75rem;
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    min-width: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
 }
 
 /* Updates section */
@@ -1047,21 +955,4 @@ pre {
 
 .tooltip-icon {
     cursor: help;
-}
-
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-}
-
-.modal-content {
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
 }

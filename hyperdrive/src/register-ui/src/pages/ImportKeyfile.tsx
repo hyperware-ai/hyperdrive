@@ -17,11 +17,9 @@ function ImportKeyfile({
 
   const [localKey, setLocalKey] = useState<Uint8Array | null>(null);
   const [localKeyFileName, setLocalKeyFileName] = useState<string>("");
-  const [keyErrs, _setKeyErrs] = useState<string[]>([]);
+  const [keyErrs, setKeyErrs] = useState<string[]>([]);
 
-  const [pwErr, _setPwErr] = useState<string>("");
-  const [pwVet, _setPwVet] = useState<boolean>(false);
-  const [pwDebounced, _setPwDebounced] = useState<boolean>(false);
+  const [pwErr, setPwErr] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [hnsName, setHnsName] = useState<string>("");
 
@@ -101,6 +99,27 @@ function ImportKeyfile({
     [localKey, pw, keyErrs]
   );
 
+  const onHnsNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setHnsName(e.target.value);
+    const errs = [];
+    if (e.target.value.length < 8) {
+      errs.push("Node ID must be at least 8 characters");
+    }
+    if (!localKeyFileName) {
+      errs.push("No keyfile selected");
+    }
+    setKeyErrs(errs);
+  }, []);
+
+  const onPwChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPw(e.target.value);
+    const errs = [];
+    if (e.target.value.length < 6) {
+      errs.push("Password must be at least 6 characters");
+    }
+    setPwErr(errs);
+  }, []);
+
   return (
     <div className="container fade-in">
       <div className="section">
@@ -108,10 +127,9 @@ function ImportKeyfile({
           <Loader msg="Setting up node..." />
         ) : (
           <>
-            <form className="form" onSubmit={handleImportKeyfile}>
+            <form className="form flex flex-col gap-2" onSubmit={handleImportKeyfile}>
               <div className="form-group">
                 <h4 className="form-label">
-                  <BackButton />
                   <span>1. Upload Keyfile</span>
                 </h4>
                 <label className="file-input-label">
@@ -131,7 +149,7 @@ function ImportKeyfile({
                 <input
                   type="text"
                   className="name-input"
-                  onChange={(e) => setHnsName(e.target.value)}
+                  onChange={onHnsNameChange}
                 />
               </div>
               <div className="form-group">
@@ -144,21 +162,23 @@ function ImportKeyfile({
                   name="password"
                   placeholder=""
                   value={pw}
-                  onChange={(e) => setPw(e.target.value)}
+                  onChange={onPwChange}
                 />
-                {pwErr && <p className="error-message">{pwErr}</p>}
-                {pwDebounced && !pwVet && 6 <= pw.length && (
-                  <p className="error-message">Password is incorrect!</p>
-                )}
+                {pwErr.length > 0 && <p className="text-red-500 wrap-anywhere mt-2">{pwErr.join(", ")}</p>}
               </div>
 
               <div className="form-group">
                 {keyErrs.map((x, i) => (
-                  <p key={i} className="error-message">{x}</p>
+                  <p key={i} className="text-red-500 wrap-anywhere mt-2">{x}</p>
                 ))}
-                <button type="submit" className="button">Boot Node</button>
+                <button
+                  disabled={keyErrs.length !== 0 || !localKey || !hnsName || !pw || pw.length < 6}
+                  type="submit"
+                  className="button">
+                  Boot Node</button>
+                <BackButton mode="wide" />
               </div>
-              <p className="text-sm mt-2">
+              <p className="text-sm">
                 Please note: if the original node was booted as a direct node
                 (static IP), then you must run this node from the same IP. If not,
                 you will have networking issues. If you need to change the network

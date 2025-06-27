@@ -13,6 +13,7 @@ import { UnencryptedIdentity } from "./lib/types";
 import Header from "./components/Header";
 import ProgressBar from "./components/ProgressBar";
 import { LargeBackgroundVector } from "./components/LargeBackgroundVector";
+import { HyperwareLogo } from "./components/HyperwareLogo";
 
 function App() {
   const params = useParams()
@@ -103,7 +104,8 @@ function App() {
       >
         <Router>
           <LargeBackgroundVector />
-          <main className="relative z-10 bg-white p-4 rounded-lg dark:bg-black">
+          <main className="relative z-10 bg-white p-4 rounded-lg dark:bg-black max-w-md">
+            <HyperwareLogo className="w-48 h-48 mb-8 mx-auto" />
             <Routes>
               <Route path="/" element={navigateToLogin
                 ? <Navigate to="/login" replace />

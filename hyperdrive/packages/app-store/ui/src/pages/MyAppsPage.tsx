@@ -308,9 +308,9 @@ export default function MyAppsPage() {
     return (
         <div className="my-apps-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1>Manage Installed Apps</h1>
+                <h1 className="prose">Manage Installed Apps</h1>
             </div>
-            {error && <div className="p-2 bg-red text-white rounded-lg">{error}</div>}
+            {error && <div className="p-2 bg-red-500 text-white rounded-lg">{error}</div>}
             {renderUpdates()}
 
             <table className="apps-table">

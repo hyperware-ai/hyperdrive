@@ -12,8 +12,8 @@ interface ModalProps {
 
 const Modal: React.FC<ModalProps> = ({ children, onClose }) => {
     return (
-        <div className="modal-overlay">
-            <div className="modal-content">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-black/50 p-4 rounded-lg relative max-w-md max-h-screen overflow-y-auto">
                 <button className="modal-close" onClick={onClose}>
                     <FaTimes />
                 </button>
@@ -55,57 +55,10 @@ const NotificationBay: React.FC = () => {
         removeNotification(notificationId);
     };
 
-    const renderNotification = (notification: Notification) => {
-        return (
-            <div key={notification.id} className={`notification-item ${notification.type}`}>
-                {notification.renderContent ? (
-                    notification.renderContent(notification)
-                ) : (
-                    <>
-                        <div className="notification-content">
-                            <p>{notification.message}</p>
-                            {notification.type === 'download' && notification.metadata?.progress && (
-                                <div className=" mt-2 h-1 bg-white dark:bg-black rounded overflow-hidden">
-                                    <div
-                                        className="h-full bg-blue dark:bg-neon transition-width duration-300"
-                                        style={{ width: `${notification.metadata.progress}%` }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        {notification.actions && (
-                            <div className="notification-actions">
-                                {notification.actions.map((action, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => handleActionClick(action)}
-                                        className={`action-button ${action.variant || 'secondary'}`}
-                                    >
-                                        {action.icon && <action.icon />}
-                                        {action.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {!notification.persistent && (
-                            <button
-                                className="clear"
-                                onClick={(e) => handleDismiss(notification.id, e)}
-                            >
-                                <FaTrash />
-                            </button>
-                        )}
-                    </>
-                )}
-            </div>
-        );
-    };
 
     return (
         <>
-            <div className={classNames("relative", { "ml-auto": isMobile })}>
+            <div className={classNames("relative rounded-md p-2 shadow-md z-50", { "ml-auto": isMobile })}>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     className={`notification-button ${hasErrors ? 'has-errors' : ''}`}
@@ -119,11 +72,18 @@ const NotificationBay: React.FC = () => {
                 </button>
 
                 {isExpanded && (
-                    <div className="notification-details">
+                    <div className="absolute top-full right-0 w-md max-h-md overflow-y-auto bg-white dark:bg-black rounded-md shadow-md z-50 p-2 flex flex-col gap-2 items-stretch">
                         {notifications.length === 0 ? (
                             <p>All clear, no notifications!</p>
                         ) : (
-                            notifications.map(renderNotification)
+                            notifications.map(notification => (
+                                <NotificationItem
+                                    key={notification.id}
+                                    notification={notification}
+                                    handleActionClick={handleActionClick}
+                                    handleDismiss={handleDismiss}
+                                />
+                            ))
                         )}
                     </div>
                 )}
@@ -138,4 +98,59 @@ const NotificationBay: React.FC = () => {
     );
 };
 
+export function NotificationItem({
+    notification,
+    handleActionClick,
+    handleDismiss
+}: {
+    notification: Notification,
+    handleActionClick: (action: NotificationAction) => void,
+    handleDismiss: (notificationId: string, event: React.MouseEvent) => void
+}) {
+    return (
+        <div key={notification.id} className={`notification-item ${notification.type}`}>
+            {notification.renderContent ? (
+                notification.renderContent(notification)
+            ) : (
+                <>
+                    <div className="notification-content">
+                        <p>{notification.message}</p>
+                        {notification.type === 'download' && notification.metadata?.progress && (
+                            <div className=" mt-2 h-1 bg-white dark:bg-black rounded overflow-hidden">
+                                <div
+                                    className="h-full bg-blue dark:bg-neon transition-width duration-300"
+                                    style={{ width: `${notification.metadata.progress}%` }}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {notification.actions && (
+                        <div className="notification-actions">
+                            {notification.actions.map((action, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => handleActionClick(action)}
+                                    className={`action-button ${action.variant || 'secondary'}`}
+                                >
+                                    {action.icon && <action.icon />}
+                                    {action.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {!notification.persistent && (
+                        <button
+                            className="clear"
+                            onClick={(e) => handleDismiss(notification.id, e)}
+                        >
+                            <FaTrash />
+                        </button>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
 export default NotificationBay;

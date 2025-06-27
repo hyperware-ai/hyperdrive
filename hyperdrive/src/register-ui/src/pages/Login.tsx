@@ -2,9 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageProps, UnencryptedIdentity } from "../lib/types";
 import Loader from "../components/Loader";
 import { useNavigate } from "react-router-dom";
-import { Tooltip } from "../components/Tooltip";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
-import { HyperwareLogo } from "../components/HyperwareLogo";
 
 interface LoginProps extends PageProps { }
 
@@ -96,7 +94,6 @@ function Login({
 
   return (
     <>
-      <HyperwareLogo className="w-48 h-48 mb-8" />
       {loading ? (
         <Loader msg={loading} />
       ) : (
@@ -125,9 +122,9 @@ function Login({
           </div>
 
           {keyErrs.length > 0 && (
-            <div className="error-messages">
+            <div className="flex flex-col gap-2">
               {keyErrs.map((x, i) => (
-                <div key={i} className="error-message">{x}</div>
+                <div key={i} className="text-red-500 wrap-anywhere mt-2">{x}</div>
               ))}
             </div>
           )}
