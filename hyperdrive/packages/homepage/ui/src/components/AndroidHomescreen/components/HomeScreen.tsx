@@ -460,7 +460,7 @@ export const HomeScreen: React.FC = () => {
             <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">A</kbd> All apps</span>
             <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">S</kbd> Recent apps</span>
             <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">H</kbd> Home</span>
-            <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">1-9</kbd> Swatch 1pps</span>
+            <span><kbd className="px-2 py-1 bg-white/10 rounded text-xs">1-9</kbd> Swatch 2pps</span>
           </div>
         </div>
       </div>
