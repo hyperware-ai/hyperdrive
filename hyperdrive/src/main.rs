@@ -371,7 +371,7 @@ async fn main() {
         runtime_extensions.clone(),
     )
     .await
-    .expect("state load failed!");
+    .expect("1 state load failed!");
 
     let mut tasks = tokio::task::JoinSet::<Result<()>>::new();
     tasks.spawn(kernel::kernel(
