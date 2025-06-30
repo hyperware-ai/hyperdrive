@@ -311,13 +311,13 @@ export default function PublishPage() {
       )}
 
       {(isDevMode || Object.keys(ourApps).length === 0) && (
-        <div className="text-sm flex items-center gap-1">
-          <span className="opacity-50">First time?</span>
+        <div className="font-bold flex items-center gap-1 text-lg">
+          <span className="text-iris dark:text-neon">First time?</span>
           <a
-            className="font-bold"
+            className="font-bold "
             href="https://book.hyperware.ai/my_first_app/chapter_5.html"
             target="_blank">
-            Read the guide.
+            <span className="text-black dark:text-white">Read the guide.</span>
           </a>
         </div>
       )}
@@ -355,7 +355,7 @@ export default function PublishPage() {
       )}
 
       {(isDevMode || (!address || !isConnected)) && (
-        <h4 className="text-center prose font-bold"> Connect your wallet to publish an app.</h4>
+        <h4 className="text-center prose font-bold bg-white rounded text-iris p-4"> Connect your wallet to publish an app.</h4>
       )}
 
       {(isDevMode || isConnecting) && (

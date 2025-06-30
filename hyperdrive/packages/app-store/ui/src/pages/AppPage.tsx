@@ -6,6 +6,30 @@ import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
 
+const MOCK_APP: AppListing = {
+  package_id: {
+    package_name: 'mock-app',
+    publisher_node: 'mock-node'
+  },
+  metadata: {
+    name: 'Mock App with an Unreasonably Long Name for Testing Wrapping, Obviously, why else would you have a name this long?',
+    description: `This is a mock app. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page.`,
+    image: 'https://via.placeholder.com/150',
+    properties: {
+      code_hashes: [['1.0.0', '1234567890']],
+      package_name: 'mock-app',
+      publisher: 'mock-node',
+      current_version: '1.0.0',
+      mirrors: ['https://mock-mirror.com'],
+      screenshots: ['https://via.placeholder.com/150', 'https://via.placeholder.com/150', 'https://via.placeholder.com/150']
+    }
+  },
+  tba: '0x0000000000000000000000000000000000000000',
+  metadata_uri: 'https://mock-metadata.com',
+  metadata_hash: '1234567890',
+  auto_update: false
+};
+
 export default function AppPage() {
   const { id } = useParams();
   const {
@@ -44,6 +68,22 @@ export default function AppPage() {
   const [attemptedDownload, setAttemptedDownload] = useState(false);
   const [mirrorError, setMirrorError] = useState<string | null>(null);
 
+  const [isDevMode, setIsDevMode] = useState(false);
+  const [backtickPressCount, setBacktickPressCount] = useState(0);
+
+  useEffect(() => {
+    window.addEventListener('keydown', (e) => {
+      console.log('keydown', e.key);
+      if (e.key === '`') {
+        setBacktickPressCount(backtickPressCount + 1);
+      }
+      if (backtickPressCount >= 5) {
+        setIsDevMode(!isDevMode);
+        setBacktickPressCount(0);
+      }
+    });
+  }, []);
+
   const appDownloads = useMemo(() => downloads[id || ""] || [], [downloads, id]);
 
   const sortedVersions = useMemo(() => {
@@ -81,7 +121,7 @@ export default function AppPage() {
 
     try {
       const [appData, installedAppData] = await Promise.all([
-        fetchListing(id),
+        isDevMode ? Promise.resolve(MOCK_APP) : fetchListing(id),
         fetchInstalledApp(id)
       ]);
 
@@ -318,7 +358,7 @@ export default function AppPage() {
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between gap-2 flex-wrap min-h-60">
+      <div className="flex items-center justify-between gap-2 flex-wrap min-h-md">
         <div className="flex flex-col items-center gap-4">
           <div className="w-32 h-32 flex items-center justify-center">
             <img
@@ -331,7 +371,7 @@ export default function AppPage() {
             <h2>{app.metadata?.name || app.package_id.package_name}</h2>
           </div>
         </div>
-        <ul className="detail-list min-h-40">
+        <ul className="detail-list min-h-md">
           <li>
             <span>Installed:</span>
             <span className="status-icon">
@@ -372,33 +412,32 @@ export default function AppPage() {
 
       {!valid_wit_version && <div className="p-2 bg-neon text-black">This app must be updated to 1.0</div>}
 
-      <div className="app-actions" style={{ minHeight: '50px' }}>
+      <div className="app-actions min-h-md flex flex-col gap-2">
         {installedApp && (
           <>
             {canLaunch && (
-              <button onClick={handleLaunch} className="primary">
+              <button onClick={handleLaunch} >
                 <FaPlay /> Launch
               </button>
             )}
-            <button onClick={handleUninstall} className="alt">
-              {isUninstalling ? <FaSpinner className="fa-spin" /> : <FaTrash />} Uninstall
+            <button onClick={handleUninstall} className="clear">
+              {isUninstalling ? <FaSpinner className="animate-spin" /> : <FaTrash />} Uninstall
             </button>
-            <button onClick={handleToggleAutoUpdate} className="alt">
-              {isTogglingAutoUpdate ? <FaSpinner className="fa-spin" /> : <FaSync />}
+            <button onClick={handleToggleAutoUpdate} className="clear">
+              {isTogglingAutoUpdate ? <FaSpinner className="animate-spin" /> : <FaSync />}
               {app.auto_update ? " Disable" : " Enable"} Auto Update
             </button>
           </>
         )}
         {valid_wit_version && !upToDate && (
-          <div className="download-section">
-            {isDownloaded ? (
+          <div className="flex flex-col gap-2">
+            {(isDevMode || isDownloaded) ? (
               !showCapApproval && (
                 <button
                   onClick={() => handleInstallFlow(false)}
-                  className="primary"
                 >
                   {isInstalling ? (
-                    <><FaSpinner className="fa-spin" /> Installing...</>
+                    <><FaSpinner className="animate-spin" /> Installing...</>
                   ) : (
                     <>{installedApp ? <><FaDownload /> Update</> : <><FaDownload /> Download</>}</>
                   )}
@@ -413,14 +452,14 @@ export default function AppPage() {
                     handleInstallFlow(true);
                   }
                 }}
-                className={`primary ${isDownloading ? 'loading' : ''}`}
+                className={` ${isDownloading ? 'loading' : ''}`}
               >
                 {isDownloading ? (
-                  <><FaSpinner className="fa-spin" /> Downloading... {downloadProgress}%</>
+                  <><FaSpinner className="animate-spin" /> Downloading... {downloadProgress}%</>
                 ) : mirrorError ? (
                   <><FaTimes /> {mirrorError}</>
                 ) : !selectedMirror && attemptedDownload ? (
-                  <><FaSpinner className="fa-spin" /> Choosing mirrors...</>
+                  <><FaSpinner className="animate-spin" /> Choosing mirrors...</>
                 ) : (
                   <>{installedApp ? <><FaDownload /> Update</> : <><FaDownload /> Download</>}</>
                 )}
@@ -431,62 +470,57 @@ export default function AppPage() {
       </div>
 
       {app.metadata?.properties?.screenshots && (
-        <div className="app-screenshots">
+        <div className="flex flex-col gap-2">
           <h3 className="prose">Screenshots</h3>
-          <div className="screenshot-container" style={{ minHeight: '200px' }}>
+          <div className="flex flex-wrap gap-2 overflow-y-auto min-h-0 max-h-lg">
             {app.metadata.properties.screenshots.map((screenshot, index) => (
-              <div key={index} style={{ aspectRatio: '16/9', width: '100%', maxWidth: '600px' }}>
-                <img
-                  src={screenshot}
-                  alt={`Screenshot ${index + 1}`}
-                  className="app-screenshot"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  loading="lazy"
-                />
-              </div>
+              <img
+                src={screenshot}
+                alt={`Screenshot ${index + 1}`}
+                className="rounded-lg w-full h-full object-contain aspect-video max-w-md max-h-md"
+                loading="lazy"
+              />
             ))}
           </div>
         </div>
       )}
 
-      <div className="app-description min-h-40">
+      <div className="wrap-anywhere ">
         {app.metadata?.description || "No description available"}
       </div>
 
       {valid_wit_version && !upToDate && (
         <>
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className="alt">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)} className="clear"
+          >
             {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Download Options
           </button>
           {showAdvanced && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               <h3 className="prose">Advanced Options</h3>
-              <div>
-                <label className="block text-sm font-medium mb-1">Mirror Selection</label>
-                <MirrorSelector
-                  packageId={id}
-                  onMirrorSelect={handleMirrorSelect}
-                  onError={handleMirrorError}
-                />
-                {mirrorError && (
-                  <p className="mt-1 text-sm text-red-600">{mirrorError}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Version Selection</label>
-                <select
-                  value={selectedVersion}
-                  onChange={(e) => setSelectedVersion(e.target.value)}
-                  className="version-selector"
-                >
-                  <option value="">Select version</option>
-                  {sortedVersions.map((version) => (
-                    <option key={version.version} value={version.version}>
-                      {version.version}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <label className=" text-sm font-medium">Mirror Selection</label>
+              <MirrorSelector
+                packageId={id}
+                onMirrorSelect={handleMirrorSelect}
+                onError={handleMirrorError}
+              />
+              {mirrorError && (
+                <p className=" text-sm text-red-600">{mirrorError}</p>
+              )}
+              <label className=" text-sm font-medium ">Version Selection</label>
+              <select
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                className="version-selector"
+              >
+                <option value="">Select version</option>
+                {sortedVersions.map((version) => (
+                  <option key={version.version} value={version.version}>
+                    {version.version}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </>

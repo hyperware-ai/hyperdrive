@@ -17,7 +17,7 @@ if (window.our) window.our.process = BASE_URL?.replace("/", "");
 function App() {
 
   return (
-    <div>
+    <div className="bg-white dark:bg-stone grow self-stretch min-h-screen">
       <Router basename={BASE_URL}>
         <Header />
         <Routes>

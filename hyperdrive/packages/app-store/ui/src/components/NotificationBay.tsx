@@ -29,7 +29,6 @@ const NotificationBay: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
     const navigate = useNavigate();
-    const isMobile = window.innerWidth < 768;
 
     const handleActionClick = (action: NotificationAction) => {
         switch (action.action.type) {
@@ -58,7 +57,7 @@ const NotificationBay: React.FC = () => {
 
     return (
         <>
-            <div className={classNames("relative rounded-md p-2 shadow-md z-50", { "ml-auto": isMobile })}>
+            <div className={classNames("relative rounded-md p-2 z-50")}>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     className={`notification-button ${hasErrors ? 'has-errors' : ''}`}
