@@ -14,6 +14,7 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
     const loginRedir = () => navigate('/login')
     const customRegisterRedir = () => navigate('/custom-register')
     const completeMintedNftRedir = () => navigate('/complete-minted-nft')
+    const passwordOnlySetupRedir = () => navigate('/password-only-setup')
     const previouslyBooted = Boolean(hnsName)
 
     useEffect(() => {
@@ -52,6 +53,9 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
                                     </button>
                                     <button onClick={completeMintedNftRedir} className="button secondary">
                                         Complete Minted NFT
+                                    </button>
+                                    <button onClick={passwordOnlySetupRedir} className="button secondary">
+                                        Password Setup Only
                                     </button>
                                 </div>
                             </>
