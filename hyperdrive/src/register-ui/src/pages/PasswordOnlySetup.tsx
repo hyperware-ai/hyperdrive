@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageProps } from "../lib/types";
 import BackButton from "../components/BackButton";
+import DirectNodeCheckbox from "../components/DirectCheckbox";
 
 interface PasswordOnlySetupProps extends PageProps { }
 
@@ -15,6 +16,7 @@ function PasswordOnlySetup({
     const navigate = useNavigate();
     const [inputHnsName, setInputHnsName] = useState("");
     const [inputDirect, setInputDirect] = useState(false);
+    const [useDebugMode, setUseDebugMode] = useState(false);
 
     useEffect(() => {
         document.title = "Password Setup Only"
@@ -28,8 +30,8 @@ function PasswordOnlySetup({
         setHnsName(inputHnsName);
         setDirect(inputDirect);
 
-        // Navigate directly to password setup page
-        navigate("/set-password");
+        // Navigate to password setup page (debug or normal)
+        navigate(useDebugMode ? "/set-password-debug" : "/set-password");
     }
 
     return (
@@ -50,15 +52,18 @@ function PasswordOnlySetup({
                         required
                     />
                     <details>
-                        <summary>Node Configuration</summary>
-                        <label className="checkbox-container">
-                            <input
-                                type="checkbox"
-                                checked={inputDirect}
-                                onChange={(e) => setInputDirect(e.target.checked)}
-                            />
-                            <span>Direct node (was this minted as a direct node?)</span>
-                        </label>
+                        <summary>Advanced Options</summary>
+                        <DirectNodeCheckbox direct={inputDirect} setDirect={setInputDirect} />
+                        <div style={{ marginTop: '10px' }}>
+                            <label className="checkbox-container">
+                                <input
+                                    type="checkbox"
+                                    checked={useDebugMode}
+                                    onChange={(e) => setUseDebugMode(e.target.checked)}
+                                />
+                                <span style={{ marginLeft: '5px' }}>Use debug mode (for Gnosis Safe issues)</span>
+                            </label>
+                        </div>
                     </details>
                     <div className="button-group">
                         <button type="submit" className="button">

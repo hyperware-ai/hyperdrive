@@ -7,6 +7,7 @@ import MintCustom from "./pages/MintCustom";
 import CompleteMintedNFT from "./pages/CompleteMintedNFT";
 import PasswordOnlySetup from "./pages/PasswordOnlySetup";
 import SetPassword from "./pages/SetPassword";
+import SetPasswordDebug from "./pages/SetPasswordDebug";
 import Login from './pages/Login'
 import ResetName from './pages/ResetName'
 import HyperdriveHome from "./pages/HyperdriveHome"
@@ -144,6 +145,12 @@ function App() {
                 <>
                   <ProgressBar hnsName={hnsName} />
                   <PasswordOnlySetup {...props} />
+                </>
+              } />
+              <Route path="/set-password-debug" element={
+                <>
+                  <ProgressBar hnsName={hnsName} />
+                  <SetPasswordDebug {...props} />
                 </>
               } />
             </Routes>
