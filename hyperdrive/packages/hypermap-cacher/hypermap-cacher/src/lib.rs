@@ -37,7 +37,12 @@ const RETRY_DELAY_S: u64 = 10;
 const LOG_ITERATION_DELAY_MS: u64 = 200;
 
 #[cfg(not(feature = "simulation-mode"))]
-const DEFAULT_NODES: &[&str] = &["nick.hypr", "nick1udwig.os"];
+const DEFAULT_NODES: &[&str] = &[
+    "us-cacher-1.hypr",
+    "eu-cacher-1.hypr",
+    "nick.hypr",
+    "nick1udwig.os",
+];
 #[cfg(feature = "simulation-mode")]
 const DEFAULT_NODES: &[&str] = &["fake.os"];
 
