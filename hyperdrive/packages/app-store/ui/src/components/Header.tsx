@@ -1,15 +1,22 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH } from '../constants/path';
+import React, { useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH, APP_PAGE_PATH } from '../constants/path';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import NotificationBay from './NotificationBay';
 import useAppsStore from '../store';
 import classNames from 'classnames';
 import { BsLightning, BsLayers, BsCloudArrowUp } from 'react-icons/bs';
 const Header: React.FC = () => {
+    const isMobile = window.innerWidth < 768;
     const location = useLocation();
     const { updates } = useAppsStore();
     const updateCount = Object.keys(updates || {}).length;
+    const navigate = useNavigate();
+    const appColonPublisher = useMemo(() => {
+        const match = location.pathname.match(APP_PAGE_PATH);
+        if (match) return location.pathname.replace(APP_PAGE_PATH, '');
+        return null;
+    }, [location.pathname]);
 
     const lesBoutons = <>
         <Link
@@ -33,38 +40,48 @@ const Header: React.FC = () => {
             <BsCloudArrowUp className="text-xl" />
             <span>Publish</span>
         </Link>
+        {isMobile && <div className="text-xs md:text-base"><ConnectButton label={`Connect
+Wallet`} /></div>}
     </>
 
     return (
-        <header className={classNames("flex items-center justify-between gap-2 py-2 px-4 max-w-screen  mx-auto")}>
-            <h1 className="prose flex items-center gap-2 !text-xl grow">
-                <span className={classNames('font-bold', {
-                    'opacity-50': location.pathname !== STORE_PATH,
-                })}>App Store</span>
+        <header className={classNames("flex items-center justify-between gap-2 py-2  max-w-screen md:px-4  mx-auto mb-4 md:mb-6")}>
+            <div className="prose flex items-center gap-2 grow">
+                <Link
+                    to={STORE_PATH}
+                    className={classNames('font-bold !text-inherit text-lg md:text-xl', {
+                        'opacity-50': location.pathname !== STORE_PATH,
+                    })}>App Store</Link>
                 {location.pathname !== STORE_PATH && <>
-                    <span className="font-bold">/</span>
+                    <span className="font-bold text-lg md:text-xl">/</span>
                     {location.pathname === MY_APPS_PATH && <>
                         <div className="flex flex-col relative grow">
-                            <span className="font-bold">My Apps</span>
+                            <span className="font-bold text-lg md:text-xl">My Apps</span>
                             <span className="text-xs opacity-50 dark:text-neon absolute -bottom-3 left-0 pointer-events-none">Manage installed apps</span>
                         </div>
                     </>}
                     {location.pathname === PUBLISH_PATH && <>
                         <div className="flex flex-col relative grow">
-                            <span className="font-bold">Publish</span>
+                            <span className="font-bold text-lg md:text-xl">Publish</span>
                             <span className="text-xs opacity-50 dark:text-neon absolute -bottom-3 left-0 pointer-events-none">Publish an app to the store</span>
                         </div>
                     </>}
+                    {appColonPublisher && <>
+                        <div className="flex flex-col relative grow">
+                            <span className="font-bold text-lg md:text-xl">{appColonPublisher.split(':')?.[0] || 'app'}</span>
+                            <span className="text-xs text-iris dark:text-neon absolute -bottom-3 left-0 pointer-events-none">{appColonPublisher.split(':')?.[1] || 'publisher'}</span>
+                        </div>
+                    </>}
                 </>}
-            </h1>
-            <nav className="hidden md:flex items-center gap-2 self-stretch flex-wrap mx-auto">
+            </div>
+            <nav className="hidden md:flex items-center gap-2 self-stretch flex-wrap">
                 {lesBoutons}
             </nav>
-            <nav className="fixed md:hidden bottom-0 left-0 right-0 p-2 bg-iris flex items-center gap-2 justify-center flex-wrap">
+            <nav className="fixed md:hidden bottom-0 left-0 right-0 p-2 bg-iris flex items-center gap-2 justify-center flex-wrap z-20">
                 {lesBoutons}
             </nav>
-            <div className="flex items-center ml-auto  gap-2 self-stretch">
-                <ConnectButton />
+            <div className="flex items-center ml-auto gap-1 md:gap-2 self-stretch">
+                {!isMobile && <ConnectButton />}
                 <NotificationBay />
             </div>
         </header>

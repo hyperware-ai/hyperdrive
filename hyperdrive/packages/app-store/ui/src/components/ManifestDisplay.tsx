@@ -29,54 +29,53 @@ const ProcessManifest: React.FC<{ manifest: PackageManifestEntry }> = ({ manifes
     const hasCapabilities = manifest.request_capabilities.length > 0 || manifest.grant_capabilities.length > 0;
 
     return (
-        <div className="process-manifest">
+        <div className="flex items-center gap-2 ">
             <button
-                className="process-header"
+                className="flex items-center gap-2"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
-                <span className="process-name">{manifest.process_name}</span>
-                <div className="process-indicators">
+                <span className="font-bold">{manifest.process_name}</span>
+                <div className="flex items-center gap-1">
                     {manifest.request_networking && (
-                        <FaGlobe title="Requests Network Access" className="network-icon" />
+                        <FaGlobe title="Requests Network Access" className="text-neon" />
                     )}
                     {hasCapabilities && (
-                        <FaShieldAlt title="Has Capability Requirements" className="capability-icon" />
+                        <FaShieldAlt title="Has Capability Requirements" className="text-iris" />
                     )}
                     {!manifest.public && (
-                        <FaLock title="Private Process" className="private-icon" />
+                        <FaLock title="Private Process" />
                     )}
                 </div>
             </button>
 
             {isExpanded && (
-                <div className="process-details">
-                    {manifest.request_capabilities?.length > 0 && (
-                        <div className="capability-section">
-                            <h4>Requested Capabilities:</h4>
-                            <ul>
-                                {transformCapabilities(manifest.request_capabilities || []).map((cap, i) => {
-                                    if (typeof cap === 'object') {
-                                        return <li key={i}>{JSON.stringify(cap)}</li>;
-                                    }
-                                    return <li key={i}>{cap}</li>;
-                                })}
-                            </ul>
-                        </div>
+                <div className="flex flex-col gap-2 items-stretch border-t border-black/10 dark:border-white/10 pt-2">
+                    <h4 className="text-sm font-bold prose">Requested Capabilities:</h4>
+                    {manifest.request_capabilities?.length > 0 ? (
+                        <ul className="flex flex-col gap-1 list-inside">
+                            {transformCapabilities(manifest.request_capabilities || []).map((cap, i) => {
+                                if (typeof cap === 'object') {
+                                    return <li key={i}>{JSON.stringify(cap)}</li>;
+                                }
+                                return <li key={i}>{cap}</li>;
+                            })}
+                        </ul>
+                    ) : (
+                        <p className="text-sm opacity-50">None</p>
                     )}
-
-                    {manifest.grant_capabilities?.length > 0 && (
-                        <div className="capability-section">
-                            <h4>Granted Capabilities:</h4>
-                            <ul>
-                                {transformCapabilities(manifest.grant_capabilities || []).map((cap, i) => {
-                                    if (typeof cap === 'object') {
-                                        return <li key={i}>{JSON.stringify(cap)}</li>;
-                                    }
-                                    return <li key={i}>{cap}</li>;
-                                })}
-                            </ul>
-                        </div>
+                    <h4 className="text-sm font-bold prose">Granted Capabilities:</h4>
+                    {manifest.grant_capabilities?.length > 0 ? (
+                        <ul className="flex flex-col gap-1 list-inside">
+                            {transformCapabilities(manifest.grant_capabilities || []).map((cap, i) => {
+                                if (typeof cap === 'object') {
+                                    return <li key={i}>{JSON.stringify(cap)}</li>;
+                                }
+                                return <li key={i}>{cap}</li>;
+                            })}
+                        </ul>
+                    ) : (
+                        <p className="text-sm opacity-50">None</p>
                     )}
                 </div>
             )}
@@ -101,7 +100,7 @@ const ManifestDisplay: React.FC<ManifestDisplayProps> = ({ manifestResponse }) =
         return <p>Error parsing manifest data.</p>;
     }
     return (
-        <div className="manifest-display">
+        <div className="flex flex-col gap-2">
             {parsedManifests.map((manifest, index) => (
                 <ProcessManifest key={index} manifest={manifest} />
             ))}

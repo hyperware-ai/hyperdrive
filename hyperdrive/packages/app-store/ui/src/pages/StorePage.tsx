@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import useAppsStore from "../store";
 import { AppListing } from "../types/Apps";
-import { FaSearch } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { ResetButton } from "../components";
 import { AppCard } from "../components/AppCard";
 import { BsSearch } from "react-icons/bs";
+import classNames from "classnames";
 const mockApps: AppListing[] = [
   {
     package_id: {
@@ -93,11 +94,13 @@ const mockApps: AppListing[] = [
 ];
 
 export default function StorePage() {
-  const { listings, fetchListings, fetchUpdates, fetchHomepageApps, getLaunchUrl, fetchInstalledApp } = useAppsStore();
+  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, fetchHomepageApps, getLaunchUrl } = useAppsStore();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [launchableApps, setLaunchableApps] = useState<AppListing[]>([]);
   const [appsNotInstalled, setAppsNotInstalled] = useState<AppListing[]>([]);
   const [isDevMode, setIsDevMode] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value, searchQuery);
@@ -112,21 +115,24 @@ export default function StorePage() {
 
   useEffect(() => {
     fetchListings();
+    fetchInstalled();
     fetchUpdates();
     fetchHomepageApps();
-  }, [fetchListings, fetchUpdates, fetchHomepageApps]);
+  }, [fetchListings, fetchInstalled, fetchUpdates, fetchHomepageApps]);
 
   useEffect(() => {
     if (listings) {
       setLaunchableApps(Object.values(listings).filter((app) => getLaunchUrl(`${app.package_id.package_name}:${app.package_id.publisher_node}`)));
-      setAppsNotInstalled(Object.values(listings).filter((app) => !appIsInstalled(app)));
-    }
-  }, [listings, getLaunchUrl]);
 
-  const appIsInstalled = async (app: AppListing) => {
-    const installedAppData = await fetchInstalledApp(app.package_id.package_name);
-    return installedAppData !== null;
-  }
+      // Check if app is installed by looking in the installed state
+      const notInstalledApps = Object.values(listings).filter((app) => {
+        const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
+        return !installed[appId];
+      });
+      console.log({ notInstalledApps, installedKeys: Object.keys(installed) });
+      setAppsNotInstalled(notInstalledApps);
+    }
+  }, [listings, installed, getLaunchUrl]);
 
   // extensive temp null handling due to weird prod bug
   const filteredApps = React.useMemo(() => {
@@ -141,14 +147,14 @@ export default function StorePage() {
 
   return (
     <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
-      <div className="flex items-center self-stretch gap-2 relative">
-        <BsSearch className="text-xl opacity-50 absolute left-2" />
+      <div className="flex items-center self-stretch gap-2 items-center bg-black/10 dark:bg-white/10 rounded-lg px-4">
+        <BsSearch className="text-xl opacity-50 " />
         <input
           type="text"
           placeholder="Search apps..."
           value={searchQuery}
           onChange={onInputChange}
-          className="grow self-stretch text-sm pl-32"
+          className="grow  text-sm !bg-transparent"
         />
       </div>
 
@@ -161,8 +167,8 @@ export default function StorePage() {
             key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`}
             app={app}
           >
-            <span className="bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full">Install</span>
-            <span className="bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full">Launch</span>
+            <ActionChip label="Install" />
+            <ActionChip label="Launch" />
           </AppCard>
         ))}
       </div>}
@@ -174,20 +180,49 @@ export default function StorePage() {
         </>
       ) : (
         <div
-          className="grid grid-cols-1 md:grid-cols-2  gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          {filteredApps.map((app) => (
+          {filteredApps.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((app, index, slicedAppArray) => (
             <AppCard
               key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`}
               app={app}
             >
               {appsNotInstalled.includes(app)
-                ? <span className="bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold  px-3 py-1 rounded-full">Install</span>
+                ? <ActionChip label="Install" />
                 : launchableApps.includes(app)
-                  ? <span className="bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold  px-3 py-1 rounded-full">View</span>
-                  : <span className="bg-iris/10 text-iris dark:bg-black dark:text-neon  font-bold px-3 py-1 rounded-full">Installed</span>}
+                  ? <ActionChip label="Launch" />
+                  : <ActionChip label="Installed" />}
             </AppCard>
           ))}
+        </div>
+      )}
+      {filteredApps.length > pageSize && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="clear thin"
+          >
+            <FaChevronLeft className="text-xl" />
+          </button>
+          <span>{currentPage} of {Math.ceil(filteredApps.length / pageSize)}</span>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(parseInt(e.target.value))}
+            className="clear thin"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <button
+            onClick={() => setCurrentPage(currentPage + 1)}
+            disabled={currentPage === Math.ceil(filteredApps.length / pageSize)}
+            className="clear thin"
+          >
+            <FaChevronRight className="text-xl" />
+          </button>
         </div>
       )}
       <div className="flex flex-col items-center justify-center text-center gap-2">
@@ -196,4 +231,13 @@ export default function StorePage() {
       </div>
     </div>
   );
+}
+
+const ActionChip: React.FC<{
+  label: string;
+  className?: string;
+}> = ({ label, className }) => {
+  return <div
+    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", className)}>{label}
+  </div>
 }

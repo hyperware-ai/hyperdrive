@@ -4,24 +4,7 @@ import useAppsStore from '../store';
 import { Notification, NotificationAction } from '../types/Apps';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
-
-interface ModalProps {
-    children: ReactNode;
-    onClose: () => void;
-}
-
-const Modal: React.FC<ModalProps> = ({ children, onClose }) => {
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-black/50 p-4 rounded-lg relative max-w-md max-h-screen overflow-y-auto">
-                <button className="modal-close" onClick={onClose}>
-                    <FaTimes />
-                </button>
-                {children}
-            </div>
-        </div>
-    );
-};
+import { Modal } from './Modal';
 
 const NotificationBay: React.FC = () => {
     const { notifications, removeNotification } = useAppsStore();
@@ -64,7 +47,7 @@ const NotificationBay: React.FC = () => {
                 >
                     <FaBell />
                     {notifications.length > 0 && (
-                        <span className={`badge ${hasErrors ? 'error-badge' : ''}`}>
+                        <span className={`absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs `}>
                             {notifications.length}
                         </span>
                     )}

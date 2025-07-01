@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { FaDownload, FaCheck, FaTimes, FaPlay, FaSpinner, FaTrash, FaSync, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import useAppsStore from "../store";
 import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
+import { FaArrowsRotate, FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay, FaX } from "react-icons/fa6";
+import { BsDownload } from "react-icons/bs";
+import { Modal } from "../components/Modal";
+import classNames from "classnames";
 
 const MOCK_APP: AppListing = {
   package_id: {
@@ -29,6 +32,8 @@ const MOCK_APP: AppListing = {
   metadata_hash: '1234567890',
   auto_update: false
 };
+
+const isMobile = window.innerWidth < 768;
 
 export default function AppPage() {
   const { id } = useParams();
@@ -67,22 +72,26 @@ export default function AppPage() {
   const [canLaunch, setCanLaunch] = useState(false);
   const [attemptedDownload, setAttemptedDownload] = useState(false);
   const [mirrorError, setMirrorError] = useState<string | null>(null);
-
+  const [showUninstallConfirmModal, setShowUninstallConfirmModal] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [backtickPressCount, setBacktickPressCount] = useState(0);
 
   useEffect(() => {
-    window.addEventListener('keydown', (e) => {
-      console.log('keydown', e.key);
+    const backTickCounter = (e: KeyboardEvent) => {
       if (e.key === '`') {
-        setBacktickPressCount(backtickPressCount + 1);
+        setBacktickPressCount(old => old + 1);
       }
-      if (backtickPressCount >= 5) {
-        setIsDevMode(!isDevMode);
-        setBacktickPressCount(0);
-      }
-    });
+    };
+    window.addEventListener('keydown', backTickCounter);
+    return () => window.removeEventListener('keydown', backTickCounter);
   }, []);
+
+  useEffect(() => {
+    if (backtickPressCount >= 5) {
+      setIsDevMode(!isDevMode);
+      setBacktickPressCount(0);
+    }
+  }, [backtickPressCount]);
 
   const appDownloads = useMemo(() => downloads[id || ""] || [], [downloads, id]);
 
@@ -247,7 +256,9 @@ export default function AppPage() {
     }
   }, [app, getLaunchUrl]);
 
+
   const handleUninstall = async () => {
+    setShowUninstallConfirmModal(false);
     if (!app) return;
     setIsUninstalling(true);
     try {
@@ -339,141 +350,157 @@ export default function AppPage() {
   const canDownload = !isDownloading && !isDownloaded;
 
   return (
-    <div className="app-page min-h-screen">
+    <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
       {showCapApproval && manifestResponse && (
-        <div className="cap-approval-popup">
-          <div className="cap-approval-content">
-            <h3 className="prose">Approve Capabilities</h3>
-            <ManifestDisplay manifestResponse={manifestResponse} />
-            <div className="approval-buttons">
-              <button onClick={() => {
-                setShowCapApproval(false);
-                setIsInstalling(false);
-              }}>Cancel</button>
-              {isInstalling
-                ? <><FaSpinner className="fa-spin" /> Installing...</>
-                : <button onClick={confirmInstall}>Approve and Install</button>
-              }
-            </div>
+        <Modal onClose={() => setShowCapApproval(false)}>
+          <h3 className="prose">Approve Capabilities</h3>
+          <ManifestDisplay manifestResponse={manifestResponse} />
+          <div className="flex items-center gap-2">
+            <button onClick={() => {
+              setShowCapApproval(false);
+              setIsInstalling(false);
+            }}>Cancel</button>
+            {isInstalling
+              ? <>
+                <FaCircleNotch className="animate-spin" />
+                <span>Installing...</span>
+              </>
+              : <button onClick={confirmInstall}>Approve and Install</button>
+            }
           </div>
-        </div>
+        </Modal>
       )}
-      <div className="flex items-center justify-between gap-2 flex-wrap min-h-md">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-32 h-32 flex items-center justify-center">
-            <img
-              src={app.metadata?.image || '/h-green.svg'}
-              alt={app.metadata?.name || app.package_id.package_name}
-              className="w-32 h-32 object-cover rounded-lg"
-            />
-          </div>
-          <div className="app-title">
-            <h2>{app.metadata?.name || app.package_id.package_name}</h2>
-          </div>
+      <div className="flex justify-between gap-2 flex-wrap">
+        <div className="w-16 md:w-32 h-16 md:h-32 flex items-center justify-center rounded-lg">
+          {app.metadata?.image && <img
+            src={app.metadata?.image}
+            alt={`${app.metadata?.name || app.package_id.package_name} icon`}
+            className="w-16 md:w-32 h-16 md:h-32 object-cover rounded-lg aspect-square bg-white dark:bg-black"
+          />}
+          {!app.metadata?.image && <div
+            className="w-16 md:w-32 h-16 md:h-32  rounded-lg aspect-square bg-neon"
+          />}
         </div>
-        <ul className="detail-list min-h-md">
-          <li>
-            <span>Installed:</span>
-            <span className="status-icon">
-              {installedApp ? <FaCheck className="installed" /> : <FaTimes className="not-installed" />}
-            </span>
-          </li>
-          {installedApp && <li>
+        <div className="grid grid-cols-2 gap-2">
+          {installedApp && <>
             <span>Auto Update:</span>
-            <span className="status-icon">
-              {app.auto_update ? <FaCheck className="installed" /> : <FaTimes className="not-installed" />}
+            <span className="flex items-center">
+              {app.auto_update ? <FaCheck className="text-neon" /> : <FaX className="text-red-500" />}
             </span>
-          </li>}
-          {latestVersion && (
+          </>}
+          {latestVersion && <>
+            <span>Version:</span>
+            <span>{latestVersion}</span>
+          </>}
+          {currentVersion && latestVersion && currentVersion !== latestVersion && <>
+            <span>Installed Version:</span>
+            <span>{currentVersion}</span>
+          </>}
+          {currentVersion && latestVersion && currentVersion === latestVersion && (
             <>
-              <li><span>Version:</span> <span>{latestVersion}</span></li>
+              <span>Up to date:</span>
+              <span className="flex items-center">
+                {upToDate ? <FaCheck className="text-neon" /> : <FaX className="text-red-500" />}
+              </span>
             </>
           )}
-          {currentVersion && latestVersion && currentVersion !== latestVersion && (
-            <li><span>Installed Version:</span> <span>{currentVersion}</span></li>
-          )}
-          {currentVersion && latestVersion && currentVersion === latestVersion && (
-            <li><span>Up to date:</span> <span className="status-icon">
-              {upToDate ? <FaCheck className="installed" /> : <FaTimes className="not-installed" />}
-            </span></li>
-          )}
           {installedApp?.pending_update_hash && (
-            <li className="warning">
-              <span>Failed Auto-Update:</span>
+            <div className="bg-red-500 text-white p-2 rounded-lg col-span-2">
+              <span>Failed Auto-Update: </span>
               <span>Update to version with hash {installedApp.pending_update_hash.slice(0, 8)}... failed</span>
-            </li>
+            </div>
           )}
-          <li><span>Publisher:</span> <span>{app.package_id.publisher_node}</span></li>
-          {app.metadata?.properties?.license && (
-            <li><span>License:</span> <span>{app.metadata.properties.license}</span></li>
-          )}
-        </ul>
+          <span>Publisher:</span>
+          <span className="text-iris dark:text-neon font-bold">{app.package_id.publisher_node}</span>
+          {app.metadata?.properties?.license && <>
+            <span>License:</span>
+            <span>{app.metadata.properties.license}</span>
+          </>}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="prose font-bold min-w-1/2 md:max-w-2/3">{app.metadata?.name || app.package_id.package_name}</h2>
+
+        {installedApp && (
+          <>
+            {(canLaunch || isDevMode) && (
+              <button
+                onClick={handleLaunch}
+              >
+                <FaPlay />
+                <span className="hidden md:block">Launch</span>
+              </button>
+            )}
+            <button
+              onClick={handleUninstall}
+              className="clear"
+            >
+              {isUninstalling ? <FaCircleNotch className="animate-spin" /> : <FaX />}
+              <span className="hidden md:block">Uninstall</span>
+            </button>
+            <button
+              onClick={handleToggleAutoUpdate}
+              className="clear"
+            >
+              {isTogglingAutoUpdate ? <FaCircleNotch className="animate-spin" /> : <FaArrowsRotate />}
+              <span className="hidden md:block">{app.auto_update ? " Disable" : " Enable"} Auto Update</span>
+            </button>
+          </>
+        )}
+
+        {valid_wit_version && !upToDate && <>
+          {(isDevMode || isDownloaded) && <>
+            {!showCapApproval && (
+              <button
+                onClick={() => handleInstallFlow(false)}
+              >
+                {isInstalling ? (
+                  <><FaCircleNotch className="animate-spin" /> Installing...</>
+                ) : (
+                  <>{installedApp ? <><BsDownload /> Update</> : <><BsDownload /> Download</>}</>
+                )}
+              </button>)}
+          </>}
+
+          {!isDownloaded && !isDevMode && <button
+            onClick={() => {
+              if (!selectedMirror || isMirrorOnline === null) {
+                setAttemptedDownload(true);
+              } else {
+                handleInstallFlow(true);
+              }
+            }}
+            className={classNames(' text-sm', {
+              'loading': isDownloading,
+              'thin': isMobile
+            })}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <><FaCircleNotch className="animate-spin" /> Downloading... {downloadProgress}%</>
+            ) : mirrorError ? (
+              <><FaX /> {mirrorError}</>
+            ) : !selectedMirror && attemptedDownload ? (
+              <><FaCircleNotch className="animate-spin" /> Choosing mirrors...</>
+            ) : (
+              <>{installedApp ? <><BsDownload /> Update</> : <><BsDownload /> Download</>}</>
+            )}
+          </button>}
+        </>}
+      </div>
+
+      <div className="wrap-anywhere ">
+        {app.metadata?.description || "No description available"}
       </div>
 
       {!valid_wit_version && <div className="p-2 bg-neon text-black">This app must be updated to 1.0</div>}
 
-      <div className="app-actions min-h-md flex flex-col gap-2">
-        {installedApp && (
-          <>
-            {canLaunch && (
-              <button onClick={handleLaunch} >
-                <FaPlay /> Launch
-              </button>
-            )}
-            <button onClick={handleUninstall} className="clear">
-              {isUninstalling ? <FaSpinner className="animate-spin" /> : <FaTrash />} Uninstall
-            </button>
-            <button onClick={handleToggleAutoUpdate} className="clear">
-              {isTogglingAutoUpdate ? <FaSpinner className="animate-spin" /> : <FaSync />}
-              {app.auto_update ? " Disable" : " Enable"} Auto Update
-            </button>
-          </>
-        )}
-        {valid_wit_version && !upToDate && (
-          <div className="flex flex-col gap-2">
-            {(isDevMode || isDownloaded) ? (
-              !showCapApproval && (
-                <button
-                  onClick={() => handleInstallFlow(false)}
-                >
-                  {isInstalling ? (
-                    <><FaSpinner className="animate-spin" /> Installing...</>
-                  ) : (
-                    <>{installedApp ? <><FaDownload /> Update</> : <><FaDownload /> Download</>}</>
-                  )}
-                </button>
-              )
-            ) : (
-              <button
-                onClick={() => {
-                  if (!selectedMirror || isMirrorOnline === null) {
-                    setAttemptedDownload(true);
-                  } else {
-                    handleInstallFlow(true);
-                  }
-                }}
-                className={` ${isDownloading ? 'loading' : ''}`}
-              >
-                {isDownloading ? (
-                  <><FaSpinner className="animate-spin" /> Downloading... {downloadProgress}%</>
-                ) : mirrorError ? (
-                  <><FaTimes /> {mirrorError}</>
-                ) : !selectedMirror && attemptedDownload ? (
-                  <><FaSpinner className="animate-spin" /> Choosing mirrors...</>
-                ) : (
-                  <>{installedApp ? <><FaDownload /> Update</> : <><FaDownload /> Download</>}</>
-                )}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {app.metadata?.properties?.screenshots && (
+      {(app.metadata?.properties?.screenshots || isDevMode) && (
         <div className="flex flex-col gap-2">
           <h3 className="prose">Screenshots</h3>
           <div className="flex flex-wrap gap-2 overflow-y-auto min-h-0 max-h-lg">
-            {app.metadata.properties.screenshots.map((screenshot, index) => (
+            {(isDevMode ? MOCK_APP.metadata!.properties.screenshots! : app!.metadata!.properties!.screenshots!).map((screenshot, index) => (
               <img
                 src={screenshot}
                 alt={`Screenshot ${index + 1}`}
@@ -485,34 +512,29 @@ export default function AppPage() {
         </div>
       )}
 
-      <div className="wrap-anywhere ">
-        {app.metadata?.description || "No description available"}
-      </div>
-
       {valid_wit_version && !upToDate && (
         <>
           <button
             onClick={() => setShowAdvanced(!showAdvanced)} className="clear"
           >
-            {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Download Options
+            {showAdvanced ? <FaChevronDown /> : <FaChevronRight />} Advanced Download Options
           </button>
           {showAdvanced && (
             <div className="flex flex-col gap-2">
-              <h3 className="prose">Advanced Options</h3>
-              <label className=" text-sm font-medium">Mirror Selection</label>
+              <label className=" text-sm font-medium ">Mirror </label>
               <MirrorSelector
                 packageId={id}
                 onMirrorSelect={handleMirrorSelect}
                 onError={handleMirrorError}
               />
-              {mirrorError && (
-                <p className=" text-sm text-red-600">{mirrorError}</p>
+              {(mirrorError || isDevMode) && (
+                <p className=" text-xs text-red-600">{isDevMode ? mirrorError || "Dev Mode" : mirrorError}</p>
               )}
-              <label className=" text-sm font-medium ">Version Selection</label>
+              <label className=" text-sm font-medium ">Version </label>
               <select
                 value={selectedVersion}
                 onChange={(e) => setSelectedVersion(e.target.value)}
-                className="version-selector"
+                className="bg-black/10 dark:bg-white/10 text-gray-500 self-stretch p-2 rounded-lg"
               >
                 <option value="">Select version</option>
                 {sortedVersions.map((version) => (
@@ -524,6 +546,26 @@ export default function AppPage() {
             </div>
           )}
         </>
+      )}
+
+      {showUninstallConfirmModal && (
+        <Modal onClose={() => setShowUninstallConfirmModal(false)}>
+          <h3
+            className="prose">Uninstall Confirmation</h3>
+          <p>Are you sure you want to uninstall {app.metadata?.name || app.package_id.package_name}?</p>
+          <div
+            className="flex items-center flex-col md:flex-row gap-2"
+          >
+            <button
+              onClick={() => setShowUninstallConfirmModal(false)}
+              className="md:grow md:self-center self-stretch clear"
+            >Cancel</button>
+            <button
+              onClick={handleUninstall}
+              className="md:grow md:self-center self-stretch
+            ">Uninstall</button>
+          </div>
+        </Modal>
       )}
     </div>
   );

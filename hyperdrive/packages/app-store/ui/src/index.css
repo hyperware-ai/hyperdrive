@@ -208,19 +208,6 @@ a {
     margin-top: 0.25rem;
 }
 
-/* Status Icons */
-.status-icon {
-    display: inline-flex;
-    align-items: center;
-}
-
-.installed {
-    color: var(--green);
-}
-
-.not-installed {
-    color: var(--red);
-}
 
 /* App Title */
 .app-title {
@@ -266,14 +253,6 @@ a {
     color: light-dark(var(--text-light), var(--text-dark));
 }
 
-.version-selector,
-.mirror-selector select,
-.secondary,
-.message.success {
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    color: light-dark(var(--text-light), var(--text-dark));
-}
-
 
 .advanced-options {
     display: flex;
@@ -284,15 +263,6 @@ a {
     max-width: 360px;
 }
 
-.version-selector,
-.mirror-selector select {
-    width: 100%;
-    padding: 0.5em;
-    border: 1px solid var(--adaptive-gray);
-    border-radius: var(--radius-lg);
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    color: light-dark(var(--text-light), var(--text-dark));
-}
 
 /* Action Buttons */
 .action-button {
@@ -339,13 +309,6 @@ a {
     cursor: not-allowed;
 }
 
-/* App actions */
-.app-actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-bottom: 2rem;
-}
 
 
 /* Capabilities approval popup */
@@ -362,16 +325,6 @@ a {
     z-index: 1000;
 }
 
-.cap-approval-content {
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    color: light-dark(var(--text-light), var(--text-dark));
-    padding: 2rem;
-    border-radius: 8px;
-    max-width: 80%;
-    max-height: 80%;
-    overflow-y: auto;
-}
-
 .json-display {
     background-color: light-dark(var(--surface-light), var(--surface-dark));
     color: light-dark(var(--text-light), var(--text-dark));
@@ -381,12 +334,6 @@ a {
     word-break: break-word;
 }
 
-.approval-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1rem;
-}
 
 .store-header {
     display: flex;
@@ -396,19 +343,6 @@ a {
     margin-bottom: 1rem;
 }
 
-
-/* Responsive adjustments */
-@media (max-width: 48em) {
-
-    .app-page,
-    .downloads-page {
-        padding: 1.5rem;
-    }
-
-    .app-actions {
-        flex-direction: column;
-    }
-}
 
 @keyframes spin {
     0% {
@@ -420,82 +354,9 @@ a {
     }
 }
 
-.fa-spin {
-    animation: spin 1s linear infinite;
-}
 
-.manifest-display {
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    border-radius: var(--radius-lg);
-    padding: 1rem;
-    max-width: 600px;
-}
 
-.process-manifest {
-    margin-bottom: 0.5rem;
-    border: 1px solid light-dark(var(--adaptive-gray), var(--surface-dark));
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-}
 
-.process-header {
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: light-dark(var(--text-light), var(--text-dark));
-    transition: background-color 0.2s;
-}
-
-.process-header:hover {
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-}
-
-.process-name {
-    flex: 1;
-    text-align: left;
-    font-weight: 500;
-}
-
-.network-icon {
-    color: var(--primary-color);
-}
-
-.capability-icon {
-    color: var(--secondary-color);
-}
-
-.process-details {
-    padding: 1rem;
-    background: light-dark(var(--surface-light), var(--surface-dark));
-    border-top: 1px solid var(--adaptive-gray);
-}
-
-.capability-section {
-    margin-bottom: 1rem;
-}
-
-.capability-section:last-child {
-    margin-bottom: 0;
-}
-
-.capability-section h4 {
-    margin: 0 0 0.5rem 0;
-    color: light-dark(var(--text-light), var(--text-dark));
-}
-
-.capability-section ul {
-    margin: 0;
-    padding-left: 1.5rem;
-}
-
-.capability-section li {
-    margin-bottom: 0.25rem;
-}
 
 .notification-button {
     background: none;
@@ -556,31 +417,6 @@ a {
     margin-left: auto;
 }
 
-
-.modal-content {
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    color: light-dark(var(--text-light), var(--text-dark));
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    position: relative;
-    max-width: 80%;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.modal-close {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.25rem;
-}
-
-.modal-close:hover {
-    color: var(--primary-color);
-}
 
 .notification-button.has-errors {
     animation: shake 0.82s cubic-bezier(.36, .07, .19, .97) both;
