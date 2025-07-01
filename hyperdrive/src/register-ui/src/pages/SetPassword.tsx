@@ -4,6 +4,7 @@ import { downloadKeyfile } from "../utils/download-keyfile";
 import { Tooltip } from "../components/Tooltip";
 import { useSignTypedData, useAccount, useChainId } from 'wagmi'
 import { HYPERMAP } from "../abis";
+import { getHypermapAddress } from "../abis/addresses";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
 
 type SetPasswordProps = {
@@ -75,7 +76,7 @@ function SetPassword({
               name: "Hypermap",
               version: "1",
               chainId: chainId,
-              verifyingContract: HYPERMAP,
+              verifyingContract: getHypermapAddress(chainId),
             },
             types: {
               Boot: [

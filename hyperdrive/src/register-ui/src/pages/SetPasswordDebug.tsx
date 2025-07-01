@@ -4,6 +4,7 @@ import { downloadKeyfile } from "../utils/download-keyfile";
 import { Tooltip } from "../components/Tooltip";
 import { useSignTypedData, useAccount, useChainId } from 'wagmi'
 import { HYPERMAP } from "../abis";
+import { getHypermapAddress } from "../abis/addresses";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
 
 type SetPasswordDebugProps = {
@@ -72,12 +73,21 @@ function SetPasswordDebug({
           let owner = address;
           let timestamp = Date.now();
 
+          // Get the correct HYPERMAP address for this chain
+          const hypermapAddress = getHypermapAddress(chainId);
+
+          console.log("Debug info:");
+          console.log("Chain ID:", chainId);
+          console.log("HYPERMAP address:", hypermapAddress);
+          console.log("Owner address:", owner);
+          console.log("HNS name:", hnsName);
+
           // Prepare signing data
           const domain = {
             name: "Hypermap",
             version: "1",
             chainId: chainId,
-            verifyingContract: HYPERMAP,
+            verifyingContract: hypermapAddress,
           };
 
           const types = {
@@ -110,14 +120,20 @@ function SetPasswordDebug({
               chain_id: message.chain_id.toString(),
             },
             primaryType: 'Boot',
+            additionalInfo: {
+              hypermapAddress,
+              ownerAddress: owner,
+              chainId,
+              originalHYPERMAP: HYPERMAP,
+            }
           };
-          
+
           setDebugInfo(JSON.stringify(debugData, null, 2));
           setShowDebug(true);
 
           try {
             console.log("Signing with data:", debugData);
-            
+
             const signature = await signTypedDataAsync({
               domain,
               types,
@@ -197,13 +213,13 @@ function SetPasswordDebug({
             />
           </div>
           {Boolean(error) && <p className="error-message">{error}</p>}
-          
+
           {showDebug && (
             <details>
               <summary>Debug Info (for Gnosis Safe)</summary>
-              <pre style={{ 
-                background: '#f0f0f0', 
-                padding: '10px', 
+              <pre style={{
+                background: '#f0f0f0',
+                padding: '10px',
                 borderRadius: '5px',
                 fontSize: '12px',
                 overflow: 'auto',
@@ -214,9 +230,20 @@ function SetPasswordDebug({
               <p style={{ fontSize: '12px', marginTop: '10px' }}>
                 If the message doesn't appear in Gnosis Safe, you can copy the above data and manually verify the signing request.
               </p>
+              <div style={{ marginTop: '10px', padding: '10px', background: '#e8f4f8', borderRadius: '5px' }}>
+                <strong style={{ fontSize: '12px' }}>Troubleshooting:</strong>
+                <ul style={{ fontSize: '12px', marginTop: '5px', paddingLeft: '20px' }}>
+                  <li>Check that the chainId matches your wallet's network</li>
+                  <li>The HYPERMAP address might need to be updated for your network</li>
+                  <li>Try using the CLI script instead: <code>node password-only-setup.js</code></li>
+                </ul>
+                <p style={{ fontSize: '12px', marginTop: '10px' }}>
+                  <strong>Current HYPERMAP address:</strong> {hypermapAddress || 'Not set'}
+                </p>
+              </div>
             </details>
           )}
-          
+
           <button type="submit" className="button">Submit</button>
         </form>
       )}
