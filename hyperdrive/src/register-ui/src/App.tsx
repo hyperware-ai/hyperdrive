@@ -5,6 +5,7 @@ import CommitDotOsName from "./pages/CommitDotOsName";
 import MintDotOsName from "./pages/MintDotOsName";
 import MintCustom from "./pages/MintCustom";
 import CompleteMintedNFT from "./pages/CompleteMintedNFT";
+import PasswordOnlySetup from "./pages/PasswordOnlySetup";
 import SetPassword from "./pages/SetPassword";
 import Login from './pages/Login'
 import ResetName from './pages/ResetName'
@@ -137,6 +138,12 @@ function App() {
                 <>
                   <ProgressBar hnsName={hnsName} />
                   <CompleteMintedNFT {...props} />
+                </>
+              } />
+              <Route path="/password-only-setup" element={
+                <>
+                  <ProgressBar hnsName={hnsName} />
+                  <PasswordOnlySetup {...props} />
                 </>
               } />
             </Routes>
