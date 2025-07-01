@@ -789,22 +789,15 @@ impl State {
             self.last_cached_block + 1
         );
 
-        // Only run RPC bootstrap if we're behind the current chain head
-        let current_chain_head = hypermap.provider.get_block_number()?;
-        if self.last_cached_block < current_chain_head {
-            self.cache_logs_and_update_manifest(hypermap)?;
+        // Catch up remainder (or as fallback) using RPC
+        self.cache_logs_and_update_manifest(hypermap)?;
 
-            // run it twice for fresh boot case:
-            // - initial bootstrap takes much time
-            // - in that time, the block you are updating to is no longer the head of the chain
-            // - so run again to get to the head of the chain
-            self.cache_logs_and_update_manifest(hypermap)?;
-        } else {
-            info!(
-                "Already caught up to chain head ({}), no RPC bootstrap needed",
-                current_chain_head
-            );
-        }
+        // run it twice for fresh boot case:
+        // - initial bootstrap takes much time
+        // - in that time, the block you are updating to is no longer the head of the chain
+        // - so run again to get to the head of the chain
+        self.cache_logs_and_update_manifest(hypermap)?;
+
         Ok(())
     }
 
@@ -1189,10 +1182,13 @@ fn main_loop(
     info!("Last cached block: {}", state.last_cached_block);
 
     // Always bootstrap on start to get latest state from other nodes or RPC
-    if state.is_starting {
+    while state.is_starting {
         match state.bootstrap_state(hypermap) {
             Ok(_) => info!("Bootstrap process completed successfully."),
-            Err(e) => error!("Error during bootstrap process: {:?}", e),
+            Err(e) => {
+                error!("Error during bootstrap process: {:?}", e);
+                std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+            }
         }
     }
 
