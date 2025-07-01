@@ -4,6 +4,7 @@ import { Navigate, BrowserRouter as Router, Route, Routes, useParams } from 'rea
 import CommitDotOsName from "./pages/CommitDotOsName";
 import MintDotOsName from "./pages/MintDotOsName";
 import MintCustom from "./pages/MintCustom";
+import CompleteMintedNFT from "./pages/CompleteMintedNFT";
 import SetPassword from "./pages/SetPassword";
 import Login from './pages/Login'
 import ResetName from './pages/ResetName'
@@ -130,6 +131,12 @@ function App() {
                 <>
                   <ProgressBar hnsName={hnsName} />
                   <MintCustom {...props} />
+                </>
+              } />
+              <Route path="/complete-minted-nft" element={
+                <>
+                  <ProgressBar hnsName={hnsName} />
+                  <CompleteMintedNFT {...props} />
                 </>
               } />
             </Routes>

@@ -13,6 +13,7 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
     const importKeyfileRedir = () => navigate('/import-keyfile')
     const loginRedir = () => navigate('/login')
     const customRegisterRedir = () => navigate('/custom-register')
+    const completeMintedNftRedir = () => navigate('/complete-minted-nft')
     const previouslyBooted = Boolean(hnsName)
 
     useEffect(() => {
@@ -48,6 +49,9 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
                                     </button>
                                     <button onClick={customRegisterRedir} className="button secondary">
                                         Register Non-.os Name (Advanced)
+                                    </button>
+                                    <button onClick={completeMintedNftRedir} className="button secondary">
+                                        Complete Minted NFT
                                     </button>
                                 </div>
                             </>
