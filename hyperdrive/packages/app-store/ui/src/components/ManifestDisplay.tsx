@@ -29,9 +29,9 @@ const ProcessManifest: React.FC<{ manifest: PackageManifestEntry }> = ({ manifes
     const hasCapabilities = manifest.request_capabilities.length > 0 || manifest.grant_capabilities.length > 0;
 
     return (
-        <div className="flex items-center gap-2 ">
+        <div className="flex flex-col items-stretch gap-2 ">
             <button
-                className="flex items-center gap-2"
+                className="clear"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
@@ -53,12 +53,12 @@ const ProcessManifest: React.FC<{ manifest: PackageManifestEntry }> = ({ manifes
                 <div className="flex flex-col gap-2 items-stretch border-t border-black/10 dark:border-white/10 pt-2">
                     <h4 className="text-sm font-bold prose">Requested Capabilities:</h4>
                     {manifest.request_capabilities?.length > 0 ? (
-                        <ul className="flex flex-col gap-1 list-inside">
+                        <ul className="flex flex-col gap-1">
                             {transformCapabilities(manifest.request_capabilities || []).map((cap, i) => {
                                 if (typeof cap === 'object') {
-                                    return <li key={i}>{JSON.stringify(cap)}</li>;
+                                    return <li key={i} className='pl-2'>{JSON.stringify(cap)}</li>;
                                 }
-                                return <li key={i}>{cap}</li>;
+                                return <li key={i} className='pl-2'>{cap}</li>;
                             })}
                         </ul>
                     ) : (
@@ -66,12 +66,12 @@ const ProcessManifest: React.FC<{ manifest: PackageManifestEntry }> = ({ manifes
                     )}
                     <h4 className="text-sm font-bold prose">Granted Capabilities:</h4>
                     {manifest.grant_capabilities?.length > 0 ? (
-                        <ul className="flex flex-col gap-1 list-inside">
+                        <ul className="flex flex-col gap-1">
                             {transformCapabilities(manifest.grant_capabilities || []).map((cap, i) => {
                                 if (typeof cap === 'object') {
-                                    return <li key={i}>{JSON.stringify(cap)}</li>;
+                                    return <li key={i} className='pl-2'>{JSON.stringify(cap)}</li>;
                                 }
-                                return <li key={i}>{cap}</li>;
+                                return <li key={i} className='pl-2'>{cap}</li>;
                             })}
                         </ul>
                     ) : (
@@ -100,7 +100,7 @@ const ManifestDisplay: React.FC<ManifestDisplayProps> = ({ manifestResponse }) =
         return <p>Error parsing manifest data.</p>;
     }
     return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col items-stretch  gap-2">
             {parsedManifests.map((manifest, index) => (
                 <ProcessManifest key={index} manifest={manifest} />
             ))}

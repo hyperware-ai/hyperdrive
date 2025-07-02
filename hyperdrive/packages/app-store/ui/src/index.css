@@ -354,22 +354,6 @@ a {
     }
 }
 
-
-
-
-
-.notification-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    color: light-dark(var(--text-light), var(--text-dark));
-}
-
-
 .badge {
     background-color: var(--primary-color);
     color: var(--text-light);
@@ -380,42 +364,23 @@ a {
     text-align: center;
 }
 
-.notification-item {
-    display: flex;
-    align-items: center;
-    padding: 1rem;
-    margin: 0.5rem 0;
-    border-radius: var(--radius-lg);
-    background-color: light-dark(var(--surface-light), var(--surface-dark));
-    color: light-dark(var(--text-light), var(--text-dark));
-}
 
 .notification-item.error {
-    background-color: light-dark(#ffe6e6, #4a2020);
+    @apply bg-red-500/20;
 }
 
 .notification-item.success {
-    background-color: light-dark(#e6ffe6, #204a20);
+    @apply bg-green-500/20;
 }
 
 .notification-item.warning {
-    background-color: light-dark(#fff3e6, #4a3820);
+    @apply bg-yellow-500/20;
 }
 
 .notification-item.download {
-    background-color: light-dark(#e6f3ff, #20304a);
+    @apply bg-blue-500/20;
 }
 
-.notification-content {
-    flex: 1;
-    margin-right: 1rem;
-}
-
-.notification-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-left: auto;
-}
 
 
 .notification-button.has-errors {

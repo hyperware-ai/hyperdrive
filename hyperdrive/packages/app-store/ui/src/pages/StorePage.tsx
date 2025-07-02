@@ -107,6 +107,12 @@ export default function StorePage() {
     setSearchQuery(e.target.value);
   }
 
+  const onPageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPageSize = parseInt(e.target.value);
+    setPageSize(newPageSize);
+    setCurrentPage(Math.ceil(filteredApps.length / newPageSize));
+  }
+
   useEffect(() => {
     if (searchQuery.match(/``````/)) {
       setIsDevMode(!isDevMode);
@@ -197,7 +203,7 @@ export default function StorePage() {
         </div>
       )}
       {filteredApps.length > pageSize && (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 text-sm">
           <button
             onClick={() => setCurrentPage(currentPage - 1)}
             disabled={currentPage === 1}
@@ -205,10 +211,11 @@ export default function StorePage() {
           >
             <FaChevronLeft className="text-xl" />
           </button>
-          <span>{currentPage} of {Math.ceil(filteredApps.length / pageSize)}</span>
+          <span>Page {currentPage} of {Math.ceil(filteredApps.length / pageSize)}</span>
+          <span className="opacity-50 mx-2">|</span>
           <select
             value={pageSize}
-            onChange={(e) => setPageSize(parseInt(e.target.value))}
+            onChange={(e) => onPageSizeChange(e)}
             className="clear thin"
           >
             <option value={10}>10</option>
@@ -216,6 +223,7 @@ export default function StorePage() {
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
+          <span className="opacity-50">per page</span>
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
             disabled={currentPage === Math.ceil(filteredApps.length / pageSize)}

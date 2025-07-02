@@ -40,8 +40,8 @@ const Header: React.FC = () => {
             <BsCloudArrowUp className="text-xl" />
             <span>Publish</span>
         </Link>
-        {isMobile && <div className="text-xs md:text-base"><ConnectButton label={`Connect
-Wallet`} /></div>}
+        {/* {isMobile && <div className="text-xs md:text-base"><ConnectButton label={`Connect
+Wallet`} /></div>} */}
     </>
 
     return (
@@ -81,7 +81,8 @@ Wallet`} /></div>}
                 {lesBoutons}
             </nav>
             <div className="flex items-center ml-auto gap-1 md:gap-2 self-stretch">
-                {!isMobile && <ConnectButton />}
+                {/* {!isMobile && <ConnectButton />} */}
+                <ConnectButton />
                 <NotificationBay />
             </div>
         </header>

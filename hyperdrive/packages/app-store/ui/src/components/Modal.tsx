@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import React, { ReactNode } from "react";
-import { FaX } from "react-icons/fa6";
+import { BsX } from "react-icons/bs";
 
 interface ModalProps {
     children: ReactNode;
@@ -16,10 +16,12 @@ export const Modal: React.FC<ModalProps> = ({
     onClose
 }) => {
     return (
-        <div className={classNames("fixed inset-0 bg-black/10 flex items-center justify-center z-50", backdropClassName)}>
-            <div className={classNames("bg-white dark:bg-stone shadow-lg dark:shadow-white/10 p-4 rounded-lg relative max-w-md max-h-screen overflow-y-auto flex flex-col items-stretch gap-4", modalClassName)}    >
-                <button className="absolute top-2 right-2 hover:scale-110 hover:text-red-500 transition-all duration-200" onClick={onClose}>
-                    <FaX />
+        <div className={classNames("fixed inset-0 backdrop-blur-sm bg-black/10 dark:bg-black/50 flex items-center justify-center z-50", backdropClassName)}>
+            <div className={classNames("bg-white dark:bg-black shadow-lg dark:shadow-white/10 p-4 rounded-lg relative w-full max-w-screen md:max-w-md min-h-0 max-h-screen overflow-y-auto flex flex-col items-stretch gap-4", modalClassName)}    >
+                <button
+                    className="clear thin absolute top-2 right-2 hover:scale-110 hover:text-red-500 transition-all duration-200"
+                    onClick={onClose}>
+                    <BsX />
                 </button>
                 {children}
             </div>

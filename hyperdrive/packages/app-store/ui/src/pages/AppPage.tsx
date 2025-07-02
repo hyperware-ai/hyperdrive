@@ -4,10 +4,12 @@ import useAppsStore from "../store";
 import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
-import { FaArrowsRotate, FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay, FaX } from "react-icons/fa6";
+import { FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay } from "react-icons/fa6";
 import { BsDownload } from "react-icons/bs";
 import { Modal } from "../components/Modal";
 import classNames from "classnames";
+import { VscSync, VscSyncIgnored } from "react-icons/vsc";
+import { BsX } from "react-icons/bs";
 
 const MOCK_APP: AppListing = {
   package_id: {
@@ -183,10 +185,31 @@ export default function AppPage() {
   }, []);
 
   const handleInstallFlow = useCallback(async (isDownloadNeeded: boolean = false) => {
-    if (!id || !selectedMirror || !app || !selectedVersion) return;
+    if (!id) {
+      setError("App not found");
+      return;
+    }
+
+    if (!selectedMirror) {
+      setError("No mirror selected");
+      return;
+    }
+
+    if (!app) {
+      setError("App not found");
+      return;
+    }
+
+    if (!selectedVersion) {
+      setError("No version selected");
+      return;
+    }
 
     const versionData = sortedVersions.find(v => v.version === selectedVersion);
-    if (!versionData) return;
+    if (!versionData) {
+      setError("Version not found");
+      return;
+    }
 
     try {
       if (isDownloadNeeded) {
@@ -258,7 +281,6 @@ export default function AppPage() {
 
 
   const handleUninstall = async () => {
-    setShowUninstallConfirmModal(false);
     if (!app) return;
     setIsUninstalling(true);
     try {
@@ -355,18 +377,20 @@ export default function AppPage() {
         <Modal onClose={() => setShowCapApproval(false)}>
           <h3 className="prose">Approve Capabilities</h3>
           <ManifestDisplay manifestResponse={manifestResponse} />
-          <div className="flex items-center gap-2">
-            <button onClick={() => {
-              setShowCapApproval(false);
-              setIsInstalling(false);
-            }}>Cancel</button>
-            {isInstalling
-              ? <>
-                <FaCircleNotch className="animate-spin" />
-                <span>Installing...</span>
-              </>
-              : <button onClick={confirmInstall}>Approve and Install</button>
-            }
+          <div className="flex flex-col items-stretch gap-2">
+            <button
+              className="clear"
+              disabled={isInstalling}
+              onClick={() => {
+                setShowCapApproval(false);
+                setIsInstalling(false);
+              }}>Cancel</button>
+            <button
+              disabled={isInstalling}
+              onClick={confirmInstall}
+            >
+              {isInstalling ? <FaCircleNotch className="animate-spin" /> : "Approve and Install"}
+            </button>
           </div>
         </Modal>
       )}
@@ -385,7 +409,7 @@ export default function AppPage() {
           {installedApp && <>
             <span>Auto Update:</span>
             <span className="flex items-center">
-              {app.auto_update ? <FaCheck className="text-neon" /> : <FaX className="text-red-500" />}
+              {app.auto_update ? <FaCheck className="text-neon" /> : <BsX className="text-red-500" />}
             </span>
           </>}
           {latestVersion && <>
@@ -400,7 +424,7 @@ export default function AppPage() {
             <>
               <span>Up to date:</span>
               <span className="flex items-center">
-                {upToDate ? <FaCheck className="text-neon" /> : <FaX className="text-red-500" />}
+                {upToDate ? <FaCheck className="text-neon" /> : <BsX className="text-red-500" />}
               </span>
             </>
           )}
@@ -422,8 +446,23 @@ export default function AppPage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h2 className="prose font-bold min-w-1/2 md:max-w-2/3">{app.metadata?.name || app.package_id.package_name}</h2>
 
-        {installedApp && (
-          <>
+        <div className="app-buttons flex flex-row items-stretch gap-2 ">
+          {installedApp && <>
+            <button
+              onClick={() => setShowUninstallConfirmModal(true)}
+              className="clear thin"
+            >
+              {isUninstalling ? <FaCircleNotch className="animate-spin" /> : <BsX />}
+              <span className="hidden md:block">Uninstall</span>
+            </button>
+            <button
+              onClick={handleToggleAutoUpdate}
+              className="clear thin"
+            >
+              {isTogglingAutoUpdate && <FaCircleNotch className="animate-spin" />}
+              {app.auto_update ? <VscSync className="text-lg" /> : <VscSyncIgnored className="text-lg" />}
+              <span className="hidden md:block">Updates {app.auto_update ? " OFF" : " ON"}</span>
+            </button>
             {(canLaunch || isDevMode) && (
               <button
                 onClick={handleLaunch}
@@ -432,62 +471,54 @@ export default function AppPage() {
                 <span className="hidden md:block">Launch</span>
               </button>
             )}
-            <button
-              onClick={handleUninstall}
-              className="clear"
-            >
-              {isUninstalling ? <FaCircleNotch className="animate-spin" /> : <FaX />}
-              <span className="hidden md:block">Uninstall</span>
-            </button>
-            <button
-              onClick={handleToggleAutoUpdate}
-              className="clear"
-            >
-              {isTogglingAutoUpdate ? <FaCircleNotch className="animate-spin" /> : <FaArrowsRotate />}
-              <span className="hidden md:block">{app.auto_update ? " Disable" : " Enable"} Auto Update</span>
-            </button>
-          </>
-        )}
-
-        {valid_wit_version && !upToDate && <>
-          {(isDevMode || isDownloaded) && <>
-            {!showCapApproval && (
-              <button
-                onClick={() => handleInstallFlow(false)}
-              >
-                {isInstalling ? (
-                  <><FaCircleNotch className="animate-spin" /> Installing...</>
-                ) : (
-                  <>{installedApp ? <><BsDownload /> Update</> : <><BsDownload /> Download</>}</>
-                )}
-              </button>)}
           </>}
 
-          {!isDownloaded && !isDevMode && <button
-            onClick={() => {
-              if (!selectedMirror || isMirrorOnline === null) {
-                setAttemptedDownload(true);
-              } else {
-                handleInstallFlow(true);
-              }
-            }}
-            className={classNames(' text-sm', {
-              'loading': isDownloading,
-              'thin': isMobile
-            })}
-            disabled={isDownloading}
-          >
-            {isDownloading ? (
-              <><FaCircleNotch className="animate-spin" /> Downloading... {downloadProgress}%</>
-            ) : mirrorError ? (
-              <><FaX /> {mirrorError}</>
-            ) : !selectedMirror && attemptedDownload ? (
-              <><FaCircleNotch className="animate-spin" /> Choosing mirrors...</>
-            ) : (
-              <>{installedApp ? <><BsDownload /> Update</> : <><BsDownload /> Download</>}</>
-            )}
-          </button>}
-        </>}
+          {valid_wit_version && !upToDate && <>
+            {(isDevMode || isDownloaded) && <>
+
+              <button
+                onClick={() => handleInstallFlow(false)}
+                className={classNames("text-sm", {
+                  'thin': isMobile
+                })}
+              >
+                {showCapApproval || isInstalling ? (
+                  <><FaCircleNotch className="animate-spin" /> Installing...</>
+                ) : (
+                  <>
+                    <BsDownload />
+                    <span className="hidden md:block">{installedApp ? "Update" : "Download"}</span>
+                  </>
+                )}
+              </button>
+            </>}
+
+            {!isDownloaded && !isDevMode && <button
+              onClick={() => {
+                if (!selectedMirror || isMirrorOnline === null) {
+                  setAttemptedDownload(true);
+                } else {
+                  handleInstallFlow(true);
+                }
+              }}
+              className={classNames(' text-sm', {
+                'loading': isDownloading,
+                'thin': isMobile
+              })}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <><FaCircleNotch className="animate-spin" /> Downloading... {downloadProgress}%</>
+              ) : mirrorError ? (
+                <><BsX /> {mirrorError}</>
+              ) : !selectedMirror && attemptedDownload ? (
+                <><FaCircleNotch className="animate-spin" /> Choosing mirrors...</>
+              ) : (
+                <>{installedApp ? <><BsDownload /> Update</> : <><BsDownload /> Download</>}</>
+              )}
+            </button>}
+          </>}
+        </div>
       </div>
 
       <div className="wrap-anywhere ">

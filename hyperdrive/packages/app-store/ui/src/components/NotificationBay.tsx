@@ -5,6 +5,7 @@ import { Notification, NotificationAction } from '../types/Apps';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
 import { Modal } from './Modal';
+import { BsX } from 'react-icons/bs';
 
 const NotificationBay: React.FC = () => {
     const { notifications, removeNotification } = useAppsStore();
@@ -43,18 +44,18 @@ const NotificationBay: React.FC = () => {
             <div className={classNames("relative rounded-md p-2 z-50")}>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className={`notification-button ${hasErrors ? 'has-errors' : ''}`}
+                    className={`clear thin notification-button ${hasErrors ? 'has-errors' : ''}`}
                 >
                     <FaBell />
                     {notifications.length > 0 && (
-                        <span className={`absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs `}>
+                        <span className={`absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs `}>
                             {notifications.length}
                         </span>
                     )}
                 </button>
 
                 {isExpanded && (
-                    <div className="absolute top-full right-0 w-md max-h-md overflow-y-auto bg-white dark:bg-black rounded-md shadow-md z-50 p-2 flex flex-col gap-2 items-stretch">
+                    <div className="absolute top-full right-0 w-md max-h-md min-h-0 overflow-y-auto bg-white dark:bg-black rounded-md shadow-md z-50 p-2 flex flex-col gap-2 items-stretch">
                         {notifications.length === 0 ? (
                             <p>All clear, no notifications!</p>
                         ) : (
@@ -90,7 +91,7 @@ export function NotificationItem({
     handleDismiss: (notificationId: string, event: React.MouseEvent) => void
 }) {
     return (
-        <div key={notification.id} className={`notification-item ${notification.type}`}>
+        <div key={notification.id} className={`notification-item rounded px-2 py-1 flex gap-2 items-center ${notification.type}`}>
             {notification.renderContent ? (
                 notification.renderContent(notification)
             ) : (
@@ -107,29 +108,27 @@ export function NotificationItem({
                         )}
                     </div>
 
-                    {notification.actions && (
-                        <div className="notification-actions">
-                            {notification.actions.map((action, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => handleActionClick(action)}
-                                    className={`action-button ${action.variant || 'secondary'}`}
-                                >
-                                    {action.icon && <action.icon />}
-                                    {action.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    <div className="flex gap-2 ml-auto">
+                        {notification.actions?.map((action, index) => (
+                            <button
+                                key={index}
+                                onClick={() => handleActionClick(action)}
+                                className={`thin clear ${action.variant || 'secondary'}`}
+                            >
+                                {action.icon && <action.icon />}
+                                {action.label}
+                            </button>
+                        ))}
+                        {!notification.persistent && (
+                            <button
+                                className="thin clear"
+                                onClick={(e) => handleDismiss(notification.id, e)}
+                            >
+                                <BsX />
+                            </button>
+                        )}
+                    </div>
 
-                    {!notification.persistent && (
-                        <button
-                            className="clear"
-                            onClick={(e) => handleDismiss(notification.id, e)}
-                        >
-                            <FaTrash />
-                        </button>
-                    )}
                 </>
             )}
         </div>

@@ -23,6 +23,7 @@ export const AppCard: React.FC<{
                 transition-colors duration-200 
                 flex flex-col gap-2
                 cursor-pointer
+                p-2
             `, className)}
                 onClick={() => {
                     navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}`);
@@ -32,10 +33,10 @@ export const AppCard: React.FC<{
                     {app.metadata?.image && <img
                         src={app.metadata?.image}
                         alt={`${app.metadata?.name || app.package_id.package_name} icon`}
-                        className="mb-2 w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-white dark:bg-black"
+                        className="w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-white dark:bg-black"
                     />}
                     {!app.metadata?.image && <div
-                        className="mb-2 w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-neon"
+                        className="w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-neon"
                     />}
                     <div className="flex flex-col grow self-stretch gap-1 border-b-1 border-black/10 dark:border-white/10 pb-2">
                         <p className="font-bold prose wrap-anywhere max-w-full overflow-hidden leading-tight line-clamp-1">
