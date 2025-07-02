@@ -110,8 +110,14 @@ async fn send_push(
             }
         }
         WsMessageType::Close => {
-            return utils::handle_close_websocket(id, &source, send_to_loop, ws_senders, channel_id)
-                .await;
+            return utils::handle_close_websocket(
+                id,
+                &source,
+                send_to_loop,
+                ws_senders,
+                channel_id,
+            )
+            .await;
         }
     };
     // Send to the websocket if registered
