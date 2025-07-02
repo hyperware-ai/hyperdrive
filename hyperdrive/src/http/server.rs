@@ -1,6 +1,7 @@
 use crate::http::server_types::{
-    HttpResponse, HttpResponseSenders, HttpSender, HttpServerAction, HttpServerError, HttpServerRequest, IncomingHttpRequest,
-    MessageType, RpcResponseBody, WebSocketSender, WebSocketSenders, WsMessageType,
+    HttpResponse, HttpResponseSenders, HttpSender, HttpServerAction, HttpServerError,
+    HttpServerRequest, IncomingHttpRequest, MessageType, RpcResponseBody, WebSocketSender,
+    WebSocketSenders, WsMessageType,
 };
 use crate::http::utils::{self, send_action_response};
 use crate::keygen;
@@ -109,13 +110,8 @@ async fn send_push(
             }
         }
         WsMessageType::Close => {
-            return utils::handle_close_websocket(
-                id,
-                source,
-                send_to_loop,
-                ws_senders,
-                channel_id,
-            ).await;
+            return utils::handle_close_websocket(id, source, send_to_loop, ws_senders, channel_id)
+                .await;
         }
     };
     // Send to the websocket if registered
@@ -1546,7 +1542,8 @@ async fn handle_app_message(
                         send_to_loop,
                         ws_senders,
                         channel_id,
-                    ).await;
+                    )
+                    .await;
 
                     if is_return {
                         return;

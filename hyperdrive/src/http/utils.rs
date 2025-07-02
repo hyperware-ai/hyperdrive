@@ -1,7 +1,12 @@
 use crate::http::server_types::{HttpServerError, WebSocketSenders};
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;
-use lib::{types::{http_server, core::{Address, KernelMessage, Message, MessageSender, ProcessId, Response, HTTP_SERVER_PROCESS_ID}}};
+use lib::types::{
+    core::{
+        Address, KernelMessage, Message, MessageSender, ProcessId, Response, HTTP_SERVER_PROCESS_ID,
+    },
+    http_server,
+};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::HashMap;
@@ -160,7 +165,13 @@ pub fn is_behind_reverse_proxy(headers: &warp::http::HeaderMap) -> bool {
     return false;
 }
 
-pub async fn handle_close_websocket(id: u64, source: Address, send_to_loop: &MessageSender, ws_senders: WebSocketSenders, channel_id: u32) -> bool {
+pub async fn handle_close_websocket(
+    id: u64,
+    source: Address,
+    send_to_loop: &MessageSender,
+    ws_senders: WebSocketSenders,
+    channel_id: u32,
+) -> bool {
     let Some(got) = ws_senders.get(&channel_id) else {
         return;
     };
