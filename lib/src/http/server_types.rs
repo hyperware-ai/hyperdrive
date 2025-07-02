@@ -1,4 +1,4 @@
-use crate::core::LazyLoadBlob;
+use crate::core::{LazyLoadBlob, ProcessId};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -213,5 +213,5 @@ pub type HttpSender = tokio::sync::oneshot::Sender<(HttpResponse, Vec<u8>)>;
 /// mapping from an open websocket connection to a channel that will ingest
 /// WebSocketPush messages from the app that handles the connection, and
 /// send them to the connection.
-type WebSocketSenders = Arc<DashMap<u32, (ProcessId, WebSocketSender)>>;
-type WebSocketSender = tokio::sync::mpsc::Sender<warp::ws::Message>;
+pub type WebSocketSenders = Arc<DashMap<u32, (ProcessId, WebSocketSender)>>;
+pub type WebSocketSender = tokio::sync::mpsc::Sender<warp::ws::Message>;

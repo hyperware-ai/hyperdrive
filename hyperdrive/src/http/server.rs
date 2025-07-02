@@ -110,7 +110,7 @@ async fn send_push(
             }
         }
         WsMessageType::Close => {
-            return utils::handle_close_websocket(id, source, send_to_loop, ws_senders, channel_id)
+            return utils::handle_close_websocket(id, &source, send_to_loop, ws_senders, channel_id)
                 .await;
         }
     };
@@ -1537,9 +1537,9 @@ async fn handle_app_message(
                 }
                 HttpServerAction::WebSocketClose(channel_id) => {
                     let is_return = utils::handle_close_websocket(
-                        id,
-                        source,
-                        send_to_loop,
+                        km.id,
+                        &km.source,
+                        &send_to_loop,
                         ws_senders,
                         channel_id,
                     )
