@@ -1,8 +1,8 @@
 use crate::http::server_types::{
-    HttpResponse, HttpServerAction, HttpServerError, HttpServerRequest, IncomingHttpRequest,
-    MessageType, RpcResponseBody, WsMessageType,
+    HttpResponse, HttpResponseSenders, HttpSender, HttpServerAction, HttpServerError, HttpServerRequest, IncomingHttpRequest,
+    MessageType, RpcResponseBody, WebSocketSender, WebSocketSenders, WsMessageType,
 };
-use crate::http::utils;
+use crate::http::utils::{self, send_action_response};
 use crate::keygen;
 use base64::{engine::general_purpose::STANDARD as base64_standard, Engine};
 use dashmap::DashMap;
@@ -38,18 +38,6 @@ const HTTP_SELF_IMPOSED_TIMEOUT: u64 = 600;
 const WS_SELF_IMPOSED_MAX_CONNECTIONS: u32 = 128;
 
 const LOGIN_HTML: &str = include_str!("login.html");
-
-/// mapping from a given HTTP request (assigned an ID) to the oneshot
-/// channel that will get a response from the app that handles the request,
-/// and a string which contains the path that the request was made to.
-type HttpResponseSenders = Arc<DashMap<u64, (String, HttpSender)>>;
-type HttpSender = tokio::sync::oneshot::Sender<(HttpResponse, Vec<u8>)>;
-
-/// mapping from an open websocket connection to a channel that will ingest
-/// WebSocketPush messages from the app that handles the connection, and
-/// send them to the connection.
-type WebSocketSenders = Arc<DashMap<u32, (ProcessId, WebSocketSender)>>;
-type WebSocketSender = tokio::sync::mpsc::Sender<warp::ws::Message>;
 
 type PathBindings = Arc<RwLock<Router<BoundPath>>>;
 type WsPathBindings = Arc<RwLock<Router<BoundWsPath>>>;
@@ -121,7 +109,13 @@ async fn send_push(
             }
         }
         WsMessageType::Close => {
-            unreachable!();
+            return utils::handle_close_websocket(
+                id,
+                source,
+                send_to_loop,
+                ws_senders,
+                channel_id,
+            ).await;
         }
     };
     // Send to the websocket if registered
@@ -1546,19 +1540,16 @@ async fn handle_app_message(
                     return;
                 }
                 HttpServerAction::WebSocketClose(channel_id) => {
-                    if let Some(got) = ws_senders.get(&channel_id) {
-                        if got.value().0 != km.source.process {
-                            send_action_response(
-                                km.id,
-                                km.source,
-                                &send_to_loop,
-                                Err(HttpServerError::WsChannelNotFound),
-                            )
-                            .await;
-                            return;
-                        }
-                        let _ = got.value().1.send(warp::ws::Message::close()).await;
-                        ws_senders.remove(&channel_id);
+                    let is_return = utils::handle_close_websocket(
+                        id,
+                        source,
+                        send_to_loop,
+                        ws_senders,
+                        channel_id,
+                    ).await;
+
+                    if is_return {
+                        return;
                     }
                 }
             }
@@ -1568,29 +1559,4 @@ async fn handle_app_message(
             }
         }
     }
-}
-
-pub async fn send_action_response(
-    id: u64,
-    target: Address,
-    send_to_loop: &MessageSender,
-    result: Result<(), HttpServerError>,
-) {
-    KernelMessage::builder()
-        .id(id)
-        .source(("our", HTTP_SERVER_PROCESS_ID.clone()))
-        .target(target)
-        .message(Message::Response((
-            Response {
-                inherit: false,
-                body: serde_json::to_vec(&result).unwrap(),
-                metadata: None,
-                capabilities: vec![],
-            },
-            None,
-        )))
-        .build()
-        .unwrap()
-        .send(send_to_loop)
-        .await;
 }

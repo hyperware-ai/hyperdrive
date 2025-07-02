@@ -23,6 +23,7 @@ alloy = { version = "0.8.1", features = [
     "rpc-types",
     "rpc-types-eth",
 ] }
+dashmap = "5.5.3"
 lazy_static = "1.4.0"
 rand = "0.8.4"
 regex = "1.11.0"

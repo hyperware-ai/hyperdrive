@@ -1,6 +1,8 @@
 use crate::core::LazyLoadBlob;
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 
 /// HTTP Request received from the `http-server:distro:sys` service as a
@@ -201,3 +203,15 @@ pub struct JwtClaims {
     pub subdomain: Option<String>,
     pub expiration: u64,
 }
+
+/// mapping from a given HTTP request (assigned an ID) to the oneshot
+/// channel that will get a response from the app that handles the request,
+/// and a string which contains the path that the request was made to.
+pub type HttpResponseSenders = Arc<DashMap<u64, (String, HttpSender)>>;
+pub type HttpSender = tokio::sync::oneshot::Sender<(HttpResponse, Vec<u8>)>;
+
+/// mapping from an open websocket connection to a channel that will ingest
+/// WebSocketPush messages from the app that handles the connection, and
+/// send them to the connection.
+type WebSocketSenders = Arc<DashMap<u32, (ProcessId, WebSocketSender)>>;
+type WebSocketSender = tokio::sync::mpsc::Sender<warp::ws::Message>;
