@@ -216,7 +216,7 @@ export default function StorePage() {
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(e)}
-            className="clear thin"
+            className="clear thin text-gray-500"
           >
             <option value={10}>10</option>
             <option value={20}>20</option>

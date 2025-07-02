@@ -459,9 +459,12 @@ export default function AppPage() {
               onClick={handleToggleAutoUpdate}
               className="clear thin"
             >
-              {isTogglingAutoUpdate && <FaCircleNotch className="animate-spin" />}
-              {app.auto_update ? <VscSync className="text-lg" /> : <VscSyncIgnored className="text-lg" />}
-              <span className="hidden md:block">Updates {app.auto_update ? " OFF" : " ON"}</span>
+              {isTogglingAutoUpdate
+                ? <FaCircleNotch className="animate-spin" />
+                : app.auto_update
+                  ? <VscSync className="text-lg" />
+                  : <VscSyncIgnored className="text-lg" />}
+              <span className="hidden md:block">Updates {app.auto_update ? " ON" : " OFF"}</span>
             </button>
             {(canLaunch || isDevMode) && (
               <button
