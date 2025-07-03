@@ -3,3 +3,4 @@ export const PUBLISH_PATH = '/publish';
 export const APP_DETAILS_PATH = '/app';
 export const DOWNLOAD_PATH = '/download';
 export const MY_APPS_PATH = '/my-apps';
+export const APP_PAGE_PATH = '/app/';

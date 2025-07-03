@@ -35,70 +35,120 @@
   <meta httpequiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport"
     content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1.00001,viewport-fit=cover">
-  <link rel="stylesheet" href="/hyperware.css" crossorigin="use-credentials">
+  <link rel="stylesheet" href="/hyperware.css">
 </head>
 
 <body>
   <noscript>Enable javascript, I abjure thee!</noscript>
   <div id="root">
-    <div id="signup-page" class="flex flex-col place-items-center place-content-center h-screen prose">
-      <div id="home-form-header" class="flex flex-col place-content-center place-items-center"
-        style="gap: 24px; margin: 32px 0 56px; width: 64px; height: 64px;">
-        <svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 622.27 595.09">
-          <defs>
-            <style>
-              @media (prefers-color-scheme: dark) {
-                .cls-1 {
-                  fill: #dcff71;
-                }
+    <div id="login-html--login-page"
+      class="bg-white dark:bg-black flex flex-col place-items-center place-content-center prose h-screen">
+      <svg class="absolute bottom-0 left-0 w-screen z-0 pointer-events-none" viewBox="0 0 393 437" fill="none"
+        version="1.1" id="Large Background Vector">
+        <defs>
+          <style>
+            @media (prefers-color-scheme: dark) {
+              path {
+                stroke: #dcff71;
               }
+            }
 
-              @media (prefers-color-scheme: light) {
-                .cls-1 {
-                  fill: #004fff;
-                }
+            @media (prefers-color-scheme: light) {
+              path {
+                stroke: #004fff;
               }
-            </style>
-          </defs>
-          <g id="Capa_1" data-name="Capa 1">
-            <g>
+            }
+          </style>
+        </defs>
+        <g clip-path="url(#clip0_1483_2638)" id="g6">
+          <path
+            d="M102.512 602.174L26.4165 495.848C19.1083 485.636 7.08625 479.848 -5.47723 480.469L-91.5808 484.84C-103.076 485.428 -113.194 492.614 -117.519 503.279L-117.536 503.332L-96.4092 532.853C-89.101 543.065 -87.4912 556.305 -92.1321 567.996L-129.828 662.625L-69.1989 747.342L196.772 733.884"
+            stroke-width="2" stroke-miterlimit="10" id="path1" />
+          <path
+            d="M231.813 559.016L154.306 450.716L199.465 337.348L165.781 290.281L188.443 233.386C196.374 213.484 215.214 200 236.61 198.914L319.551 194.721"
+            stroke-width="2" stroke-miterlimit="10" id="path2" />
+          <path
+            d="M432.185 333.02L327.848 338.299C311.455 339.133 297.021 349.463 290.944 364.71L227.542 523.882C222.888 535.555 224.498 548.795 231.806 559.007"
+            stroke-width="2" stroke-miterlimit="10" id="path3" />
+          <path d="M319.543 194.713L332.726 194.049L432.184 333.02L302.704 658.073" stroke-width="2"
+            stroke-miterlimit="10" id="path4" />
+          <path d="M199.418 337.285L105.131 205.539L-160.836 219.021" stroke-width="2" stroke-miterlimit="10"
+            id="path5" />
+          <path
+            d="M154.298 450.707L147.813 467.006L112.518 468.798L41.4157 472.42C28.8523 473.041 16.8303 467.252 9.52209 457.041L-66.573 350.714L41.6528 345.248L145.974 339.967L199.421 337.268L199.466 337.332"
+            stroke-width="2" stroke-miterlimit="10" id="path6" />
+        </g>
+        <defs id="defs6">
+          <clipPath id="clip0_1483_2638">
+            <rect width="475.976" height="438.88" fill="white" transform="translate(509.485 357.887) rotate(144.41)"
+              id="rect6" />
+          </clipPath>
+        </defs>
+      </svg>
+      <div class="flex flex-col items-center z-10 max-w-md bg-white dark:bg-black p-4 rounded-lg gap-2">
+
+        <div id="home-form-header" class="flex flex-col place-content-center place-items-center z-10"
+          style="width: 128px; height: 128px; margin-bottom: 32px;">
+          <svg id="Hyperware Logo" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 622.27 595.09">
+            <defs>
+              <style>
+                @media (prefers-color-scheme: dark) {
+                  .cls-1 {
+                    fill: #dcff71;
+                  }
+                }
+
+                @media (prefers-color-scheme: light) {
+                  .cls-1 {
+                    fill: #004fff;
+                  }
+                }
+              </style>
+            </defs>
+            <g id="Capa_1" data-name="Capa 1">
               <g>
                 <g>
+                  <g>
+                    <path class="cls-1"
+                      d="M99.56,188.21L0,476.27l93.56.03c10.8,0,20.4-6.84,23.93-17.05l53.59-155.07c3.79-10.97,1.73-23.11-5.45-32.22l-66.06-83.76Z" />
+                    <path class="cls-1"
+                      d="M420.78,118.82l-30.14,87.1c-3.74,10.8-13.91,18.04-25.34,18.04h-70.48c-10.46,0-20.34-4.76-26.81-12.97l-72.67-92.17h225.44Z" />
+                  </g>
                   <path class="cls-1"
-                    d="M99.56,188.21L0,476.27l93.56.03c10.8,0,20.4-6.84,23.93-17.05l53.59-155.07c3.79-10.97,1.73-23.11-5.45-32.22l-66.06-83.76Z" />
-                  <path class="cls-1"
-                    d="M420.78,118.82l-30.14,87.1c-3.74,10.8-13.91,18.04-25.34,18.04h-70.48c-10.46,0-20.34-4.76-26.81-12.97l-72.67-92.17h225.44Z" />
+                    d="M101.63,0l-42.74,123.61c-1.85,5.35-.99,11.28,2.3,15.93l38.37,48.67,17.69-51.16c3.77-10.91,14.05-18.23,25.59-18.23h52.5L101.63,0Z" />
                 </g>
-                <path class="cls-1"
-                  d="M101.63,0l-42.74,123.61c-1.85,5.35-.99,11.28,2.3,15.93l38.37,48.67,17.69-51.16c3.77-10.91,14.05-18.23,25.59-18.23h52.5L101.63,0Z" />
-              </g>
-              <g>
                 <g>
+                  <g>
+                    <path class="cls-1"
+                      d="M522.71,406.88l99.56-288.06-93.56-.03c-10.8,0-20.4,6.84-23.93,17.05l-53.59,155.07c-3.79,10.97-1.73,23.11,5.45,32.22l66.06,83.76Z" />
+                    <path class="cls-1"
+                      d="M201.49,476.27l30.14-87.1c3.74-10.8,13.91-18.04,25.34-18.04h70.48c10.46,0,20.34,4.76,26.81,12.97l72.67,92.17h-225.44Z" />
+                  </g>
                   <path class="cls-1"
-                    d="M522.71,406.88l99.56-288.06-93.56-.03c-10.8,0-20.4,6.84-23.93,17.05l-53.59,155.07c-3.79,10.97-1.73,23.11,5.45,32.22l66.06,83.76Z" />
-                  <path class="cls-1"
-                    d="M201.49,476.27l30.14-87.1c3.74-10.8,13.91-18.04,25.34-18.04h70.48c10.46,0,20.34,4.76,26.81,12.97l72.67,92.17h-225.44Z" />
+                    d="M520.64,595.09l42.74-123.61c1.85-5.35.99-11.28-2.3-15.93l-38.37-48.67-17.69,51.16c-3.77,10.91-14.05,18.23-25.59,18.23h-52.5l93.71,118.82Z" />
                 </g>
-                <path class="cls-1"
-                  d="M520.64,595.09l42.74-123.61c1.85-5.35.99-11.28-2.3-15.93l-38.37-48.67-17.69,51.16c-3.77,10.91-14.05,18.23-25.59,18.23h-52.5l93.71,118.82Z" />
               </g>
             </g>
-          </g>
-        </svg>
-      </div>
-      <form id="login-form" class="flex flex-col px-4">
-        <h3 id="node-and-domain" class="flex flex-col text-lg"></h3>
-        <input autofocus type="password" id="password" required="" minlength="6" name="password" placeholder="Password"
-          oninput="document.getElementById('password-err').style.display = 'none';" value="" class="self-stretch mb-2">
-        <div id="password-err" class="login-row flex mb-2" style="display: none;"> Incorrect Password </div>
-        <div class="flex flex-col leading-6 self-stretch mb-2">
-          <button id="login-button" disabled> Login </button>
-          <div class="flex flex-col mt-2 text-sm leading-6" id="fake-or-not"></div>
+          </svg>
         </div>
-      </form>
-      <div id="loading" class="flex flex-col" style="display: none;">
-        <h3>Logging in...</h3>
-        <div id="loader"></div>
+        <form id="login-form" class="flex flex-col gap-2 px-4 z-10">
+          <div className="flex flex-col gap-1">
+            <div id="node-and-domain--node" class="text-lg font-bold text-iris dark:text-neon "></div>
+            <div id="node-and-domain--domain" class="text-sm "></div>
+          </div>
+          <input autofocus type="password" id="password" required="" minlength="6" name="password"
+            placeholder="Password" oninput="document.getElementById('password-err').style.display = 'none';" value=""
+            class="self-stretch">
+          <div id="password-err" class="login-row flex" style="display: none;"> Incorrect Password </div>
+          <div class="flex flex-col leading-6 self-stretch gap-2">
+            <button id="login-button" disabled> Login </button>
+            <div class="text-xs text-iris dark:text-neon" id="fake-or-not"></div>
+          </div>
+        </form>
+        <div id="loading" class="flex flex-col font-bold z-10" style="display: none;">
+          <h3 class="prose">Logging in...</h3>
+          <div id="loader"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -119,10 +169,11 @@
       const expectedSecureSubdomain = generateSecureSubdomain(firstPathItem);
       const maybeSecureSubdomain = window.location.host.split('.')[0];
       const isSecureSubdomain = expectedSecureSubdomain === maybeSecureSubdomain;
+      document.getElementById("node-and-domain--node").innerText = "${node}";
       if (isSecureSubdomain) {
-        document.getElementById("node-and-domain").innerText = "${node}: authenticate for secure subdomain app " + firstPathItem;
+        document.getElementById("node-and-domain--domain").innerText = "Authenticate for secure subdomain app " + firstPathItem;
       } else {
-        document.getElementById("node-and-domain").innerText = "${node} ";
+        document.getElementById("node-and-domain--node").innerText = "${node} ";
       }
 
       document.getElementById("login-button").disabled = false;

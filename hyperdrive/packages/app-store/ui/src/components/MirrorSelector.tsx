@@ -47,7 +47,12 @@ const MirrorSelector: React.FC<MirrorSelectorProps> = ({ packageId, onMirrorSele
             ]));
 
             setMirrors(mirrorList);
-            
+
+            if (mirrorList.length > 0) {
+                setSelectedMirror(mirrorList[0]);
+                onMirrorSelect(mirrorList[0], null);
+            }
+
             const statuses: MirrorStatuses = {};
             mirrorList.forEach(m => {
                 statuses[m] = m.startsWith('http') ? 'http' : null;
@@ -64,7 +69,7 @@ const MirrorSelector: React.FC<MirrorSelectorProps> = ({ packageId, onMirrorSele
             onMirrorSelect("", null);
             return;
         }
-        
+
         setIsCustomMirrorSelected(false);
         setCustomMirror("");
         setSelectedMirror(value);
@@ -80,7 +85,7 @@ const MirrorSelector: React.FC<MirrorSelectorProps> = ({ packageId, onMirrorSele
 
     const handleSetCustomMirror = async () => {
         if (!customMirror) return;
-        
+
         const status = await checkSingleMirror(customMirror);
         setMirrorStatuses(prev => ({ ...prev, [customMirror]: status }));
         setSelectedMirror(customMirror);
@@ -92,20 +97,20 @@ const MirrorSelector: React.FC<MirrorSelectorProps> = ({ packageId, onMirrorSele
     const formatMirrorOption = (mirror: string) => {
         const status = checkingMirror === mirror ? 'checking...' :
             mirrorStatuses[mirror] === 'http' ? 'HTTP' :
-            mirrorStatuses[mirror] === true ? 'online' :
-            mirrorStatuses[mirror] === false ? 'offline' : '';
+                mirrorStatuses[mirror] === true ? 'online' :
+                    mirrorStatuses[mirror] === false ? 'offline' : '';
         return `${mirror}${status ? ` (${status})` : ''}`;
     };
 
     return (
-        <div className="mirror-selector">
-            <select 
-                value={selectedMirror || (isCustomMirrorSelected ? "custom" : "")} 
+        <div className="flex flex-col gap-2 self-stretch items-stretch">
+            <select
+                value={selectedMirror || (isCustomMirrorSelected ? "custom" : "")}
                 onChange={handleMirrorChange}
-                className="w-full p-2 border rounded bg-white"
+                className="bg-black/10 dark:bg-white/10 text-gray-500 self-stretch p-2 rounded-lg text-sm md:text-base"
                 onFocus={() => mirrors.forEach(m => {
                     if (mirrorStatuses[m] === null) {
-                        checkSingleMirror(m).then(status => 
+                        checkSingleMirror(m).then(status =>
                             setMirrorStatuses(prev => ({ ...prev, [m]: status }))
                         );
                     }
@@ -113,9 +118,9 @@ const MirrorSelector: React.FC<MirrorSelectorProps> = ({ packageId, onMirrorSele
             >
                 <option value="">Select a mirror</option>
                 {mirrors.map(mirror => (
-                    <option 
-                        key={mirror} 
-                        value={mirror} 
+                    <option
+                        key={mirror}
+                        value={mirror}
                         className={mirrorStatuses[mirror] === false ? 'text-gray-400' : ''}
                     >
                         {formatMirrorOption(mirror)}
@@ -125,18 +130,18 @@ const MirrorSelector: React.FC<MirrorSelectorProps> = ({ packageId, onMirrorSele
             </select>
 
             {isCustomMirrorSelected && (
-                <div className="mt-2 flex gap-2">
+                <div className="flex gap-2 items-center">
                     <input
                         type="text"
                         value={customMirror}
                         onChange={(e) => setCustomMirror(e.target.value)}
                         placeholder="Enter custom mirror URL or node ID"
-                        className="flex-1 p-2 border rounded bg-white"
+                        className="grow"
                     />
                     <button
                         onClick={handleSetCustomMirror}
                         disabled={!customMirror}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+                        className="clear thin"
                     >
                         Add
                     </button>

@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 import { MULTICALL, generateNetworkingKeys, mechAbi } from "../abis";
-import { Tooltip } from "../components/Tooltip";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import EnterHnsName from "../components/EnterHnsName";
 
@@ -119,7 +118,7 @@ function ResetHnsName({
 
 
   return (
-    <div className="container fade-in">
+    <div className="container fade-in" id="register-ui--reset-name">
       <div className="section">
         {
           <form className="form" onSubmit={handleResetRecords}>
@@ -127,33 +126,32 @@ function ResetHnsName({
               <Loader msg={isConfirming ? "Resetting Networking Information..." : "Please confirm the transaction in your wallet"} />
             ) : (
               <>
-                <h3 className="form-label">
-                  <BackButton />
-                  <Tooltip text="Nodes use an onchain username in order to identify themselves to other nodes in the network.">
-                    Node ID to reset:
-                  </Tooltip>
+                <h3 className="text-iris dark:text-neon">
+                  Node ID to reset:
                 </h3>
                 <EnterHnsName {...{ address, name, setName, triggerNameCheck, nameValidities, setNameValidities, setTba, isReset: true }} />
+                <p className="text-sm text-gray-500">
+                  Nodes use an onchain username in order to identify themselves to other nodes in the network.
+                </p>
                 <details>
                   <summary>Advanced Options</summary>
                   <DirectNodeCheckbox {...{ direct, setDirect }} />
                 </details>
-                <p className="text-sm">
-                  A reset will not delete any data.
-                  <br />
-                  It only updates the networking info your node publishes onchain.
+                <p className="text-sm text-gray-500">
+                  A reset will not delete any data. It only updates the networking info your node publishes onchain.
                 </p>
                 <button
                   type="submit"
-                  className="button mt-2"
+                  className="button mt-2 self-stretch"
                   disabled={isPending || isConfirming || nameValidities.length !== 0}
                 >
                   Reset Node
                 </button>
+                <BackButton mode="wide" />
               </>
             )}
             {isError && (
-              <p className="error-message mt-2">
+              <p className="text-red-500 wrap-anywhere mt-2">
                 Error: {error?.message || "An error occurred, please try again."}
               </p>
             )}

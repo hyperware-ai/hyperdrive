@@ -21,7 +21,7 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
 
     return (
         <>
-            <div className="container fade-in">
+            <div className="container fade-in" id="register-ui--home">
                 <div className="section">
                     <div className="flex flex-col items-stretch gap-2">
                         {previouslyBooted ? (
@@ -33,13 +33,13 @@ function HyperdriveHome({ hnsName }: OsHomeProps) {
                             <>
                                 <h2 className="text-center">Welcome to Hyperdrive</h2>
                                 <h4 className="text-center">New here? Register a node to get started:</h4>
-                                <div className="button-group">
+                                <div className="flex flex-col gap-1">
                                     <button onClick={registerRedir} className="button">
                                         Register .os Name
                                     </button>
                                 </div>
-                                <h4 className="text-center mt-2 mb-2">Other options</h4>
-                                <div className="button-group">
+                                <h4 className="text-center">Other options</h4>
+                                <div className="flex flex-col gap-1">
                                     <button onClick={importKeyfileRedir} className="button secondary">
                                         Import Keyfile
                                     </button>

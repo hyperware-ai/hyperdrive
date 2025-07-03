@@ -135,17 +135,17 @@ function CommitDotOsName({
                         ) : (
                             <>
                                 <h3 className="form-label">
-                                    <BackButton />
-                                    <Tooltip text="Nodes need an onchain node identity in order to communicate with other nodes in the network.">
-                                        Choose a name for your node
-                                    </Tooltip>
+                                    Choose a name for your node
                                 </h3>
+                                <p className="text-sm text-gray-500">
+                                    Nodes need an onchain node identity in order to communicate with other nodes in the network.
+                                </p>
                                 <EnterHnsName {...enterOsNameProps} />
                                 <details className="advanced-options">
                                     <summary>Advanced Options</summary>
                                     <DirectNodeCheckbox {...{ direct, setDirect }} />
                                 </details>
-                                <div className="button-group">
+                                <div className="flex flex-col gap-1">
                                     <button
                                         disabled={nameValidities.length !== 0 || isPending || isConfirming}
                                         type="submit"
@@ -153,14 +153,15 @@ function CommitDotOsName({
                                     >
                                         Register name
                                     </button>
-                                    <Link to="/reset" className="button secondary">
+                                    <Link to="/reset" className="button clear">
                                         Already have a node?
                                     </Link>
+                                    <BackButton mode="wide" />
                                 </div>
                             </>
                         )}
                         {isError && (
-                            <p className="error-message">
+                            <p className="text-red-500 wrap-anywhere mt-2">
                                 Error: {error?.message || 'There was an error registering your name, please try again.'}
                             </p>
                         )}

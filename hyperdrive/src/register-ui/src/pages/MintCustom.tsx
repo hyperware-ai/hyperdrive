@@ -125,7 +125,6 @@ function MintCustom({
                         ) : (
                             <>
                                 <p className="form-label">
-                                    <BackButton />
                                     <span>
                                         Register a name on a different top-level zone -- this will likely fail if that zone's requirements are not met
                                     </span>
@@ -137,15 +136,19 @@ function MintCustom({
                                     <summary>Advanced Options</summary>
                                     <DirectNodeCheckbox {...{ direct, setDirect }} />
                                 </details>
-                                <div className="button-group">
-                                    <button type="submit" className="button">
+                                <div className="flex flex-col gap-1">
+                                    <button
+                                        type="submit"
+                                        className="button"
+                                        disabled={isPending || isConfirming || !hnsName}>
                                         Mint custom name
                                     </button>
+                                    <BackButton mode="wide" />
                                 </div>
                             </>
                         )}
                         {isError && (
-                            <p className="error-message">
+                            <p className="text-red-500 wrap-anywhere mt-2">
                                 Error: {error?.message || 'There was an error minting your name, please try again.'}
                             </p>
                         )}

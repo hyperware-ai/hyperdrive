@@ -6,7 +6,10 @@ interface PackageSelectorProps {
     publisherId: string;
 }
 
-const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect, publisherId }) => {
+const PackageSelector: React.FC<PackageSelectorProps> = ({
+    onPackageSelect,
+    publisherId
+}) => {
     const { installed, fetchInstalled } = useAppsStore();
     const [selectedPackage, setSelectedPackage] = useState<string>("");
 
@@ -14,8 +17,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect, publ
         fetchInstalled();
     }, []);
 
-    const filteredPackages = useMemo(() => 
-        Object.keys(installed).filter(packageFullName => 
+    const filteredPackages = useMemo(() =>
+        Object.keys(installed).filter(packageFullName =>
             packageFullName.endsWith(publisherId)
         ), [installed, publisherId]
     );
@@ -38,25 +41,23 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect, publ
     };
 
     return (
-        <div className="package-selector">
-            <select 
-                value={selectedPackage} 
-                onChange={handlePackageChange} 
-                style={{ width: '100%' }}
-            >
-                {filteredPackages.length === 0 ? (
-                    <option disabled value="">
-                        No apps installed with publisher {publisherId}
+        <select
+            value={selectedPackage}
+            onChange={handlePackageChange}
+            className="self-stretch outline-2 outline-offset-2 outline-iris/10 dark:outline-neon/10 rounded"
+        >
+            {filteredPackages.length === 0 ? (
+                <option disabled value="">
+                    No apps installed with publisher {publisherId}
+                </option>
+            ) : (
+                filteredPackages.map(packageFullName => (
+                    <option key={packageFullName} value={packageFullName}>
+                        {packageFullName}
                     </option>
-                ) : (
-                    filteredPackages.map(packageFullName => (
-                        <option key={packageFullName} value={packageFullName}>
-                            {packageFullName}
-                        </option>
-                    ))
-                )}
-            </select>
-        </div>
+                ))
+            )}
+        </select>
     );
 };
 

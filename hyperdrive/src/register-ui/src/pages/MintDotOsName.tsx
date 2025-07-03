@@ -132,7 +132,7 @@ function MintDotOsName({
             <Loader msg="Preparing to mint..." />
           )}
           {isError && (
-            <p className="error-message">
+            <p className="text-red-500 wrap-anywhere mt-2">
               Error: {error?.message || 'There was an error minting your name, please try again.'}
             </p>
           )}
