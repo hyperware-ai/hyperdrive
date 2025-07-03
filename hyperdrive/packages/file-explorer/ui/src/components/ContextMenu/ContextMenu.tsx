@@ -17,11 +17,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onSh
   const { isFileShared, removeSharedLink } = useFileExplorerStore();
   const isShared = !file.isDirectory && isFileShared(file.path);
 
-  // Touch drag-to-select state
-  const [hoveredButton, setHoveredButton] = useState<HTMLElement | null>(null);
+  // Track if a new touch has started after menu opened
   const touchStartedRef = useRef(false);
-  const touchMovedRef = useRef(false);
-  const isDraggingRef = useRef(false);
 
   useEffect(() => {
     // For touch-opened menus, delay adding the outside click handlers
@@ -95,82 +92,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onSh
     }
   };
 
-  // Touch event handlers for drag-to-select
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartedRef.current = true;
-    touchMovedRef.current = false;
-    isDraggingRef.current = false;
-
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-
-    if (element && element.tagName === 'BUTTON' && menuRef.current?.contains(element)) {
-      setHoveredButton(element as HTMLElement);
-      (element as HTMLElement).classList.add('touch-hover');
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartedRef.current) return;
-
-    touchMovedRef.current = true;
-    isDraggingRef.current = true;
-
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-
-    // Remove hover from previous button
-    if (hoveredButton) {
-      hoveredButton.classList.remove('touch-hover');
-    }
-
-    // Add hover to new button if it's within the menu
-    if (element && element.tagName === 'BUTTON' && menuRef.current?.contains(element)) {
-      setHoveredButton(element as HTMLElement);
-      (element as HTMLElement).classList.add('touch-hover');
-    } else {
-      setHoveredButton(null);
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const wasDragging = isDraggingRef.current;
-
-    // Clean up hover state
-    if (hoveredButton) {
-      hoveredButton.classList.remove('touch-hover');
-
-      // If user dragged to a button and released, trigger its action
-      if (wasDragging) {
-        e.preventDefault();
-        hoveredButton.click();
-      }
-    }
-
-    // Reset state
-    touchStartedRef.current = false;
-    touchMovedRef.current = false;
-    isDraggingRef.current = false;
-    setHoveredButton(null);
-  };
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (hoveredButton) {
-        hoveredButton.classList.remove('touch-hover');
-      }
-    };
-  }, [hoveredButton]);
 
   return (
     <div
       ref={menuRef}
       className="context-menu"
       style={{ left: position.x, top: position.y }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       <button onClick={() => { /* TODO */ onClose(); }}>
         📋 Copy
