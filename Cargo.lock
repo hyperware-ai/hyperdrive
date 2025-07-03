@@ -3986,6 +3986,7 @@ version = "1.4.1"
 dependencies = [
  "alloy",
  "anyhow",
+ "dashmap 5.5.3",
  "lazy_static",
  "rand 0.8.5",
  "regex",
@@ -3997,6 +3998,7 @@ dependencies = [
  "sha2",
  "thiserror 1.0.69",
  "tokio",
+ "warp",
  "wasmtime",
 ]
 
