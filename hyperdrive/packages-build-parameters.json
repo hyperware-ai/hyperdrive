@@ -1,0 +1,10 @@
+{
+  "hypermap-cacher": {
+    "local_dependencies": [
+      "sign"
+    ]
+  },
+  "file-explorer": {
+    "is_hyperapp": true
+  }
+}

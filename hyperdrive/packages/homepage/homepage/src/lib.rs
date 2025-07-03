@@ -14,7 +14,7 @@ const DEFAULT_FAVES: &[&str] = &["main:app-store:sys", "settings:settings:sys"];
 type PersistedAppOrder = HashMap<String, u32>;
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "homepage-sys-v1",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize],

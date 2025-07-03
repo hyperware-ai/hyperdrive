@@ -7,7 +7,8 @@ edition = "2021"
 anyhow = "1.0.71"
 clap = "4"
 fs-err = "2.11"
-kit = { git = "https://github.com/hyperware-ai/kit", rev = "81ca2ef" }
+kit = { git = "https://github.com/hyperware-ai/kit", rev = "531f660" }
+serde = "1"
 serde_json = "1"
 tokio = "1.28"
 walkdir = "2.4"

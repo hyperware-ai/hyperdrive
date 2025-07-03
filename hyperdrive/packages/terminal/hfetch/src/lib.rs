@@ -8,7 +8,7 @@ use std::collections::HashSet;
 const CARGO_TOML: &str = include_str!("../../../../Cargo.toml");
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "process-v1",
 });
 

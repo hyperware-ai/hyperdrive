@@ -2,7 +2,7 @@ use crate::hyperware::process::contacts;
 use hyperware_process_lib::{call_init, println, Address, Capability, Request};
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "contacts-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],

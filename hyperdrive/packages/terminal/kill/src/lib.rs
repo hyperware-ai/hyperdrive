@@ -2,7 +2,7 @@ use hyperware_process_lib::kernel_types::{KernelCommand, KernelResponse};
 use hyperware_process_lib::{script, Address, Message, ProcessId, Request};
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "process-v1",
 });
 

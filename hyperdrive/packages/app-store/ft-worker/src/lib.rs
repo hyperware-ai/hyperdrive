@@ -55,7 +55,7 @@ use std::str::FromStr;
 pub mod ft_worker_lib;
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     generate_unused_types: true,
     world: "app-store-sys-v1",
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],

@@ -1,0 +1,25 @@
+[
+  {
+    "process_name": "explorer",
+    "process_wasm_path": "/explorer.wasm",
+    "on_exit": "Restart",
+    "request_networking": false,
+    "request_capabilities": [
+        "homepage:homepage:sys",
+        "http-server:distro:sys",
+        "vfs:distro:sys",
+        {
+            "process": "vfs:distro:sys",
+            "params": {
+                "root": true
+            }
+        }
+    ],
+    "grant_capabilities": [
+        "homepage:homepage:sys",
+        "http-server:distro:sys",
+        "vfs:distro:sys"
+    ],
+    "public": false
+  }
+]
