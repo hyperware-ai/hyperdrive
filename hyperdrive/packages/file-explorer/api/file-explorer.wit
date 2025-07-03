@@ -1,0 +1,151 @@
+interface file-explorer {
+use standard.{address};
+
+    record file-info {
+        name: string,
+        path: string,
+        size: u64,
+        created: u64,
+        modified: u64,
+        is-directory: bool,
+        permissions: string
+    }
+
+    variant auth-scheme {
+        public,
+        private
+    }
+
+    // Function signature for: copy-file (http)
+    // HTTP: POST /api/copy-file
+    record copy-file-signature-http {
+        target: string,
+        source: string,
+        destination: string,
+        returning: result<file-info, string>
+    }
+
+    // Function signature for: create-directory (http)
+    // HTTP: POST /api/create-directory
+    record create-directory-signature-http {
+        target: string,
+        path: string,
+        returning: result<file-info, string>
+    }
+
+    // Function signature for: create-file (http)
+    // HTTP: POST /api/create-file
+    record create-file-signature-http {
+        target: string,
+        path: string,
+        content: list<u8>,
+        returning: result<file-info, string>
+    }
+
+    // Function signature for: delete-directory (http)
+    // HTTP: POST /api/delete-directory
+    record delete-directory-signature-http {
+        target: string,
+        path: string,
+        returning: result<bool, string>
+    }
+
+    // Function signature for: delete-file (http)
+    // HTTP: POST /api/delete-file
+    record delete-file-signature-http {
+        target: string,
+        path: string,
+        returning: result<bool, string>
+    }
+
+    // Function signature for: get-current-directory (http)
+    // HTTP: POST /api/get-current-directory
+    record get-current-directory-signature-http {
+        target: string,
+        returning: result<string, string>
+    }
+
+    // Function signature for: get-share-link (http)
+    // HTTP: POST /api/get-share-link
+    record get-share-link-signature-http {
+        target: string,
+        path: string,
+        returning: result<option<string>, string>
+    }
+
+    // Function signature for: list-directory (http)
+    // HTTP: POST /api/list-directory
+    record list-directory-signature-http {
+        target: string,
+        path: string,
+        returning: result<list<file-info>, string>
+    }
+
+    // Function signature for: move-file (http)
+    // HTTP: POST /api/move-file
+    record move-file-signature-http {
+        target: string,
+        source: string,
+        destination: string,
+        returning: result<file-info, string>
+    }
+
+    // Function signature for: read-file (http)
+    // HTTP: POST /api/read-file
+    record read-file-signature-http {
+        target: string,
+        path: string,
+        returning: result<list<u8>, string>
+    }
+
+    // Function signature for: serve-shared-file (http)
+    // HTTP: POST /api/serve-shared-file
+    record serve-shared-file-signature-http {
+        target: string,
+        returning: result<list<u8>, string>
+    }
+
+    // Function signature for: set-current-directory (http)
+    // HTTP: POST /api/set-current-directory
+    record set-current-directory-signature-http {
+        target: string,
+        path: string,
+        returning: result<string, string>
+    }
+
+    // Function signature for: share-file (http)
+    // HTTP: POST /api/share-file
+    record share-file-signature-http {
+        target: string,
+        path: string,
+        auth: auth-scheme,
+        returning: result<string, string>
+    }
+
+    // Function signature for: unshare-file (http)
+    // HTTP: POST /api/unshare-file
+    record unshare-file-signature-http {
+        target: string,
+        path: string,
+        returning: result<bool, string>
+    }
+
+    // Function signature for: update-file (http)
+    // HTTP: POST /api/update-file
+    record update-file-signature-http {
+        target: string,
+        path: string,
+        content: list<u8>,
+        returning: result<file-info, string>
+    }
+
+    // Function signature for: upload-file (http)
+    // HTTP: POST /api/upload-file
+    record upload-file-signature-http {
+        target: string,
+        path: string,
+        filename: string,
+        content: list<u8>,
+        returning: result<file-info, string>
+    }
+}

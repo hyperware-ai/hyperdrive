@@ -8,6 +8,17 @@ use clap::{Arg, Command};
 use fs_err as fs;
 use zip::write::FileOptions;
 
+#[derive(serde::Deserialize, serde::Serialize)]
+struct PackageBuildParameters {
+    local_dependencies: Option<Vec<String>>,
+    is_hyperapp: Option<bool>,
+}
+
+struct PackageBuildParametersPath {
+    local_dependencies: Option<Vec<PathBuf>>,
+    is_hyperapp: Option<bool>,
+}
+
 fn zip_directory(dir_path: &Path) -> anyhow::Result<Vec<u8>> {
     let mut writer = Cursor::new(Vec::new());
     let options = FileOptions::default()
@@ -45,6 +56,7 @@ fn build_and_zip_package(
     skip_frontend: bool,
     features: &str,
     local_dependencies: Vec<PathBuf>,
+    is_hyperapp: bool,
 ) -> anyhow::Result<(PathBuf, String, Vec<u8>)> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -62,6 +74,7 @@ fn build_and_zip_package(
             local_dependencies,
             vec![],
             false,
+            is_hyperapp,
             false,
             false,
             false,
@@ -122,13 +135,21 @@ fn main() -> anyhow::Result<()> {
 
     let skip_frontend = matches.get_flag("SKIP_FRONTEND");
 
-    let local_dependencies = fs::read(hyperdrive_dir.join("packages-local-dependencies.json"))?;
-    let local_dependencies: HashMap<String, Vec<String>> =
-        serde_json::from_slice(&local_dependencies)?;
-    let mut local_dependencies: HashMap<String, Vec<PathBuf>> = local_dependencies
+    let build_parameters = fs::read(hyperdrive_dir.join("packages-build-parameters.json"))?;
+    let build_parameters: HashMap<String, PackageBuildParameters> =
+        serde_json::from_slice(&build_parameters)?;
+    let mut build_parameters: HashMap<String, PackageBuildParametersPath> = build_parameters
         .into_iter()
-        .map(|(key, val)| (key, val.iter().map(|f| packages_dir.join(f)).collect()))
-        //.map(|(key, val)| (key, val.iter().map(|f| packages_dir.join(f)).collect::<Vec<_>>()))
+        .map(|(key, val)| {
+            (
+                key,
+                PackageBuildParametersPath {
+                    local_dependencies: val.local_dependencies
+                        .map(|bp| bp.iter().map(|f| packages_dir.join(f)).collect()),
+                    is_hyperapp: val.is_hyperapp,
+                }
+            )
+        })
         .collect();
 
     let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = fs::read_dir(&packages_dir)?
@@ -142,12 +163,16 @@ fn main() -> anyhow::Result<()> {
                 // don't run on, e.g., `.DS_Store`
                 return None;
             }
-            let local_dependency_array = if let Some(filename) = entry_path.file_name() {
-                local_dependencies
+            let (local_dependency_array, is_hyperapp) = if let Some(filename) = entry_path.file_name() {
+                if let Some(maybe_params) = build_parameters
                     .remove(&filename.to_string_lossy().to_string())
-                    .unwrap_or_default()
+                {
+                    (maybe_params.local_dependencies.unwrap_or_default(), maybe_params.is_hyperapp.unwrap_or_default())
+                } else {
+                    (vec![], false)
+                }
             } else {
-                vec![]
+                (vec![], false)
             };
             Some(build_and_zip_package(
                 entry_path.clone(),
@@ -155,6 +180,7 @@ fn main() -> anyhow::Result<()> {
                 skip_frontend,
                 &features,
                 local_dependency_array,
+                is_hyperapp,
             ))
         })
         .collect();

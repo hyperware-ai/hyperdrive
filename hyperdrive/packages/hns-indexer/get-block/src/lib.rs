@@ -1,7 +1,7 @@
 use hyperware_process_lib::{eth, script, Address};
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "process-v1",
 });
 
