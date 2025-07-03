@@ -146,12 +146,15 @@
   border: 1px solid var(--border-color);
 }
 
+.qr-code canvas,
 .qr-code img {
   border: 1px solid var(--border-color);
   border-radius: 4px;
   max-width: 200px;
   width: 100%;
   height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 /* Mobile responsiveness */
@@ -178,6 +181,7 @@
     width: 100%;
   }
   
+  .qr-code canvas,
   .qr-code img {
     max-width: 150px;
   }

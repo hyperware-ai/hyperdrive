@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileInfo, AuthScheme, shareFile } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import QRCode from 'qrcode';
@@ -13,14 +13,59 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
   const [authScheme, setAuthScheme] = useState<AuthScheme>("Public");
   const [shareLink, setShareLink] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [qrCode, setQrCode] = useState<string>('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const { addSharedLink } = useFileExplorerStore();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Detect if we're in iOS standalone mode (PWA)
+  const isIosPwa = () => {
+    return (window.navigator as any).standalone === true ||
+           window.matchMedia('(display-mode: standalone)').matches;
+  };
 
   // Auto-generate share link on mount
   useEffect(() => {
     handleShare();
   }, []);
+
+  // Generate QR code when share link is available
+  useEffect(() => {
+    if (shareLink) {
+      const generateQrCode = async () => {
+        try {
+          if (isIosPwa()) {
+            // For iOS PWA, use canvas rendering
+            if (canvasRef.current) {
+              await QRCode.toCanvas(canvasRef.current, shareLink, {
+                width: 200,
+                margin: 2,
+                color: {
+                  dark: '#000000',
+                  light: '#FFFFFF'
+                }
+              });
+            }
+          } else {
+            // For desktop and regular mobile browsers, use data URL
+            const dataUrl = await QRCode.toDataURL(shareLink, {
+              width: 200,
+              margin: 2,
+              color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+              }
+            });
+            setQrCodeDataUrl(dataUrl);
+          }
+        } catch (err) {
+          console.error('Failed to generate QR code:', err);
+        }
+      };
+
+      generateQrCode();
+    }
+  }, [shareLink]);
 
   const handleShare = async () => {
     setLoading(true);
@@ -29,14 +74,10 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
       const fullLink = `${window.location.origin}${link}`;
       setShareLink(fullLink);
       addSharedLink(file.path, fullLink);
-      
+
       // Auto-copy to clipboard
       await navigator.clipboard.writeText(fullLink);
       setCopied(true);
-      
-      // Generate QR code
-      const qrDataUrl = await QRCode.toDataURL(fullLink);
-      setQrCode(qrDataUrl);
     } catch (err) {
       console.error('Failed to share file:', err);
     } finally {
@@ -54,7 +95,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
     <div className="share-dialog-overlay" onClick={onClose}>
       <div className="share-dialog" onClick={e => e.stopPropagation()}>
         <h3>Share File: {file.name}</h3>
-        
+
         {loading ? (
           <div className="loading-container">
             <p>Generating share link...</p>
@@ -77,10 +118,14 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
               </button>
             </div>
 
-            {qrCode && (
+            {shareLink && (
               <div className="qr-container">
                 <div className="qr-code">
-                  <img src={qrCode} alt="QR Code" />
+                  {isIosPwa() ? (
+                    <canvas ref={canvasRef} width="200" height="200" />
+                  ) : (
+                    qrCodeDataUrl && <img src={qrCodeDataUrl} alt="QR Code" />
+                  )}
                 </div>
               </div>
             )}
