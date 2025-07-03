@@ -1,4 +1,0 @@
-world types-file-explorer-sys-v0 {
-    import file-explorer;
-    include lib;
-}

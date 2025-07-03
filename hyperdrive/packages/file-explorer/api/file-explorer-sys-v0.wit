@@ -1,4 +1,0 @@
-world file-explorer-sys-v0 {
-    import file-explorer;
-    include process-v1;
-}

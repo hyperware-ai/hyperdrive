@@ -8,6 +8,9 @@
   transition: background-color 0.2s;
   color: var(--text-primary);
   position: relative;
+  /* Prevent iOS default touch behaviors */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .file-item:hover {

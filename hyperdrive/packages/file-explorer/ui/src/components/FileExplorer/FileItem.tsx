@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FileInfo, deleteFile, deleteDirectory } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import ContextMenu from '../ContextMenu/ContextMenu';
@@ -27,6 +27,11 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   const [childrenLoaded, setChildrenLoaded] = useState(false);
   const [loadedChildren, setLoadedChildren] = useState<(FileInfo & { children?: FileInfo[] })[]>([]);
 
+  // Touch handling for iOS long-press
+  const touchTimerRef = useRef<number | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const longPressTriggered = useRef(false);
+
   const handleClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
       toggleFileSelection(file.path);
@@ -40,17 +45,17 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   const buildTreeFromFlatList = (flatList: FileInfo[], parentPath: string): (FileInfo & { children?: FileInfo[] })[] => {
     const fileMap = new Map<string, FileInfo & { children?: FileInfo[] }>();
     const topLevelFiles: (FileInfo & { children?: FileInfo[] })[] = [];
-    
+
     // First pass: create map of all files
     flatList.forEach(file => {
       fileMap.set(file.path, { ...file, children: [] });
     });
-    
+
     // Second pass: build parent-child relationships
     flatList.forEach(file => {
       const fileWithChildren = fileMap.get(file.path)!;
       const fileParentPath = file.path.substring(0, file.path.lastIndexOf('/'));
-      
+
       if (fileMap.has(fileParentPath)) {
         // This file has a parent in our list
         const parent = fileMap.get(fileParentPath)!;
@@ -61,7 +66,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         topLevelFiles.push(fileWithChildren);
       }
     });
-    
+
     // Sort files: directories first, then by name
     const sortFiles = (files: (FileInfo & { children?: FileInfo[] })[]) => {
       return [...files].sort((a, b) => {
@@ -70,7 +75,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         return a.name.localeCompare(b.name);
       });
     };
-    
+
     // Recursively sort all children
     const sortRecursive = (files: (FileInfo & { children?: FileInfo[] })[]) => {
       const sorted = sortFiles(files);
@@ -81,13 +86,13 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
       });
       return sorted;
     };
-    
+
     return sortRecursive(topLevelFiles);
   };
 
   const handleExpandToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     // If expanding and we haven't loaded children yet, load them
     if (!isExpanded && file.isDirectory && !childrenLoaded && onLoadSubdirectory) {
       const flatChildren = await onLoadSubdirectory(file.path);
@@ -95,7 +100,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
       setLoadedChildren(treeChildren);
       setChildrenLoaded(true);
     }
-    
+
     setIsExpanded(!isExpanded);
   };
 
@@ -105,9 +110,74 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     setContextMenuOpen(true);
   };
 
+  // Touch event handlers for iOS compatibility
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    longPressTriggered.current = false;
+
+    // Start long press timer (500ms)
+    touchTimerRef.current = window.setTimeout(() => {
+      if (touchStartPos.current) {
+        longPressTriggered.current = true;
+        // Trigger context menu
+        setContextMenuPosition({ x: touchStartPos.current.x, y: touchStartPos.current.y });
+        setContextMenuOpen(true);
+        // Prevent default touch behavior
+        e.preventDefault();
+      }
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // If the touch moves more than 10px, cancel the long press
+    if (touchStartPos.current && touchTimerRef.current) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+
+      if (deltaX > 10 || deltaY > 10) {
+        if (touchTimerRef.current) {
+          clearTimeout(touchTimerRef.current);
+          touchTimerRef.current = null;
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Clear the timer
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+
+    // If long press was triggered, prevent default click behavior
+    if (longPressTriggered.current) {
+      e.preventDefault();
+      longPressTriggered.current = false;
+    } else if (!e.defaultPrevented) {
+      // Normal tap - handle as click
+      if (file.isDirectory) {
+        onNavigate(file.path);
+      }
+    }
+
+    touchStartPos.current = null;
+  };
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (touchTimerRef.current) {
+        clearTimeout(touchTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleDelete = async () => {
     if (!confirm(`Delete ${file.name}?`)) return;
-    
+
     try {
       if (file.isDirectory) {
         await deleteDirectory(file.path);
@@ -164,9 +234,12 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         className={`file-item file-item-${viewMode} ${isSelected ? 'selected' : ''}`}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{ paddingLeft: `${depth * 20 + 10}px` }}
       >
-        <span 
+        <span
           className={`file-icon ${file.isDirectory && viewMode === 'list' ? 'clickable-folder' : ''}`}
           onClick={file.isDirectory && viewMode === 'list' ? handleExpandToggle : undefined}
         >
@@ -189,7 +262,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
           </>
         )}
       </div>
-      
+
       {/* Render children when expanded */}
       {isExpanded && viewMode === 'list' && childrenToRender.length > 0 && (
         <div className="file-children">

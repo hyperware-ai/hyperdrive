@@ -23,8 +23,18 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onSh
       }
     };
 
+    const handleTouchOutside = (e: TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleTouchOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleTouchOutside);
+    };
   }, [onClose]);
 
   const handleUnshare = async () => {

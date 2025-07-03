@@ -7,6 +7,10 @@
   padding: 4px 0;
   min-width: 160px;
   z-index: 1000;
+  /* Ensure context menu appears above iOS touch callouts */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .context-menu button {

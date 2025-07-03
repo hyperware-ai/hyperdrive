@@ -18,6 +18,7 @@ hyperdrive/packages/**/wasi_snapshot_preview1.wasm
 
 hyperdrive/packages/app-store/pkg/ui/*
 hyperdrive/packages/file-explorer/pkg/ui/*
+hyperdrive/packages/homepage/api
 hyperdrive/packages/homepage/pkg/ui/*
 hyperdrive/packages/settings/pkg/ui/*
 hyperdrive/src/register-ui/build/
