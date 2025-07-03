@@ -1,7 +1,11 @@
 use hyperprocess_macro::hyperprocess;
-use hyperware_app_common::hyperware_process_lib::logging::{init_logging, Level, info, debug, error};
-use hyperware_app_common::hyperware_process_lib::vfs::{self, FileType, create_drive, vfs_request, VfsAction, VfsResponse};
+use hyperware_app_common::hyperware_process_lib::logging::{
+    debug, error, info, init_logging, Level,
+};
 use hyperware_app_common::hyperware_process_lib::our;
+use hyperware_app_common::hyperware_process_lib::vfs::{
+    self, create_drive, vfs_request, FileType, VfsAction, VfsResponse,
+};
 use hyperware_app_common::send;
 use std::collections::HashMap;
 
@@ -67,12 +71,20 @@ impl FileExplorerState {
                 self.cwd = home_path;
             }
             Err(e) => {
-                error!("Failed to create home drive: {:?}. Using root as default.", e);
+                error!(
+                    "Failed to create home drive: {:?}. Using root as default.",
+                    e
+                );
                 self.cwd = "/".to_string();
             }
         }
 
-        hyperware_process_lib::homepage::add_to_homepage("File Explorer", Some(ICON), Some(""), None);
+        hyperware_process_lib::homepage::add_to_homepage(
+            "File Explorer",
+            Some(ICON),
+            Some(""),
+            None,
+        );
     }
 
     #[http]
@@ -105,7 +117,8 @@ impl FileExplorerState {
             .map_err(|e| format!("Failed to write file: {}", e))?;
 
         // Get metadata for response
-        let meta = file.metadata()
+        let meta = file
+            .metadata()
             .map_err(|e| format!("Failed to get metadata: {}", e))?;
 
         Ok(FileInfo {
@@ -144,7 +157,8 @@ impl FileExplorerState {
         file.write(&content)
             .map_err(|e| format!("Failed to write file: {}", e))?;
 
-        let meta = file.metadata()
+        let meta = file
+            .metadata()
             .map_err(|e| format!("Failed to get metadata: {}", e))?;
 
         Ok(FileInfo {
@@ -198,8 +212,7 @@ impl FileExplorerState {
         let timeout = 5;
 
         // Create a VFS request with RemoveDirAll action to handle non-empty directories
-        let request = vfs_request(&vfs_path, VfsAction::RemoveDirAll)
-            .expects_response(timeout);
+        let request = vfs_request(&vfs_path, VfsAction::RemoveDirAll).expects_response(timeout);
 
         // Send the request and await response
         let response: Result<VfsResponse, _> = send(request).await;
@@ -213,7 +226,12 @@ impl FileExplorerState {
     }
 
     #[http]
-    async fn upload_file(&mut self, path: String, filename: String, content: Vec<u8>) -> Result<FileInfo, String> {
+    async fn upload_file(
+        &mut self,
+        path: String,
+        filename: String,
+        content: Vec<u8>,
+    ) -> Result<FileInfo, String> {
         let full_path = format!("{}/{}", path, filename);
         self.create_file(full_path, content).await
     }
@@ -254,48 +272,48 @@ impl FileExplorerState {
         // Extract the file path from the request
         if let Some(request_path_str) = request_path {
             if let Some(share_id) = request_path_str.strip_prefix("/shared/") {
-            // Find the original path from share_id
-            for (path, auth_scheme) in &self.shared_files {
-                if format!("{:x}", md5::compute(path)) == share_id {
-                    match auth_scheme {
-                        AuthScheme::Public => {
-                            // Extract filename from path
-                            let filename = path.split('/').last().unwrap_or("download");
+                // Find the original path from share_id
+                for (path, auth_scheme) in &self.shared_files {
+                    if format!("{:x}", md5::compute(path)) == share_id {
+                        match auth_scheme {
+                            AuthScheme::Public => {
+                                // Extract filename from path
+                                let filename = path.split('/').last().unwrap_or("download");
 
-                            // Set Content-Disposition header to preserve original filename
-                            hyperware_app_common::add_response_header(
-                                "Content-Disposition".to_string(),
-                                format!("attachment; filename=\"{}\"", filename)
-                            );
+                                // Set Content-Disposition header to preserve original filename
+                                hyperware_app_common::add_response_header(
+                                    "Content-Disposition".to_string(),
+                                    format!("attachment; filename=\"{}\"", filename),
+                                );
 
-                            // Set appropriate Content-Type based on file extension
-                            let content_type = match filename.split('.').last() {
-                                Some("txt") => "text/plain",
-                                Some("html") | Some("htm") => "text/html",
-                                Some("css") => "text/css",
-                                Some("js") => "application/javascript",
-                                Some("json") => "application/json",
-                                Some("png") => "image/png",
-                                Some("jpg") | Some("jpeg") => "image/jpeg",
-                                Some("gif") => "image/gif",
-                                Some("pdf") => "application/pdf",
-                                Some("zip") => "application/zip",
-                                _ => "application/octet-stream"
-                            };
-                            hyperware_app_common::add_response_header(
-                                "Content-Type".to_string(),
-                                content_type.to_string()
-                            );
+                                // Set appropriate Content-Type based on file extension
+                                let content_type = match filename.split('.').last() {
+                                    Some("txt") => "text/plain",
+                                    Some("html") | Some("htm") => "text/html",
+                                    Some("css") => "text/css",
+                                    Some("js") => "application/javascript",
+                                    Some("json") => "application/json",
+                                    Some("png") => "image/png",
+                                    Some("jpg") | Some("jpeg") => "image/jpeg",
+                                    Some("gif") => "image/gif",
+                                    Some("pdf") => "application/pdf",
+                                    Some("zip") => "application/zip",
+                                    _ => "application/octet-stream",
+                                };
+                                hyperware_app_common::add_response_header(
+                                    "Content-Type".to_string(),
+                                    content_type.to_string(),
+                                );
 
-                            // Read and return file content
-                            return self.read_file(path.clone()).await;
-                        },
-                        AuthScheme::Private => {
-                            return Err("Access denied: Private file".to_string());
+                                // Read and return file content
+                                return self.read_file(path.clone()).await;
+                            }
+                            AuthScheme::Private => {
+                                return Err("Access denied: Private file".to_string());
+                            }
                         }
                     }
                 }
-            }
                 Err("File not found or not shared".to_string())
             } else {
                 Err("Invalid shared file path".to_string())
@@ -352,7 +370,8 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
     };
 
     // Read directory entries
-    let entries = dir.read()
+    let entries = dir
+        .read()
         .map_err(|e| format!("Failed to read directory '{}': {}", path, e))?;
 
     debug!("VFS returned {} entries for path '{}'", entries.len(), path);
@@ -361,7 +380,10 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
 
     // Convert to FileInfo - Level 1
     for (i, entry) in entries.iter().enumerate() {
-        debug!("Entry[{}]: path='{}', file_type={:?}", i, entry.path, entry.file_type);
+        debug!(
+            "Entry[{}]: path='{}', file_type={:?}",
+            i, entry.path, entry.file_type
+        );
 
         // VFS already provides absolute paths in entry.path
         let full_path = entry.path.clone();
@@ -369,7 +391,10 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
         // Extract filename from the path
         let filename = entry.path.split('/').last().unwrap_or("").to_string();
 
-        debug!("Constructed: filename='{}', full_path='{}'", filename, full_path);
+        debug!(
+            "Constructed: filename='{}', full_path='{}'",
+            filename, full_path
+        );
 
         if entry.file_type == FileType::Directory {
             // Get directory size
@@ -383,7 +408,7 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
                     let count = contents.len() as u64;
                     debug!("Directory '{}' has {} items", full_path, count);
                     count
-                },
+                }
                 Err(e) => {
                     error!("Failed to read subdirectory '{}': {}", full_path, e);
                     0
@@ -409,14 +434,21 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
             };
 
             if let Ok(sub_entries) = sub_dir2.read() {
-                debug!("Loading {} sub-entries from '{}'", sub_entries.len(), full_path);
+                debug!(
+                    "Loading {} sub-entries from '{}'",
+                    sub_entries.len(),
+                    full_path
+                );
 
                 for sub_entry in sub_entries {
                     // VFS already provides absolute paths in sub_entry.path
                     let sub_full_path = sub_entry.path.clone();
                     let sub_filename = sub_entry.path.split('/').last().unwrap_or("").to_string();
 
-                    debug!("Sub-entry: path='{}', filename='{}', file_type={:?}", sub_full_path, sub_filename, sub_entry.file_type);
+                    debug!(
+                        "Sub-entry: path='{}', filename='{}', file_type={:?}",
+                        sub_full_path, sub_filename, sub_entry.file_type
+                    );
 
                     if sub_entry.file_type == FileType::Directory {
                         all_files.push(FileInfo {

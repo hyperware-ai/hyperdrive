@@ -144,10 +144,11 @@ fn main() -> anyhow::Result<()> {
             (
                 key,
                 PackageBuildParametersPath {
-                    local_dependencies: val.local_dependencies
+                    local_dependencies: val
+                        .local_dependencies
                         .map(|bp| bp.iter().map(|f| packages_dir.join(f)).collect()),
                     is_hyperapp: val.is_hyperapp,
-                }
+                },
             )
         })
         .collect();
@@ -163,17 +164,21 @@ fn main() -> anyhow::Result<()> {
                 // don't run on, e.g., `.DS_Store`
                 return None;
             }
-            let (local_dependency_array, is_hyperapp) = if let Some(filename) = entry_path.file_name() {
-                if let Some(maybe_params) = build_parameters
-                    .remove(&filename.to_string_lossy().to_string())
-                {
-                    (maybe_params.local_dependencies.unwrap_or_default(), maybe_params.is_hyperapp.unwrap_or_default())
+            let (local_dependency_array, is_hyperapp) =
+                if let Some(filename) = entry_path.file_name() {
+                    if let Some(maybe_params) =
+                        build_parameters.remove(&filename.to_string_lossy().to_string())
+                    {
+                        (
+                            maybe_params.local_dependencies.unwrap_or_default(),
+                            maybe_params.is_hyperapp.unwrap_or_default(),
+                        )
+                    } else {
+                        (vec![], false)
+                    }
                 } else {
                     (vec![], false)
-                }
-            } else {
-                (vec![], false)
-            };
+                };
             Some(build_and_zip_package(
                 entry_path.clone(),
                 child_pkg_path.to_str().unwrap(),
