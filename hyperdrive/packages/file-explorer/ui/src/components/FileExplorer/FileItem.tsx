@@ -19,6 +19,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [menuOpenedByTouch, setMenuOpenedByTouch] = useState(false);
 
   const isSelected = selectedFiles.includes(file.path);
   const isShared = !file.isDirectory && isFileShared(file.path);
@@ -107,6 +108,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setMenuOpenedByTouch(false);
     setContextMenuOpen(true);
   };
 
@@ -122,6 +124,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         longPressTriggered.current = true;
         // Trigger context menu
         setContextMenuPosition({ x: touchStartPos.current.x, y: touchStartPos.current.y });
+        setMenuOpenedByTouch(true);
         setContextMenuOpen(true);
         // Prevent default touch behavior
         e.preventDefault();
@@ -155,6 +158,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     // If long press was triggered, prevent default click behavior
     if (longPressTriggered.current) {
       e.preventDefault();
+      e.stopPropagation(); // Stop propagation to prevent menu from closing
       longPressTriggered.current = false;
     } else if (!e.defaultPrevented) {
       // Normal tap - handle as click
@@ -290,6 +294,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
             setContextMenuOpen(false);
           }}
           onDelete={handleDelete}
+          openedByTouch={menuOpenedByTouch}
         />
       )}
 

@@ -11,6 +11,7 @@
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  touch-action: none; /* Prevent default touch behaviors */
 }
 
 .context-menu button {
@@ -26,7 +27,8 @@
   transition: background-color 0.2s;
 }
 
-.context-menu button:hover {
+.context-menu button:hover,
+.context-menu button.touch-hover {
   background-color: var(--bg-hover);
 }
 
