@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FaFolder, FaFile, FaChevronLeft, FaSync, FaRocket, FaSpinner, FaCheck, FaTrash, FaExclamationTriangle, FaTimesCircle, FaChevronDown, FaChevronRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import useAppsStore from "../store";
 import { ResetButton } from "../components";
 import { DownloadItem, PackageManifestEntry, PackageState, Updates, DownloadError, UpdateInfo } from "../types/Apps";
 import { BsTrash } from "react-icons/bs";
+import classNames from "classnames";
+import { VscSync, VscSyncIgnored } from "react-icons/vsc";
+import { FaArrowLeft } from "react-icons/fa6";
 
 // Core packages that cannot be uninstalled
 const CORE_PACKAGES = [
@@ -48,6 +51,9 @@ export default function MyAppsPage() {
     const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
     const [appToUninstall, setAppToUninstall] = useState<any>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
+
+    const itemsAreAllDirs = useMemo(() => items.every(item => !item.File), [items]);
+    const itemsAreAllFiles = useMemo(() => items.every(item => item.File), [items]);
 
     useEffect(() => {
         fetchInstalled();
@@ -138,7 +144,7 @@ export default function MyAppsPage() {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex  gap-2">
+                                    <div className="flex gap-2">
                                         <button
                                             className="clear"
                                             onClick={(e) => {
@@ -314,6 +320,19 @@ export default function MyAppsPage() {
         }
     };
 
+    const itemSizeAbbreviation = (size: number) => {
+        if (size < 1024) {
+            return `${size} B`;
+        }
+        if (size < 1024 * 1024) {
+            return `${(size / 1024).toFixed(2)} KB`;
+        }
+        if (size < 1024 * 1024 * 1024) {
+            return `${(size / 1024 / 1024).toFixed(2)} MB`;
+        }
+        return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+    };
+
     return (
         <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
             {error && <div className="p-2 bg-red-500 text-white rounded-lg">{error}</div>}
@@ -381,23 +400,28 @@ export default function MyAppsPage() {
                 <>
                     <ResetButton />
                     <div className="flex flex-col gap-2 border dark:border-white/10 border-black/10 rounded-lg p-2 bg-white dark:bg-black">
-                        <h3 className="prose flex items-center gap-2">
-                            <span>Downloads</span>
+                        <div className="flex items-center gap-2">
+                            <h3 className="prose">Downloads</h3>
                             <div className="flex items-center gap-2">
                                 {currentPath.length > 0 && (
-                                    <button onClick={navigateUp} className="navigate-up">
-                                        <FaChevronLeft /> Back
+                                    <button
+                                        onClick={navigateUp}
+                                        className="clear thin"
+                                    >
+                                        <FaArrowLeft />
                                     </button>
                                 )}
                                 <span className="current-path">/{currentPath.join('/')}</span>
                             </div>
-                        </h3>
-                        <div className="grid grid-cols-5 gap-2">
-                            <div className="font-bold">Name</div>
-                            <div className="font-bold">Type</div>
+                        </div>
+                        <div className={classNames("grid gap-2", {
+                            'grid-cols-6': !itemsAreAllDirs && !itemsAreAllFiles,
+                            'grid-cols-5': itemsAreAllDirs || itemsAreAllFiles,
+                        })}>
+                            <div className="font-bold col-span-3">Name</div>
                             <div className="font-bold">Size</div>
-                            <div className="font-bold">Mirroring</div>
-                            <div className="font-bold">Actions</div>
+                            {!itemsAreAllFiles && <div className="font-bold">Mirroring</div>}
+                            {!itemsAreAllDirs && <div className="font-bold ">Actions</div>}
                             {items.map((item, index) => {
                                 const isFile = !!item.File;
                                 const name = isFile ? item.File!.name : item.Dir!.name;
@@ -405,35 +429,57 @@ export default function MyAppsPage() {
                                 return (
                                     <div
                                         key={index}
-                                        onClick={() => navigateToItem(item)}
-                                        className={'flex flex-row gap-2 col-span-5' + (isFile ? 'file' : 'directory')}
+                                        className={classNames('grid gap-2', {
+                                            'grid-cols-6 col-span-6': !itemsAreAllDirs && !itemsAreAllFiles,
+                                            'grid-cols-5 col-span-5': itemsAreAllDirs || itemsAreAllFiles,
+                                            'file': isFile,
+                                            'directory': !isFile
+                                        })}
                                     >
-                                        <div>
-                                            {isFile ? <FaFile /> : <FaFolder />} {name}
-                                        </div>
-                                        <div>{isFile ? 'File' : 'Directory'}</div>
-                                        <div>{isFile ? `${(item.File!.size / 1024).toFixed(2)} KB` : '-'}</div>
-                                        <div>{!isFile && (item.Dir!.mirroring ? 'Yes' : 'No')}</div>
-                                        <div>
-                                            {!isFile && (
-                                                <button onClick={(e) => { e.stopPropagation(); toggleMirroring(item); }}>
-                                                    <FaSync /> {item.Dir!.mirroring ? 'Stop' : 'Start'} Mirroring
+                                        <button
+                                            className="clear thin !justify-start col-span-3"
+                                            onClick={() => navigateToItem(item)}
+                                        >
+                                            {isFile ? <FaFile className="min-w-8" /> : <FaFolder className="min-w-8" />}
+                                            <span className="wrap-anywhere text-sm text-left">{name}</span>
+                                        </button>
+                                        <div>{isFile ? itemSizeAbbreviation(item.File!.size) : '-'}</div>
+                                        {!itemsAreAllFiles && <div className="flex gap-2 items-center">
+                                            {isFile ? null : <>
+                                                <button
+                                                    className={classNames("!rounded-full thin", {
+                                                        clear: item.Dir!.mirroring,
+                                                    })}
+                                                    onClick={(e) => { e.stopPropagation(); toggleMirroring(item); }}>
+                                                    OFF
                                                 </button>
-                                            )}
-                                            {isFile && !isInstalled && (
-                                                <>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleInstall(item); }}>
-                                                        <FaRocket /> Install
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleRemoveDownload(item); }}>
-                                                        <FaTrash /> Delete
-                                                    </button>
-                                                </>
-                                            )}
-                                            {isFile && isInstalled && (
-                                                <FaCheck className="installed" />
-                                            )}
-                                        </div>
+                                                <button
+                                                    className={classNames("!rounded-full thin", {
+                                                        clear: !item.Dir!.mirroring,
+                                                    })}
+                                                    onClick={(e) => { e.stopPropagation(); toggleMirroring(item); }}>
+                                                    ON
+                                                </button>
+                                            </>}
+                                        </div>}
+                                        {!itemsAreAllDirs && <div className="flex flex-col gap-1 ">
+                                            {isFile && <>
+                                                {isInstalled
+                                                    ? <FaCheck className="rounded-full bg-neon text-black" />
+                                                    : <>
+                                                        <button
+                                                            className="clear thin"
+                                                            onClick={(e) => { e.stopPropagation(); handleInstall(item); }}>
+                                                            <FaRocket /> Install
+                                                        </button>
+                                                        <button
+                                                            className="clear thin"
+                                                            onClick={(e) => { e.stopPropagation(); handleRemoveDownload(item); }}>
+                                                            <FaTrash /> Delete
+                                                        </button>
+                                                    </>}
+                                            </>}
+                                        </div>}
                                     </div>
                                 );
                             })}

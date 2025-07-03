@@ -232,7 +232,7 @@ pre {
 }
 
 .section {
-  @apply max-w-md relative px-2 py-1 md:px-4 md:py-2 overflow-hidden rounded-lg bg-white dark:bg-black shadow-md;
+  @apply max-w-md relative px-2 py-1 md:px-4 md:py-2 overflow-hidden rounded-lg bg-white dark:bg-black;
 }
 
 

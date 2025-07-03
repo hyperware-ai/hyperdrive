@@ -131,7 +131,7 @@ function EnterHnsName({
           className="grow rounded-r-none"
         />
         {fixedTlz && <span
-          className="rounded-r-md p-2 bg-secondary text-white"
+          className="rounded-r-md p-2 bg-neon text-black"
         >
           {fixedTlz}
         </span>}

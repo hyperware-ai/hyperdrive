@@ -187,14 +187,6 @@ a {
 }
 
 
-/* Publisher Info */
-.publisher-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
 .address {
     font-family: monospace;
     background-color: var(--adaptive-gray);
@@ -209,17 +201,6 @@ a {
 }
 
 
-/* App Title */
-.app-title {
-    display: flex;
-    flex-direction: column;
-}
-
-.app-title-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
 
 .app-id {
     font-size: 0.9rem;

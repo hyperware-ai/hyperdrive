@@ -21,13 +21,17 @@ const Header: React.FC = () => {
     const lesBoutons = <>
         <Link
             to={STORE_PATH}
-            className={classNames('button text-sm md:text-base flex-col md:flex-row', { clear: location.pathname !== STORE_PATH })}
+            className={classNames('button text-sm md:text-base flex-col md:flex-row', {
+                'max-md:!text-neon clear': location.pathname !== STORE_PATH
+            })}
         >
             <BsLightning className="text-xl" />
             <span>Store</span></Link>
         <Link
             to={MY_APPS_PATH}
-            className={classNames('button text-sm md:text-base flex-col md:flex-row relative', { clear: location.pathname !== MY_APPS_PATH })}
+            className={classNames('button text-sm md:text-base flex-col md:flex-row relative', {
+                'max-md:!text-neon clear': location.pathname !== MY_APPS_PATH
+            })}
         >
             <BsLayers className="text-xl" />
             <span>My Apps</span>
@@ -35,7 +39,9 @@ const Header: React.FC = () => {
         </Link>
         <Link
             to={PUBLISH_PATH}
-            className={classNames('button text-sm md:text-base flex-col md:flex-row', { clear: location.pathname !== PUBLISH_PATH })}
+            className={classNames('button text-sm md:text-base flex-col md:flex-row', {
+                'max-md:!text-neon clear': location.pathname !== PUBLISH_PATH
+            })}
         >
             <BsCloudArrowUp className="text-xl" />
             <span>Publish</span>
