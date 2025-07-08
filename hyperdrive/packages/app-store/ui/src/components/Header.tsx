@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH, APP_PAGE_PATH } from '../constants/path';
+import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH, APP_PAGE_PATH, DOWNLOAD_PATH } from '../constants/path';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import NotificationBay from './NotificationBay';
 import useAppsStore from '../store';
 import classNames from 'classnames';
 import { BsLightning, BsLayers, BsCloudArrowUp } from 'react-icons/bs';
 const Header: React.FC = () => {
-    const isMobile = window.innerWidth < 768;
+    const isMobile = useMemo(() => window.innerWidth < 768, [window.innerWidth]);
     const location = useLocation();
     const { updates } = useAppsStore();
     const updateCount = Object.keys(updates || {}).length;
@@ -46,8 +46,7 @@ const Header: React.FC = () => {
             <BsCloudArrowUp className="text-xl" />
             <span>Publish</span>
         </Link>
-        {/* {isMobile && <div className="text-xs md:text-base"><ConnectButton label={`Connect
-Wallet`} /></div>} */}
+        {isMobile && <div className="text-xs md:text-base"><ConnectButton label={`Wallet`} /></div>}
     </>
 
     return (
@@ -72,6 +71,11 @@ Wallet`} /></div>} */}
                             <span className="text-xs opacity-50 dark:text-neon absolute -bottom-3 left-0 pointer-events-none">Publish an app to the store</span>
                         </div>
                     </>}
+                    {location.pathname.includes(DOWNLOAD_PATH + '/') && <>
+                        <div className="flex flex-col relative grow">
+                            <span className="font-bold text-lg md:text-xl">Download</span>
+                        </div>
+                    </>}
                     {appColonPublisher && <>
                         <div className="flex flex-col relative grow">
                             <span className="font-bold text-lg md:text-xl">{appColonPublisher.split(':')?.[0] || 'app'}</span>
@@ -87,8 +91,8 @@ Wallet`} /></div>} */}
                 {lesBoutons}
             </nav>
             <div className="flex items-center ml-auto gap-1 md:gap-2 self-stretch">
-                {/* {!isMobile && <ConnectButton />} */}
-                <ConnectButton />
+                {!isMobile && <ConnectButton />}
+                {/* <ConnectButton /> */}
                 <NotificationBay />
             </div>
         </header>

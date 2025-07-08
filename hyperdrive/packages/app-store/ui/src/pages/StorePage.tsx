@@ -153,7 +153,7 @@ export default function StorePage() {
 
   return (
     <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
-      <div className="flex items-center self-stretch gap-2 items-center bg-black/10 dark:bg-white/10 rounded-lg px-4">
+      <div className="flex items-center self-stretch gap-2 items-center bg-black/10 dark:bg-white/10 rounded-lg pl-4">
         <BsSearch className="text-xl opacity-50 " />
         <input
           type="text"

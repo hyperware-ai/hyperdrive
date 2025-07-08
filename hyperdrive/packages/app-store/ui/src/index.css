@@ -257,6 +257,7 @@ a {
     border-radius: var(--radius-lg);
     cursor: pointer;
     transition: background-color 0.3s ease, color 0.3s ease;
+    align-self: stretch;
 }
 
 .primary {
