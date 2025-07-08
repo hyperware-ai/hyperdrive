@@ -96,6 +96,10 @@ fn make_widget() -> String {
             padding-top: 8px;
         }
 
+        h2, h3 {
+            font-family: 'Neue Haas Grotesk', sans-serif;
+        }
+
         #latest-apps {
             display: flex;
             flex-wrap: wrap;
@@ -109,7 +113,7 @@ fn make_widget() -> String {
         }
 
         .app {
-            padding: 1rem;
+            padding: 1rem 0.5rem;
             display: flex;
             flex-grow: 1;
             align-items: center;
@@ -117,7 +121,6 @@ fn make_widget() -> String {
             cursor: pointer;
             font-family: sans-serif;
             width: 100%;
-            min-height: 100px;
             text-decoration: none !important;
             border-radius: 0.25rem;
         }
@@ -133,6 +136,7 @@ fn make_widget() -> String {
             height: 48px;
             width: 48px;
             max-width: 33%;
+            border-radius: 0.25rem;
         }
 
         .app-info {
@@ -140,6 +144,7 @@ fn make_widget() -> String {
             flex-direction: column;
             flex-grow: 1;
             max-width: 67%;
+            line-height: 1.2;
         }
 
         .app-info h2 {
@@ -150,6 +155,12 @@ fn make_widget() -> String {
         @media screen and (min-width: 500px) {
             .app {
                 width: 49%;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #000;
             }
         }
     </style>
@@ -188,7 +199,7 @@ fn make_widget() -> String {
                                 a.innerHTML = `<div
                                     class="app-image"
                                     style="
-                                        background-image: url('${app.metadata.image || `/bird-orange.svg`}');
+                                        ${app.metadata.image ? `background-image: url('${app.metadata.image}');` : 'background-color: #004FFF;'}
                                     "
                                 ></div>
                                 <div class="app-info">

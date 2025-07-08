@@ -526,9 +526,14 @@ fn make_clock_widget() -> String {
                 text-align: center;
                 bottom: 40px;
             }}
+            @media (prefers-color-scheme: dark) {{
+                body {{
+                    background-color: #000;
+                }}
+            }}
         </style>
     </head>
-    <body style="margin: 0; overflow: hidden;">
+    <body style="margin: 0; overflow: hidden;" >
         <div class="clock">
             <div class="marker primary" style="transform: rotate(0deg)"></div>
             <div class="marker" style="transform: rotate(30deg)"></div>
