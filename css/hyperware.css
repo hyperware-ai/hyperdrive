@@ -2796,6 +2796,10 @@
             max-width: var(--container-md)
         }
 
+        .max-w-screen-md {
+            max-width: 48rem;
+        }
+
         .min-w-0 {
             min-width: calc(var(--spacing)*0)
         }
