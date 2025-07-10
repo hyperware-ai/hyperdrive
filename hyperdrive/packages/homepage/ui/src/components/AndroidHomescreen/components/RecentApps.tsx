@@ -7,7 +7,7 @@ export const RecentApps: React.FC = () => {
   if (!isRecentAppsOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-gray-900/98 to-black/98 backdrop-blur-xl z-50 flex items-center justify-center">
+    <div className="recent-apps fixed inset-0 bg-gradient-to-b from-gray-900/98 to-black/98 backdrop-blur-xl z-50 flex items-center justify-center">
       {runningApps.length === 0 ? (
         <div className="text-center">
           <div className="text-6xl mb-4 text-white/30">📱</div>

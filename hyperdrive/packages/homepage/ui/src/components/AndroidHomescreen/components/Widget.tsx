@@ -86,13 +86,13 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
       enableHtmlDrag={false}
     >
       <div
-        className={`bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl border border-white/20
+        className={`widget bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-lg border border-white/20
           ${isEditMode ? 'ring-2 ring-blue-400' : ''}
           ${isResizing ? 'pointer-events-none' : ''}`}
         style={{ width: `${size.width}px`, height: `${size.height}px` }}
       >
         <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-2 border-b border-white/10">
-          <span className="text-white/90 text-sm font-medium">{app.label}</span>
+          <span className="text-black dark:text-white/90 text-sm font-medium">{app.label}</span>
           {isEditMode && (
             <button
               onClick={(e) => {

@@ -445,11 +445,11 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
 
       // upon reaching this, no online mirrors found.
       onMirrorSelect("", false);
-      return { error: "No available mirrors found", mirrors };
+      return { error: "No mirrors", mirrors };
     } catch (error) {
       console.error("Mirror check error:", error);
       onMirrorSelect("", false);
-      return { error: "Failed to check mirrors", mirrors: [] };
+      return { error: "Failed mirror check", mirrors: [] };
     }
   },
 

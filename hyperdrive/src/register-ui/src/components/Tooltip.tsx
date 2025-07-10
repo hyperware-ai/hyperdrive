@@ -12,7 +12,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ text, children, className }) =
     <div className={classNames("tooltip", className)}>
       {children}
       {text && <div className="tooltip-text">{text}</div>}
-      <FaInfo className="bg-blue/50 rounded-full p-1 w-4 h-4 text-white" />
+      <FaInfo className="bg-iris/50 rounded-full p-1 w-4 h-4 text-white" />
     </div>
   );
 };

@@ -105,7 +105,7 @@ export const Draggable: React.FC<DraggableProps> = ({
   return (
     <div
       ref={elementRef}
-      className={`absolute ${isDragging ? 'z-50' : ''} ${className}`}
+      className={`draggable absolute ${isDragging ? 'z-50' : ''} ${className}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,

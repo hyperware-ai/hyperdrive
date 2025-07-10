@@ -61,7 +61,7 @@ const EditNote: React.FC<EditNoteProps> = ({ label: initialLabel, tba, field_pla
     };
 
     return (
-        <div className="edit-note">
+        <div className="edit-note flex flex-col items-stretch gap-2">
             {editMode && <input
                 type="text"
                 placeholder="label"

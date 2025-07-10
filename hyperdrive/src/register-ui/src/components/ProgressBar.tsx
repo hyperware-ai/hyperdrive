@@ -69,10 +69,10 @@ const ProgressBar = ({ hnsName }: ProgressBarProps) => {
                   }}
                   className="
                     step-number 
-                    shadow-sm
+                    shadow-sm dark:shadow-white/10
                     w-6 h-6 text-sm font-bold rounded-full
                     flex items-center justify-center
-                    bg-secondary dark:!bg-primary text-white dark:text-black
+                    bg-iris dark:!bg-neon text-white dark:text-black
                     transition-all duration-300
                     relative
                   "
@@ -86,7 +86,6 @@ const ProgressBar = ({ hnsName }: ProgressBarProps) => {
                     text-sm text-center
                     whitespace-nowrap
                     tracking-widest
-                    text-black dark:text-white
                   `, {
                     "opacity-85": !active,
                     "font-bold": active
