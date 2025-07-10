@@ -67,7 +67,7 @@ pub const HYPERMAP_ADDRESS: &str = "0x000000000044C6B8Cb4d8f0F889a3E47664EAeda";
 async fn main() {
     let app = build_command();
 
-    let matches = app.get_matches();
+    let matches = app.get_swatches();
     let home_directory_path = matches
         .get_one::<String>("home")
         .expect("home directory required");
