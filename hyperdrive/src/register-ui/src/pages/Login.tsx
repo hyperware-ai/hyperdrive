@@ -2,8 +2,8 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageProps, UnencryptedIdentity } from "../lib/types";
 import Loader from "../components/Loader";
 import { useNavigate } from "react-router-dom";
-import { Tooltip } from "../components/Tooltip";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
+import classNames from "classnames";
 
 interface LoginProps extends PageProps { }
 
@@ -53,12 +53,14 @@ function Login({
           const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
           console.log(salt);
 
+          //@ts-ignore
           const h = await argon2.hash({
             pass: pw,
             salt: salt,
             hashLen: 32,
             time: 2,
             mem: 19456,
+            //@ts-ignore
             type: argon2.ArgonType.Argon2id
           });
 
@@ -91,55 +93,54 @@ function Login({
 
   const isDirect = Boolean(routers?.length === 0);
 
-  return (
-    <>
-      {loading ? (
-        <Loader msg={loading} />
-      ) : (
-        <form
-          id="signup-form"
-          className="form"
-          onSubmit={handleLogin}
-        >
-          <div className="form-group">
-            <div className="form-header">
-              <Tooltip text={`(${isDirect ? "direct" : "indirect"} node)`}>
-                <h3>{hnsName}</h3>
-              </Tooltip>
-            </div>
-            <input
-              type="password"
-              id="password"
-              required
-              minLength={6}
-              name="password"
-              placeholder="Password"
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              autoFocus
-            />
-          </div>
+  return <div className="relative flex flex-col gap-2 items-stretch self-stretch">
+    {loading && <div className="absolute top-0 left-0 w-full h-full flex place-content-center place-items-center">
+      <Loader msg={loading} className="text-black dark:text-white" />
+    </div>}
+    <form
+      id="registerui--login-form"
+      className={classNames("flex flex-col gap-2 items-stretch", {
+        'invisible': loading
+      })}
+      onSubmit={handleLogin}
+    >
 
-          {keyErrs.length > 0 && (
-            <div className="error-messages">
-              {keyErrs.map((x, i) => (
-                <div key={i} className="error-message">{x}</div>
-              ))}
-            </div>
-          )}
+      <div className="form-group">
+        <div className="form-header">
+          <h3 className="text-iris dark:text-neon font-bold">{hnsName}</h3>
+          <div className="text-xs opacity-50">Login - {isDirect ? "direct" : "indirect"} node</div>
+        </div>
+        <input
+          type="password"
+          id="password"
+          required
+          minLength={6}
+          name="password"
+          placeholder="Password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          autoFocus
+        />
+      </div>
 
-          <button type="submit">Log in</button>
-
-          <button
-            className="alt"
-            onClick={() => navigate('/reset')}
-          >
-            Reset Password & Networking Info
-          </button>
-        </form>
+      {keyErrs.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {keyErrs.map((x, i) => (
+            <div key={i} className="text-red-500 wrap-anywhere mt-2">{x}</div>
+          ))}
+        </div>
       )}
-    </>
-  );
+
+      <button type="submit">Log in</button>
+
+      <button
+        className="clear "
+        onClick={() => navigate('/reset')}
+      >
+        Reset Password & Networking Info
+      </button>
+    </form>
+  </div>;
 }
 
 export default Login;

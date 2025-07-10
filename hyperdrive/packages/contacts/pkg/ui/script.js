@@ -23,21 +23,24 @@ function populate_contacts(contacts) {
         const li = document.createElement('li');
         const div = document.createElement('div');
         div.classList.add('contact');
-        div.innerHTML = `<h3>
+        div.innerHTML = `<h3 class="flex items-center justify-between prose gap-2">
         <span>${node}</span>
-        <form class="delete-contact" id="${node}">
-            <button type="submit">❌</button>
+        <form class="delete-contact" id="${node}">  
+            <button class="clear thin text-lg" type="submit">❌</button>
         </form>
         </h3>
-        <ul>
+        <ul class="flex flex-col gap-2 items-stretch self-stretch">
         ${Object.entries(contact).sort((a, b) => a[0].localeCompare(b[0])).map(([field, value]) => `
-            <li>
-                ${field}: ${JSON.stringify(value)}
-                <button class="remove-field" onclick="removeField('${node}', '${field}')">X</button>
+            <li class="flex items-center justify-between prose gap-2">
+                <span>${field}: ${JSON.stringify(value)}</span>
+                <button class="remove-field clear thin text-xs" onclick="removeField('${node}', '${field}')" id="${node}">❌</button>
             </li>
         `).join('')}
         </ul>
-        <form class="add-field" id="${node}">
+        <form 
+        class="add-field flex flex-col gap-2 items-stretch self-stretch" 
+        id="${node}"
+        >
             <input type="text" name="field" placeholder="field (e.g. name)">
             <input type="text" name="value" placeholder="value (e.g. John Doe)" title="Enter any valid JSON value (e.g. &quot;John Doe&quot;, 42, true, [1,2,3], {&quot;key&quot;:&quot;value&quot;})">
             <button type="submit">add</button>
@@ -78,11 +81,6 @@ function populate_contacts(contacts) {
         });
     });
 }
-
-document.getElementById('back-button').addEventListener('click', () => {
-    // set page to `/` while also removing the subdomain
-    window.location.href = window.location.origin.replace('//contacts-sys.', '//') + '/'
-});
 
 document.getElementById('add-contact').addEventListener('submit', (e) => {
     e.preventDefault();

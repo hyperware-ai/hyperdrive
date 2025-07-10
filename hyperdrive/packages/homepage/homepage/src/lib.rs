@@ -140,6 +140,16 @@ fn init(our: Address) {
 
     http_server
         .bind_http_static_path(
+            "/Logomark%20Iris.svg",
+            false, // Logomark Iris.svg is not auth'd so that PWA works properly
+            false,
+            Some("image/svg+xml".to_string()),
+            include_str!("../../pkg/ui/Logomark Iris.svg").into(),
+        )
+        .expect("failed to bind /Logomark Iris.svg");
+
+    http_server
+        .bind_http_static_path(
             "/NHaasGroteskTXPro-75Bd.woff",
             false, // icon-180.png is not auth'd so that PWA works properly
             false,
@@ -516,9 +526,14 @@ fn make_clock_widget() -> String {
                 text-align: center;
                 bottom: 40px;
             }}
+            @media (prefers-color-scheme: dark) {{
+                body {{
+                    background-color: #000;
+                }}
+            }}
         </style>
     </head>
-    <body style="margin: 0; overflow: hidden;">
+    <body style="margin: 0; overflow: hidden;" >
         <div class="clock">
             <div class="marker primary" style="transform: rotate(0deg)"></div>
             <div class="marker" style="transform: rotate(30deg)"></div>

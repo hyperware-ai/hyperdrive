@@ -55,7 +55,7 @@ export const GestureZone: React.FC = () => {
   return (
     <>
       <div
-        className={`fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-pointer
+        className={`gesture-zone fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-pointer
           ${isActive ? 'bg-white/20 w-12' : ''}
           ${isHovered && !isActive ? 'bg-gradient-to-l from-white/10 to-transparent' : ''}`}
         onTouchStart={handleTouchStart}

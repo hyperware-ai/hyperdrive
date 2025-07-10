@@ -2,7 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AndroidHomescreen from './pages/AndroidHomescreen.tsx'
 import './index.css'
-import 'uno.css'
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {

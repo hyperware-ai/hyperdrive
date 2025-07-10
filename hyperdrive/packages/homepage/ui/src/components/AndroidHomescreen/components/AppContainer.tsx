@@ -26,7 +26,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
 
   return (
     <div
-      className={`fixed inset-0 bg-white z-30 transition-transform duration-300
+      className={`app-container fixed inset-0 bg-white z-30 transition-transform duration-300
         ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
     >
       {hasError ? (
