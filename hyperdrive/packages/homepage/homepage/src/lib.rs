@@ -464,7 +464,6 @@ fn make_clock_widget() -> String {
             .clock {{
                 width: 200px;
                 height: 200px;
-                border: 8px solid var(--text);
                 border-radius: 50%;
                 position: relative;
                 margin: 20px auto;
@@ -491,7 +490,7 @@ fn make_clock_widget() -> String {
                 width: 2px;
                 height: 90px;
                 margin-left: -1px;
-                background-color: var(--tertiary-color);
+                background: #ff0000;
             }}
             .center {{
                 width: 12px;
@@ -501,15 +500,16 @@ fn make_clock_widget() -> String {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
+                background-color: white;
             }}
             .marker {{
                 position: absolute;
                 width: 2px;
                 height: 4px;
-                background: light-dark(var(--off-black), var(--off-white));
                 left: 50%;
                 margin-left: -1px;
                 transform-origin: 50% 100px;
+                background: white;
             }}
             .marker.primary {{
                 width: 3px;
@@ -520,7 +520,7 @@ fn make_clock_widget() -> String {
                 font-family: var(--font-family-main);
                 margin-top: 1em;
                 font-size: 0.7em;
-                color: light-dark(var(--off-black), var(--off-white));
+                color: light-dark(black, white);
                 position: absolute;
                 width:100%;
                 text-align: center;
@@ -530,6 +530,19 @@ fn make_clock_widget() -> String {
                 body {{
                     background-color: #000;
                 }}
+                    .clock {{
+                background: white;
+                border: white;
+                    }}
+                    .hand.hour, .hand.minute  {{
+                        background-color: black;
+                    }}
+                    .marker {{
+                        background-color: black;
+                    }}
+                    .center {{
+                        background-color: black;
+                    }}
             }}
         </style>
     </head>

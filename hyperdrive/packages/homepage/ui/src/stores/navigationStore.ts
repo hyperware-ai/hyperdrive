@@ -129,6 +129,11 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
         isRecentAppsOpen: false,
       });
     }
+
+    // add entry to browser history
+    if (app.path) {
+      window.history.pushState({}, '', app.path);
+    }
   },
 
   closeApp: (appId) => {
