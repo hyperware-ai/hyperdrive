@@ -11,7 +11,7 @@ import classNames from 'classnames';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
-  const { homeScreenApps, dockApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock } = usePersistenceStore();
+  const { homeScreenApps, dockApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock, isInitialized, setIsInitialized, addToHomeScreen } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { toggleAppDrawer } = useNavigationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
@@ -19,6 +19,21 @@ export const HomeScreen: React.FC = () => {
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
   const [showWidgetSettings, setShowWidgetSettings] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  console.log({ appPositions })
+
+  useEffect(() => {
+    console.log('isInitialized', isInitialized);
+    if (isInitialized) return;
+    // add appstore, contacts, and settings to the homepage on initial load
+    setIsInitialized(true);
+    addToHomeScreen("main:app-store:sys");
+    addToHomeScreen("contacts:contacts:sys");
+    addToHomeScreen("settings:settings:sys");
+    addToHomeScreen("homepage:homepage:sys"); // actually the clock widget
+    setBackgroundImage('/large-background-vector.svg');
+  }, [isInitialized]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -182,6 +197,16 @@ export const HomeScreen: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   }, []);
 
+  const calculateAppIconPosition = (index: number, totalApps: number) => {
+    const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
+    const spacing = isMobile ? 5 : 10;
+    const screenPortion = window.innerWidth / totalApps
+    // if no setting, row along the 0.75 height of the screen
+    const y = 0.75 * window.innerHeight
+    const x = index * (screenPortion + spacing) + screenPortion / 4
+    return { x, y }
+  }
+
   return (
     <div
       className="home-screen h-full w-full relative overflow-hidden"
@@ -193,6 +218,8 @@ export const HomeScreen: React.FC = () => {
         backgroundRepeat: 'no-repeat',
         touchAction: 'none'
       }}
+      data-background-image={backgroundImage}
+      data-is-dark-mode={isDarkMode}
     >
       {/* Background overlay for better text readability */}
       {backgroundImage && (
@@ -235,11 +262,8 @@ export const HomeScreen: React.FC = () => {
         {/* Floating apps on canvas */}
         {floatingApps
           .filter(app => app.label.toLowerCase().includes(searchQuery.toLowerCase()))
-          .map(app => {
-            const position = appPositions[app.id] || {
-              x: Math.min(Math.random() * (window.innerWidth - 100), window.innerWidth - 80),
-              y: Math.min(window.innerHeight - 200 - Math.random() * 100, window.innerHeight - 80)
-            };
+          .map((app, index, allApps) => {
+            const position = appPositions[app.id] || calculateAppIconPosition(index, allApps.length);
 
             return (
               <Draggable
@@ -247,14 +271,17 @@ export const HomeScreen: React.FC = () => {
                 id={app.id}
                 position={position}
                 onMove={(pos) => moveItem(app.id, pos)}
-                isEditMode={isEditMode}
+                isEditMode={true}
               >
                 <div
                   onTouchStart={handleTouchStart(app.id)}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                 >
-                  <AppIcon app={app} isEditMode={isEditMode} isFloating={true} />
+                  <AppIcon
+                    app={app}
+                    isEditMode={isEditMode}
+                    isFloating={true} />
                 </div>
               </Draggable>
             );
@@ -263,8 +290,8 @@ export const HomeScreen: React.FC = () => {
         {/* Widgets */}
         {widgetApps
           .filter(app => app.label.toLowerCase().includes(searchQuery.toLowerCase()))
-          .map(app => (
-            <Widget key={app.id} app={app} />
+          .map((app, index) => (
+            <Widget key={app.id} app={app} index={index} totalWidgets={widgetApps.length} />
           ))}
 
         {/* Dock at bottom */}
@@ -362,10 +389,10 @@ export const HomeScreen: React.FC = () => {
         )}
 
         {/* Edit mode toggle and widget settings */}
-        <div className="absolute top-4 left-4 right-4 flex items-center gap-2">
+        <div className="absolute top-2 right-2 flex items-center gap-2">
 
           {!isEditMode && <>
-            <div className="flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2">
+            <div className="flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
               <BsSearch className="opacity-50" />
               <input
                 type="text"
@@ -492,12 +519,12 @@ export const HomeScreen: React.FC = () => {
         </div>
 
         {/* Desktop hint */}
-        <div className="hidden md:block absolute bottom-32 left-4 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">
+        <div className="hidden md:block absolute bottom-32 left-1/2 -translate-x-1/2 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">
           <div className="flex items-center gap-4">
-            <span><kbd className="px-2 py-1 bg-black/10 dark:bg-white/10 rounded text-xs">A</kbd> All apps</span>
-            <span><kbd className="px-2 py-1 bg-black/10 dark:bg-white/10 rounded text-xs">S</kbd> Recent apps</span>
-            <span><kbd className="px-2 py-1 bg-black/10 dark:bg-white/10 rounded text-xs">H</kbd> Home</span>
-            <span><kbd className="px-2 py-1 bg-black/10 dark:bg-white/10 rounded text-xs">1-9</kbd> Switch apps</span>
+            <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">A</kbd> All apps</span>
+            <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">S</kbd> Recent apps</span>
+            <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">H</kbd> Home</span>
+            <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">1-9</kbd> Switch apps</span>
           </div>
         </div>
       </div>

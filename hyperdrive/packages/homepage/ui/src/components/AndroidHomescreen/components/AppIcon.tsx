@@ -22,7 +22,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
   const [isPressed, setIsPressed] = useState(false);
 
   const handlePress = () => {
-    if (!isEditMode && (app.path || (app.process && app.publisher))) {
+    if (!isEditMode && app.path) {
       openApp(app);
     }
   };
@@ -46,6 +46,10 @@ export const AppIcon: React.FC<AppIconProps> = ({
       onMouseUp={() => setIsPressed(false)}
       onMouseLeave={() => setIsPressed(false)}
       onClick={handlePress}
+      data-app-id={app.id}
+      data-app-path={app.path}
+      data-app-process={app.process}
+      data-app-publisher={app.publisher}
     >
       {isEditMode && isFloating && (
         <button
@@ -63,7 +67,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
           <img src={app.base64_icon} alt={app.label} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-iris">
-            <span className="text-2xl text-white font-bold">{app.label[0]}</span>
+            <span className="text-2xl text-white font-bold">{app.label?.[0]?.toUpperCase() || ''}{app.label?.[1]?.toLowerCase() || ''}</span>
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Position, Size } from '../types/app.types';
 
 interface PersistenceStore {
+  isInitialized: boolean;
   homeScreenApps: string[];
   dockApps: string[];
   appPositions: { [key: string]: Position };
@@ -18,28 +19,25 @@ interface PersistenceStore {
   setWidgetPosition: (appId: string, position: Position) => void;
   setWidgetSize: (appId: string, size: Size) => void;
   setBackgroundImage: (imageUrl: string | null) => void;
+  setIsInitialized: (isInitialized: boolean) => void;
 }
 
 export const usePersistenceStore = create<PersistenceStore>()(
   persist(
     (set) => ({
+      isInitialized: false,
       homeScreenApps: [],
       dockApps: [],
       appPositions: {},
       widgetSettings: {},
       backgroundImage: null,
 
+      setIsInitialized: (isInitialized) => set({ isInitialized }),
+
       addToHomeScreen: (appId) => {
+        console.log('addToHomeScreen', appId);
         set((state) => ({
           homeScreenApps: [...state.homeScreenApps, appId],
-          // Default position for apps at bottom of screen
-          appPositions: {
-            ...state.appPositions,
-            [appId]: {
-              x: Math.min(Math.random() * (window.innerWidth - 100), window.innerWidth - 80),
-              y: Math.min(window.innerHeight - 200 - Math.random() * 100, window.innerHeight - 80)
-            }
-          },
         }));
       },
 
