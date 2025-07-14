@@ -6,14 +6,14 @@ import { Draggable } from './Draggable';
 import { AppIcon } from './AppIcon';
 import { Widget } from './Widget';
 import type { HomepageApp } from '../../../types/app.types';
-import { BsCheck, BsImage, BsLayers, BsSearch } from 'react-icons/bs';
+import { BsCheck, BsClock, BsGridFill, BsImage, BsLayers, BsSearch } from 'react-icons/bs';
 import classNames from 'classnames';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
   const { homeScreenApps, dockApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock, isInitialized, setIsInitialized, addToHomeScreen } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
-  const { toggleAppDrawer } = useNavigationStore();
+  const { toggleAppDrawer, toggleRecentApps } = useNavigationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
   const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
@@ -30,7 +30,8 @@ export const HomeScreen: React.FC = () => {
     addToHomeScreen("main:app-store:sys");
     addToHomeScreen("contacts:contacts:sys");
     addToHomeScreen("settings:settings:sys");
-    addToHomeScreen("homepage:homepage:sys"); // actually the clock widget
+    addToDock("settings:settings:sys", 0);
+    // addToHomeScreen("homepage:homepage:sys"); // actually the clock widget
     setBackgroundImage('/large-background-vector.svg');
   }, [isInitialized]);
 
@@ -197,13 +198,16 @@ export const HomeScreen: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   }, []);
 
-  const calculateAppIconPosition = (index: number, totalApps: number) => {
+  const calculateAppIconPosition = (appId: string, index: number, totalApps: number) => {
     const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
     const spacing = isMobile ? 5 : 10;
     const screenPortion = window.innerWidth / totalApps
     // if no setting, row along the 0.75 height of the screen
     const y = 0.75 * window.innerHeight
     const x = index * (screenPortion + spacing) + screenPortion / 4
+    // ensure position sets so future movements do not cause a jump
+    moveItem(appId, { x, y });
+    console.log('autosetting position', appId, { x, y });
     return { x, y }
   }
 
@@ -263,7 +267,7 @@ export const HomeScreen: React.FC = () => {
         {floatingApps
           .filter(app => app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           .map((app, index, allApps) => {
-            const position = appPositions[app.id] || calculateAppIconPosition(index, allApps.length);
+            const position = appPositions[app.id] || calculateAppIconPosition(app.id, index, allApps.length);
 
             return (
               <Draggable
@@ -316,57 +320,65 @@ export const HomeScreen: React.FC = () => {
                   }}
                 >
                   {app ? (
-                    isEditMode ? (
-                      <div
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('appId', app.id);
-                          e.dataTransfer.effectAllowed = 'move';
-                        }}
-                        onDragEnd={() => {
-                          // If dropped outside, it's handled by floating area
-                        }}
-                        onTouchStart={handleTouchStart(app.id)}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={(e) => {
-                          if (!draggedAppId || !touchDragPosition) return;
+                    <div
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('appId', app.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => {
+                        // If dropped outside, it's handled by floating area
+                      }}
+                      onTouchStart={handleTouchStart(app.id)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={(e) => {
+                        if (!draggedAppId || !touchDragPosition) return;
 
-                          const touch = e.changedTouches[0];
-                          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                        const touch = e.changedTouches[0];
+                        const element = document.elementFromPoint(touch.clientX, touch.clientY);
 
-                          // If not dropped on dock, remove from dock
-                          if (!element?.closest('.dock-area')) {
-                            removeFromDock(app.id);
-                            // Place at drop position
-                            const dockHeight = 120;
-                            const maxY = window.innerHeight - 80 - dockHeight;
-                            moveItem(app.id, {
-                              x: touch.clientX - 40,
-                              y: Math.min(touch.clientY - 40, maxY)
-                            });
-                          }
+                        // If not dropped on dock, remove from dock
+                        if (!element?.closest('.dock-area')) {
+                          removeFromDock(app.id);
+                          // Place at drop position
+                          const dockHeight = 120;
+                          const maxY = window.innerHeight - 80 - dockHeight;
+                          moveItem(app.id, {
+                            x: touch.clientX - 40,
+                            y: Math.min(touch.clientY - 40, maxY)
+                          });
+                        }
 
-                          setDraggedAppId(null);
-                          setTouchDragPosition(null);
-                        }}
-                      >
-                        <AppIcon app={app} isEditMode={false} showLabel={false} />
-                      </div>
-                    ) : (
-                      <AppIcon app={app} isEditMode={false} showLabel={false} />
-                    )
+                        setDraggedAppId(null);
+                        setTouchDragPosition(null);
+                      }}
+                    >
+                      <AppIcon
+                        app={app}
+                        isEditMode={isEditMode}
+                        showLabel={false}
+                      />
+                    </div>
                   ) : (
                     <div className="w-full h-full border-2 border-dashed border-black/20 dark:border-white/20 rounded-2xl transition-all hover:border-black/40 dark:hover:border-white/40 hover:bg-black/5 dark:hover:bg-white/5" />
                   )}
                 </div>
               );
             })}
-            <div className="w-px h-12 bg-white/20 mx-1" />
+            <div className="w-px h-12 bg-black/20 dark:bg-white/20 mx-1" />
             <button
               onClick={toggleAppDrawer}
-              className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris transition-all shadow-lg"
+              className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              ⊞
+              <BsGridFill />
+              <span className="text-xs">Apps</span>
+            </button>
+            <button
+              onClick={toggleRecentApps}
+              className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
+            >
+              <BsClock />
+              <span className="text-xs">Recent</span>
             </button>
           </div>
         </div>
@@ -519,14 +531,14 @@ export const HomeScreen: React.FC = () => {
         </div>
 
         {/* Desktop hint */}
-        <div className="hidden md:block absolute bottom-32 left-1/2 -translate-x-1/2 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">
+        {/* <div className="hidden md:block absolute bottom-24 left-1/2 -translate-x-1/2 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">
           <div className="flex items-center gap-4">
             <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">A</kbd> All apps</span>
             <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">S</kbd> Recent apps</span>
             <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">H</kbd> Home</span>
             <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">1-9</kbd> Switch apps</span>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

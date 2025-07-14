@@ -3,6 +3,7 @@ import type { HomepageApp } from '../../../types/app.types';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import { Draggable } from './Draggable';
 import classNames from 'classnames';
+import { BsX } from 'react-icons/bs';
 
 interface WidgetProps {
   app: HomepageApp;
@@ -28,12 +29,12 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
     if (isMobile) {
       return {
         width: window.innerWidth - 2 * padding,
-        height: (window.innerHeight * 0.67 - totalWidgets * spacing) / totalWidgets
+        height: (window.innerHeight * 0.67 - searchbarPadding - (totalWidgets - 1) * spacing) / totalWidgets
       };
     } else {
       return {
-        width: (window.innerWidth - padding * totalWidgets) / totalWidgets,
-        height: 0.67 * window.innerHeight
+        width: (window.innerWidth - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing),
+        height: 0.67 * window.innerHeight - searchbarPadding
       };
     }
   };
@@ -136,7 +137,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
             }}
             className="clear thin w-3 h-3 !p-0"
           >
-            ×
+            <BsX />
           </button>
         </div>
 

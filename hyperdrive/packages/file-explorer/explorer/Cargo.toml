@@ -7,6 +7,9 @@ serde_urlencoded = "0.7"
 tracing = "0.1.37"
 wit-bindgen = "0.42.1"
 
+[dependencies.caller-utils]
+path = "../target/caller-utils"
+
 [dependencies.hyperprocess_macro]
 git = "https://github.com/hyperware-ai/hyperprocess-macro"
 rev = "9836e2a"
