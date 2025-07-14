@@ -2,7 +2,7 @@ use crate::hyperware::process::terminal::{EditAliasRequest, Request as TerminalR
 use hyperware_process_lib::{script, Address, ProcessId, Request};
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "terminal-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize],

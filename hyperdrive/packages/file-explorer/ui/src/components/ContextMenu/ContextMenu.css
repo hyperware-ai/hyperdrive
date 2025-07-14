@@ -1,0 +1,37 @@
+.context-menu {
+  position: fixed;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  padding: 4px 0;
+  min-width: 160px;
+  z-index: 1000;
+  /* Ensure context menu appears above iOS touch callouts */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.context-menu button:hover {
+  background-color: var(--bg-hover);
+}
+
+.context-menu hr {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid var(--border-color);
+}

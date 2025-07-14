@@ -17,7 +17,7 @@ use std::{collections::HashMap, str::FromStr, vec};
 const ICON: &str = include_str!("icon");
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "settings-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize],
@@ -636,9 +636,9 @@ fn make_widget(state: &SettingsState) -> String {
 
         <br />
 
-        <button 
-            id="refresh" 
-            onclick="this.innerHTML='⌛'; fetch('/settings:settings:sys/refresh').then(() => setTimeout(() => window.location.reload(), 1000))" 
+        <button
+            id="refresh"
+            onclick="this.innerHTML='⌛'; fetch('/settings:settings:sys/refresh').then(() => setTimeout(() => window.location.reload(), 1000))"
         >
             <span style="font-size: 1.5em;">⟳</span>
             <span>refresh</span>

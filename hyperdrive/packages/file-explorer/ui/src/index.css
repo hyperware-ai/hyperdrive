@@ -1,0 +1,120 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light theme variables */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-hover: #e9e9e9;
+  --bg-selected: #e3f2fd;
+  --text-primary: #213547;
+  --text-secondary: #666666;
+  --border-color: #e0e0e0;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --link-color: #0066cc;
+  --link-hover: #0052a3;
+  --error-color: #d32f2f;
+  --success-color: #388e3c;
+}
+
+/* Dark theme variables */
+[data-theme="dark"] {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #2d2d2d;
+  --bg-hover: #3a3a3a;
+  --bg-selected: #1a4d7a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --border-color: #404040;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --link-color: #64b5f6;
+  --link-hover: #90caf9;
+  --error-color: #f44336;
+  --success-color: #66bb6a;
+}
+
+/* Apply theme colors */
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+a {
+  font-weight: 500;
+  color: var(--link-color);
+  text-decoration: inherit;
+}
+a:hover {
+  color: var(--link-hover);
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 0.6em 1.2em;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.25s, border-color 0.25s;
+}
+button:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
+/* Additional utility classes */
+.error-message {
+  color: var(--error-color);
+  padding: 1rem;
+  background-color: var(--bg-secondary);
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+.success-message {
+  color: var(--success-color);
+  padding: 1rem;
+  background-color: var(--bg-secondary);
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}

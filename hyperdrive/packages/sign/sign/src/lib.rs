@@ -8,7 +8,7 @@ use hyperware_process_lib::{
 };
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "sign-sys-v0",
     generate_unused_types: true,
     additional_derives: [PartialEq, serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],

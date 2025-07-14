@@ -14,7 +14,7 @@ use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use hyperware_process_lib::{await_next_message_body, call_init, println, Address, Request};
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "hypermap-cacher-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
