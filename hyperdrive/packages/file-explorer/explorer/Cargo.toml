@@ -5,15 +5,15 @@ process_macros = "0.1"
 serde_json = "1.0"
 serde_urlencoded = "0.7"
 tracing = "0.1.37"
-wit-bindgen = "0.36.0"
+wit-bindgen = "0.42.1"
 
 [dependencies.hyperprocess_macro]
 git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "16369af"
+rev = "9836e2a"
 
 [dependencies.hyperware_app_common]
 git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "16369af"
+rev = "9836e2a"
 
 [dependencies.serde]
 features = ["derive"]

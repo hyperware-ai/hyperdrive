@@ -71,13 +71,43 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
     setLoading(true);
     try {
       const link = await shareFile(file.path, authScheme);
-      const fullLink = `${window.location.origin}${link}`;
+
+      // Remove first element of origin (e.g., http://foo.bar.com -> http://bar.com)
+      let origin = window.location.origin;
+      const urlParts = new URL(origin);
+      const hostParts = urlParts.hostname.split('.');
+      if (hostParts.length > 2) {
+        // Remove the first subdomain
+        hostParts.shift();
+        urlParts.hostname = hostParts.join('.');
+        origin = urlParts.toString().replace(/\/$/, ''); // Remove trailing slash
+      }
+
+      const fullLink = `${origin}${link}`;
       setShareLink(fullLink);
       addSharedLink(file.path, fullLink);
 
-      // Auto-copy to clipboard
-      await navigator.clipboard.writeText(fullLink);
-      setCopied(true);
+      // Auto-copy to clipboard with fallback
+      try {
+        await navigator.clipboard.writeText(fullLink);
+        setCopied(true);
+      } catch (clipboardErr) {
+        // Fallback for when clipboard API fails
+        const textArea = document.createElement('textarea');
+        textArea.value = fullLink;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setCopied(true);
+        } catch (e) {
+          console.error('Failed to copy to clipboard:', e);
+        }
+        document.body.removeChild(textArea);
+      }
     } catch (err) {
       console.error('Failed to share file:', err);
     } finally {
@@ -86,8 +116,26 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
   };
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(shareLink);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+    } catch (clipboardErr) {
+      // Fallback for when clipboard API fails
+      const textArea = document.createElement('textarea');
+      textArea.value = shareLink;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopied(true);
+      } catch (e) {
+        console.error('Failed to copy to clipboard:', e);
+      }
+      document.body.removeChild(textArea);
+    }
     setTimeout(() => setCopied(false), 2000);
   };
 

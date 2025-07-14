@@ -6,7 +6,7 @@ use hyperware_app_common::hyperware_process_lib::our;
 use hyperware_app_common::hyperware_process_lib::vfs::{
     self, create_drive, vfs_request, FileType, VfsAction, VfsResponse,
 };
-use hyperware_app_common::send;
+use hyperware_app_common::{send, SaveOptions};
 use std::collections::HashMap;
 
 const ICON: &str = include_str!("./icon");
@@ -40,15 +40,15 @@ struct FileExplorerState {
 
 #[hyperprocess(
     name = "file-explorer",
-    ui = Some(HttpBindingConfig::default()),
+    ui = Some(HttpBindingConfig::default().secure_subdomain(true)),
     endpoints = vec![
         Binding::Http {
             path: "/api",
-            config: HttpBindingConfig::default(),
+            config: HttpBindingConfig::default().secure_subdomain(true),
         },
         Binding::Ws {
             path: "/ws",
-            config: WsBindingConfig::default(),
+            config: WsBindingConfig::default().secure_subdomain(true),
         },
         Binding::Http {
             path: "/shared/*",
