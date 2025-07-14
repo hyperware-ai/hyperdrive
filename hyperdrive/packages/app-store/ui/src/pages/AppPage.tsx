@@ -1,10 +1,41 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { FaDownload, FaCheck, FaTimes, FaPlay, FaSpinner, FaTrash, FaSync, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import useAppsStore from "../store";
 import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
+import { FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay } from "react-icons/fa6";
+import { BsDownload } from "react-icons/bs";
+import { Modal } from "../components/Modal";
+import classNames from "classnames";
+import { VscSync, VscSyncIgnored } from "react-icons/vsc";
+import { BsX } from "react-icons/bs";
+
+const MOCK_APP: AppListing = {
+  package_id: {
+    package_name: 'mock-app',
+    publisher_node: 'mock-node'
+  },
+  metadata: {
+    name: 'Mock App with an Unreasonably Long Name for Testing Wrapping, Obviously, why else would you have a name this long?',
+    description: `This is a mock app. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page.`,
+    image: 'https://via.placeholder.com/150',
+    properties: {
+      code_hashes: [['1.0.0', '1234567890']],
+      package_name: 'mock-app',
+      publisher: 'mock-node',
+      current_version: '1.0.0',
+      mirrors: ['https://mock-mirror.com'],
+      screenshots: ['https://via.placeholder.com/150', 'https://via.placeholder.com/150', 'https://via.placeholder.com/150']
+    }
+  },
+  tba: '0x0000000000000000000000000000000000000000',
+  metadata_uri: 'https://mock-metadata.com',
+  metadata_hash: '1234567890',
+  auto_update: false
+};
+
+const isMobile = window.innerWidth < 768;
 
 export default function AppPage() {
   const { id } = useParams();
@@ -43,6 +74,26 @@ export default function AppPage() {
   const [canLaunch, setCanLaunch] = useState(false);
   const [attemptedDownload, setAttemptedDownload] = useState(false);
   const [mirrorError, setMirrorError] = useState<string | null>(null);
+  const [showUninstallConfirmModal, setShowUninstallConfirmModal] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
+  const [backtickPressCount, setBacktickPressCount] = useState(0);
+
+  useEffect(() => {
+    const backTickCounter = (e: KeyboardEvent) => {
+      if (e.key === '`') {
+        setBacktickPressCount(old => old + 1);
+      }
+    };
+    window.addEventListener('keydown', backTickCounter);
+    return () => window.removeEventListener('keydown', backTickCounter);
+  }, []);
+
+  useEffect(() => {
+    if (backtickPressCount >= 5) {
+      setIsDevMode(!isDevMode);
+      setBacktickPressCount(0);
+    }
+  }, [backtickPressCount]);
 
   const appDownloads = useMemo(() => downloads[id || ""] || [], [downloads, id]);
 
@@ -81,7 +132,7 @@ export default function AppPage() {
 
     try {
       const [appData, installedAppData] = await Promise.all([
-        fetchListing(id),
+        isDevMode ? Promise.resolve(MOCK_APP) : fetchListing(id),
         fetchInstalledApp(id)
       ]);
 
@@ -134,10 +185,31 @@ export default function AppPage() {
   }, []);
 
   const handleInstallFlow = useCallback(async (isDownloadNeeded: boolean = false) => {
-    if (!id || !selectedMirror || !app || !selectedVersion) return;
+    if (!id) {
+      setError("App not found");
+      return;
+    }
+
+    if (!selectedMirror) {
+      setError("No mirror selected");
+      return;
+    }
+
+    if (!app) {
+      setError("App not found");
+      return;
+    }
+
+    if (!selectedVersion) {
+      setError("No version selected");
+      return;
+    }
 
     const versionData = sortedVersions.find(v => v.version === selectedVersion);
-    if (!versionData) return;
+    if (!versionData) {
+      setError("Version not found");
+      return;
+    }
 
     try {
       if (isDownloadNeeded) {
@@ -207,6 +279,7 @@ export default function AppPage() {
     }
   }, [app, getLaunchUrl]);
 
+
   const handleUninstall = async () => {
     if (!app) return;
     setIsUninstalling(true);
@@ -267,8 +340,8 @@ export default function AppPage() {
 
   if (isLoading) {
     return (
-      <div className="app-page" style={{ minHeight: '100vh' }}>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-page min-h-screen">
+        <div className="h-40 flex items-center justify-center">
           <h4>Loading app details...</h4>
         </div>
       </div>
@@ -277,8 +350,8 @@ export default function AppPage() {
 
   if (error) {
     return (
-      <div className="app-page" style={{ minHeight: '100vh' }}>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-page min-h-screen">
+        <div className="h-40 flex items-center justify-center">
           <h4>{error}</h4>
         </div>
       </div>
@@ -287,8 +360,8 @@ export default function AppPage() {
 
   if (!app) {
     return (
-      <div className="app-page" style={{ minHeight: '100vh' }}>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-page min-h-screen">
+        <div className="h-40 flex items-center justify-center">
           <h4>App details not found for {id}</h4>
         </div>
       </div>
@@ -298,200 +371,236 @@ export default function AppPage() {
   const valid_wit_version = app.metadata?.properties?.wit_version === 1;
   const canDownload = !isDownloading && !isDownloaded;
 
+  const appButtons = ({ className }: { className?: string }) => <div className={classNames("app-buttons flex items-stretch gap-2 ", className)}>
+    {installedApp && <>
+      <button
+        onClick={() => setShowUninstallConfirmModal(true)}
+        className="clear thin"
+      >
+        {isUninstalling ? <FaCircleNotch className="animate-spin" /> : <BsX />}
+        <span >Uninstall</span>
+      </button>
+      <button
+        onClick={handleToggleAutoUpdate}
+        className="clear thin"
+      >
+        {isTogglingAutoUpdate
+          ? <FaCircleNotch className="animate-spin" />
+          : app.auto_update
+            ? <VscSync className="text-lg" />
+            : <VscSyncIgnored className="text-lg" />}
+        <span >Updates {app.auto_update ? " ON" : " OFF"}</span>
+      </button>
+      {(canLaunch || isDevMode) && (
+        <button
+          onClick={handleLaunch}
+        >
+          <FaPlay />
+          <span >Launch</span>
+        </button>
+      )}
+    </>}
+
+    {valid_wit_version && !upToDate && <>
+      {(isDevMode || isDownloaded) && <>
+
+        <button
+          onClick={() => handleInstallFlow(false)}
+          className={classNames("text-sm", {
+          })}
+        >
+          {showCapApproval || isInstalling ? (
+            <><FaCircleNotch className="animate-spin" /> Installing...</>
+          ) : (
+            <>
+              <BsDownload />
+              <span >{installedApp ? "Update" : "Download"}</span>
+            </>
+          )}
+        </button>
+      </>}
+
+      {!isDownloaded && !isDevMode && <button
+        onClick={() => {
+          if (!selectedMirror || isMirrorOnline === null) {
+            setAttemptedDownload(true);
+          } else {
+            handleInstallFlow(true);
+          }
+        }}
+        className={classNames(' text-sm', {
+          'loading': isDownloading,
+        })}
+        disabled={isDownloading}
+      >
+        {isDownloading ? (
+          <><FaCircleNotch className="animate-spin" /> Downloading... {downloadProgress}%</>
+        ) : mirrorError ? (
+          <><BsX /> {mirrorError}</>
+        ) : !selectedMirror && attemptedDownload ? (
+          <><FaCircleNotch className="animate-spin" /> Choosing mirrors...</>
+        ) : (
+          <>{installedApp ? <><BsDownload /> Update</> : <><BsDownload /> Download</>}</>
+        )}
+      </button>}
+    </>}
+  </div>
+
   return (
-    <div className="app-page" style={{ minHeight: '100vh' }}>
+    <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
       {showCapApproval && manifestResponse && (
-        <div className="cap-approval-popup">
-          <div className="cap-approval-content">
-            <h3>Approve Capabilities</h3>
-            <ManifestDisplay manifestResponse={manifestResponse} />
-            <div className="approval-buttons">
-              <button onClick={() => {
+        <Modal onClose={() => setShowCapApproval(false)}>
+          <h3 className="prose">Approve Capabilities</h3>
+          <ManifestDisplay manifestResponse={manifestResponse} />
+          <div className="flex flex-col items-stretch gap-2">
+            <button
+              className="clear"
+              disabled={isInstalling}
+              onClick={() => {
                 setShowCapApproval(false);
                 setIsInstalling(false);
               }}>Cancel</button>
-              {isInstalling
-                ? <><FaSpinner className="fa-spin" /> Installing...</>
-                : <button onClick={confirmInstall}>Approve and Install</button>
-              }
-            </div>
+            <button
+              disabled={isInstalling}
+              onClick={confirmInstall}
+            >
+              {isInstalling ? <FaCircleNotch className="animate-spin" /> : "Approve and Install"}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
-      <div className="flex items-center justify-between gap-2 flex-wrap" style={{ minHeight: '200px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '128px', height: '128px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img
-              src={app.metadata?.image || '/h-green.svg'}
-              alt={app.metadata?.name || app.package_id.package_name}
-              className="w-24 h-24 object-cover rounded-lg"
-            />
-          </div>
-          <div className="app-title">
-            <h2>{app.metadata?.name || app.package_id.package_name}</h2>
-          </div>
+      <div className="flex justify-between gap-2 flex-wrap">
+        <div className="w-16 md:w-32 h-16 md:h-32 flex items-center justify-center rounded-lg">
+          {app.metadata?.image && <img
+            src={app.metadata?.image}
+            alt={`${app.metadata?.name || app.package_id.package_name} icon`}
+            className="w-16 md:w-32 h-16 md:h-32 object-cover rounded-lg aspect-square bg-white dark:bg-black"
+          />}
+          {!app.metadata?.image && <div
+            className="w-16 md:w-32 h-16 md:h-32  rounded-lg aspect-square bg-neon"
+          />}
         </div>
-        <ul className="detail-list" style={{ minHeight: '150px' }}>
-          <li>
-            <span>Installed:</span>
-            <span className="status-icon">
-              {installedApp ? <FaCheck className="installed" /> : <FaTimes className="not-installed" />}
-            </span>
-          </li>
-          {installedApp && <li>
+        <div className="grid grid-cols-2 gap-2">
+          {installedApp && <>
             <span>Auto Update:</span>
-            <span className="status-icon">
-              {app.auto_update ? <FaCheck className="installed" /> : <FaTimes className="not-installed" />}
+            <span className="flex items-center">
+              {app.auto_update ? <FaCheck className="rounded-full bg-neon text-black" /> : <BsX className="rounded-full bg-red-500 text-white" />}
             </span>
-          </li>}
-          {latestVersion && (
+          </>}
+          {latestVersion && <>
+            <span>Version:</span>
+            <span>{latestVersion}</span>
+          </>}
+          {currentVersion && latestVersion && currentVersion !== latestVersion && <>
+            <span>Installed Version:</span>
+            <span>{currentVersion}</span>
+          </>}
+          {currentVersion && latestVersion && currentVersion === latestVersion && (
             <>
-              <li><span>Version:</span> <span>{latestVersion}</span></li>
+              <span>Up to date:</span>
+              <span className="flex items-center">
+                {upToDate ? <FaCheck className="rounded-full bg-neon text-black" /> : <BsX className="rounded-full bg-red-500 text-white" />}
+              </span>
             </>
           )}
-          {currentVersion && latestVersion && currentVersion !== latestVersion && (
-            <li><span>Installed Version:</span> <span>{currentVersion}</span></li>
-          )}
-          {currentVersion && latestVersion && currentVersion === latestVersion && (
-            <li><span>Up to date:</span> <span className="status-icon">
-              {upToDate ? <FaCheck className="installed" /> : <FaTimes className="not-installed" />}
-            </span></li>
-          )}
           {installedApp?.pending_update_hash && (
-            <li className="warning">
-              <span>Failed Auto-Update:</span>
+            <div className="bg-red-500 text-white p-2 rounded-lg col-span-2">
+              <span>Failed Auto-Update: </span>
               <span>Update to version with hash {installedApp.pending_update_hash.slice(0, 8)}... failed</span>
-            </li>
+            </div>
           )}
-          <li><span>Publisher:</span> <span>{app.package_id.publisher_node}</span></li>
-          {app.metadata?.properties?.license && (
-            <li><span>License:</span> <span>{app.metadata.properties.license}</span></li>
-          )}
-        </ul>
+          <span>Publisher:</span>
+          <span className="text-iris dark:text-neon font-bold">{app.package_id.publisher_node}</span>
+          {app.metadata?.properties?.license && <>
+            <span>License:</span>
+            <span>{app.metadata.properties.license}</span>
+          </>}
+        </div>
       </div>
 
-      {!valid_wit_version && <div className="p-2 bg-neon text-black">This app must be updated to 1.0</div>}
-
-      <div className="app-actions" style={{ minHeight: '50px' }}>
-        {installedApp && (
-          <>
-            {canLaunch && (
-              <button onClick={handleLaunch} className="primary">
-                <FaPlay /> Launch
-              </button>
-            )}
-            <button onClick={handleUninstall} className="alt">
-              {isUninstalling ? <FaSpinner className="fa-spin" /> : <FaTrash />} Uninstall
-            </button>
-            <button onClick={handleToggleAutoUpdate} className="alt">
-              {isTogglingAutoUpdate ? <FaSpinner className="fa-spin" /> : <FaSync />}
-              {app.auto_update ? " Disable" : " Enable"} Auto Update
-            </button>
-          </>
-        )}
-        {valid_wit_version && !upToDate && (
-          <div className="download-section">
-            {isDownloaded ? (
-              !showCapApproval && (
-                <button
-                  onClick={() => handleInstallFlow(false)}
-                  className="primary"
-                >
-                  {isInstalling ? (
-                    <><FaSpinner className="fa-spin" /> Installing...</>
-                  ) : (
-                    <>{installedApp ? <><FaDownload /> Update</> : <><FaDownload /> Download</>}</>
-                  )}
-                </button>
-              )
-            ) : (
-              <button
-                onClick={() => {
-                  if (!selectedMirror || isMirrorOnline === null) {
-                    setAttemptedDownload(true);
-                  } else {
-                    handleInstallFlow(true);
-                  }
-                }}
-                className={`primary ${isDownloading ? 'loading' : ''}`}
-              >
-                {isDownloading ? (
-                  <><FaSpinner className="fa-spin" /> Downloading... {downloadProgress}%</>
-                ) : mirrorError ? (
-                  <><FaTimes /> {mirrorError}</>
-                ) : !selectedMirror && attemptedDownload ? (
-                  <><FaSpinner className="fa-spin" /> Choosing mirrors...</>
-                ) : (
-                  <>{installedApp ? <><FaDownload /> Update</> : <><FaDownload /> Download</>}</>
-                )}
-              </button>
-            )}
-          </div>
-        )}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="prose font-bold min-w-1/2 md:max-w-2/3">{app.metadata?.name || app.package_id.package_name}</h2>
+        {appButtons({ className: "hidden md:flex" })}
       </div>
 
-      {app.metadata?.properties?.screenshots && (
-        <div className="app-screenshots">
-          <h3>Screenshots</h3>
-          <div className="screenshot-container" style={{ minHeight: '200px' }}>
-            {app.metadata.properties.screenshots.map((screenshot, index) => (
-              <div key={index} style={{ aspectRatio: '16/9', width: '100%', maxWidth: '600px' }}>
-                <img
-                  src={screenshot}
-                  alt={`Screenshot ${index + 1}`}
-                  className="app-screenshot"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  loading="lazy"
-                />
-              </div>
+      <div className="wrap-anywhere ">
+        {app.metadata?.description || "No description available"}
+      </div>
+
+      {!valid_wit_version && <div className="px-4 py-2 bg-neon text-black rounded">This app must be updated to 1.0</div>}
+
+      {appButtons({ className: "flex-col items-stretch md:hidden" })}
+
+      {(app.metadata?.properties?.screenshots || isDevMode) && (
+        <div className="flex flex-col gap-2">
+          <h3 className="prose">Screenshots</h3>
+          <div className="flex flex-wrap gap-2 overflow-y-auto min-h-0 max-h-lg">
+            {(isDevMode ? MOCK_APP.metadata!.properties.screenshots! : app!.metadata!.properties!.screenshots!).map((screenshot, index) => (
+              <img
+                src={screenshot}
+                alt={`Screenshot ${index + 1}`}
+                className="rounded-lg w-full h-full object-contain aspect-video max-w-md max-h-md"
+                loading="lazy"
+              />
             ))}
           </div>
         </div>
       )}
 
-      <div className="app-description" style={{ minHeight: '100px' }}>
-        {app.metadata?.description || "No description available"}
-      </div>
-
       {valid_wit_version && !upToDate && (
         <>
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className="alt">
-            {showAdvanced ? <FaChevronUp /> : <FaChevronDown />} Advanced Download Options
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)} className="clear"
+          >
+            {showAdvanced ? <FaChevronDown /> : <FaChevronRight />} Advanced Download Options
           </button>
           {showAdvanced && (
-            <div className="mt-4">
-              <h3 className="text-lg font-semibold mb-2">Advanced Options</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Mirror Selection</label>
-                  <MirrorSelector
-                    packageId={id}
-                    onMirrorSelect={handleMirrorSelect}
-                    onError={handleMirrorError}
-                  />
-                  {mirrorError && (
-                    <p className="mt-1 text-sm text-red-600">{mirrorError}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Version Selection</label>
-                  <select
-                    value={selectedVersion}
-                    onChange={(e) => setSelectedVersion(e.target.value)}
-                    className="version-selector"
-                  >
-                    <option value="">Select version</option>
-                    {sortedVersions.map((version) => (
-                      <option key={version.version} value={version.version}>
-                        {version.version}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <div className="flex flex-col gap-2">
+              <label className=" text-sm font-medium ">Mirror </label>
+              <MirrorSelector
+                packageId={id}
+                onMirrorSelect={handleMirrorSelect}
+                onError={handleMirrorError}
+              />
+              {(mirrorError || isDevMode) && (
+                <p className=" text-xs text-red-600">{isDevMode ? mirrorError || "Dev Mode" : mirrorError}</p>
+              )}
+              <label className=" text-sm font-medium ">Version </label>
+              <select
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                className="bg-black/10 dark:bg-white/10 text-gray-500 self-stretch p-2 rounded-lg"
+              >
+                <option value="">Select version</option>
+                {sortedVersions.map((version) => (
+                  <option key={version.version} value={version.version}>
+                    {version.version}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </>
+      )}
+
+      {showUninstallConfirmModal && (
+        <Modal onClose={() => setShowUninstallConfirmModal(false)}>
+          <h3
+            className="prose">Uninstall Confirmation</h3>
+          <p>Are you sure you want to uninstall {app.metadata?.name || app.package_id.package_name}?</p>
+          <div
+            className="flex items-center flex-col md:flex-row gap-2"
+          >
+            <button
+              onClick={() => setShowUninstallConfirmModal(false)}
+              className="md:grow md:self-center self-stretch clear"
+            >Cancel</button>
+            <button
+              onClick={handleUninstall}
+              className="md:grow md:self-center self-stretch
+            ">Uninstall</button>
+          </div>
+        </Modal>
       )}
     </div>
   );

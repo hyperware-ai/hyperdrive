@@ -1,16 +1,17 @@
 import React, { useState, useRef } from 'react';
 import type { HomepageApp } from '../../../types/app.types';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
-import { useAppStore } from '../../../stores/appStore';
 import { Draggable } from './Draggable';
+import classNames from 'classnames';
 
 interface WidgetProps {
   app: HomepageApp;
+  index: number;
+  totalWidgets: number;
 }
 
-export const Widget: React.FC<WidgetProps> = ({ app }) => {
+export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
   const { toggleWidget, widgetSettings, setWidgetPosition, setWidgetSize } = usePersistenceStore();
-  const { isEditMode } = useAppStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -18,9 +19,45 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
 
   const settings = widgetSettings[app.id] || {};
   if (settings.hide) return null;
+  const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
+  const padding = isMobile ? 5 : 10;
+  const spacing = isMobile ? 5 : 10;
+  const searchbarPadding = 50;
 
-  const position = settings.position || { x: 50, y: 50 };
-  const size = settings.size || { width: 300, height: 200 };
+  const calculateSize = () => {
+    if (isMobile) {
+      return {
+        width: window.innerWidth - 2 * padding,
+        height: (window.innerHeight * 0.67 - totalWidgets * spacing) / totalWidgets
+      };
+    } else {
+      return {
+        width: (window.innerWidth - padding * totalWidgets) / totalWidgets,
+        height: 0.67 * window.innerHeight
+      };
+    }
+  };
+
+  const size = settings.size || calculateSize();
+
+  // Calculate responsive position based on index
+  const calculatePosition = () => {
+    if (isMobile) {
+      // Column layout on mobile
+      return {
+        x: padding,
+        y: padding + (index * (size.height + spacing)) + searchbarPadding
+      };
+    } else {
+      // Row layout on desktop
+      return {
+        x: padding + (index * (size.width + spacing)),
+        y: padding + searchbarPadding
+      };
+    }
+  };
+
+  const position = settings.position || calculatePosition();
 
   // Widgets can either have widget HTML content or be loaded from their app URL
   const isHtmlWidget = app.widget && app.widget !== 'true' && app.widget.includes('<');
@@ -33,7 +70,6 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
   const handleResize = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isEditMode) return;
 
     const isTouch = 'touches' in e;
     const startX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
@@ -79,31 +115,29 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
 
   return (
     <Draggable
+      isEditMode={true}
       id={`widget-${app.id}`}
       position={position}
       onMove={(pos) => setWidgetPosition(app.id, pos)}
-      isEditMode={isEditMode}
       enableHtmlDrag={false}
     >
       <div
-        className={`bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl border border-white/20
-          ${isEditMode ? 'ring-2 ring-blue-400' : ''}
-          ${isResizing ? 'pointer-events-none' : ''}`}
+        className={classNames('widget bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-lg border border-white/20', {
+          'pointer-events-none': isResizing
+        })}
         style={{ width: `${size.width}px`, height: `${size.height}px` }}
       >
         <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-2 border-b border-white/10">
-          <span className="text-white/90 text-sm font-medium">{app.label}</span>
-          {isEditMode && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleWidget(app.id);
-              }}
-              className="w-6 h-6 bg-red-500 text-white rounded-md flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
-            >
-              ×
-            </button>
-          )}
+          <span className="text-black dark:text-white/90 text-sm font-medium">{app.label}</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWidget(app.id);
+            }}
+            className="clear thin w-3 h-3 !p-0"
+          >
+            ×
+          </button>
         </div>
 
         <div className="relative w-full h-[calc(100%-40px)]">
@@ -143,15 +177,13 @@ export const Widget: React.FC<WidgetProps> = ({ app }) => {
           )}
         </div>
 
-        {isEditMode && (
-          <div
-            ref={resizeRef}
-            className="absolute bottom-0 right-0 w-6 h-6 bg-blue-400 cursor-se-resize rounded-tl-lg touch-action-none"
-            onMouseDown={handleResize}
-            onTouchStart={handleResize}
-            style={{ touchAction: 'none' }}
-          />
-        )}
+        <div
+          ref={resizeRef}
+          className="absolute bottom-0 right-0 w-6 h-6 bg-blue-400 cursor-se-resize rounded-tl-lg touch-action-none"
+          onMouseDown={handleResize}
+          onTouchStart={handleResize}
+          style={{ touchAction: 'none' }}
+        />
       </div>
     </Draggable>
   );

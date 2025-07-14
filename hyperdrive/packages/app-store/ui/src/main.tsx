@@ -16,9 +16,7 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 
-
 import './index.css'
-import 'uno.css'
 
 const config = getDefaultConfig({
   appName: 'Hyperware App Store',

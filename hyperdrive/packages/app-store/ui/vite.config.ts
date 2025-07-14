@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import react from '@vitejs/plugin-react'
-import UnoCSS from '@unocss/vite'
-
+import tailwindcss from '@tailwindcss/vite'
 /*
 If you are developing a UI outside of a Hyperware project,
 comment out the following 2 lines:
@@ -34,8 +33,8 @@ export default defineConfig({
         Buffer: true,
       }
     }),
-    UnoCSS(),
     react(),
+    tailwindcss(),
   ],
   base: BASE_URL,
   build: {

@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FaFolder, FaFile, FaChevronLeft, FaSync, FaRocket, FaSpinner, FaCheck, FaTrash, FaExclamationTriangle, FaTimesCircle, FaChevronDown, FaChevronRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import useAppsStore from "../store";
 import { ResetButton } from "../components";
 import { DownloadItem, PackageManifestEntry, PackageState, Updates, DownloadError, UpdateInfo } from "../types/Apps";
+import { BsTrash } from "react-icons/bs";
+import classNames from "classnames";
+import { VscSync, VscSyncIgnored } from "react-icons/vsc";
+import { FaArrowLeft } from "react-icons/fa6";
 
 // Core packages that cannot be uninstalled
 const CORE_PACKAGES = [
@@ -47,6 +51,9 @@ export default function MyAppsPage() {
     const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
     const [appToUninstall, setAppToUninstall] = useState<any>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
+
+    const itemsAreAllDirs = useMemo(() => items.every(item => !item.File), [items]);
+    const itemsAreAllFiles = useMemo(() => items.every(item => item.File), [items]);
 
     useEffect(() => {
         fetchInstalled();
@@ -104,9 +111,9 @@ export default function MyAppsPage() {
         }
 
         return (
-            <div className="updates-section">
-                <h2 className="section-title">Failed Auto Updates ({Object.keys(updates).length})</h2>
-                <div className="updates-list">
+            <div className="flex flex-col gap-2">
+                <h2 className="prose">Failed Auto Updates ({Object.keys(updates).length})</h2>
+                <div className="flex flex-col gap-2">
                     {Object.entries(updates).map(([packageId, versionMap]) => {
                         const totalErrors = Object.values(versionMap).reduce((sum, info) =>
                             sum + (info.errors?.length || 0), 0);
@@ -114,13 +121,21 @@ export default function MyAppsPage() {
                             info.pending_manifest_hash);
 
                         return (
-                            <div key={packageId} className="update-item error">
-                                <div className="update-header" onClick={() => toggleUpdateExpansion(packageId)}>
-                                    <div className="update-title">
+                            <div
+                                key={packageId}
+                                className="flex flex-col gap-2"
+                            >
+                                <div
+                                    className="flex  gap-2"
+                                    onClick={() => toggleUpdateExpansion(packageId)}
+                                >
+                                    <div
+                                        className="flex  gap-2"
+                                    >
                                         {expandedUpdates.has(packageId) ? <FaChevronDown /> : <FaChevronRight />}
-                                        <FaExclamationTriangle className="error-badge" />
+                                        <FaExclamationTriangle className="text-red-500 animate-pulse" />
                                         <span>{packageId}</span>
-                                        <div className="update-summary">
+                                        <div className="flex flex-col gap-2">
                                             {totalErrors > 0 && (
                                                 <span className="error-count">{totalErrors} error{totalErrors !== 1 ? 's' : ''}</span>
                                             )}
@@ -129,9 +144,9 @@ export default function MyAppsPage() {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="update-actions">
+                                    <div className="flex gap-2">
                                         <button
-                                            className="action-button retry"
+                                            className="clear"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(`/download/${packageId}`);
@@ -142,7 +157,7 @@ export default function MyAppsPage() {
                                             <span>Retry</span>
                                         </button>
                                         <button
-                                            className="action-button clear"
+                                            className=" clear"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleClearUpdates(packageId);
@@ -154,21 +169,21 @@ export default function MyAppsPage() {
                                     </div>
                                 </div>
                                 {expandedUpdates.has(packageId) && Object.entries(versionMap).map(([versionHash, info]) => (
-                                    <div key={versionHash} className="update-details">
-                                        <div className="version-info">
+                                    <div key={versionHash} className="flex flex-col gap-2">
+                                        <div className="flex flex-row gap-2">
                                             Version: {versionHash.slice(0, 8)}...
                                         </div>
                                         {info.pending_manifest_hash && (
-                                            <div className="manifest-info">
+                                            <div className="flex flex-row gap-2">
                                                 <FaExclamationTriangle />
                                                 Pending manifest: {info.pending_manifest_hash.slice(0, 8)}...
                                             </div>
                                         )}
                                         {info.errors && info.errors.length > 0 && (
-                                            <div className="error-list">
+                                            <div className="flex flex-col gap-2">
                                                 {info.errors.map(([source, error], idx) => (
-                                                    <div key={idx} className="error-item">
-                                                        <FaExclamationTriangle className="error-icon" />
+                                                    <div key={idx} className="flex flex-row gap-2">
+                                                        <FaExclamationTriangle className="text-red-500" />
                                                         <span>{source}: {formatError(error)}</span>
                                                     </div>
                                                 ))}
@@ -305,153 +320,185 @@ export default function MyAppsPage() {
         }
     };
 
+    const itemSizeAbbreviation = (size: number) => {
+        if (size < 1024) {
+            return `${size} B`;
+        }
+        if (size < 1024 * 1024) {
+            return `${(size / 1024).toFixed(2)} KB`;
+        }
+        if (size < 1024 * 1024 * 1024) {
+            return `${(size / 1024 / 1024).toFixed(2)} MB`;
+        }
+        return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+    };
+
     return (
-        <div className="my-apps-page">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1>Manage Installed Apps</h1>
-            </div>
-            {error && <div className="p-2 bg-red text-white rounded-lg">{error}</div>}
+        <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
+            {error && <div className="p-2 bg-red-500 text-white rounded-lg">{error}</div>}
             {renderUpdates()}
 
-            <table className="apps-table">
-                <tbody>
-                    {(() => {
-                        const userspaceApps = Object.values(installed).filter(app => !CORE_PACKAGES.includes(`${app.package_id.package_name}:${app.package_id.publisher_node}`));
-                        if (userspaceApps.length === 0) {
-                            return (
-                                <tr>
-                                    <td colSpan={2} style={{ textAlign: 'center' }}>
-                                        No apps installed yet!
-                                    </td>
-                                </tr>
-                            );
-                        }
-                        return userspaceApps.map((app) => {
-                            const packageId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
-                            const listing = listings?.[packageId];
+            <div className="flex flex-col gap-2">
+                {(() => {
+                    const userspaceApps = Object.values(installed).filter(app => !CORE_PACKAGES.includes(`${app.package_id.package_name}:${app.package_id.publisher_node}`));
+                    if (userspaceApps.length === 0) {
+                        return (
+                            <div className="flex flex-col gap-2 col-span-2">
+                                No apps installed yet!
+                            </div>
+                        );
+                    }
+                    return userspaceApps.map((app) => {
+                        const packageId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
+                        const listing = listings?.[packageId];
 
-                            return (
-                                <tr key={packageId}>
-                                    <td>
-                                        {listing ? (
-                                            <a href={`/main:app-store:sys/app/${packageId}`}>
-                                                {listing.metadata?.name || packageId}
-                                            </a>
-                                        ) : (
-                                            packageId
-                                        )}
-                                    </td>
-                                    <td>
-                                        <button
-                                            onClick={() => initiateUninstall(app)}
-                                            disabled={isUninstalling}
-                                        >
-                                            {isUninstalling ? <FaSpinner className="fa-spin" /> : <FaTrash />}
-                                            Uninstall
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        });
-                    })()}
-                </tbody>
-            </table>
+                        return (
+                            <div className="flex items-center gap-2">
+                                {listing ? (
+                                    <a
+                                        href={`/main:app-store:sys/app/${packageId}`}
+                                        className="grow font-bold">
 
-            <div className="advanced-section">
-                <button
-                    className="advanced-toggle"
-                    onClick={() => {
-                        setShowAdvanced(!showAdvanced);
-                        if (showAdvanced) {
-                            loadItems();
-                        }
-                    }}
-                >
-                    {showAdvanced ? <FaChevronDown /> : <FaChevronRight />} Advanced
-                </button>
+                                        {listing.metadata?.name || packageId}
+                                    </a>
+                                ) : (
+                                    <span
+                                        className="grow font-bold"
+                                    >
+                                        {packageId}
+                                    </span>
+                                )}
+                                <button
+                                    onClick={() => initiateUninstall(app)}
+                                    className={"clear thin !hover:text-red-500"}
+                                    disabled={isUninstalling}
+                                >
+                                    {isUninstalling
+                                        ? <FaSpinner className="animate-spin" />
+                                        : <BsTrash />}
+                                    Uninstall
+                                </button>
+                            </div>
+                        );
+                    });
+                })()}
+            </div>
 
-                {showAdvanced && (
-                    <>
-                        <ResetButton />
-                        <div className="file-explorer">
-                            <h3>Downloads</h3>
-                            <div className="path-navigation">
+            <button
+                className="clear md:self-center"
+                onClick={() => {
+                    setShowAdvanced(!showAdvanced);
+                    if (showAdvanced) {
+                        loadItems();
+                    }
+                }}
+            >
+                {showAdvanced ? <FaChevronDown /> : <FaChevronRight />} Advanced
+            </button>
+
+            {showAdvanced && (
+                <>
+                    <ResetButton />
+                    <div className="flex flex-col gap-2 border dark:border-white/10 border-black/10 rounded-lg p-2 bg-white dark:bg-black">
+                        <div className="flex items-center gap-2">
+                            <h3 className="prose">Downloads</h3>
+                            <div className="flex items-center gap-2">
                                 {currentPath.length > 0 && (
-                                    <button onClick={navigateUp} className="navigate-up">
-                                        <FaChevronLeft /> Back
+                                    <button
+                                        onClick={navigateUp}
+                                        className="clear thin"
+                                    >
+                                        <FaArrowLeft />
                                     </button>
                                 )}
                                 <span className="current-path">/{currentPath.join('/')}</span>
                             </div>
-                            <table className="downloads-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Size</th>
-                                        <th>Mirroring</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {items.map((item, index) => {
-                                        const isFile = !!item.File;
-                                        const name = isFile ? item.File!.name : item.Dir!.name;
-                                        const isInstalled = isFile && isAppInstalled(name);
-                                        return (
-                                            <tr key={index} onClick={() => navigateToItem(item)} className={isFile ? 'file' : 'directory'}>
-                                                <td>
-                                                    {isFile ? <FaFile /> : <FaFolder />} {name}
-                                                </td>
-                                                <td>{isFile ? 'File' : 'Directory'}</td>
-                                                <td>{isFile ? `${(item.File!.size / 1024).toFixed(2)} KB` : '-'}</td>
-                                                <td>{!isFile && (item.Dir!.mirroring ? 'Yes' : 'No')}</td>
-                                                <td>
-                                                    {!isFile && (
-                                                        <button onClick={(e) => { e.stopPropagation(); toggleMirroring(item); }}>
-                                                            <FaSync /> {item.Dir!.mirroring ? 'Stop' : 'Start'} Mirroring
-                                                        </button>
-                                                    )}
-                                                    {isFile && !isInstalled && (
-                                                        <>
-                                                            <button onClick={(e) => { e.stopPropagation(); handleInstall(item); }}>
-                                                                <FaRocket /> Install
-                                                            </button>
-                                                            <button onClick={(e) => { e.stopPropagation(); handleRemoveDownload(item); }}>
-                                                                <FaTrash /> Delete
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    {isFile && isInstalled && (
-                                                        <FaCheck className="installed" />
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
                         </div>
-                        <h3>Core Apps</h3>
-                        <table className="apps-table">
-                            <tbody>
-                                {Object.values(installed).map((app) => {
-                                    const packageId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
-                                    const isCore = CORE_PACKAGES.includes(packageId);
+                        <div className={classNames("grid gap-2", {
+                            'grid-cols-6': !itemsAreAllDirs && !itemsAreAllFiles,
+                            'grid-cols-5': itemsAreAllDirs || itemsAreAllFiles,
+                        })}>
+                            <div className="font-bold col-span-3">Name</div>
+                            <div className="font-bold">Size</div>
+                            {!itemsAreAllFiles && <div className="font-bold">Mirroring</div>}
+                            {!itemsAreAllDirs && <div className="font-bold ">Actions</div>}
+                            {items.map((item, index) => {
+                                const isFile = !!item.File;
+                                const name = isFile ? item.File!.name : item.Dir!.name;
+                                const isInstalled = isFile && isAppInstalled(name);
+                                return (
+                                    <div
+                                        key={index}
+                                        className={classNames('grid gap-2', {
+                                            'grid-cols-6 col-span-6': !itemsAreAllDirs && !itemsAreAllFiles,
+                                            'grid-cols-5 col-span-5': itemsAreAllDirs || itemsAreAllFiles,
+                                            'file': isFile,
+                                            'directory': !isFile
+                                        })}
+                                    >
+                                        <button
+                                            className="clear thin !justify-start col-span-3"
+                                            onClick={() => navigateToItem(item)}
+                                        >
+                                            {isFile ? <FaFile className="min-w-8" /> : <FaFolder className="min-w-8" />}
+                                            <span className="wrap-anywhere text-sm text-left">{name}</span>
+                                        </button>
+                                        <div>{isFile ? itemSizeAbbreviation(item.File!.size) : '-'}</div>
+                                        {!itemsAreAllFiles && <div className="flex gap-2 items-center">
+                                            {isFile ? null : <>
+                                                <button
+                                                    className={classNames("!rounded-full thin", {
+                                                        clear: item.Dir!.mirroring,
+                                                    })}
+                                                    onClick={(e) => { e.stopPropagation(); toggleMirroring(item); }}>
+                                                    OFF
+                                                </button>
+                                                <button
+                                                    className={classNames("!rounded-full thin", {
+                                                        clear: !item.Dir!.mirroring,
+                                                    })}
+                                                    onClick={(e) => { e.stopPropagation(); toggleMirroring(item); }}>
+                                                    ON
+                                                </button>
+                                            </>}
+                                        </div>}
+                                        {!itemsAreAllDirs && <div className="flex flex-col gap-1 ">
+                                            {isFile && <>
+                                                {isInstalled
+                                                    ? <FaCheck className="rounded-full bg-neon text-black" />
+                                                    : <>
+                                                        <button
+                                                            className="clear thin"
+                                                            onClick={(e) => { e.stopPropagation(); handleInstall(item); }}>
+                                                            <FaRocket /> Install
+                                                        </button>
+                                                        <button
+                                                            className="clear thin"
+                                                            onClick={(e) => { e.stopPropagation(); handleRemoveDownload(item); }}>
+                                                            <FaTrash /> Delete
+                                                        </button>
+                                                    </>}
+                                            </>}
+                                        </div>}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    <h3 className="prose">System Apps</h3>
+                    <div className="flex flex-col gap-2">
+                        {Object.values(installed).filter(app => CORE_PACKAGES.includes(`${app.package_id.package_name}:${app.package_id.publisher_node}`)).map((app) => {
+                            const packageId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
 
-                                    if (!isCore) return null;
-
-                                    return (
-                                        <tr key={packageId}>
-                                            <td>{packageId}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </>
-                )}
-            </div>
+                            return (
+                                <div key={packageId} className="flex flex-row gap-2">
+                                    {packageId}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
 
 
             {/* Uninstall Confirmation Modal */}

@@ -4,6 +4,9 @@ import { FaDownload, FaSpinner, FaChevronDown, FaChevronUp, FaRocket, FaTrash, F
 import useAppsStore from "../store";
 import { MirrorSelector, ManifestDisplay } from '../components';
 import { ManifestResponse } from "../types/Apps";
+import { Modal } from "../components/Modal";
+import { FaChevronRight } from "react-icons/fa6";
+import { BsX } from "react-icons/bs";
 
 export default function DownloadPage() {
     const { id } = useParams<{ id: string }>();
@@ -242,20 +245,22 @@ export default function DownloadPage() {
     };
 
     if (!app) {
-        return <div className="downloads-page"><h4>Loading app details...</h4></div>;
+        return <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
+            <h4 className="prose">Loading app details...</h4>
+        </div>;
     }
 
     return (
-        <div className="downloads-page">
+        <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="app-title-container">
+                <div className=" flex flex-col gap-2">
                     {app.metadata?.image && (
                         <img src={app.metadata.image} alt={app.metadata?.name || app.package_id.package_name}
                             className="w-24 h-24 object-cover rounded-lg"
                         />
                     )}
-                    <div className="app-title">
-                        <h2>{app.metadata?.name || app.package_id.package_name}</h2>
+                    <div className=" flex flex-col gap-2">
+                        <h2 className="prose">{app.metadata?.name || app.package_id.package_name}</h2>
                         <p className="app-id">{`${app.package_id.package_name}.${app.package_id.publisher_node}`}</p>
                     </div>
                 </div>
@@ -274,11 +279,11 @@ export default function DownloadPage() {
             </div>
             <p className="app-description">{app.metadata?.description}</p>
 
-            <div className="download-section">
+            <div className="download-section flex flex-col md:flex-row gap-2 items-stretch">
                 <select
                     value={selectedVersion}
                     onChange={(e) => setSelectedVersion(e.target.value)}
-                    className="version-selector"
+                    className="version-selector self-stretch px-2 py-1 border border-black/10 dark:border-white/10 rounded-md"
                 >
                     <option value="">Select version</option>
                     {sortedVersions.map((version) => (
@@ -296,66 +301,76 @@ export default function DownloadPage() {
                 {renderActionButton()}
             </div>
 
-            <div className="my-downloads">
-                <button onClick={() => setShowMyDownloads(!showMyDownloads)}>
-                    {showMyDownloads ? <FaChevronUp /> : <FaChevronDown />} My Downloads
+            <div className="my-downloads flex flex-col gap-2">
+                <button
+                    className="clear text-lg"
+                    onClick={() => setShowMyDownloads(!showMyDownloads)}
+                >
+                    {showMyDownloads ? <FaChevronDown /> : <FaChevronRight />} <span>My Downloads</span>
                 </button>
                 {showMyDownloads && (
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Version</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {appDownloads.map((download) => {
-                                const fileName = download.File?.name;
-                                const hash = fileName ? fileName.replace('.zip', '') : '';
-                                const versionData = sortedVersions.find(v => v.hash === hash);
-                                if (!versionData) return null;
-                                return (
-                                    <tr key={hash}>
-                                        <td>{versionData.version}</td>
-                                        <td>
-                                            <button onClick={() => handleInstall(versionData.version, hash)}>
-                                                <FaRocket /> Install
-                                            </button>
-                                            <button onClick={() => handleRemoveDownload(hash)}>
-                                                <FaTrash /> Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="font-bold">
+                            Version
+                        </div>
+                        <div className="font-bold">
+                            Actions
+                        </div>
+
+                        {appDownloads.map((download) => {
+                            const fileName = download.File?.name;
+                            const hash = fileName ? fileName.replace('.zip', '') : '';
+                            const versionData = sortedVersions.find(v => v.hash === hash);
+                            if (!versionData) return null;
+                            return <div key={hash} className="flex items-center gap-2 col-span-2 self-stretch">
+                                <div className="grow">{versionData.version}</div>
+                                <div className="flex gap-2 self-stretch grow">
+                                    <button
+                                        className="clear thin"
+                                        onClick={() => handleInstall(versionData.version, hash)}
+                                    >
+                                        <FaRocket /> <span>Install</span>
+                                    </button>
+                                    <button
+                                        className="clear thin"
+                                        onClick={() => handleRemoveDownload(hash)}
+                                    >
+                                        <BsX /> <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        })}
+                    </div>
                 )}
             </div>
 
-            {showCapApproval && manifestResponse && (
-                <div className="cap-approval-popup">
-                    <div className="cap-approval-content">
-                        <h3>Approve Capabilities</h3>
-                        <ManifestDisplay manifestResponse={manifestResponse} />
-                        <div className="approval-buttons">
-                            <button onClick={() => setShowCapApproval(false)}>Cancel</button>
-                            <button onClick={confirmInstall}>
-                                Approve and Install
-                            </button>
-                        </div>
-                    </div>
+            {showCapApproval && manifestResponse && (<Modal onClose={() => setShowCapApproval(false)}>
+
+                <h3 className="prose">Approve Capabilities</h3>
+                <ManifestDisplay manifestResponse={manifestResponse} />
+                <div className="flex gap-2 flex-col md:flex-row">
+                    <button
+                        className="clear"
+                        onClick={() => setShowCapApproval(false)}>Cancel</button>
+                    <button
+
+                        onClick={confirmInstall}>
+                        Approve and Install
+                    </button>
                 </div>
+            </Modal>
             )}
 
-            <div className="app-details">
-                <h3>App Details</h3>
-                <button onClick={() => setShowMetadata(!showMetadata)}>
-                    {showMetadata ? <FaChevronUp /> : <FaChevronDown />} Metadata
+            <div className="flex flex-col gap-2">
+                <h3 className="prose">App Details</h3>
+                <button
+                    className="clear"
+                    onClick={() => setShowMetadata(!showMetadata)}>
+                    {showMetadata ? <FaChevronDown /> : <FaChevronRight />} Metadata
                 </button>
-                {showMetadata && (
+                {showMetadata && <Modal onClose={() => setShowMetadata(false)}>
                     <pre>{JSON.stringify(app.metadata, null, 2)}</pre>
-                )}
+                </Modal>}
             </div>
         </div>
     );

@@ -588,8 +588,20 @@ fn make_widget(state: &SettingsState) -> String {
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/hyperware.css">
+        <style>
+                @media (prefers-color-scheme: dark) {{
+                    body {{
+                        background-color: black;
+                        color: white;
+                    }}
+                }}
+
+        </style>
+
     </head>
-    <body style="margin: 0; padding: 8px; width: 100%; height: 100%; padding-bottom: 30px;">
+    <body
+    style="margin: 0; padding: 8px; width: 100%; height: 100%; padding-bottom: 30px;"
+     >
         <article id="onchain-id">
             <h3>{}</h3>
             <details style="word-wrap: break-word;">

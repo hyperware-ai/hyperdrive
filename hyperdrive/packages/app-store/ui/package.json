@@ -17,15 +17,16 @@
     "@metamask/jazzicon": "^2.0.0",
     "@rainbow-me/rainbowkit": "^2.1.2",
     "@szhsin/react-menu": "^4.1.0",
+    "@tailwindcss/vite": "^4.1.11",
     "@tanstack/react-query": "^5.45.1",
     "classnames": "^2.5.1",
     "idna-uts46-hx": "^6.0.4",
     "js-sha3": "^0.9.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^5.0.1",
+    "react-icons": "^5.5.0",
     "react-router-dom": "^6.21.3",
-    "unocss": "^0.59.4",
+    "tailwindcss": "^4.1.11",
     "viem": "^2.15.1",
     "wagmi": "^2.10.3",
     "zustand": "^4.4.7"
@@ -45,8 +46,8 @@
     "rollup": "^4.35.0",
     "typechain": "^8.3.1",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8",
-    "vite-plugin-node-polyfills": "^0.22.0"
+    "vite": "^6.0.0",
+    "vite-plugin-node-polyfills": "^0.23.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-android-arm-eabi": "^4.35.0",

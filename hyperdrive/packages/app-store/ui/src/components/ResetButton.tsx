@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { FaExclamationTriangle } from 'react-icons/fa';
 import useAppsStore from '../store';
-import { Tooltip } from './Tooltip';
+import { BsArrowClockwise } from 'react-icons/bs';
+import { Modal } from './Modal';
 
 const ResetButton: React.FC = () => {
     const resetStore = useAppsStore(state => state.resetStore);
@@ -25,43 +26,39 @@ const ResetButton: React.FC = () => {
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="button tertiary"
-                style={{ fontSize: '0.9rem' }}
+                className="button grow md:grow-0 self-stretch md:self-center !bg-red-500 !text-white"
             >
-                Reset Store
+                <span>Reset Store</span>
+                <BsArrowClockwise className="text-xl" />
             </button>
 
             {isOpen && (
-                <div className="modal-overlay" onClick={() => setIsOpen(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <button className="modal-close" onClick={() => setIsOpen(false)}>×</button>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                            <FaExclamationTriangle size={24} style={{ color: 'var(--red)' }} />
-                            <h3 style={{ margin: 0 }}>Warning</h3>
-                        </div>
-
-                        <p style={{ marginBottom: '1.5rem' }}>
-                            This action will re-index all apps and reset the store state.
-                            Only proceed if you know what you're doing.
-                        </p>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                className="button"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                disabled={isLoading}
-                                className="button tertiary"
-                            >
-                                {isLoading ? 'Resetting...' : 'Reset Store'}
-                            </button>
-                        </div>
+                <Modal onClose={() => setIsOpen(false)}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <FaExclamationTriangle size={24} className="text-red-500" />
+                        <h3 className="prose font-bold">Warning</h3>
                     </div>
-                </div>
+
+                    <p className="text-sm">
+                        This action will re-index all apps and reset the store state.
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="button clear grow self-stretch"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleReset}
+                            disabled={isLoading}
+                            className="button grow self-stretch"
+                        >
+                            {isLoading ? 'Resetting...' : 'Reset Store'}
+                        </button>
+                    </div>
+                </Modal>
             )}
         </>
     );
