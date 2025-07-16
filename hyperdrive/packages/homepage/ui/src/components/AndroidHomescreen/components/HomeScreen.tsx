@@ -202,8 +202,11 @@ export const HomeScreen: React.FC = () => {
     const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
     const spacing = isMobile ? 5 : 10;
     const screenPortion = window.innerWidth / totalApps
-    // if no setting, row along the 0.75 height of the screen
-    const y = 0.75 * window.innerHeight
+    const dockHeight = 120;
+    const iconHeight = 96;
+    // if no setting, row along screen bottom above dock
+    const y = window.innerHeight - dockHeight - spacing - iconHeight
+    // space evenly
     const x = index * (screenPortion + spacing) + screenPortion / 4
     // ensure position sets so future movements do not cause a jump
     moveItem(appId, { x, y });

@@ -36,10 +36,11 @@ export const RecentApps: React.FC = () => {
                     <span className="font-medium">{app.label}</span>
                     <button
                       onClick={(e) => {
-                        e.stopPropagation();
-                        if (runningApps.length > 1) {
-                          closeApp(app.id);
-                        } else {
+                        try {
+                          e.stopPropagation();
+                        } catch { }
+                        closeApp(app.id);
+                        if (runningApps.length === 1) {
                           closeAllOverlays();
                         }
                       }}

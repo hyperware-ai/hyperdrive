@@ -30,16 +30,19 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
   const calculateSize = () => {
     const verticalSpace = window.innerHeight - dockPadding - spacing - padding - searchbarPadding
     const horizontalSpace = window.innerWidth - 2 * padding - gestureZoneWidth
+    const iconHeight = 96;
 
     if (isMobile) {
       return {
         width: horizontalSpace,
-        height: (verticalSpace - (totalWidgets - 1) * spacing) / totalWidgets
+        height: (verticalSpace - (totalWidgets - 1) * spacing) / totalWidgets - iconHeight
       };
     } else {
+      const naiveWidth = (horizontalSpace - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing);
+      const naiveHeight = verticalSpace - iconHeight;
       return {
-        width: (horizontalSpace - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing),
-        height: verticalSpace
+        width: Math.min(naiveWidth, 768),
+        height: Math.min(naiveHeight, 1024)
       };
     }
   };
