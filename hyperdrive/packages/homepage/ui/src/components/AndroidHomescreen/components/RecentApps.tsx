@@ -61,7 +61,7 @@ export const RecentApps: React.FC = () => {
                         {app?.label?.[0]?.toUpperCase() + (app?.label?.length > 1 ? app.label?.[1]?.toLocaleLowerCase() : '')}
                       </div>
                     )}
-                    <p className="text-sm mt-2 opacity-90">opened {dayjs(runningApps.find(a => a.id === app.id)?.openedAt || 0).fromNow()}</p>
+                    <p className="text-sm mt-2 opacity-90 text-black dark:text-white">opened {dayjs(runningApps.find(a => a.id === app.id)?.openedAt || 0).fromNow()}</p>
                   </div>
                 </div>
               ))}
