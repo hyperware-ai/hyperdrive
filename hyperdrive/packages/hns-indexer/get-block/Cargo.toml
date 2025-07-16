@@ -1,5 +1,5 @@
 [package]
-name = "get_block"
+name = "get-block"
 version = "0.1.0"
 edition = "2021"
 
