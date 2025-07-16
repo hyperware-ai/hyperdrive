@@ -318,7 +318,11 @@ function App() {
               </form>
               <ul id="providers" className="">
                 {appState.eth_rpc_providers?.map((provider, i) => (
-                  <li className="list-none break-all font-mono" key={i}>{JSON.stringify(provider, undefined, 2)}</li>
+                  <li
+                    className="list-none break-all font-mono whitespace-pre-wrap"
+                    key={i}>
+                    {JSON.stringify(provider, undefined, 2)}
+                  </li>
                 ))}
               </ul>
             </Modal>

@@ -3,6 +3,7 @@ import type { HomepageApp } from '../../../types/app.types';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import classNames from 'classnames';
+import { BsX } from 'react-icons/bs';
 
 interface AppIconProps {
   app: HomepageApp;
@@ -34,7 +35,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
 
   return (
     <div
-      className={classNames('app-icon relative flex flex-col items-center justify-center  rounded-2xl cursor-pointer select-none transition-all', {
+      className={classNames('app-icon relative flex gap-1 flex-col items-center justify-center  rounded-2xl cursor-pointer select-none transition-all', {
         'scale-95': isPressed,
         'scale-100': !isPressed,
         'animate-wiggle': isEditMode && isFloating,
@@ -56,7 +57,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
           onClick={handleRemove}
           className="absolute -top-2 -right-2 w-6 h-6 !p-0 !bg-red-500 !text-white !rounded-full  text-xs z-10 shadow-lg hover:!bg-red-600 transition-colors"
         >
-          ×
+          <BsX />
         </button>
       )}
 
@@ -73,7 +74,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
       </div>
 
       {showLabel && (
-        <span className="text-xs text-center max-w-full truncate text-black dark:text-white drop-shadow-md mt-1">
+        <span className="text-xs text-center max-w-full truncate px-2 py-1 bg-black/5 dark:bg-white/5 rounded-full backdrop-blur-xl">
           {app.label}
         </span>
       )}
