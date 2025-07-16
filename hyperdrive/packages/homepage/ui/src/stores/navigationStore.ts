@@ -89,6 +89,8 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       const expectedSubdomain = generateSubdomain(app.package_name, app.publisher);
       const needsSubdomain = !currentHost.startsWith(expectedSubdomain);
 
+      console.log({ expectedSubdomain, needsSubdomain, currentHost });
+
       if (needsSubdomain) {
         // Check if this app requires a secure subdomain by testing for redirect
         const appUrl = app.path || `/app:${app.process}:${app.publisher}.os/`;

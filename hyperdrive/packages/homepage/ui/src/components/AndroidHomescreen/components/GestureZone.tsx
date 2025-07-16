@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
-import { BsChevronLeft } from 'react-icons/bs';
+import { BsChevronLeft, BsClock } from 'react-icons/bs';
 
 export const GestureZone: React.FC = () => {
   const { toggleRecentApps, runningApps, currentAppId, switchToApp, isRecentAppsOpen } = useNavigationStore();
@@ -76,8 +76,9 @@ export const GestureZone: React.FC = () => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {!isActive && <div className="bg-black/20 dark:bg-white/20 w-8 h-8 backdrop-blur-xl p-1 rounded-l-lg flex items-center justify-center self-end">
-          <BsChevronLeft className="text-lg" />
+        {!isActive && <div className="bg-black/20 dark:bg-white/20 h-8 backdrop-blur-xl px-1 py-6 rounded-l-xl flex items-center justify-center self-end gap-1">
+          <BsChevronLeft className="text-xs" />
+          <BsClock className="text-lg" />
         </div>}
       </div>
       {/* Desktop hint */}

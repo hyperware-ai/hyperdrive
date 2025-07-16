@@ -35,7 +35,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
 
   return (
     <div
-      className={classNames('app-icon relative flex flex-col items-center justify-center  rounded-2xl cursor-pointer select-none transition-all', {
+      className={classNames('app-icon relative flex gap-1 flex-col items-center justify-center  rounded-2xl cursor-pointer select-none transition-all', {
         'scale-95': isPressed,
         'scale-100': !isPressed,
         'animate-wiggle': isEditMode && isFloating,
@@ -61,7 +61,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
         </button>
       )}
 
-      <div className={classNames("rounded-xl w-16 h-16 max-w-[14vw] max-h-[14vw] overflow-hidden flex items-center justify-center shadow-lg", {
+      <div className={classNames("rounded-xl w-16 h-16 overflow-hidden flex items-center justify-center shadow-lg", {
         'mb-1': showLabel,
       })}>
         {app.base64_icon ? (
@@ -74,7 +74,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
       </div>
 
       {showLabel && (
-        <span className="text-xs text-center max-w-full truncate text-black dark:text-white drop-shadow-md mt-1">
+        <span className="text-xs text-center max-w-full truncate px-2 py-1 bg-black/5 dark:bg-white/5 rounded-full backdrop-blur-xl">
           {app.label}
         </span>
       )}

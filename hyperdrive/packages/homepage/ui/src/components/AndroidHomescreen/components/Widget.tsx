@@ -24,17 +24,22 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
   const padding = isMobile ? 5 : 10;
   const spacing = isMobile ? 5 : 10;
   const searchbarPadding = 50;
+  const gestureZoneWidth = 48;
+  const dockPadding = isMobile ? 90 : 106;
 
   const calculateSize = () => {
+    const verticalSpace = window.innerHeight - dockPadding - spacing - padding - searchbarPadding
+    const horizontalSpace = window.innerWidth - 2 * padding - gestureZoneWidth
+
     if (isMobile) {
       return {
-        width: window.innerWidth - 2 * padding,
-        height: (window.innerHeight * 0.67 - searchbarPadding - (totalWidgets - 1) * spacing) / totalWidgets
+        width: horizontalSpace,
+        height: (verticalSpace - (totalWidgets - 1) * spacing) / totalWidgets
       };
     } else {
       return {
-        width: (window.innerWidth - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing),
-        height: 0.67 * window.innerHeight - searchbarPadding
+        width: (horizontalSpace - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing),
+        height: verticalSpace
       };
     }
   };

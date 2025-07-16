@@ -300,11 +300,11 @@ export const HomeScreen: React.FC = () => {
 
         {/* Dock at bottom */}
         <div
-          className="dock-area absolute bottom-4 left-1/2 transform -translate-x-1/2"
+          className="dock-area absolute bottom-0 md:bottom-4 left-1/2 transform -translate-x-1/2"
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
-          <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-3xl p-3 flex items-center gap-2 shadow-2xl border border-white/20">
+          <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex items-center gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
             {/* Dock slots */}
             {Array.from({ length: 4 }).map((_, index) => {
               const app = dockAppsList[index];
@@ -375,7 +375,7 @@ export const HomeScreen: React.FC = () => {
             </button>
             <button
               onClick={toggleRecentApps}
-              className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
+              className="!hidden md:!flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
               <BsClock />
               <span className="text-xs">Recent</span>
