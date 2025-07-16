@@ -898,22 +898,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "caller-utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "futures-util",
- "hyperware_app_common",
- "once_cell",
- "process_macros",
- "serde",
- "serde_json",
- "uuid",
- "wit-bindgen 0.41.0",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1237,7 +1221,6 @@ name = "explorer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "caller-utils",
  "hyperprocess_macro",
  "hyperware_app_common",
  "md5",
