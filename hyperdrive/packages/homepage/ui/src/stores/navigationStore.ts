@@ -13,6 +13,8 @@ interface NavigationStore {
   toggleAppDrawer: () => void;
   toggleRecentApps: () => void;
   closeAllOverlays: () => void;
+  initBrowserBackHandling: () => void;
+  handleBrowserBack: (state: any) => void;
 }
 
 export const useNavigationStore = create<NavigationStore>((set, get) => ({
@@ -20,6 +22,48 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
   currentAppId: null,
   isAppDrawerOpen: false,
   isRecentAppsOpen: false,
+
+  // Initialize browser back button handling
+  initBrowserBackHandling: () => {
+    // Only add listener once
+    if (typeof window !== 'undefined' && !window.hasBackHandler) {
+      const handlePopState = (event: PopStateEvent) => {
+        get().handleBrowserBack(event.state);
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      window.hasBackHandler = true;
+
+      // Set initial state
+      window.history.replaceState({ type: 'homepage' }, '', window.location.href);
+    }
+  },
+
+  // Handle browser back button presses
+  handleBrowserBack: (state) => {
+    const { runningApps, currentAppId, isAppDrawerOpen, isRecentAppsOpen } = get();
+
+    // Close overlays first
+    if (isAppDrawerOpen || isRecentAppsOpen) {
+      set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
+      return;
+    }
+
+    // If we have a current app, go back to previous app or homepage
+    if (currentAppId && state?.type === 'app' && state?.appId !== currentAppId) {
+      const targetApp = runningApps.find(app => app.id === state.appId);
+      if (targetApp) {
+        set({ currentAppId: state.appId });
+      } else {
+        // App no longer running, go to homepage
+        set({ currentAppId: null });
+      }
+    } else if (currentAppId && state?.type === 'homepage') {
+      // Go back to homepage
+      set({ currentAppId: null });
+    }
+    // If already on homepage, let default browser behavior handle it
+  },
 
   openApp: async (app) => {
     console.log('openApp called with:', app);
@@ -44,6 +88,8 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
 
       const expectedSubdomain = generateSubdomain(app.package_name, app.publisher);
       const needsSubdomain = !currentHost.startsWith(expectedSubdomain);
+
+      console.log({ expectedSubdomain, needsSubdomain, currentHost });
 
       if (needsSubdomain) {
         // Check if this app requires a secure subdomain by testing for redirect
@@ -116,11 +162,24 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     }
 
     // Normal iframe behavior for non-localhost or same-subdomain apps
-    const { runningApps } = get();
+    const { runningApps, currentAppId } = get();
     const existingApp = runningApps.find(a => a.id === app.id);
 
+    // Add to browser history for back button support
+    if (typeof window !== 'undefined') {
+      window.history.pushState(
+        { type: 'app', appId: app.id, previousAppId: currentAppId },
+        '',
+        `#app-${app.id}`
+      );
+    }
+
     if (existingApp) {
-      set({ currentAppId: app.id, isAppDrawerOpen: false, isRecentAppsOpen: false });
+      set({
+        currentAppId: app.id,
+        isAppDrawerOpen: false,
+        isRecentAppsOpen: false
+      });
     } else {
       set({
         runningApps: [...runningApps, { ...app, openedAt: Date.now() }],
@@ -128,11 +187,6 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
         isAppDrawerOpen: false,
         isRecentAppsOpen: false,
       });
-    }
-
-    // add entry to browser history
-    if (app.path) {
-      window.history.pushState({}, '', app.path);
     }
   },
 
@@ -143,14 +197,53 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       ? (newRunningApps.length > 0 ? newRunningApps[newRunningApps.length - 1].id : null)
       : currentAppId;
 
+    // Update browser history when closing current app
+    if (currentAppId === appId && typeof window !== 'undefined') {
+      if (newCurrentApp) {
+        window.history.pushState(
+          { type: 'app', appId: newCurrentApp },
+          '',
+          `#app-${newCurrentApp}`
+        );
+      } else {
+        window.history.pushState({ type: 'homepage' }, '', '#');
+      }
+    }
+
     set({
       runningApps: newRunningApps,
       currentAppId: newCurrentApp,
     });
   },
 
-  switchToApp: (appId) => set({ currentAppId: appId, isRecentAppsOpen: false }),
+  switchToApp: (appId) => {
+    // Add to browser history when switching apps
+    if (typeof window !== 'undefined') {
+      window.history.pushState(
+        { type: 'app', appId, previousAppId: get().currentAppId },
+        '',
+        `#app-${appId}`
+      );
+    }
+
+    set({ currentAppId: appId, isRecentAppsOpen: false });
+  },
+
   toggleAppDrawer: () => set((state) => ({ isAppDrawerOpen: !state.isAppDrawerOpen, isRecentAppsOpen: false })),
   toggleRecentApps: () => set((state) => ({ isRecentAppsOpen: !state.isRecentAppsOpen, isAppDrawerOpen: false })),
-  closeAllOverlays: () => set({ isAppDrawerOpen: false, isRecentAppsOpen: false, currentAppId: null }),
+  closeAllOverlays: () => {
+    // Add to browser history when returning to homepage
+    if (typeof window !== 'undefined' && get().currentAppId) {
+      window.history.pushState({ type: 'homepage' }, '', '#');
+    }
+
+    set({ isAppDrawerOpen: false, isRecentAppsOpen: false, currentAppId: null });
+  },
 }));
+
+// Global type extension
+declare global {
+  interface Window {
+    hasBackHandler?: boolean;
+  }
+}

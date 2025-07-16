@@ -894,9 +894,21 @@ async fn login_with_password(
     use argon2::Argon2;
     use ring::signature::KeyPair;
 
-    let disk_keyfile: Vec<u8> = tokio::fs::read(home_directory_path.join(".keys"))
-        .await
-        .expect("could not read keyfile");
+    let keyfile_path = home_directory_path.join(".keys");
+    let disk_keyfile: Vec<u8> = match tokio::fs::read(&keyfile_path).await {
+        Ok(file) => file,
+        Err(e) => {
+            let path_display = keyfile_path.display();
+            if e.kind() == std::io::ErrorKind::NotFound {
+                eprintln!("Error: Cannot use --password flag because keyfile not found at expected location: {}", path_display);
+                eprintln!("You need to specify an existing keyfile first or use the registration flow (without --password) instead.");
+                std::process::exit(1);
+            } else {
+                eprintln!("Error reading keyfile at {}: {}", path_display, e);
+                std::process::exit(1);
+            }
+        }
+    };
 
     let (username, _, _, _, _, _) =
         serde_json::from_slice::<(String, Vec<String>, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>)>(

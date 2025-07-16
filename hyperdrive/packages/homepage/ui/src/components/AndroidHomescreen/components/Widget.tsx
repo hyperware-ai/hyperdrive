@@ -3,6 +3,7 @@ import type { HomepageApp } from '../../../types/app.types';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import { Draggable } from './Draggable';
 import classNames from 'classnames';
+import { BsX } from 'react-icons/bs';
 
 interface WidgetProps {
   app: HomepageApp;
@@ -23,17 +24,25 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
   const padding = isMobile ? 5 : 10;
   const spacing = isMobile ? 5 : 10;
   const searchbarPadding = 50;
+  const gestureZoneWidth = 48;
+  const dockPadding = isMobile ? 90 : 106;
 
   const calculateSize = () => {
+    const verticalSpace = window.innerHeight - dockPadding - spacing - padding - searchbarPadding
+    const horizontalSpace = window.innerWidth - 2 * padding - gestureZoneWidth
+    const iconHeight = 96;
+
     if (isMobile) {
       return {
-        width: window.innerWidth - 2 * padding,
-        height: (window.innerHeight * 0.67 - totalWidgets * spacing) / totalWidgets
+        width: horizontalSpace,
+        height: (verticalSpace - (totalWidgets - 1) * spacing) / totalWidgets - iconHeight
       };
     } else {
+      const naiveWidth = (horizontalSpace - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing);
+      const naiveHeight = verticalSpace - iconHeight;
       return {
-        width: (window.innerWidth - padding * totalWidgets) / totalWidgets,
-        height: 0.67 * window.innerHeight
+        width: Math.min(naiveWidth, 768),
+        height: Math.min(naiveHeight, 1024)
       };
     }
   };
@@ -136,7 +145,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
             }}
             className="clear thin w-3 h-3 !p-0"
           >
-            ×
+            <BsX />
           </button>
         </div>
 
