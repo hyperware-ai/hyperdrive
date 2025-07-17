@@ -1,0 +1,33 @@
+[dependencies]
+anyhow = "1.0"
+md5 = "0.7"
+process_macros = "0.1"
+serde_json = "1.0"
+serde_urlencoded = "0.7"
+tracing = "0.1.37"
+wit-bindgen = "0.42.1"
+
+[dependencies.hyperprocess_macro]
+git = "https://github.com/hyperware-ai/hyperprocess-macro"
+rev = "9836e2a"
+
+[dependencies.hyperware_app_common]
+git = "https://github.com/hyperware-ai/hyperprocess-macro"
+rev = "9836e2a"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0"
+
+[lib]
+crate-type = ["cdylib"]
+name = "explorer"
+path = "src/lib.rs"
+
+[package]
+edition = "2021"
+name = "explorer"
+version = "0.1.0"
+
+[package.metadata.component]
+package = "hyperware:process"

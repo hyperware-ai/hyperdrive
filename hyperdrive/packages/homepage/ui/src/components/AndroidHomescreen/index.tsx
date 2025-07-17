@@ -9,6 +9,9 @@ import { GestureZone } from './components/GestureZone';
 import PWAUpdateNotification from '../PWAUpdateNotification';
 import PWAInstallPrompt from '../PWAInstallPrompt';
 import './styles/animations.css';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
 
 export default function AndroidHomescreen() {
   const { setApps } = useAppStore();
@@ -20,7 +23,8 @@ export default function AndroidHomescreen() {
     toggleRecentApps,
     switchToApp,
     toggleAppDrawer,
-    closeAllOverlays
+    closeAllOverlays,
+    initBrowserBackHandling
   } = useNavigationStore();
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +35,7 @@ export default function AndroidHomescreen() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       // Single key shortcuts
-      switch(e.key.toLowerCase()) {
+      switch (e.key.toLowerCase()) {
         case 'a':
           e.preventDefault();
           if (!isAppDrawerOpen) toggleAppDrawer();
@@ -64,8 +68,11 @@ export default function AndroidHomescreen() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [runningApps, isRecentAppsOpen, isAppDrawerOpen, toggleRecentApps, toggleAppDrawer, switchToApp, closeAllOverlays]);
 
-  // Fetch apps from backend
+  // Fetch apps from backend and initialize browser back handling
   useEffect(() => {
+    // Initialize browser back button handling
+    initBrowserBackHandling();
+
     fetch('/apps', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
@@ -84,7 +91,7 @@ export default function AndroidHomescreen() {
         ]);
         setLoading(false);
       });
-  }, [setApps]);
+  }, [setApps, initBrowserBackHandling]);
 
   if (loading) {
     return (

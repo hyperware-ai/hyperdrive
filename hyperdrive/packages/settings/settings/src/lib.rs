@@ -17,7 +17,7 @@ use std::{collections::HashMap, str::FromStr, vec};
 const ICON: &str = include_str!("icon");
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "settings-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize],
@@ -588,8 +588,20 @@ fn make_widget(state: &SettingsState) -> String {
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/hyperware.css">
+        <style>
+                @media (prefers-color-scheme: dark) {{
+                    body {{
+                        background-color: black;
+                        color: white;
+                    }}
+                }}
+
+        </style>
+
     </head>
-    <body style="margin: 0; padding: 8px; width: 100%; height: 100%; padding-bottom: 30px;">
+    <body
+    style="margin: 0; padding: 8px; width: 100%; height: 100%; padding-bottom: 30px;"
+     >
         <article id="onchain-id">
             <h3>{}</h3>
             <details style="word-wrap: break-word;">
@@ -624,9 +636,9 @@ fn make_widget(state: &SettingsState) -> String {
 
         <br />
 
-        <button 
-            id="refresh" 
-            onclick="this.innerHTML='⌛'; fetch('/settings:settings:sys/refresh').then(() => setTimeout(() => window.location.reload(), 1000))" 
+        <button
+            id="refresh"
+            onclick="this.innerHTML='⌛'; fetch('/settings:settings:sys/refresh').then(() => setTimeout(() => window.location.reload(), 1000))"
         >
             <span style="font-size: 1.5em;">⟳</span>
             <span>refresh</span>

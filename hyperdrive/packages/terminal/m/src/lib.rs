@@ -3,7 +3,7 @@ use hyperware_process_lib::{println, script, Address, Request, SendErrorKind};
 use regex::Regex;
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "process-v1",
 });
 

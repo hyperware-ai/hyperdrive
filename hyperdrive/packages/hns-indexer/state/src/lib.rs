@@ -2,7 +2,7 @@ use crate::hyperware::process::hns_indexer::{GetStateRequest, IndexerRequest, In
 use hyperware_process_lib::{eth, script, Address, Message, Request};
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "hns-indexer-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],

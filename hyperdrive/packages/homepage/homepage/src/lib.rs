@@ -14,7 +14,7 @@ const DEFAULT_FAVES: &[&str] = &["main:app-store:sys", "settings:settings:sys"];
 type PersistedAppOrder = HashMap<String, u32>;
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "homepage-sys-v1",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize],
@@ -137,6 +137,26 @@ fn init(our: Address) {
             include_bytes!("../../pkg/ui/NHaasGroteskTXPro-55Rg.woff").into(),
         )
         .expect("failed to bind /NHaasGroteskTXPro-55Rg.woff");
+
+    http_server
+        .bind_http_static_path(
+            "/Logomark%20Iris.svg",
+            false, // Logomark Iris.svg is not auth'd so that PWA works properly
+            false,
+            Some("image/svg+xml".to_string()),
+            include_str!("../../pkg/ui/Logomark Iris.svg").into(),
+        )
+        .expect("failed to bind /Logomark Iris.svg");
+
+    http_server
+        .bind_http_static_path(
+            "/Logo%20Iris.svg",
+            false, // Logo Iris.svg is not auth'd so that PWA works properly
+            false,
+            Some("image/svg+xml".to_string()),
+            include_str!("../../pkg/ui/Logo Iris.svg").into(),
+        )
+        .expect("failed to bind /Logo Iris.svg");
 
     http_server
         .bind_http_static_path(
@@ -454,7 +474,6 @@ fn make_clock_widget() -> String {
             .clock {{
                 width: 200px;
                 height: 200px;
-                border: 8px solid var(--text);
                 border-radius: 50%;
                 position: relative;
                 margin: 20px auto;
@@ -481,7 +500,7 @@ fn make_clock_widget() -> String {
                 width: 2px;
                 height: 90px;
                 margin-left: -1px;
-                background-color: var(--tertiary-color);
+                background: #ff0000;
             }}
             .center {{
                 width: 12px;
@@ -491,15 +510,16 @@ fn make_clock_widget() -> String {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
+                background-color: white;
             }}
             .marker {{
                 position: absolute;
                 width: 2px;
                 height: 4px;
-                background: light-dark(var(--off-black), var(--off-white));
                 left: 50%;
                 margin-left: -1px;
                 transform-origin: 50% 100px;
+                background: white;
             }}
             .marker.primary {{
                 width: 3px;
@@ -510,15 +530,43 @@ fn make_clock_widget() -> String {
                 font-family: var(--font-family-main);
                 margin-top: 1em;
                 font-size: 0.7em;
-                color: light-dark(var(--off-black), var(--off-white));
+                color: light-dark(black, white);
                 position: absolute;
-                width:100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: fit-content;
                 text-align: center;
                 bottom: 40px;
+                background-color: white;
+                padding: 0.25em 0.5em;
+                border-radius: 0.5em;
+                max-width: fit-content;
+            }}
+            @media (prefers-color-scheme: dark) {{
+                body {{
+                    background-color: #000;
+                }}
+                .clock {{
+                    background: white;
+                    border: white;
+                }}
+                .hand.hour, 
+                .hand.minute  {{
+                    background-color: black;
+                }}
+                .marker {{
+                    background-color: black;
+                }}
+                .center {{
+                    background-color: black;
+                }}
+                .digital-time {{
+                    background-color: black;
+                }}
             }}
         </style>
     </head>
-    <body style="margin: 0; overflow: hidden;">
+    <body style="margin: 0; overflow: hidden;" >
         <div class="clock">
             <div class="marker primary" style="transform: rotate(0deg)"></div>
             <div class="marker" style="transform: rotate(30deg)"></div>

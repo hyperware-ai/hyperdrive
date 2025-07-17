@@ -1,6 +1,12 @@
+use crate::http::server_types::{HttpServerError, WebSocketSenders};
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;
-use lib::{core::ProcessId, types::http_server};
+use lib::types::{
+    core::{
+        Address, KernelMessage, Message, MessageSender, ProcessId, Response, HTTP_SERVER_PROCESS_ID,
+    },
+    http_server,
+};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::HashMap;
@@ -157,4 +163,57 @@ pub fn is_behind_reverse_proxy(headers: &warp::http::HeaderMap) -> bool {
         }
     }
     return false;
+}
+
+pub async fn handle_close_websocket(
+    id: u64,
+    source: &Address,
+    send_to_loop: &MessageSender,
+    ws_senders: WebSocketSenders,
+    channel_id: u32,
+) -> bool {
+    let Some(got) = ws_senders.get(&channel_id) else {
+        return false;
+    };
+
+    if got.value().0 != source.process {
+        send_action_response(
+            id,
+            source.clone(),
+            send_to_loop,
+            Err(HttpServerError::WsChannelNotFound),
+        )
+        .await;
+        return true;
+    }
+
+    let _ = got.value().1.send(warp::ws::Message::close()).await;
+    ws_senders.remove(&channel_id);
+
+    return false;
+}
+
+pub async fn send_action_response(
+    id: u64,
+    target: Address,
+    send_to_loop: &MessageSender,
+    result: Result<(), HttpServerError>,
+) {
+    KernelMessage::builder()
+        .id(id)
+        .source(("our", HTTP_SERVER_PROCESS_ID.clone()))
+        .target(target)
+        .message(Message::Response((
+            Response {
+                inherit: false,
+                body: serde_json::to_vec(&result).unwrap(),
+                metadata: None,
+                capabilities: vec![],
+            },
+            None,
+        )))
+        .build()
+        .unwrap()
+        .send(send_to_loop)
+        .await;
 }

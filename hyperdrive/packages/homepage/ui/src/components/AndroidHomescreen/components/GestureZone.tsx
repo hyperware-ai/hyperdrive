@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
+import classNames from 'classnames';
+import { BsChevronLeft, BsClock } from 'react-icons/bs';
 
 export const GestureZone: React.FC = () => {
-  const { toggleRecentApps, runningApps, currentAppId, switchToApp } = useNavigationStore();
+  const { toggleRecentApps, runningApps, currentAppId, switchToApp, isRecentAppsOpen } = useNavigationStore();
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [isActive, setIsActive] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
 
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -52,22 +54,36 @@ export const GestureZone: React.FC = () => {
     toggleRecentApps();
   };
 
+  useEffect(() => {
+    if (!isRecentAppsOpen) {
+      setTouchStart(null);
+      setIsActive(false);
+    }
+  }, [isRecentAppsOpen]);
+
   return (
     <>
       <div
-        className={`fixed right-0 top-0 w-8 h-full z-40 transition-all cursor-pointer
-          ${isActive ? 'bg-white/20 w-12' : ''}
-          ${isHovered && !isActive ? 'bg-gradient-to-l from-white/10 to-transparent' : ''}`}
+        className={classNames("gesture-zone fixed right-0 w-12 z-40 transition-transform cursor-pointer",
+          {
+            'bg-radial-[at_100%_50%] from-black/20 dark:from-white/20 to-transparent w-12 h-full top-0': isActive,
+            'flex flex-col place-items-center place-content-center  h-1/2 top-1/4': !isActive
+          })}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-      />
+      >
+        {!isActive && <div className="bg-black/20 dark:bg-white/20 h-8 backdrop-blur-xl px-1 py-6 rounded-l-xl flex items-center justify-center self-end gap-1">
+          <BsChevronLeft className="text-xs" />
+          <BsClock className="text-lg" />
+        </div>}
+      </div>
       {/* Desktop hint */}
-      {isHovered && !isActive && (
-        <div className="fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/90 backdrop-blur text-white px-4 py-3 rounded-lg text-sm pointer-events-none z-50 shadow-xl">
+      {/* {isHovered && !isActive && (
+        <div className="hidden md:block fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/90 backdrop-blur text-white px-4 py-3 rounded-lg text-sm pointer-events-none z-50 shadow-xl">
           <div className="flex items-center gap-2 mb-1">
             <kbd className="px-2 py-1 bg-white/20 rounded text-xs">Click</kbd>
             <span>or</span>
@@ -83,7 +99,7 @@ export const GestureZone: React.FC = () => {
             <span>Home</span>
           </div>
         </div>
-      )}
+      )} */}
     </>
   );
 };

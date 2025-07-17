@@ -12,13 +12,15 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",
+    "@tailwindcss/vite": "^4.1.11",
     "classnames": "^2.5.1",
+    "dayjs": "^1.11.13",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
     "react-icons": "^5.1.0",
     "react-router-dom": "^6.23.0",
-    "unocss": "^0.59.4",
+    "tailwindcss": "^4.1.11",
     "zustand": "^4.5.2"
   },
   "devDependencies": {

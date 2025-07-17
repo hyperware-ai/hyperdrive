@@ -1,0 +1,193 @@
+.share-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-dialog {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px var(--shadow-color);
+  border: 1px solid var(--border-color);
+}
+
+.share-dialog h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  word-break: break-word;
+  font-size: 1.2rem;
+}
+
+.share-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.share-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.share-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--link-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s;
+}
+
+.share-button:hover:not(:disabled) {
+  background-color: var(--link-hover);
+}
+
+.share-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.share-link-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.share-link-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.share-link-container button {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.share-link-container button:hover {
+  background-color: var(--bg-hover);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  gap: 8px;
+}
+
+.dialog-actions button {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dialog-actions button:hover {
+  background-color: var(--bg-hover);
+}
+
+.loading-container {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.share-success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.qr-container {
+  margin-top: 20px;
+  text-align: center;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.qr-code canvas,
+.qr-code img {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  max-width: 200px;
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+  .share-dialog {
+    padding: 16px;
+    width: 95%;
+  }
+  
+  .share-dialog h3 {
+    font-size: 1rem;
+  }
+  
+  .share-link-input {
+    font-size: 11px;
+    padding: 6px;
+  }
+  
+  .share-link-container {
+    flex-direction: column;
+  }
+  
+  .share-link-container button {
+    width: 100%;
+  }
+  
+  .qr-code canvas,
+  .qr-code img {
+    max-width: 150px;
+  }
+  
+  .share-success-message {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+}

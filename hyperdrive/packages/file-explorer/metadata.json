@@ -1,0 +1,18 @@
+{
+  "name": "file-explorer",
+  "description": "File Explorer & Sharing",
+  "image": "https://raw.githubusercontent.com/hyperware-ai/hyperdrive/refs/heads/main/ui/public/assets/file-explorer-256.png",
+  "properties": {
+    "package_name": "file-explorer",
+    "current_version": "0.1.0",
+    "publisher": "sys",
+    "mirrors": [],
+    "code_hashes": {
+      "0.1.0": ""
+    },
+    "wit_version": 1,
+    "dependencies": []
+  },
+  "external_url": "https://hyperware.ai",
+  "animation_url": ""
+}

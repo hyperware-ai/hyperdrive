@@ -1,0 +1,30 @@
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  background-color: var(--bg-primary);
+  min-height: 0; /* Important for flex children with overflow */
+}
+
+.file-list-loading,
+.file-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.file-list-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}

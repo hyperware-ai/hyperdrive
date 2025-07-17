@@ -1,3 +1,240 @@
+@import "tailwindcss";
+
+/* Variables */
+:root {
+  color-scheme: light dark;
+  --neon-green: #dcff71;
+  --neon-green-light: #dcff7188;
+  --neon-green-xlight: #dcff7144;
+  --iris: #004fff;
+  --iris-light: #004fff88;
+  --iris-xlight: #004fff44;
+  --stone: #353534;
+  --black: #111111;
+  --black-light: #11111188;
+  --black-xlight: #11111111;
+  --tasteful-dark: var(--black);
+  --white: #f6f6f6;
+  --white-light: #f6f6f688;
+  --white-xlight: #f6f6f611;
+  --magenta: #bf1363;
+  --orange: #dd6e42;
+  --off-white: var(--white);
+  --off-black: var(--stone);
+  --adaptive-gray: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+
+  --primary-color: var(--neon-green);
+  --primary-light: var(--neon-green-light);
+  --primary-xlight: var(--neon-green-xlight);
+  --secondary-color: var(--iris);
+  --secondary-light: var(--iris-light);
+  --secondary-xlight: var(--iris-xlight);
+  --tertiary-color: var(--orange);
+  --quaternary-color: var(--magenta);
+
+  --link-color: light-dark(var(--secondary-color), var(--primary-color));
+
+  --font-family-main: 'Neue Haas Grotesk', monospace;
+
+  /* Add modern CSS variables */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --button-border-width: 2px;
+}
+
+
+@theme {
+  --color-iris: var(--iris);
+  --color-iris-light: var(--iris-light);
+  --color-iris-xlight: var(--iris-xlight);
+  --color-neon: var(--neon-green);
+  --color-neon-light: var(--neon-green-light);
+  --color-neon-xlight: var(--neon-green-xlight);
+  --color-stone: var(--stone);
+  --color-black: var(--black);
+  --color-black-light: var(--black-light);
+}
+
+@font-face {
+  font-family: 'chaneyextended';
+  src: url('/chaneyextended.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/ClashDisplay-Variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/NHaasGroteskTXPro-55Rg.woff') format('woff');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/NHaasGroteskTXPro-75Bd.woff') format('woff');
+  font-weight: 700;
+}
+
+html,
+body {
+  font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  margin: 0;
+  font-family: 'Clash Display', 'Neue Haas Grotesk', sans-serif;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+h4 {
+  font-size: 1.125rem;
+}
+
+h6 {
+  font-size: 0.875rem;
+}
+
+button,
+.button {
+  @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
+
+  &.clear {
+    @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
+  }
+
+  &.thin {
+    @apply px-2 py-1;
+  }
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+input {
+  @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
+
+}
+
+input,
+textarea,
+select {
+  transition: all var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  @apply outline-2 outline-neon outline-offset-2;
+  animation: shine 0.4s ease-out;
+  background-size: 200% 100%;
+  background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
+}
+
+@keyframes shine {
+  0% {
+    background-position: 200% 0%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.display {
+  font-family: 'chaneyextended', sans-serif;
+}
+
+.prose {
+  font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+.clash {
+  font-family: 'Clash Display', sans-serif;
+}
+
+pre {
+  white-space: pre-wrap;
+}
+
+a {
+  @apply text-iris dark:text-neon hover:underline;
+}
+
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
 header {
   background-color: light-dark(var(--white), var(--tasteful-dark));
   border-color: light-dark(var(--tasteful-dark), var(--off-white));

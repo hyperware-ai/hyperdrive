@@ -17,7 +17,7 @@ use std::{
 };
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     world: "hns-indexer-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
@@ -30,6 +30,16 @@ const SUBSCRIPTION_TIMEOUT_S: u64 = 60;
 //  - ~ block time on Base
 const DELAY_MS: u64 = 2_000;
 const CHECKPOINT_MS: u64 = 5 * 60 * 1_000; // 5 minutes
+
+#[cfg(not(feature = "simulation-mode"))]
+const DEFAULT_NODES: &[&str] = &[
+    "us-cacher-1.hypr",
+    "eu-cacher-1.hypr",
+    "nick.hypr",
+    "nick1udwig.os",
+];
+#[cfg(feature = "simulation-mode")]
+const DEFAULT_NODES: &[&str] = &["fake.os"];
 
 type PendingNotes = BTreeMap<u64, Vec<(String, String, eth::Bytes, u8)>>;
 
@@ -795,7 +805,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     // if block in state is < current_block, get logs from that part.
     info!("syncing old logs from block: {}", state.last_block);
 
-    let nodes: HashSet<String> = ["nick.hypr".to_string()].into_iter().collect();
+    let nodes: HashSet<String> = DEFAULT_NODES.iter().map(|s| s.to_string()).collect();
     state.fetch_and_process_logs(nodes);
 
     // set a timer tick so any pending logs will be processed

@@ -16,7 +16,7 @@ use hyperware_process_lib::{
 };
 
 wit_bindgen::generate!({
-    path: "target/wit",
+    path: "../target/wit",
     generate_unused_types: true,
     world: "app-store-sys-v1",
     additional_derives: [PartialEq, serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],

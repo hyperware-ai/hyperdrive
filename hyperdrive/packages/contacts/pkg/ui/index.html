@@ -11,135 +11,11 @@
     <script>
         document.title = "contacts - " + window.our.node;
     </script>
-    <style>
-        body {
-            background-color: #004fff;
-        }
-
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6 {
-            font-family: 'Clash Display', sans-serif;
-            font-weight: 500;
-        }
-
-        p,
-        a,
-        li {
-            font-family: 'Neue Haas Grotesk', sans-serif;
-        }
-
-        #title {
-            display: flex;
-            align-items: center;
-            padding: 20px;
-            max-width: 720px;
-            min-width: 300px;
-            margin: 0 auto;
-            color: #fff;
-        }
-
-        #title h1 {
-            margin: 0;
-            flex-grow: 1;
-            text-align: right;
-        }
-
-        #title button {
-            margin-right: 20px;
-        }
-
-        #edit {
-            max-width: 720px;
-        }
-
-        main {
-            position: relative;
-            margin: 0 auto;
-            padding: 20px;
-            width: 100%;
-            max-width: 720px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            z-index: 1;
-        }
-
-        #contacts {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            list-style: none;
-        }
-
-        .contact {
-            padding: 10px;
-            border: 1px solid var(--neon-green);
-            border-radius: 5px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background-color: var(--white);
-        }
-
-        .contact h3 {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .contact ul {
-            list-style: none;
-            max-width: 100%;
-            min-width: 0;
-        }
-
-        .contact ul li {
-            font-size: 1em;
-        }
-
-        form.delete-contact {
-            margin-left: auto;
-        }
-
-        .delete-contact button {
-
-            background-color: transparent !important;
-            color: var(--magenta);
-        }
-
-        form.add-field {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .remove-field {
-            background-color: var(--tasteful-red);
-            font-size: 0.8em;
-            padding: 3px 10px;
-        }
-
-        input[type="text"] {
-            background-color: #0001;
-            border: 1px solid var(--neon-green);
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 1em;
-            font-family: 'Neue Haas Grotesk', sans-serif;
-            font-weight: 500;
-            font-style: normal;
-        }
-    </style>
 </head>
 
-<body>
-    <svg width="393" height="356" viewBox="0 0 393 356" fill="none" xmlns="http://www.w3.org/2000/svg"
-        style="position: absolute; bottom: 0; left: 0; width: 100%;  background-position: center; background-size: cover; pointer-events: none; z-index: 0;">
+<body class="bg-iris text-white">
+    <svg id="large-background" viewBox="0 0 393 356" fill="none" xmlns="http://www.w3.org/2000/svg"
+        class="absolute bottom-0 left-0 w-screen  bg-center bg-cover pointer-events-none z-0">
         <g clip-path="url(#clip0_1483_2725)">
             <path
                 d="M339.268 685.316L339.268 535.649L454.813 461.579L454.813 396.535L512.8 359.361C533.086 346.359 559.152 346.359 579.438 359.361L658.066 409.776"
@@ -163,19 +39,11 @@
             </clipPath>
         </defs>
     </svg>
-    <span id="title">
-        <button id="back-button"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512"
-                height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-                <path
-                    d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z">
-                </path>
-            </svg></button>
-        <h1>contacts</h1>
-    </span>
-    <main>
-        <?xml version="1.0" encoding="UTF-8"?>
+    <div
+        class="flex flex-col items-center max-w-md mx-auto grow self-stretch gap-4 md:gap-8 p-4 relative z-10 rounded bg-iris">
+        <h1 class="text-2xl font-bold prose" style="align-self: start;">Contacts</h1>
         <svg id="Hyperware Logo" data-name="Hyperware Logo" xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 622.27 595.09" style="width: 64px; margin: 0 auto;">
+            viewBox="0 0 622.27 595.09" style="width: 64px;">
             <defs>
                 <style>
                     .cls-1 {
@@ -208,19 +76,19 @@
                 </g>
             </g>
         </svg>
-        <article id="edit">
-            <form id="add-contact">
-                <input type="text" name="node" placeholder="node name (e.g. my-friend.os)">
-                <button type="submit">add new contact</button>
-            </form>
-        </article>
+        <p class="text-sm text-center opacity-50">
+            Add a new contact by entering their node name. Contacts are stored locally on your device, and they can have
+            any number of "fields" (e.g. name, email, phone number, etc).
+        </p>
+        <form id="add-contact" class="flex flex-col gap-2 items-stretch self-stretch    ">
+            <input type="text" name="node" placeholder="node name (e.g. my-friend.os)">
+            <button type="submit">add new contact</button>
+        </form>
 
-        <article id="contacts-article">
-            <ul id="contacts"></ul>
-        </article>
+        <ul id="contacts" class="flex flex-col gap-4 items-stretch self-stretch"></ul>
+    </div>
 
-        <script src="/contacts:contacts:sys/script.js"></script>
-    </main>
+    <script src="/contacts:contacts:sys/script.js"></script>
 </body>
 
 </html>

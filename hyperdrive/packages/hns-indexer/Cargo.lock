@@ -1357,7 +1357,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "get_block"
+name = "get-block"
 version = "0.1.0"
 dependencies = [
  "hyperware_process_lib",
@@ -1984,7 +1984,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "node_info"
+name = "node-info"
 version = "0.1.0"
 dependencies = [
  "hyperware_process_lib",

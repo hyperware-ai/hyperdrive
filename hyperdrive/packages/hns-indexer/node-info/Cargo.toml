@@ -1,5 +1,5 @@
 [package]
-name = "node_info"
+name = "node-info"
 version = "0.1.0"
 edition = "2021"
 

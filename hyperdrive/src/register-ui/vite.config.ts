@@ -1,14 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill'
-import UnoCSS from '@unocss/vite'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [
     NodeGlobalsPolyfillPlugin({
       buffer: true
     }),
-    UnoCSS(),
+    tailwindcss(),
     react(),
   ],
   server: {
