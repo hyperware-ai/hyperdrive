@@ -2890,6 +2890,18 @@
             border-bottom-right-radius: 0
         }
 
+        .backdrop-blur-xl {
+            backdrop-filter: blur(16px);
+        }
+
+        .bg-black\/10 {
+            background-color: var(--color-black) / 10;
+        }
+
+        .bg-white\/10 {
+            background-color: var(--color-white) / 10;
+        }
+
         .bg-iris,
         .bg-iris\/50 {
             background-color: var(--color-iris)

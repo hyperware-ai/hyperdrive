@@ -104,7 +104,7 @@ function App() {
       >
         <Router>
           <LargeBackgroundVector />
-          <main className="relative z-10 bg-white p-4 rounded-lg dark:bg-black max-w-md">
+          <main className="relative z-10 bg-white/10 p-4 rounded-lg dark:bg-black/10 max-w-md backdrop-blur-xl">
             <HyperwareLogo className="w-48 h-48 mb-8 mx-auto" />
             <Routes>
               <Route path="/" element={navigateToLogin

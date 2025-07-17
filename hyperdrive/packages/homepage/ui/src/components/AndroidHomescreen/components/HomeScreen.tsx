@@ -27,11 +27,16 @@ export const HomeScreen: React.FC = () => {
     if (isInitialized) return;
     // add appstore, contacts, and settings to the homepage on initial load
     setIsInitialized(true);
-    addToHomeScreen("main:app-store:sys");
-    addToHomeScreen("contacts:contacts:sys");
-    addToHomeScreen("settings:settings:sys");
+    // default widgets
+    // addToHomeScreen("main:app-store:sys");
+    // addToHomeScreen("contacts:contacts:sys");
+    // addToHomeScreen("settings:settings:sys");
+    addToHomeScreen("homepage:homepage:sys"); // actually the clock widget
+
+    // default dock apps
     addToDock("settings:settings:sys", 0);
-    // addToHomeScreen("homepage:homepage:sys"); // actually the clock widget
+    addToDock("main:app-store:sys", 1);
+
     setBackgroundImage('/large-background-vector.svg');
   }, [isInitialized]);
 
@@ -404,10 +409,20 @@ export const HomeScreen: React.FC = () => {
         )}
 
         {/* Edit mode toggle and widget settings */}
-        <div className="absolute top-2 right-2 flex items-center gap-2">
+        <div className="absolute top-2 right-2 left-2 flex items-center gap-2">
+          <img
+            src="/Logomark Iris.svg"
+            alt="Hyperdrive"
+            className="h-8 md:hidden"
+          />
+          <img
+            src="/Logo Iris.svg"
+            alt="Hyperdrive"
+            className="h-8 hidden md:block"
+          />
 
           {!isEditMode && <>
-            <div className="flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
+            <div className="ml-auto flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
               <BsSearch className="opacity-50" />
               <input
                 type="text"

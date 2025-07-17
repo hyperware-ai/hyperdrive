@@ -25,7 +25,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
   const spacing = isMobile ? 5 : 10;
   const searchbarPadding = 50;
   const gestureZoneWidth = 48;
-  const dockPadding = isMobile ? 90 : 106;
+  const dockPadding = isMobile ? 90 : 112;
 
   const calculateSize = () => {
     const verticalSpace = window.innerHeight - dockPadding - spacing - padding - searchbarPadding
@@ -35,14 +35,14 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
     if (isMobile) {
       return {
         width: horizontalSpace,
-        height: (verticalSpace - (totalWidgets - 1) * spacing) / totalWidgets - iconHeight
+        height: (verticalSpace - (totalWidgets - 1) * spacing) / totalWidgets - iconHeight - padding
       };
     } else {
       const naiveWidth = (horizontalSpace - padding * totalWidgets) / totalWidgets - ((totalWidgets - 1) * spacing);
-      const naiveHeight = verticalSpace - iconHeight;
+      const naiveHeight = verticalSpace - iconHeight - padding;
       return {
-        width: Math.min(naiveWidth, 768),
-        height: Math.min(naiveHeight, 1024)
+        width: Math.min(naiveWidth, 600, window.innerWidth / 3),
+        height: Math.min(naiveHeight, 800)
       };
     }
   };
@@ -55,7 +55,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
       // Column layout on mobile
       return {
         x: padding,
-        y: padding + (index * (size.height + spacing)) + searchbarPadding
+        y: padding + (index * (size.height + (index ? spacing : 0))) + searchbarPadding
       };
     } else {
       // Row layout on desktop
