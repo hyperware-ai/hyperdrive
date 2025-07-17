@@ -140,7 +140,10 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
           <span className="text-black dark:text-white/90 text-sm font-medium">{app.label}</span>
           <button
             onClick={(e) => {
-              e.stopPropagation();
+              try {
+                e.stopPropagation();
+              } catch { }
+
               toggleWidget(app.id);
             }}
             className="clear thin w-3 h-3 !p-0"

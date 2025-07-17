@@ -413,14 +413,13 @@ export const HomeScreen: React.FC = () => {
           <img
             src="/Logomark Iris.svg"
             alt="Hyperdrive"
-            className="h-8 md:hidden"
+            className="h-8 md:hidden self-start"
           />
           <img
             src="/Logo Iris.svg"
             alt="Hyperdrive"
-            className="h-8 hidden md:block"
+            className="h-8 hidden md:block self-start"
           />
-
           {!isEditMode && <>
             <div className="ml-auto flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
               <BsSearch className="opacity-50" />
@@ -442,7 +441,7 @@ export const HomeScreen: React.FC = () => {
 
           {isEditMode && (
             <div className="flex flex-col items-end gap-2 grow">
-              <div className="flex items-center justify-end gap-2">
+              <div className={"flex items-center justify-end gap-2"}>
                 <button
                   onClick={() => setShowBackgroundSettings(!showBackgroundSettings)}
                   className={classNames(" text-sm", {
@@ -475,7 +474,9 @@ export const HomeScreen: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex items-start gap-2">
+              <div className={classNames("flex items-start gap-2", {
+                hidden: !showBackgroundSettings && !showWidgetSettings
+              })}>
                 {/* Background Settings */}
                 {showBackgroundSettings && (
                   <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
