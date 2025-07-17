@@ -150,6 +150,16 @@ fn init(our: Address) {
 
     http_server
         .bind_http_static_path(
+            "/Logo%20Iris.svg",
+            false, // Logo Iris.svg is not auth'd so that PWA works properly
+            false,
+            Some("image/svg+xml".to_string()),
+            include_str!("../../pkg/ui/Logo Iris.svg").into(),
+        )
+        .expect("failed to bind /Logo Iris.svg");
+
+    http_server
+        .bind_http_static_path(
             "/NHaasGroteskTXPro-75Bd.woff",
             false, // icon-180.png is not auth'd so that PWA works properly
             false,
@@ -522,27 +532,37 @@ fn make_clock_widget() -> String {
                 font-size: 0.7em;
                 color: light-dark(black, white);
                 position: absolute;
-                width:100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: fit-content;
                 text-align: center;
                 bottom: 40px;
+                background-color: white;
+                padding: 0.25em 0.5em;
+                border-radius: 0.5em;
+                max-width: fit-content;
             }}
             @media (prefers-color-scheme: dark) {{
                 body {{
                     background-color: #000;
                 }}
-                    .clock {{
-                background: white;
-                border: white;
-                    }}
-                    .hand.hour, .hand.minute  {{
-                        background-color: black;
-                    }}
-                    .marker {{
-                        background-color: black;
-                    }}
-                    .center {{
-                        background-color: black;
-                    }}
+                .clock {{
+                    background: white;
+                    border: white;
+                }}
+                .hand.hour, 
+                .hand.minute  {{
+                    background-color: black;
+                }}
+                .marker {{
+                    background-color: black;
+                }}
+                .center {{
+                    background-color: black;
+                }}
+                .digital-time {{
+                    background-color: black;
+                }}
             }}
         </style>
     </head>
