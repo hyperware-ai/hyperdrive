@@ -6,12 +6,12 @@ import { Draggable } from './Draggable';
 import { AppIcon } from './AppIcon';
 import { Widget } from './Widget';
 import type { HomepageApp } from '../../../types/app.types';
-import { BsCheck, BsClock, BsGridFill, BsImage, BsLayers, BsSearch } from 'react-icons/bs';
+import { BsCheck, BsClock, BsGridFill, BsImage, BsLayers, BsSearch, BsX } from 'react-icons/bs';
 import classNames from 'classnames';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
-  const { homeScreenApps, dockApps, appPositions, widgetSettings, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock, isInitialized, setIsInitialized, addToHomeScreen } = usePersistenceStore();
+  const { homeScreenApps, dockApps, appPositions, widgetSettings, removeFromHomeScreen, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock, isInitialized, setIsInitialized, addToHomeScreen } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { toggleAppDrawer, toggleRecentApps } = useNavigationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
@@ -285,6 +285,14 @@ export const HomeScreen: React.FC = () => {
                 onMove={(pos) => moveItem(app.id, pos)}
                 isEditMode={true}
               >
+                {isEditMode && (
+                  <button
+                    onClick={() => removeFromHomeScreen(app.id)}
+                    className="absolute -top-2 -right-2 w-6 h-6 !p-0 !bg-red-500 !text-white !rounded-full  text-xs z-10 shadow-lg hover:!bg-red-600 transition-colors z-10"
+                  >
+                    <BsX />
+                  </button>
+                )}
                 <div
                   onTouchStart={handleTouchStart(app.id)}
                   onTouchMove={handleTouchMove}
