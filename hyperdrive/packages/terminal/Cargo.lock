@@ -1432,6 +1432,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "get-providers"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2753,6 +2764,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "schmecho"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "schnellru"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2852,9 +2871,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.134"
+version = "1.0.141"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d00f4175c42ee48b15416f6193a959ba3a0d67fc699a0db9ad12df9f83991c7d"
+checksum = "30b9eff21ebe718216c6ec64e1d9ac57087aad11efc64e32002bce4a0d4c03d3"
 dependencies = [
  "itoa",
  "memchr",

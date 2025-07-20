@@ -73,6 +73,10 @@ impl VersionedState {
                     ProcessId::new(Some("echo"), "terminal", "sys"),
                 ),
                 (
+                    "schmecho".to_string(),
+                    ProcessId::new(Some("schmecho"), "terminal", "sys"),
+                ),
+                (
                     "help".to_string(),
                     ProcessId::new(Some("help"), "terminal", "sys"),
                 ),
@@ -95,6 +99,10 @@ impl VersionedState {
                 (
                     "net-diagnostics".to_string(),
                     ProcessId::new(Some("net-diagnostics"), "terminal", "sys"),
+                ),
+                (
+                    "get-providers".to_string(),
+                    ProcessId::new(Some("get-providers"), "terminal", "sys"),
                 ),
                 (
                     "peer".to_string(),

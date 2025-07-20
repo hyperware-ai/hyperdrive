@@ -1,0 +1,17 @@
+[package]
+name = "schmecho"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+simulation-mode = []
+
+[dependencies]
+hyperware_process_lib = "2.0.0"
+wit-bindgen = "0.42.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "hyperware:process"
