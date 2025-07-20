@@ -355,11 +355,15 @@ async fn handle_message(
     km: KernelMessage,
     caps_oracle: &CapMessageSender,
 ) -> Result<(), EthError> {
-    verbose_print(&state.print_tx, &format!("eth: received message from {:?}", km.source)).await;
+    verbose_print(
+        &state.print_tx,
+        &format!("eth: received message from {:?}", km.source),
+    )
+    .await;
     //verbose_print(&state.print_tx, &format!("eth: message body length: {}", req.body.len())).await;
 
     //let Ok(req) = serde_json::from_slice::<IncomingReq>(&req.body) else {
-        // Add this line before returning the error:
+    // Add this line before returning the error:
     //    verbose_print(&state.print_tx, &format!("eth: failed to parse request body: {:?}", String::from_utf8_lossy(&req.body))).await;
     //    return Err(EthError::MalformedRequest);
     //};
