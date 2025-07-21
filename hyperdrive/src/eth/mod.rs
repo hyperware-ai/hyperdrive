@@ -104,7 +104,6 @@ impl ActiveProviders {
         // Return true if anything was actually removed
         self.urls.len() < urls_len_before || self.nodes.len() < nodes_len_before
     }
-
 }
 
 /// existing subscriptions held by local OR remote processes
