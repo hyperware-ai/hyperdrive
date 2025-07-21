@@ -24,8 +24,6 @@ fn init(_our: Address, args: String) -> String {
     let provider_identifier = parts[1].to_string();
 
     // Manually construct the JSON for RemoveProvider
-    // The JSON structure for RemoveProvider((chain_id, provider_str)) would be:
-    // {"RemoveProvider": [chain_id, "provider_str"]}
     let request_json = format!(
         r#"{{"RemoveProvider": [{}, "{}"]}}"#,
         chain_id,
@@ -39,13 +37,18 @@ fn init(_our: Address, args: String) -> String {
         return "Failed to remove provider from eth module".to_string();
     };
 
-    // Parse the response and show result
+    // Parse the response and handle different variants
     match serde_json::from_slice::<Value>(&body) {
         Ok(json_value) => {
             if json_value == "Ok" {
                 format!("Successfully removed provider '{}' from chain {}", provider_identifier, chain_id)
+            } else if json_value == "ProviderNotFound" {
+                format!("Provider '{}' not found on chain {} (may have already been removed)", provider_identifier, chain_id)
+            } else if json_value == "PermissionDenied" {
+                "Permission denied: you don't have root capability for eth module".to_string()
             } else {
-                format!("Response: {}", serde_json::to_string_pretty(&json_value)
+                // Handle any other response types
+                format!("Unexpected response: {}", serde_json::to_string_pretty(&json_value)
                     .unwrap_or_else(|_| "Failed to format response".to_string()))
             }
         }

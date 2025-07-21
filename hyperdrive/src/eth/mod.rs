@@ -94,10 +94,17 @@ impl ActiveProviders {
         }
     }
 
-    fn remove_provider(&mut self, remove: &str) {
+    fn remove_provider(&mut self, remove: &str) -> bool {
+        let urls_len_before = self.urls.len();
+        let nodes_len_before = self.nodes.len();
+
         self.urls.retain(|x| x.url != remove);
         self.nodes.retain(|x| x.hns_update.name != remove);
+
+        // Return true if anything was actually removed
+        self.urls.len() < urls_len_before || self.nodes.len() < nodes_len_before
     }
+
 }
 
 /// existing subscriptions held by local OR remote processes
@@ -1002,8 +1009,14 @@ async fn handle_eth_config_action(
         }
         EthConfigAction::RemoveProvider((chain_id, remove)) => {
             if let Some(mut aps) = state.providers.get_mut(&chain_id) {
-                aps.remove_provider(&remove);
-                save_providers = true;
+                if aps.remove_provider(&remove) {
+                    save_providers = true;
+                    return EthConfigResponse::Ok;
+                } else {
+                    return EthConfigResponse::ProviderNotFound;
+                }
+            } else {
+                return EthConfigResponse::ProviderNotFound;
             }
         }
         EthConfigAction::SetPublic => {

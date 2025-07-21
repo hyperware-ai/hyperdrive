@@ -162,6 +162,8 @@ pub enum EthConfigResponse {
     /// Note the [`crate::core::HnsUpdate`] will only have the correct `name` field.
     /// The rest of the Update is not saved in this module.
     Providers(SavedConfigs),
+    /// Provider was not found
+    ProviderNotFound,
     /// Response from a GetAccessSettings request.
     AccessSettings(AccessSettings),
     /// Permission denied due to missing capability
