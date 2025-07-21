@@ -105,6 +105,10 @@ impl VersionedState {
                     ProcessId::new(Some("get-providers"), "terminal", "sys"),
                 ),
                 (
+                    "remove-provider".to_string(),
+                    ProcessId::new(Some("remove-provider"), "terminal", "sys"),
+                ),
+                (
                     "peer".to_string(),
                     ProcessId::new(Some("peer"), "terminal", "sys"),
                 ),

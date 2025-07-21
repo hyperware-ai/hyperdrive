@@ -12,6 +12,7 @@ members = [
     "m",
     "net-diagnostics",
     "get-providers",
+    "remove-provider",
     "peer",
     "peers",
     "terminal",

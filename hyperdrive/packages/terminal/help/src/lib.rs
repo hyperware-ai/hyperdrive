@@ -16,6 +16,7 @@ const HELP_MESSAGES: [[&str; 2]; 13] = [
     ["m", "\n\x1b[1mm\x1b[0m <address> '<json>': send an inter-process message. <address> is formatted as <node>@<process-id>. <process-id> is formatted as <process-name>:<package-name>:<publisher-node>. JSON containing spaces must be wrapped in single-quotes (\x1b[1m''\x1b[0m).\n    - Example: \x1b[1mm our@eth:distro:sys \"SetPublic\" -a 5\x1b[0m\n    - the '-a' flag is used to expect a response with a given timeout\n    - \x1b[1mour\x1b[0m will always be interpolated by the system as your node's name"],
     ["net-diagnostics", "\n\x1b[1mnet-diagnostics\x1b[0m: print some useful networking diagnostic data."],
     ["get-providers", "\n\x1b[1mget-providers\x1b[0m: print the current eth providers."],
+    ["remove-provider", "\n\x1b[1mremove-provider <chain-id> <node-id or rpc-url>\x1b[0m: Remove a provider from the eth providers list."],
     ["peer", "\n\x1b[1mpeer\x1b[0m <name>: print the peer's PKI info, if it exists."],
     ["peers", "\n\x1b[1mpeers\x1b[0m: print the peers the node currently hold connections with."],
     ["top", "\n\x1b[1mtop\x1b[0m <process-id>: display kernel debugging info about a process. Leave the process ID blank to display info about all processes and get the total number of running processes.\n    - Example: \x1b[1mtop net:distro:sys\x1b[0m\n    - Example: \x1b[1mtop\x1b[0m"],
