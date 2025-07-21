@@ -136,7 +136,10 @@ async fn main() {
     };
 
     // TODO: Remove debug logging before merging - before modification
-    eprintln!("[DEBUG-AUTH] eth_provider_config before --rpc/--rpc-config processing: {:#?}", eth_provider_config);
+    eprintln!(
+        "[DEBUG-AUTH] eth_provider_config before --rpc/--rpc-config processing: {:#?}",
+        eth_provider_config
+    );
 
     if let Some(rpc) = rpc {
         // TODO: Remove debug logging before merging
@@ -159,20 +162,28 @@ async fn main() {
     }
     if let Some(rpc_config) = rpc_config {
         // TODO: Remove debug logging before merging
-        eprintln!("[DEBUG-AUTH] Processing --rpc-config flag with file: {}", rpc_config.display());
+        eprintln!(
+            "[DEBUG-AUTH] Processing --rpc-config flag with file: {}",
+            rpc_config.display()
+        );
 
         match std::fs::read_to_string(&rpc_config) {
             Ok(contents) => {
                 match serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents) {
                     Ok(rpc_configs) => {
                         // TODO: Remove debug logging before merging
-                        eprintln!("[DEBUG-AUTH] Loaded {} providers from config file", rpc_configs.len());
+                        eprintln!(
+                            "[DEBUG-AUTH] Loaded {} providers from config file",
+                            rpc_configs.len()
+                        );
 
                         // Store the length before consuming the vector
                         let total_configs = rpc_configs.len();
 
                         // Process in reverse order so the first entry in the file becomes highest priority
-                        for (reverse_index, rpc_url_config) in rpc_configs.into_iter().rev().enumerate() {
+                        for (reverse_index, rpc_url_config) in
+                            rpc_configs.into_iter().rev().enumerate()
+                        {
                             let original_index = total_configs - 1 - reverse_index;
 
                             // TODO: Remove debug logging before merging
@@ -182,13 +193,13 @@ async fn main() {
                                 match auth {
                                     lib::eth::Authorization::Basic(creds) => {
                                         eprintln!("[DEBUG-AUTH] Config provider has Basic auth (length: {})", creds.len());
-                                    },
+                                    }
                                     lib::eth::Authorization::Bearer(token) => {
                                         eprintln!("[DEBUG-AUTH] Config provider has Bearer auth (length: {})", token.len());
-                                    },
+                                    }
                                     lib::eth::Authorization::Raw(raw) => {
                                         eprintln!("[DEBUG-AUTH] Config provider has Raw auth (length: {})", raw.len());
-                                    },
+                                    }
                                 }
                             } else {
                                 eprintln!("[DEBUG-AUTH] Config provider has no auth");
@@ -226,7 +237,10 @@ async fn main() {
     }
 
     // TODO: Remove debug logging before merging - after modification
-    eprintln!("[DEBUG-AUTH] eth_provider_config after --rpc/--rpc-config processing: {:#?}", eth_provider_config);
+    eprintln!(
+        "[DEBUG-AUTH] eth_provider_config after --rpc/--rpc-config processing: {:#?}",
+        eth_provider_config
+    );
 
     if is_eth_provider_config_updated {
         // save the new provider config
@@ -1054,12 +1068,18 @@ async fn login_with_password(
 }
 
 /// Add a provider config with deduplication logic (same as runtime system)
-fn add_provider_to_config(eth_provider_config: &mut lib::eth::SavedConfigs, new_provider: lib::eth::ProviderConfig) {
+fn add_provider_to_config(
+    eth_provider_config: &mut lib::eth::SavedConfigs,
+    new_provider: lib::eth::ProviderConfig,
+) {
     match &new_provider.provider {
         lib::eth::NodeOrRpcUrl::RpcUrl { url, .. } => {
             // Remove any existing provider with this URL
             eth_provider_config.0.retain(|config| {
-                if let lib::eth::NodeOrRpcUrl::RpcUrl { url: existing_url, .. } = &config.provider {
+                if let lib::eth::NodeOrRpcUrl::RpcUrl {
+                    url: existing_url, ..
+                } = &config.provider
+                {
                     existing_url != url
                 } else {
                     true
@@ -1069,7 +1089,11 @@ fn add_provider_to_config(eth_provider_config: &mut lib::eth::SavedConfigs, new_
         lib::eth::NodeOrRpcUrl::Node { hns_update, .. } => {
             // Remove any existing provider with this node name
             eth_provider_config.0.retain(|config| {
-                if let lib::eth::NodeOrRpcUrl::Node { hns_update: existing_update, .. } = &config.provider {
+                if let lib::eth::NodeOrRpcUrl::Node {
+                    hns_update: existing_update,
+                    ..
+                } = &config.provider
+                {
                     existing_update.name != hns_update.name
                 } else {
                     true
