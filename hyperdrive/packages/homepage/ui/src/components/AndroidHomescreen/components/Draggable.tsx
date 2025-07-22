@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Position } from '../../../types/app.types';
+import classNames from 'classnames';
 
 interface DraggableProps {
   id: string;
@@ -105,7 +106,9 @@ export const Draggable: React.FC<DraggableProps> = ({
   return (
     <div
       ref={elementRef}
-      className={`draggable absolute ${isDragging ? 'z-50' : ''} ${className}`}
+      className={classNames('draggable absolute', {
+        'z-50': isDragging,
+      }, className)}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
