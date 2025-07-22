@@ -24,3 +24,4 @@ hyperdrive/packages/settings/pkg/ui/*
 hyperdrive/src/register-ui/build/
 hyperdrive/src/register-ui/dist/
 hyperdrive/packages/docs/pkg/ui
+/.idea

@@ -39,7 +39,7 @@ pub async fn register(
     tcp_networking: (Option<&tokio::net::TcpListener>, bool),
     http_port: u16,
     keyfile: Option<Vec<u8>>,
-    maybe_rpc: Option<String>,
+    eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
 ) {
     // Networking info is generated and passed to the UI, but not used until confirmed
@@ -88,7 +88,7 @@ pub async fn register(
         },
     });
 
-    let provider = Arc::new(connect_to_provider(maybe_rpc).await);
+    let provider = Arc::new(connect_to_provider_from_config(&eth_provider_config).await);
 
     let keyfile = warp::any().map(move || keyfile.clone());
     let our_temp_id = warp::any().map(move || our_temp_id.clone());
@@ -245,38 +245,139 @@ pub async fn register(
         .await;
 }
 
-/// Connect to given provider or one of two public RPC providers as fallbacks.
-/// TODO: add more fallbacks
-pub async fn connect_to_provider(maybe_rpc: Option<String>) -> RootProvider<PubSubFrontend> {
-    let url = if let Some(ref rpc_url) = maybe_rpc {
-        rpc_url
-    } else {
-        "wss://base-rpc.publicnode.com"
-    };
+/// Connect to provider using the saved configuration with fallbacks
+pub async fn connect_to_provider_from_config(
+    eth_provider_config: &lib::eth::SavedConfigs,
+) -> RootProvider<PubSubFrontend> {
+    let saved_configs = &eth_provider_config.0;
 
-    let rpc_urls = [
-        url,
-        "wss://base.llamarpc.com",
-        "wss://base-rpc.publicnode.com",
-        //"wss://1rpc.io/base",
-        //"wss://base.blockpi.network/v1/rpc/public",
-    ];
+    // TODO: Remove debug logging before merging
+    eprintln!("[DEBUG-AUTH] Number of configured providers (including Node providers which will not be used): {}", saved_configs.len());
 
-    for rpc_url in rpc_urls {
-        if let Ok(client) = ProviderBuilder::new()
-            .on_ws(WsConnect::new(rpc_url.to_string()))
-            .await
-        {
-            println!("Connected to {rpc_url}\r");
-            return client;
+    // Try each configured provider first
+    for (index, provider_config) in saved_configs.iter().enumerate() {
+        // TODO: Remove debug logging before merging
+        eprintln!(
+            "[DEBUG-AUTH] Trying configured provider {}/{}",
+            index + 1,
+            saved_configs.len()
+        );
+
+        match &provider_config.provider {
+            lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
+                // TODO: Remove debug logging before merging
+                eprintln!("[DEBUG-AUTH] RPC URL provider: {}", url);
+                eprintln!("[DEBUG-AUTH] Auth present: {}", auth.is_some());
+                if let Some(auth_ref) = auth {
+                    match auth_ref {
+                        lib::eth::Authorization::Basic(creds) => {
+                            eprintln!(
+                                "[DEBUG-AUTH] Auth type: Basic (credentials length: {})",
+                                creds.len()
+                            );
+                            eprintln!(
+                                "[DEBUG-AUTH] Basic auth format valid (contains ':'): {}",
+                                creds.contains(':')
+                            );
+                        }
+                        lib::eth::Authorization::Bearer(token) => {
+                            eprintln!(
+                                "[DEBUG-AUTH] Auth type: Bearer (token length: {})",
+                                token.len()
+                            );
+                        }
+                        lib::eth::Authorization::Raw(raw) => {
+                            eprintln!("[DEBUG-AUTH] Auth type: Raw (value length: {})", raw.len());
+                        }
+                    }
+                }
+
+                let ws_connect = WsConnect {
+                    url: url.clone(),
+                    auth: auth.clone().map(|a| a.into()),
+                    config: None,
+                };
+
+                // TODO: Remove debug logging before merging
+                eprintln!("[DEBUG-AUTH] Attempting connection to provider: {}", url);
+
+                if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
+                    // TODO: Remove debug logging before merging
+                    eprintln!(
+                        "[DEBUG-AUTH] ✅ Successfully connected to configured provider: {}",
+                        url
+                    );
+                    println!("Connected to configured provider: {url}\r");
+                    return client;
+                } else {
+                    // TODO: Remove debug logging before merging
+                    eprintln!(
+                        "[DEBUG-AUTH] ❌ Failed to connect to configured provider: {}",
+                        url
+                    );
+                    println!("Failed to connect to provider: {url}\r");
+                }
+            }
+            lib::eth::NodeOrRpcUrl::Node {
+                hns_update,
+                use_as_provider,
+            } => {
+                // TODO: Remove debug logging before merging
+                eprintln!(
+                    "[DEBUG-AUTH] Node provider: {} (use_as_provider: {})",
+                    hns_update.name, use_as_provider
+                );
+                eprintln!("[DEBUG-AUTH] Skipping node provider (need RPC URL)");
+                continue;
+            }
         }
     }
 
+    // TODO: Remove debug logging before merging
+    eprintln!("[DEBUG-AUTH] All configured providers failed, falling back to defaults");
+
+    // Fall back to default providers if configured ones fail
+    let default_rpc_urls = ["wss://base.llamarpc.com", "wss://base-rpc.publicnode.com"];
+
+    for (index, rpc_url) in default_rpc_urls.iter().enumerate() {
+        // TODO: Remove debug logging before merging
+        eprintln!(
+            "[DEBUG-AUTH] Trying fallback provider {}/{}: {}",
+            index + 1,
+            default_rpc_urls.len(),
+            rpc_url
+        );
+
+        let ws_connect = WsConnect {
+            url: rpc_url.to_string(),
+            auth: None,
+            config: None,
+        };
+
+        if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
+            // TODO: Remove debug logging before merging
+            eprintln!(
+                "[DEBUG-AUTH] ✅ Successfully connected to fallback provider: {}",
+                rpc_url
+            );
+            println!("Connected to fallback provider: {rpc_url}\r");
+            return client;
+        } else {
+            // TODO: Remove debug logging before merging
+            eprintln!(
+                "[DEBUG-AUTH] ❌ Failed to connect to fallback provider: {}",
+                rpc_url
+            );
+        }
+    }
+
+    // TODO: Remove debug logging before merging
+    eprintln!("[DEBUG-AUTH] ❌ All providers (configured + fallback) failed!");
+
     panic!(
-        "Error: runtime could not connect to Base ETH RPCs {rpc_urls:?}\n\
+        "Error: runtime could not connect to any ETH RPC providers\n\
         This is necessary in order to verify node identity onchain.\n\
-        Please make sure you are using a valid WebSockets URL if using \
-        the --rpc flag, and you are connected to the internet."
+        Please check your configured providers and internet connection."
     );
 }
 
