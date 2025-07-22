@@ -33,6 +33,24 @@
         "grant_capabilities": [],
         "wit_version": 1
     },
+    "get-providers.wasm": {
+        "root": true,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "eth:distro:sys",
+            {
+                "process": "eth:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [
+            "eth:distro:sys"
+        ],
+        "wit_version": 1
+    },
     "help.wasm": {
         "root": false,
         "public": false,
@@ -121,6 +139,24 @@
         ],
         "grant_capabilities": [
             "net:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "remove-provider.wasm": {
+        "root": true,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "eth:distro:sys",
+            {
+                "process": "eth:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [
+            "eth:distro:sys"
         ],
         "wit_version": 1
     },
