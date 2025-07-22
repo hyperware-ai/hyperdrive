@@ -61,6 +61,10 @@ impl VersionedState {
             our,
             aliases: HashMap::from([
                 (
+                    "add-provider".to_string(),
+                    ProcessId::new(Some("add-provider"), "terminal", "sys"),
+                ),
+                (
                     "alias".to_string(),
                     ProcessId::new(Some("alias"), "terminal", "sys"),
                 ),

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "add-provider",
     "alias",
     "cat",
     "echo",
