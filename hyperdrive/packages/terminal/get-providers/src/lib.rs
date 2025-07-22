@@ -57,8 +57,10 @@ fn init(_our: Address, _args: String) -> String {
                                         if let Some(url) = rpc_url.get("url") {
                                             output.push_str(&format!("   URL: {}\n", url));
                                         }
-                                        if rpc_url.get("auth").is_some() {
-                                            output.push_str("   Auth: Configured\n");
+                                        if let Some(auth) = rpc_url.get("auth") {
+                                            if !auth.is_null() {
+                                                output.push_str("   Auth: Configured\n");
+                                            }
                                         }
                                     } else if let Some(node_info) = provider_info.get("Node") {
                                         output.push_str("   Type: Node Provider\n");
