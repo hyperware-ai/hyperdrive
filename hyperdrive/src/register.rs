@@ -295,9 +295,10 @@ pub async fn connect_to_provider_from_config(
     }
 
     panic!(
-        "Error: runtime could not connect to any ETH RPC providers\n\
+        "Error: runtime could not connect to configured or fallback Base ETH RPC providers\n\
         This is necessary in order to verify node identity onchain.\n\
-        Please check your configured providers and internet connection."
+        Please make sure you are using a valid WebSockets URL if using \
+        the --rpc or --rpc-config flag, and you are connected to the internet."
     );
 }
 

@@ -47,7 +47,7 @@ fn init(_our: Address, args: String) -> String {
             let has_auth = auth_option.is_some();
 
             // Determine if this is a node or RPC URL
-            let provider_config = if provider_str.starts_with("ws://") || provider_str.starts_with("wss://") || provider_str.starts_with("wss://") || provider_str.starts_with("ws://") {
+            let provider_config = if provider_str.starts_with("http://") || provider_str.starts_with("https://") || provider_str.starts_with("wss://") || provider_str.starts_with("ws://") {
                 // This is an RPC URL
                 let mut rpc_config = json!({
                     "url": provider_str

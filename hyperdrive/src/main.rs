@@ -150,42 +150,35 @@ async fn main() {
         is_eth_provider_config_updated = true;
     }
     if let Some(rpc_config) = rpc_config {
-        match std::fs::read_to_string(&rpc_config) {
-            Ok(contents) => {
-                match serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents) {
-                    Ok(rpc_configs) => {
+        if let Ok(contents) = std::fs::read_to_string(&rpc_config) {
+            if let Ok(rpc_configs) = serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents) {
 
-                        // Store the length before consuming the vector
-                        let total_configs = rpc_configs.len();
+                // Store the length before consuming the vector
+                let total_configs = rpc_configs.len();
 
-                        // Process in reverse order so the first entry in the file becomes highest priority
-                        for (reverse_index, rpc_url_config) in
-                            rpc_configs.into_iter().rev().enumerate()
-                        {
-                            let original_index = total_configs - 1 - reverse_index;
+                // Process in reverse order so the first entry in the file becomes highest priority
+                for (reverse_index, rpc_url_config) in
+                    rpc_configs.into_iter().rev().enumerate()
+                {
+                    let original_index = total_configs - 1 - reverse_index;
 
-                            let new_provider = lib::eth::ProviderConfig {
-                                chain_id: CHAIN_ID,
-                                trusted: true,
-                                provider: lib::eth::NodeOrRpcUrl::RpcUrl {
-                                    url: rpc_url_config.url,
-                                    auth: rpc_url_config.auth,
-                                },
-                            };
+                    let new_provider = lib::eth::ProviderConfig {
+                        chain_id: CHAIN_ID,
+                        trusted: true,
+                        provider: lib::eth::NodeOrRpcUrl::RpcUrl {
+                            url: rpc_url_config.url,
+                            auth: rpc_url_config.auth,
+                        },
+                    };
 
-                            add_provider_to_config(&mut eth_provider_config, new_provider);
-                        }
-                        is_eth_provider_config_updated = true;
-
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to parse RPC config file: {e}");
-                    }
+                    add_provider_to_config(&mut eth_provider_config, new_provider);
                 }
+                is_eth_provider_config_updated = true;
+            } else {
+                eprintln!("Failed to parse RPC config file: {e}");
             }
-            Err(e) => {
-                eprintln!("Failed to read RPC config file: {e}");
-            }
+        } else {
+            eprintln!("Failed to read RPC config file: {e}");
         }
     }
 
