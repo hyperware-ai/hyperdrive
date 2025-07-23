@@ -12,7 +12,7 @@ fn init(_our: Address, args: String) -> String {
     let parts: Vec<&str> = args.trim().split_whitespace().collect();
 
     if parts.len() < 2 {
-        return "Usage: add-provider <chain-id> <node-id-or-rpc-url> [trusted] [--auth-type <basic|bearer|raw> --auth-value <value>]\n  Examples:\n    add-provider 1 my-node.hypr\n    add-provider 1 wss://mainnet.infura.io/v3/your-key\n    add-provider 1 my-node.hypr false\n    add-provider 1 wss://mainnet.infura.io/v3/your-key true --auth-type bearer --auth-value your-token\n    add-provider 1 wss://rpc.example.com true --auth-type basic --auth-value username:password".to_string();
+        return "Usage: add-provider <chain-id> <node-id-or-rpc-url> [trusted] [--auth-type <basic|bearer|raw> --auth-value <value>]\n  Examples:\n    add-provider 1 my-node.hypr\n    add-provider 1 wss://mainnet.infura.io/v3/your-key\n    add-provider 1 my-node.hypr false\n    add-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key true --auth-type bearer --auth-value your-token\n    add-provider 8453 wss://rpc.example.com true --auth-type basic --auth-value username:password".to_string();
     }
 
     let chain_id: u64 = match parts[0].parse() {
@@ -102,24 +102,21 @@ fn init(_our: Address, args: String) -> String {
             };
 
             // Parse the response
-            match serde_json::from_slice::<Value>(&body) {
-                Ok(json_value) => {
-                    if let Some(response) = json_value.as_str() {
-                        match response {
-                            "Ok" => {
-                                let auth_info = if has_auth { " with authentication" } else { "" };
-                                format!("Successfully added provider: {} on chain {}{}", provider_str, chain_id, auth_info)
-                            },
-                            "PermissionDenied" => "Permission denied: insufficient privileges".to_string(),
-                            other => format!("Error: {}", other),
-                        }
-                    } else {
-                        format!("Unexpected response format: {}", json_value)
+            if let Ok(json_value) = serde_json::from_slice::<Value>(&body) {
+                if let Some(response) = json_value.as_str() {
+                    match response {
+                        "Ok" => {
+                            let auth_info = if has_auth { " with authentication" } else { "" };
+                            format!("Successfully added provider: {} on chain {}{}", provider_str, chain_id, auth_info)
+                        },
+                        "PermissionDenied" => "Permission denied: insufficient privileges".to_string(),
+                        other => format!("Error: {}", other),
                     }
+                } else {
+                    format!("Unexpected response format: {}", json_value)
                 }
-                Err(e) => {
-                    format!("Failed to parse response: {}\nRaw: {}", e, String::from_utf8_lossy(&body))
-                }
+            } else {
+                format!("Failed to parse response.\nRaw: {}", String::from_utf8_lossy(&body))
             }
         }
         Err(err_msg) => err_msg,

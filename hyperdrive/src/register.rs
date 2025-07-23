@@ -252,7 +252,7 @@ pub async fn connect_to_provider_from_config(
     let saved_configs = &eth_provider_config.0;
 
     // Try each configured provider first
-    for (index, provider_config) in saved_configs.iter().enumerate() {
+    for (_index, provider_config) in saved_configs.iter().enumerate() {
 
         match &provider_config.provider {
             lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
@@ -279,7 +279,7 @@ pub async fn connect_to_provider_from_config(
     // Fall back to default providers if configured ones fail
     let default_rpc_urls = ["wss://base.llamarpc.com", "wss://base-rpc.publicnode.com"];
 
-    for (index, rpc_url) in default_rpc_urls.iter().enumerate() {
+    for (_index, rpc_url) in default_rpc_urls.iter().enumerate() {
 
         let ws_connect = WsConnect {
             url: rpc_url.to_string(),

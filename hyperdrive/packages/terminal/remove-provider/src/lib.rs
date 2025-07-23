@@ -38,22 +38,25 @@ fn init(_our: Address, args: String) -> String {
     };
 
     // Parse the response and handle different variants
-    match serde_json::from_slice::<Value>(&body) {
-        Ok(json_value) => {
-            if json_value == "Ok" {
+    if let Ok(json_value) = serde_json::from_slice::<Value>(&body) {
+        match json_value.as_str() {
+            Some("Ok") => {
                 format!("Successfully removed provider '{}' from chain {}", provider_identifier, chain_id)
-            } else if json_value == "ProviderNotFound" {
+            }
+            Some("ProviderNotFound") => {
                 format!("Provider '{}' not found on chain {} (may have already been removed)", provider_identifier, chain_id)
-            } else if json_value == "PermissionDenied" {
+            }
+            Some("PermissionDenied") => {
                 "Permission denied: you don't have root capability for eth module".to_string()
-            } else {
+            }
+            _ => {
                 // Handle any other response types
                 format!("Unexpected response: {}", serde_json::to_string_pretty(&json_value)
                     .unwrap_or_else(|_| "Failed to format response".to_string()))
             }
         }
-        Err(e) => {
-            format!("Failed to parse response as JSON: {}\nRaw response: {}", e, String::from_utf8_lossy(&body))
-        }
+
+    } else {
+        format!("Failed to parse response as JSON\nRaw response: {}", String::from_utf8_lossy(&body))
     }
 }

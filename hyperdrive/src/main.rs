@@ -153,15 +153,10 @@ async fn main() {
         if let Ok(contents) = std::fs::read_to_string(&rpc_config) {
             if let Ok(rpc_configs) = serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents) {
 
-                // Store the length before consuming the vector
-                let total_configs = rpc_configs.len();
-
                 // Process in reverse order so the first entry in the file becomes highest priority
-                for (reverse_index, rpc_url_config) in
+                for (_reverse_index, rpc_url_config) in
                     rpc_configs.into_iter().rev().enumerate()
                 {
-                    let original_index = total_configs - 1 - reverse_index;
-
                     let new_provider = lib::eth::ProviderConfig {
                         chain_id: CHAIN_ID,
                         trusted: true,
@@ -175,10 +170,10 @@ async fn main() {
                 }
                 is_eth_provider_config_updated = true;
             } else {
-                eprintln!("Failed to parse RPC config file: {e}");
+                eprintln!("Failed to parse RPC config file");
             }
         } else {
-            eprintln!("Failed to read RPC config file: {e}");
+            eprintln!("Failed to read RPC config file");
         }
     }
 

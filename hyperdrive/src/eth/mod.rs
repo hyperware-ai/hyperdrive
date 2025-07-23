@@ -64,35 +64,35 @@ struct NodeProvider {
 
 impl ActiveProviders {
     fn add_provider_config(&mut self, new: ProviderConfig) {
-        match new.provider {
-            NodeOrRpcUrl::Node {
-                hns_update,
-                use_as_provider,
-            } => {
-                self.remove_provider(&hns_update.name);
-                self.nodes.insert(
-                    0,
-                    NodeProvider {
-                        trusted: new.trusted,
-                        usable: use_as_provider,
-                        hns_update,
-                    },
-                );
-            }
+        match &new.provider {
             NodeOrRpcUrl::RpcUrl { url, auth } => {
-                self.remove_provider(&url);
-                self.urls.insert(
-                    0,
-                    UrlProvider {
-                        trusted: new.trusted,
-                        url,
-                        pubsub: vec![],
-                        auth,
-                    },
-                );
+                // Remove any existing URL provider with this URL
+                self.urls.retain(|existing_provider| existing_provider.url != *url);
+
+                // Create and add new URL provider
+                let url_provider = UrlProvider {
+                    trusted: new.trusted,
+                    url: url.clone(),
+                    pubsub: vec![],
+                    auth: auth.clone(),
+                };
+                self.urls.insert(0, url_provider);
+            }
+            NodeOrRpcUrl::Node { hns_update, .. } => {
+                // Remove any existing node provider with this node name
+                self.nodes.retain(|existing_provider| existing_provider.hns_update.name != hns_update.name);
+
+                // Create and add new node provider
+                let node_provider = NodeProvider {
+                    trusted: new.trusted,
+                    usable: true, // Default to usable
+                    hns_update: hns_update.clone(),
+                };
+                self.nodes.insert(0, node_provider);
             }
         }
     }
+
 
     fn remove_provider(&mut self, remove: &str) -> bool {
         let urls_len_before = self.urls.len();
@@ -979,6 +979,7 @@ async fn handle_eth_config_action(
 
     let mut save_settings = false;
     let mut save_providers = false;
+    let mut provider_not_found = false;
 
     // modify our providers and access settings based on config action
     match eth_config_action {
@@ -997,12 +998,11 @@ async fn handle_eth_config_action(
             if let Some(mut aps) = state.providers.get_mut(&chain_id) {
                 if aps.remove_provider(&remove) {
                     save_providers = true;
-                    return EthConfigResponse::Ok;
                 } else {
-                    return EthConfigResponse::ProviderNotFound;
+                    provider_not_found = true;
                 }
             } else {
-                return EthConfigResponse::ProviderNotFound;
+                provider_not_found = true;
             }
         }
         EthConfigAction::SetPublic => {
@@ -1097,5 +1097,9 @@ async fn handle_eth_config_action(
             verbose_print(&state.print_tx, "eth: saved new provider settings").await;
         };
     }
-    EthConfigResponse::Ok
+    if provider_not_found {
+        EthConfigResponse::ProviderNotFound
+    } else {
+        EthConfigResponse::Ok
+    }
 }
