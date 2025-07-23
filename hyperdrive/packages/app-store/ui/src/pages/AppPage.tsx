@@ -10,6 +10,7 @@ import { Modal } from "../components/Modal";
 import classNames from "classnames";
 import { VscSync, VscSyncIgnored } from "react-icons/vsc";
 import { BsX } from "react-icons/bs";
+import ConfirmUninstallModal from "../components/ConfirmUninstallModal";
 
 const MOCK_APP: AppListing = {
   package_id: {
@@ -583,25 +584,10 @@ export default function AppPage() {
         </>
       )}
 
-      {showUninstallConfirmModal && (
-        <Modal onClose={() => setShowUninstallConfirmModal(false)}>
-          <h3
-            className="prose">Uninstall Confirmation</h3>
-          <p>Are you sure you want to uninstall {app.metadata?.name || app.package_id.package_name}?</p>
-          <div
-            className="flex items-center flex-col md:flex-row gap-2"
-          >
-            <button
-              onClick={() => setShowUninstallConfirmModal(false)}
-              className="md:grow md:self-center self-stretch clear"
-            >Cancel</button>
-            <button
-              onClick={handleUninstall}
-              className="md:grow md:self-center self-stretch
-            ">Uninstall</button>
-          </div>
-        </Modal>
-      )}
+        {showUninstallConfirmModal && <ConfirmUninstallModal
+      onClose={() => setShowUninstallConfirmModal(false)}
+      onUninstall={handleUninstall}
+      appName={app.metadata?.name || app.package_id.package_name} />}
     </div>
   );
 }

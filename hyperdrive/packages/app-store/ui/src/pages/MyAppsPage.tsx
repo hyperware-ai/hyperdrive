@@ -8,6 +8,7 @@ import { BsTrash } from "react-icons/bs";
 import classNames from "classnames";
 import { VscSync, VscSyncIgnored } from "react-icons/vsc";
 import { FaArrowLeft } from "react-icons/fa6";
+import ConfirmUninstallModal from "../components/ConfirmUninstallModal";
 
 // Core packages that cannot be uninstalled
 const CORE_PACKAGES = [
@@ -504,39 +505,11 @@ export default function MyAppsPage() {
             {/* Uninstall Confirmation Modal */}
             {
                 showUninstallConfirm && appToUninstall && (
-                    <div className="cap-approval-popup">
-                        <div className="cap-approval-content">
-                            <h3>Confirm Uninstall</h3>
-                            <div className="warning-message">
-                                Are you sure you want to uninstall this app?
-                            </div>
-                            <div className="package-info">
-                                <strong>Package ID:</strong> {`${appToUninstall.package_id.package_name}:${appToUninstall.package_id.publisher_node}`}
-                            </div>
-                            {appToUninstall.metadata?.name && (
-                                <div className="package-info">
-                                    <strong>Name:</strong> {appToUninstall.metadata.name}
-                                </div>
-                            )}
-                            <div className="approval-buttons">
-                                <button
-                                    onClick={() => {
-                                        setShowUninstallConfirm(false);
-                                        setAppToUninstall(null);
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleUninstall}
-                                    disabled={isUninstalling}
-                                    className="tertiary"
-                                >
-                                    {isUninstalling ? <FaSpinner className="fa-spin" /> : 'Confirm Uninstall'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <ConfirmUninstallModal
+                        onClose={() => setShowUninstallConfirm(false)}
+                        onUninstall={handleUninstall}
+                        appName={appToUninstall.metadata?.name || appToUninstall.package_id.package_name}
+                    />
                 )
             }
 
