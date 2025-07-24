@@ -12,7 +12,8 @@ fn init(_our: Address, args: String) -> String {
     let parts: Vec<&str> = args.trim().split_whitespace().collect();
 
     if parts.len() < 2 {
-        return "Usage: add-provider <chain-id> <node-id-or-rpc-url> [trusted] [--auth-type <basic|bearer|raw> --auth-value <value>]\n  Examples:\n    add-provider 1 my-node.hypr\n    add-provider 1 wss://mainnet.infura.io/v3/your-key\n    add-provider 1 my-node.hypr false\n    add-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key true --auth-type bearer --auth-value your-token\n    add-provider 8453 wss://rpc.example.com true --auth-type basic --auth-value username:password".to_string();
+        //return "Usage: add-provider <chain-id> <node-id-or-rpc-url> [trusted] [--auth-type <basic|bearer|raw> --auth-value <value>]\n  Examples:\n    add-provider 1 my-node.hypr\n    add-provider 1 wss://mainnet.infura.io/v3/your-key\n    add-provider 1 my-node.hypr false\n    add-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key true --auth-type bearer --auth-value your-token\n    add-provider 8453 wss://rpc.example.com true --auth-type basic --auth-value username:password".to_string();
+        return "Usage: add-provider <chain-id> <rpc-url> [trusted] [--auth-type <basic|bearer|raw> --auth-value <value>]\n  Examples:\n    add-provider 1 wss://mainnet.infura.io/v3/your-key\n    add-provider 1 wss://mainnet.infura.io/v3/your-key false\n    add-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key true --auth-type bearer --auth-value your-token\n    add-provider 8453 wss://rpc.example.com true --auth-type basic --auth-value username:password".to_string();
     }
 
     let chain_id: u64 = match parts[0].parse() {
@@ -66,6 +67,11 @@ fn init(_our: Address, args: String) -> String {
                     "trusted": trusted
                 })
             } else {
+                // This is a node ID - node providers are not currently supported
+                return "Adding node providers is not currently supported. Only RPC URLs are supported at this time.".to_string();
+
+                // TODO: Re-enable node provider support in the future
+                /*
                 // This is a node ID - authentication not supported for nodes
                 if has_auth {
                     return "Authentication is not supported for node providers, only for RPC URLs".to_string();
@@ -87,6 +93,7 @@ fn init(_our: Address, args: String) -> String {
                     },
                     "trusted": trusted
                 })
+                */
             };
 
             // Create AddProvider request

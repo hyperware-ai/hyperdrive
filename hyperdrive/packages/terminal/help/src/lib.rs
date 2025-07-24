@@ -6,7 +6,8 @@ wit_bindgen::generate!({
 });
 
 const HELP_MESSAGES: [[&str; 2]; 14] = [
-    ["add-provider", "\n\x1b[1madd-provider\x1b[0m <chain-id> <nodename or rpc-url> <optional params...>: add a provider to the providers configuration.\n    - Example: \x1b[1madd-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key\x1b[0m"],
+    //["add-provider", "\n\x1b[1madd-provider\x1b[0m <chain-id> <nodename or rpc-url> <optional params...>: add a provider to the providers configuration.\n    - Example: \x1b[1madd-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key\x1b[0m"],
+    ["add-provider", "\n\x1b[1madd-provider\x1b[0m <chain-id> <rpc-url> <optional params...>: add a provider to the providers configuration.\n    - Example: \x1b[1madd-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key\x1b[0m"],
     ["alias", "\n\x1b[1malias\x1b[0m <shorthand> <process-id>: create an alias for a script.\n    - Example: \x1b[1malias get-block get-block:hns-indexer:sys\x1b[0m\n    - note: all of these listed commands are just default aliases for terminal scripts."],
     ["cat", "\n\x1b[1mcat\x1b[0m <vfs-file-path>: print the contents of a file in the terminal.\n    - Example: \x1b[1mcat /terminal:sys/pkg/scripts.json\x1b[0m"],
     ["echo", "\n\x1b[1mecho\x1b[0m <text>: print text to the terminal.\n    - Example: \x1b[1mecho foo\x1b[0m"],
