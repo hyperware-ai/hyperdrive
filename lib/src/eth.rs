@@ -225,10 +225,11 @@ pub struct ProviderConfig {
 pub enum NodeOrRpcUrl {
     Node {
         hns_update: crate::core::HnsUpdate,
-        use_as_provider: bool, // false for just-routers inside saved config
+        use_as_provider: bool,
     },
     RpcUrl {
         url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         auth: Option<Authorization>,
     },
 }
