@@ -67,7 +67,8 @@ impl ActiveProviders {
         match &new.provider {
             NodeOrRpcUrl::RpcUrl { url, auth } => {
                 // Remove any existing URL provider with this URL
-                self.urls.retain(|existing_provider| existing_provider.url != *url);
+                self.urls
+                    .retain(|existing_provider| existing_provider.url != *url);
 
                 // Create and add new URL provider
                 let url_provider = UrlProvider {
@@ -80,7 +81,9 @@ impl ActiveProviders {
             }
             NodeOrRpcUrl::Node { hns_update, .. } => {
                 // Remove any existing node provider with this node name
-                self.nodes.retain(|existing_provider| existing_provider.hns_update.name != hns_update.name);
+                self.nodes.retain(|existing_provider| {
+                    existing_provider.hns_update.name != hns_update.name
+                });
 
                 // Create and add new node provider
                 let node_provider = NodeProvider {
@@ -92,7 +95,6 @@ impl ActiveProviders {
             }
         }
     }
-
 
     fn remove_provider(&mut self, remove: &str) -> bool {
         let urls_len_before = self.urls.len();

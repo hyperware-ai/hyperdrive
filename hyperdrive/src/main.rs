@@ -136,7 +136,6 @@ async fn main() {
     };
 
     if let Some(rpc) = rpc {
-
         let new_provider = lib::eth::ProviderConfig {
             chain_id: CHAIN_ID,
             trusted: true,
@@ -151,12 +150,11 @@ async fn main() {
     }
     if let Some(rpc_config) = rpc_config {
         if let Ok(contents) = std::fs::read_to_string(&rpc_config) {
-            if let Ok(rpc_configs) = serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents) {
-
+            if let Ok(rpc_configs) =
+                serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents)
+            {
                 // Process in reverse order so the first entry in the file becomes highest priority
-                for (_reverse_index, rpc_url_config) in
-                    rpc_configs.into_iter().rev().enumerate()
-                {
+                for (_reverse_index, rpc_url_config) in rpc_configs.into_iter().rev().enumerate() {
                     let new_provider = lib::eth::ProviderConfig {
                         chain_id: CHAIN_ID,
                         trusted: true,

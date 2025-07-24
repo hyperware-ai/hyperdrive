@@ -253,7 +253,6 @@ pub async fn connect_to_provider_from_config(
 
     // Try each configured provider first
     for (_index, provider_config) in saved_configs.iter().enumerate() {
-
         match &provider_config.provider {
             lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
                 let ws_connect = WsConnect {
@@ -272,7 +271,6 @@ pub async fn connect_to_provider_from_config(
             lib::eth::NodeOrRpcUrl::Node { .. } => {
                 // Node providers are not supported in registration, skip to next
             }
-
         }
     }
 
@@ -280,7 +278,6 @@ pub async fn connect_to_provider_from_config(
     let default_rpc_urls = ["wss://base.llamarpc.com", "wss://base-rpc.publicnode.com"];
 
     for (_index, rpc_url) in default_rpc_urls.iter().enumerate() {
-
         let ws_connect = WsConnect {
             url: rpc_url.to_string(),
             auth: None,
@@ -288,7 +285,6 @@ pub async fn connect_to_provider_from_config(
         };
 
         if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
-
             println!("Connected to fallback provider: {rpc_url}\r");
             return client;
         }
