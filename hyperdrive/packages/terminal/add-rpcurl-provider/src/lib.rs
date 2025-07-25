@@ -75,10 +75,13 @@ fn init(_our: Address, args: String) -> String {
                         other => format!("Error: {}", other),
                     }
                 } else {
-                    format!("Unexpected response format: {}", json_value)
+                    // Handle any other response types with better formatting
+                    format!("Unexpected response: {}",
+                            serde_json::to_string_pretty(&json_value)
+                                .unwrap_or_else(|_| "Failed to format response".to_string()))
                 }
             } else {
-                format!("Failed to parse response.\nRaw: {}", String::from_utf8_lossy(&body))
+                format!("Failed to parse response as JSON\nRaw response: {}", String::from_utf8_lossy(&body))
             }
         }
         Err(err_msg) => err_msg,
