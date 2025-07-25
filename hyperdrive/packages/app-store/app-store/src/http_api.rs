@@ -56,14 +56,18 @@ pub fn init_frontend(http_server: &mut server::HttpServer) {
     http_server
         .bind_http_path(
             "/apps-public",
-            server::HttpBindingConfig::default().secure_subdomain(false).authenticated(false),
+            server::HttpBindingConfig::default()
+                .secure_subdomain(false)
+                .authenticated(false),
         )
         .expect("failed to bind http path");
 
     http_server
         .bind_http_path(
             "/apps-public/:id",
-            server::HttpBindingConfig::default().secure_subdomain(false).authenticated(false),
+            server::HttpBindingConfig::default()
+                .secure_subdomain(false)
+                .authenticated(false),
         )
         .expect("failed to bind http path");
 
@@ -71,7 +75,9 @@ pub fn init_frontend(http_server: &mut server::HttpServer) {
         .serve_ui(
             "public-ui",
             vec!["/public"],
-            server::HttpBindingConfig::default().secure_subdomain(false).authenticated(false),
+            server::HttpBindingConfig::default()
+                .secure_subdomain(false)
+                .authenticated(false),
         )
         .expect("failed to serve static UI");
 
