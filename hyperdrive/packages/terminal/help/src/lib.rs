@@ -5,9 +5,9 @@ wit_bindgen::generate!({
     world: "process-v1",
 });
 
-const HELP_MESSAGES: [[&str; 2]; 14] = [
-    //["add-provider", "\n\x1b[1madd-provider\x1b[0m <chain-id> <nodename or rpc-url> <optional params...>: add a provider to the providers configuration.\n    - Example: \x1b[1madd-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key\x1b[0m"],
-    ["add-provider", "\n\x1b[1madd-provider\x1b[0m <chain-id> <rpc-url> <optional params...>: add a provider to the providers configuration.\n    - Example: \x1b[1madd-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key\x1b[0m"],
+const HELP_MESSAGES: [[&str; 2]; 15] = [
+    ["add-node-provider", "\n\x1b[1madd-node-provider\x1b[0m <chain-id> <node-name> <public-key> <ip-address> <ws-port> [--trusted <true|false>]: add a node provider to the providers configuration.\n    - Examples:\n      \x1b[1madd-node-provider 8453 other-node.hypr abc123pubkey 192.168.1.1 9000\x1b[0m (defaults to trusted=false)\n      \x1b[1madd-node-provider 1 other-node.hypr abc123pubkey 192.168.1.1 9000 --trusted true\x1b[0m"],
+    ["add-rpcurl-provider", "\n\x1b[1madd-rpcurl-provider\x1b[0m <rpc-url> [--chain-id <id>] [--trusted <true|false>] [--auth-type <basic|bearer|raw> --auth-value <value>]: add an RPC URL provider to the providers configuration.\n    - Examples:\n      \x1b[1madd-rpcurl-provider wss://base-mainnet.infura.io/v3/your-key\x1b[0m (defaults to chain-id=8453, trusted=true)\n      \x1b[1madd-rpcurl-provider wss://mainnet.infura.io/v3/your-key --chain-id 1\x1b[0m\n      \x1b[1madd-rpcurl-provider wss://base-mainnet.infura.io/ws/v3/your-key --trusted false\x1b[0m\n      \x1b[1madd-rpcurl-provider wss://rpc.example.com --auth-type bearer --auth-value your-token\x1b[0m"],
     ["alias", "\n\x1b[1malias\x1b[0m <shorthand> <process-id>: create an alias for a script.\n    - Example: \x1b[1malias get-block get-block:hns-indexer:sys\x1b[0m\n    - note: all of these listed commands are just default aliases for terminal scripts."],
     ["cat", "\n\x1b[1mcat\x1b[0m <vfs-file-path>: print the contents of a file in the terminal.\n    - Example: \x1b[1mcat /terminal:sys/pkg/scripts.json\x1b[0m"],
     ["echo", "\n\x1b[1mecho\x1b[0m <text>: print text to the terminal.\n    - Example: \x1b[1mecho foo\x1b[0m"],

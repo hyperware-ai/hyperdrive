@@ -1,5 +1,23 @@
 {
-    "add-provider.wasm": {
+    "add-node-provider.wasm": {
+        "root": true,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "eth:distro:sys",
+            {
+                "process": "eth:distro:sys",
+                "params": {
+                    "root": true
+                }
+            }
+        ],
+        "grant_capabilities": [
+            "eth:distro:sys"
+        ],
+        "wit_version": 1
+    },
+    "add-rpcurl-provider.wasm": {
         "root": true,
         "public": false,
         "request_networking": false,

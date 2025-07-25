@@ -3,7 +3,18 @@
 version = 4
 
 [[package]]
-name = "add-provider"
+name = "add-node-provider"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "add-rpcurl-provider"
 version = "0.1.0"
 dependencies = [
  "hyperware_process_lib",
