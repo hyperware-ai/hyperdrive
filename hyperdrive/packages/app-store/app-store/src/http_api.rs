@@ -54,8 +54,26 @@ pub fn init_frontend(http_server: &mut server::HttpServer) {
     // bind /apps path at base domain, in addition to secure subdomain,
     // so that widget can access it
     http_server
-        .bind_http_path("/apps-public", config.clone().secure_subdomain(false))
+        .bind_http_path(
+            "/apps-public",
+            server::HttpBindingConfig::default().secure_subdomain(false).authenticated(false),
+        )
         .expect("failed to bind http path");
+
+    http_server
+        .bind_http_path(
+            "/apps-public/:id",
+            server::HttpBindingConfig::default().secure_subdomain(false).authenticated(false),
+        )
+        .expect("failed to bind http path");
+
+    http_server
+        .serve_ui(
+            "public-ui",
+            vec!["/public"],
+            server::HttpBindingConfig::default().secure_subdomain(false).authenticated(false),
+        )
+        .expect("failed to serve static UI");
 
     http_server
         .serve_ui("ui", vec!["/"], config.clone())
@@ -319,7 +337,7 @@ fn serve_paths(
         }
         // GET detail about a specific app
         // DELETE uninstall an app
-        "/apps/:id" => {
+        "/apps/:id" | "/apps-public/:id" => {
             let Ok(package_id) = get_package_id(url_params) else {
                 return Ok((
                     StatusCode::BAD_REQUEST,
@@ -344,6 +362,14 @@ fn serve_paths(
                     }
                 }
                 Method::DELETE => {
+                    // impermissible to uninstall an app from public UI
+                    if bound_path.contains("public") {
+                        return Ok((
+                            StatusCode::METHOD_NOT_ALLOWED,
+                            None,
+                            format!("Uninstalling apps is not allowed from public UI").into_bytes(),
+                        ));
+                    }
                     // uninstall an app
                     crate::utils::uninstall(our, state, &package_id)?;
                     println!("successfully uninstalled {:?}", package_id);

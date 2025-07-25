@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import useAppsStore from "../store";
 import { ResetButton } from "../components";
 import { DownloadItem, PackageManifestEntry, PackageState, Updates, DownloadError, UpdateInfo } from "../types/Apps";
-import { BsTrash } from "react-icons/bs";
+import { BsTrash, BsX } from "react-icons/bs";
 import classNames from "classnames";
 import { VscSync, VscSyncIgnored } from "react-icons/vsc";
 import { FaArrowLeft } from "react-icons/fa6";
@@ -114,88 +114,85 @@ export default function MyAppsPage() {
         return (
             <div className="flex flex-col gap-2">
                 <h2 className="prose">Failed Auto Updates ({Object.keys(updates).length})</h2>
-                <div className="flex flex-col gap-2">
-                    {Object.entries(updates).map(([packageId, versionMap]) => {
-                        const totalErrors = Object.values(versionMap).reduce((sum, info) =>
-                            sum + (info.errors?.length || 0), 0);
-                        const hasManifestChanges = Object.values(versionMap).some(info =>
-                            info.pending_manifest_hash);
+                {Object.entries(updates).map(([packageId, versionMap]) => {
+                    const totalErrors = Object.values(versionMap).reduce((sum, info) =>
+                        sum + (info.errors?.length || 0), 0);
+                    const hasManifestChanges = Object.values(versionMap).some(info =>
+                        info.pending_manifest_hash);
 
-                        return (
+                    return (
+                        <div
+                            key={packageId}
+                            className="flex flex-col gap-2"
+                        >
                             <div
-                                key={packageId}
-                                className="flex flex-col gap-2"
+                                className="flex items-center gap-2 self-stretch"
+                                onClick={() => toggleUpdateExpansion(packageId)}
                             >
                                 <div
-                                    className="flex  gap-2"
-                                    onClick={() => toggleUpdateExpansion(packageId)}
+                                    className="flex items-center gap-2 flex-wrap"
                                 >
-                                    <div
-                                        className="flex  gap-2"
-                                    >
-                                        {expandedUpdates.has(packageId) ? <FaChevronDown /> : <FaChevronRight />}
-                                        <FaExclamationTriangle className="text-red-500 animate-pulse" />
-                                        <span>{packageId}</span>
-                                        <div className="flex flex-col gap-2">
-                                            {totalErrors > 0 && (
-                                                <span className="error-count">{totalErrors} error{totalErrors !== 1 ? 's' : ''}</span>
-                                            )}
-                                            {hasManifestChanges && (
-                                                <span className="manifest-badge">Manifest changes pending</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            className="clear"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                navigate(`/download/${packageId}`);
-                                            }}
-                                            title="Retry download"
-                                        >
-                                            <FaSync />
-                                            <span>Retry</span>
-                                        </button>
-                                        <button
-                                            className=" clear"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleClearUpdates(packageId);
-                                            }}
-                                            title="Clear update info"
-                                        >
-                                            <FaTimesCircle />
-                                        </button>
+                                    {expandedUpdates.has(packageId) ? <FaChevronDown /> : <FaChevronRight />}
+                                    <FaExclamationTriangle className="text-red-500 animate-pulse" />
+                                    <span>{packageId}</span>
+                                    <div className="flex flex-col gap-2">
+                                        {totalErrors > 0 && (
+                                            <span className="error-count">{totalErrors} error{totalErrors !== 1 ? 's' : ''}</span>
+                                        )}
+                                        {hasManifestChanges && (
+                                            <span className="manifest-badge">Manifest changes pending</span>
+                                        )}
                                     </div>
                                 </div>
-                                {expandedUpdates.has(packageId) && Object.entries(versionMap).map(([versionHash, info]) => (
-                                    <div key={versionHash} className="flex flex-col gap-2">
-                                        <div className="flex flex-row gap-2">
-                                            Version: {versionHash.slice(0, 8)}...
-                                        </div>
-                                        {info.pending_manifest_hash && (
-                                            <div className="flex flex-row gap-2">
-                                                <FaExclamationTriangle />
-                                                Pending manifest: {info.pending_manifest_hash.slice(0, 8)}...
-                                            </div>
-                                        )}
-                                        {info.errors && info.errors.length > 0 && (
-                                            <div className="flex flex-col gap-2">
-                                                {info.errors.map(([source, error], idx) => (
-                                                    <div key={idx} className="flex flex-row gap-2">
-                                                        <FaExclamationTriangle className="text-red-500" />
-                                                        <span>{source}: {formatError(error)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                <div className="flex items-center gap-2 ml-auto">
+                                    <button
+                                        className="clear thin"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/download/${packageId}`);
+                                        }}
+                                        title="Retry download"
+                                    >
+                                        <FaSync />
+                                    </button>
+                                    <button
+                                        className="clear thin"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleClearUpdates(packageId);
+                                        }}
+                                        title="Clear update info"
+                                    >
+                                        <BsX />
+                                    </button>
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
+                            {expandedUpdates.has(packageId) && Object.entries(versionMap).map(([versionHash, info]) => (
+                                <div key={versionHash} className="flex flex-col gap-2">
+                                    <div className="flex flex-row gap-2 items-center">
+                                        Version: {versionHash.slice(0, 8)}...
+                                    </div>
+                                    {info.pending_manifest_hash && (
+                                        <div className="flex flex-row gap-2 items-center">
+                                            <FaExclamationTriangle />
+                                            Pending manifest: {info.pending_manifest_hash.slice(0, 8)}...
+                                        </div>
+                                    )}
+                                    {info.errors && info.errors.length > 0 && (
+                                        <div className="flex flex-col gap-2">
+                                            {info.errors.map(([source, error], idx) => (
+                                                <div key={idx} className="flex flex-row gap-2 items-center">
+                                                    <FaExclamationTriangle className="text-red-500" />
+                                                    <span>{source}: {formatError(error)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    );
+                })}
             </div>
         );
     };
