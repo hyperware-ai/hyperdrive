@@ -516,7 +516,8 @@ async fn handle_boot(
 
                 // If EOA verification failed, try EIP-1271 contract signature verification
                 if !signature_valid && is_contract(&owner, &provider).await {
-                    match verify_eip1271_signature(&owner, &hash, &info.signature, &provider).await {
+                    match verify_eip1271_signature(&owner, &hash, &info.signature, &provider).await
+                    {
                         Ok(is_valid) => {
                             signature_valid = is_valid;
                         }
@@ -810,10 +811,7 @@ pub async fn assign_routing(
 }
 
 /// Check if an address is a contract by checking if it has code
-async fn is_contract(
-    address: &EthAddress,
-    provider: &RootProvider<PubSubFrontend>,
-) -> bool {
+async fn is_contract(address: &EthAddress, provider: &RootProvider<PubSubFrontend>) -> bool {
     match provider.get_code_at(*address).await {
         Ok(code) => !code.is_empty(),
         Err(_) => false,
@@ -838,7 +836,8 @@ async fn verify_eip1271_signature(
     let call_data = isValidSignatureCall {
         hash: *message_hash,
         signature: Bytes::from(sig_bytes),
-    }.abi_encode();
+    }
+    .abi_encode();
 
     let tx = TransactionRequest::default()
         .to(*wallet_address)
