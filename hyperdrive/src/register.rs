@@ -7,6 +7,9 @@ use alloy::rpc::types::eth::{TransactionInput, TransactionRequest};
 use alloy::signers::Signature;
 use alloy_primitives::{Address as EthAddress, Bytes, FixedBytes, U256};
 use alloy_sol_types::{eip712_domain, SolCall, SolStruct};
+
+// EIP-1271 magic value for valid signatures
+const EIP1271_MAGIC_VALUE: [u8; 4] = [0x16, 0x26, 0xba, 0x7e];
 use base64::{engine::general_purpose::STANDARD as base64_standard, Engine};
 use lib::types::core::{
     BootInfo, Identity, ImportKeyfileInfo, Keyfile, LoginInfo, NodeRouting, UnencryptedIdentity,
@@ -500,15 +503,31 @@ async fn handle_boot(
                 };
 
                 let hash = boot.eip712_signing_hash(&domain);
-                let sig = Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
 
-                let recovered_address = sig
-                    .recover_address_from_prehash(&hash)
-                    .map_err(|_| warp::reject())?;
+                // First try EOA signature verification
+                let mut signature_valid = false;
+                if let Ok(sig) = Signature::from_str(&info.signature) {
+                    if let Ok(recovered_address) = sig.recover_address_from_prehash(&hash) {
+                        if recovered_address == owner {
+                            signature_valid = true;
+                        }
+                    }
+                }
 
-                if recovered_address != owner {
-                    println!("recovered_address: {}\r", recovered_address);
-                    println!("owner: {}\r", owner);
+                // If EOA verification failed, try EIP-1271 contract signature verification
+                if !signature_valid && is_contract(&owner, &provider).await {
+                    match verify_eip1271_signature(&owner, &hash, &info.signature, &provider).await {
+                        Ok(is_valid) => {
+                            signature_valid = is_valid;
+                        }
+                        Err(e) => {
+                            println!("EIP-1271 verification error: {}\r", e);
+                        }
+                    }
+                }
+
+                if !signature_valid {
+                    println!("Signature verification failed for owner: {}\r", owner);
                     attempts += 1;
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                     continue;
@@ -788,6 +807,57 @@ pub async fn assign_routing(
         // indirect node
     }
     Ok(())
+}
+
+/// Check if an address is a contract by checking if it has code
+async fn is_contract(
+    address: &EthAddress,
+    provider: &RootProvider<PubSubFrontend>,
+) -> bool {
+    match provider.get_code_at(*address).await {
+        Ok(code) => !code.is_empty(),
+        Err(_) => false,
+    }
+}
+
+/// Verify a signature using EIP-1271 standard for contract wallets
+async fn verify_eip1271_signature(
+    wallet_address: &EthAddress,
+    message_hash: &FixedBytes<32>,
+    signature: &str,
+    provider: &RootProvider<PubSubFrontend>,
+) -> anyhow::Result<bool> {
+    // Convert signature string to bytes
+    let sig_bytes = if signature.starts_with("0x") {
+        hex::decode(&signature[2..]).map_err(|e| anyhow::anyhow!("Invalid signature hex: {}", e))?
+    } else {
+        hex::decode(signature).map_err(|e| anyhow::anyhow!("Invalid signature hex: {}", e))?
+    };
+
+    // Prepare the isValidSignature call
+    let call_data = isValidSignatureCall {
+        hash: *message_hash,
+        signature: Bytes::from(sig_bytes),
+    }.abi_encode();
+
+    let tx = TransactionRequest::default()
+        .to(*wallet_address)
+        .input(TransactionInput::new(Bytes::from(call_data)));
+
+    // Call the contract
+    match provider.call(&tx).await {
+        Ok(result) => {
+            // Check if the result is the magic value
+            if result.len() >= 4 {
+                let mut magic = [0u8; 4];
+                magic.copy_from_slice(&result[0..4]);
+                Ok(magic == EIP1271_MAGIC_VALUE)
+            } else {
+                Ok(false)
+            }
+        }
+        Err(_) => Ok(false),
+    }
 }
 
 async fn success_response(
