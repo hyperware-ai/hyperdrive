@@ -85,7 +85,7 @@ export default function Home() {
                     placeholder="Search apps..."
                     value={searchQuery}
                     onChange={onInputChange}
-                    className="grow text-sm !bg-transparent border-none outline-none p-3"
+                    className="grow text-sm !bg-transparent "
                 />
             </div>
 
@@ -111,19 +111,16 @@ export default function Home() {
                             <button
                                 onClick={() => setCurrentPage(currentPage - 1)}
                                 disabled={currentPage === 1}
-                                className={`flex items-center justify-center p-2 rounded ${currentPage === 1
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    }`}
+                                className="clear thin"
                             >
-                                <span className="text-xl"><FaChevronLeft /></span>
+                                <FaChevronLeft className="text-xl" />
                             </button>
-                            <span>Page {currentPage} of {totalPages}</span>
+                            <span>Page {currentPage} of {Math.ceil(filteredApps.length / pageSize)}</span>
                             <span className="opacity-50 mx-2">|</span>
                             <select
                                 value={pageSize}
-                                onChange={onPageSizeChange}
-                                className="bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm"
+                                onChange={(e) => onPageSizeChange(e)}
+                                className="clear thin text-gray-500"
                             >
                                 <option value={10}>10</option>
                                 <option value={20}>20</option>
@@ -133,13 +130,10 @@ export default function Home() {
                             <span className="opacity-50">per page</span>
                             <button
                                 onClick={() => setCurrentPage(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                className={`flex items-center justify-center p-2 rounded ${currentPage === totalPages
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    }`}
+                                disabled={currentPage === Math.ceil(filteredApps.length / pageSize)}
+                                className="clear thin"
                             >
-                                <span className="text-xl"><FaChevronRight /></span>
+                                <FaChevronRight className="text-xl" />
                             </button>
                         </div>
                     )}

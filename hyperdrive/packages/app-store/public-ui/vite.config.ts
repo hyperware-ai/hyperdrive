@@ -14,7 +14,7 @@ IMPORTANT:
 This must match the process name from pkg/manifest.json + pkg/metadata.json
 The format is "/" + "process_name:package_name:publisher_node"
 */
-const BASE_URL = `/public`;
+const BASE_URL = `/main:app-store:sys/public`;
 
 // This is the proxy URL, it must match the node you are developing against
 const PROXY_URL = (process.env.VITE_NODE_URL || 'http://localhost:8080').replace(/\/$/, '');
@@ -40,6 +40,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: ['/our.js']
+    },
+  },
+  experimental: {
+    renderBuiltUrl: (path) => {
+      console.log('Rendering built URL:', path);
+      path = path.replace('/public', '');
+      return path;
     }
   },
   server: {

@@ -1,3 +1,660 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Variables */
+:root {
+    color-scheme: light dark;
+    --neon-green: #dcff71;
+    --neon-green-light: #dcff7188;
+    --neon-green-xlight: #dcff7144;
+    --iris: #004fff;
+    --iris-light: #004fff88;
+    --iris-xlight: #004fff44;
+    --stone: #353534;
+    --black: #111111;
+    --black-light: #11111188;
+    --black-xlight: #11111111;
+    --tasteful-dark: var(--black);
+    --white: #f6f6f6;
+    --white-light: #f6f6f688;
+    --white-xlight: #f6f6f611;
+    --magenta: #bf1363;
+    --orange: #dd6e42;
+    --off-white: var(--white);
+    --off-black: var(--stone);
+    --adaptive-gray: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+
+    --primary-color: var(--neon-green);
+    --primary-light: var(--neon-green-light);
+    --primary-xlight: var(--neon-green-xlight);
+    --secondary-color: var(--iris);
+    --secondary-light: var(--iris-light);
+    --secondary-xlight: var(--iris-xlight);
+    --tertiary-color: var(--orange);
+    --quaternary-color: var(--magenta);
+
+    --link-color: light-dark(var(--secondary-color), var(--primary-color));
+
+    --font-family-main: 'Neue Haas Grotesk', monospace;
+
+    /* Add modern CSS variables */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --button-border-width: 2px;
+}
+
+
+@theme {
+    --color-iris: var(--iris);
+    --color-iris-light: var(--iris-light);
+    --color-iris-xlight: var(--iris-xlight);
+    --color-neon: var(--neon-green);
+    --color-neon-light: var(--neon-green-light);
+    --color-neon-xlight: var(--neon-green-xlight);
+    --color-stone: var(--stone);
+    --color-black: var(--black);
+    --color-black-light: var(--black-light);
+}
+
+@font-face {
+    font-family: 'chaneyextended';
+    src: url('/chaneyextended.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Clash Display';
+    src: url('/ClashDisplay-Variable.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Neue Haas Grotesk';
+    src: url('/NHaasGroteskTXPro-55Rg.woff') format('woff');
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: 'Neue Haas Grotesk';
+    src: url('/NHaasGroteskTXPro-75Bd.woff') format('woff');
+    font-weight: 700;
+}
+
+html,
+body {
+    font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    line-height: 1.2;
+    margin: 0;
+    font-family: 'Clash Display', 'Neue Haas Grotesk', sans-serif;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
+
+h3 {
+    font-size: 1.25rem;
+}
+
+h4 {
+    font-size: 1.125rem;
+}
+
+h6 {
+    font-size: 0.875rem;
+}
+
+button,
+.button {
+    @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
+
+    &.clear {
+        @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
+    }
+
+    &.thin {
+        @apply px-2 py-1;
+    }
+
+    &:disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+}
+
+input {
+    @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
+
+}
+
+input,
+textarea,
+select {
+    transition: all var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    @apply outline-2 outline-neon outline-offset-2;
+    animation: shine 0.4s ease-out;
+    background-size: 200% 100%;
+    background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
+}
+
+@keyframes shine {
+    0% {
+        background-position: 200% 0%;
+    }
+
+    100% {
+        background-position: 0% 0%;
+    }
+}
+
+.display {
+    font-family: 'chaneyextended', sans-serif;
+}
+
+.prose {
+    font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+.clash {
+    font-family: 'Clash Display', sans-serif;
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+a {
+    @apply text-iris dark:text-neon hover:underline;
+}
+
+
+.address {
+    font-family: monospace;
+    background-color: var(--adaptive-gray);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-lg);
+}
+
+/* Help Text */
+.help-text {
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+
+
+.app-id {
+    font-size: 0.9rem;
+}
+
+/* Detail List */
+.detail-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.detail-list li {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+}
+
+
+.store-page>p,
+.store-page>.button.tertiary {
+    text-align: center;
+    display: block;
+    margin: 0 auto;
+}
+
+.app-description {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+    word-wrap: break-word;
+    color: light-dark(var(--text-light), var(--text-dark));
+}
+
+
+.advanced-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    max-width: 360px;
+}
+
+
+/* Action Buttons */
+.action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75em 1em;
+    font-size: 1rem;
+    border: none;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    align-self: stretch;
+}
+
+.primary {
+    background-color: var(--primary-color);
+    color: var(--off-black);
+}
+
+.primary:hover:not(:disabled) {
+    background-color: var(--primary-light);
+    color: var(--off-black);
+}
+
+
+.action-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-button.download-button {
+    background: var(--primary-color);
+    color: var(--text-light);
+    border: none;
+}
+
+.action-button.download-button:hover:not(:disabled) {
+    background: var(--primary-light);
+}
+
+.action-button.download-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+
+/* Capabilities approval popup */
+.cap-approval-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.json-display {
+    background-color: light-dark(var(--surface-light), var(--surface-dark));
+    color: light-dark(var(--text-light), var(--text-dark));
+    padding: 1rem;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+
+.store-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.badge {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    border-radius: 50%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+
+.notification-item.error {
+    @apply bg-red-500/20;
+}
+
+.notification-item.success {
+    @apply bg-green-500/20;
+}
+
+.notification-item.warning {
+    @apply bg-yellow-500/20;
+}
+
+.notification-item.download {
+    @apply bg-blue-500/20;
+}
+
+
+
+.notification-button.has-errors {
+    animation: shake 0.82s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+
+@keyframes shake {
+
+    10%,
+    90% {
+        transform: translate3d(-1px, 0, 0);
+    }
+
+    20%,
+    80% {
+        transform: translate3d(2px, 0, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-4px, 0, 0);
+    }
+
+    40%,
+    60% {
+        transform: translate3d(4px, 0, 0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    border: 2px solid var(--text-light);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+.loading-spinner.small {
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    border-width: 1.5px;
+}
+
+/* Publish Page */
+.publish-page {
+    padding: 1rem;
+}
+
+.publish-page h1 {
+    margin-bottom: 2rem;
+}
+
+
+.package-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-lg);
+}
+
+.no-packages {
+    text-align: center;
+    padding: 2rem;
+    background: light-dark(var(--surface-light), var(--surface-dark));
+    border-radius: var(--radius-lg);
+}
+
+/* Updates section */
+.updates-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.updates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.update-item {
+    background-color: light-dark(var(--surface-light), var(--surface-dark));
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid transparent;
+}
+
+.update-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.update-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.update-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.update-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.update-actions .action-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.update-actions .action-button.retry:hover {
+    color: var(--secondary-color);
+}
+
+.update-actions .action-button.clear:hover {
+    color: var(--red);
+}
+
+.update-details {
+    padding: 0.75rem 1rem 1rem 2.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.version-info {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.manifest-info {
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.error-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.error-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--red);
+    font-size: 0.9rem;
+}
+
+.error-icon {
+    flex-shrink: 0;
+}
+
+/* App Page Layout */
+.app-page {
+    padding: 2rem 1rem;
+}
+
+/* Updates Section */
+.updates-section {
+    margin-bottom: 8;
+}
+
+.update-item {
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: light-dark(var(--surface-light), var(--surface-dark));
+    border: 1px solid var(--adaptive-gray);
+}
+
+.update-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.update-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.update-details {
+    margin-top: 1rem;
+    color: light-dark(var(--text-secondary), var(--text));
+}
+
+.error-count {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    background-color: light-dark(var(--red-100), var(--red-900));
+    color: light-dark(var(--red-700), var(--red-200));
+}
+
+/* Navigation */
+.navigation {
+    display: flex;
+    align-items: center;
+    gap: 4;
+    margin-bottom: 1.5rem;
+}
+
+.current-path {
+    font-size: 1rem;
+    color: light-dark(var(--text-secondary), var(--text));
+}
+
+.downloads-table {
+    display: inline-block;
+    max-width: calc(960px - 2rem);
+    border-radius: var(--radius-lg);
+    overflow-x: scroll;
+}
+
+::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 7px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, .5);
+    -webkit-box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+}
+
+.downloads-table th {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: left;
+    color: light-dark(var(--text-secondary), var(--text));
+    background-color: light-dark(var(--surface-light), var(--surface-dark));
+    border-bottom: 1px solid var(--adaptive-gray);
+}
+
+.downloads-table td {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-bottom: 1px solid var(--adaptive-gray);
+}
+
+.downloads-table tr.file:hover,
+.downloads-table tr.directory:hover {
+    background-color: light-dark(var(--surface-light), var(--surface-dark));
+    cursor: pointer;
+}
+
+.updates-section {
+    background: light-dark(var(--surface-light), var(--surface-dark));
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: var(--radius-lg);
+}
+
+.tooltip-icon {
+    cursor: help;
+}

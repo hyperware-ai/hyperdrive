@@ -76,10 +76,9 @@ pub fn init_frontend(http_server: &mut server::HttpServer) {
             "public-ui",
             vec!["/public"],
             server::HttpBindingConfig::default()
-                .secure_subdomain(false)
                 .authenticated(false),
         )
-        .expect("failed to serve static UI");
+        .expect("failed to serve static public UI");
 
     http_server
         .serve_ui("ui", vec!["/"], config.clone())

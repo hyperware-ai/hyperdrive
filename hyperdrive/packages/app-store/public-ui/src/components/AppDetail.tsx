@@ -125,9 +125,9 @@ export default function AppDetail() {
                             className="w-16 md:w-32 h-16 md:h-32 object-cover rounded-lg aspect-square bg-white dark:bg-black"
                         />
                     ) : (
-                        <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-blue-500 flex items-center justify-center">
+                        <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-iris dark:bg-neon flex items-center justify-center">
                             <span className="text-white font-bold text-2xl md:text-4xl">
-                                {app.package_id.package_name.charAt(0).toUpperCase()}
+                                {app.package_id.package_name.charAt(0).toUpperCase() + app.package_id.package_name.slice(1).toLowerCase()}
                             </span>
                         </div>
                     )}
@@ -161,22 +161,22 @@ export default function AppDetail() {
 
             {/* App Title */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl md:text-3xl font-bold text-black prose dark:text-white">
                     {app.metadata?.name || app.package_id.package_name}
                 </h1>
             </div>
 
             {/* App Description */}
             <div className="prose prose-gray dark:prose-invert max-w-none">
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                <p className="opacity-50 leading-relaxed">
                     {app.metadata?.description || "No description available"}
                 </p>
             </div>
 
             {/* Public Notice */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                    This is a public view of the app. To install and use this app, access the private app store.
+            <div className="bg-iris/20 dark:bg-neon/20 border border-iris dark:border-neon rounded-lg p-4">
+                <p className="text-sm text-iris dark:text-neon">
+                    This is a public view of the app. To install and use this app, <a href={location.href.split('/public')[0]} className="font-bold text-neon dark:text-iris"> log in</a>.
                 </p>
             </div>
 
@@ -185,7 +185,7 @@ export default function AppDetail() {
                 <div className="flex flex-col gap-4">
                     <button
                         onClick={() => setShowScreenshots(!showScreenshots)}
-                        className="flex items-center gap-2 text-lg font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="flex items-center gap-2 text-lg font-medium text-gray-900 dark:text-white hover:text-iris dark:hover:text-neon transition-colors"
                     >
                         {showScreenshots ? <FaChevronDown /> : <FaChevronRight />}
                         Screenshots
@@ -209,27 +209,27 @@ export default function AppDetail() {
             )}
 
             {/* Technical Details */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+            <div className="bg-black/10 dark:bg-white/10 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-black dark:text-white mb-3 prose">
                     Technical Details
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
-                        <span className="text-gray-600 dark:text-gray-400">Package ID:</span>
+                        <span className="opacity-75">Package ID:</span>
                         <p className="font-mono break-all">
                             {app.package_id.package_name}:{app.package_id.publisher_node}
                         </p>
                     </div>
 
                     <div>
-                        <span className="text-gray-600 dark:text-gray-400">Metadata Hash:</span>
+                        <span className="opacity-75">Metadata Hash:</span>
                         <p className="font-mono break-all">{app.metadata_hash}</p>
                     </div>
 
                     {app.metadata?.properties?.mirrors && app.metadata.properties.mirrors.length > 0 && (
                         <div className="md:col-span-2">
-                            <span className="text-gray-600 dark:text-gray-400">Available Mirrors:</span>
-                            <p className="text-gray-700 dark:text-gray-300">
+                            <span className="opacity-75">Available Mirrors:</span>
+                            <p className="opacity-50">
                                 {app.metadata.properties.mirrors.length} mirror{app.metadata.properties.mirrors.length !== 1 ? 's' : ''} available
                             </p>
                         </div>
@@ -237,8 +237,8 @@ export default function AppDetail() {
 
                     {app.metadata?.properties?.code_hashes && app.metadata.properties.code_hashes.length > 0 && (
                         <div className="md:col-span-2">
-                            <span className="text-gray-600 dark:text-gray-400">Available Versions:</span>
-                            <p className="text-gray-700 dark:text-gray-300">
+                            <span className="opacity-75">Available Versions:</span>
+                            <p className="opacity-50">
                                 {app.metadata.properties.code_hashes.length} version{app.metadata.properties.code_hashes.length !== 1 ? 's' : ''} available
                             </p>
                         </div>
@@ -246,12 +246,6 @@ export default function AppDetail() {
                 </div>
             </div>
 
-            {/* Footer */}
-            <div className="text-center py-4 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Part of the Hyperdrive ecosystem
-                </p>
-            </div>
         </div>
     );
 }

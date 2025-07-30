@@ -477,9 +477,12 @@ export default function AppPage() {
             alt={`${app.metadata?.name || app.package_id.package_name} icon`}
             className="w-16 md:w-32 h-16 md:h-32 object-cover rounded-lg aspect-square bg-white dark:bg-black"
           />}
-          {!app.metadata?.image && <div
-            className="w-16 md:w-32 h-16 md:h-32  rounded-lg aspect-square bg-neon"
-          />}
+          {!app.metadata?.image &&
+            <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-iris dark:bg-neon flex items-center justify-center">
+              <span className="text-white font-bold text-2xl md:text-4xl">
+                {app.package_id.package_name.charAt(0).toUpperCase() + app.package_id.package_name.slice(1).toLowerCase()}
+              </span>
+            </div>}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {installedApp && <>
@@ -584,10 +587,10 @@ export default function AppPage() {
         </>
       )}
 
-        {showUninstallConfirmModal && <ConfirmUninstallModal
-      onClose={() => setShowUninstallConfirmModal(false)}
-      onUninstall={handleUninstall}
-      appName={app.metadata?.name || app.package_id.package_name} />}
+      {showUninstallConfirmModal && <ConfirmUninstallModal
+        onClose={() => setShowUninstallConfirmModal(false)}
+        onUninstall={handleUninstall}
+        appName={app.metadata?.name || app.package_id.package_name} />}
     </div>
   );
 }
