@@ -273,7 +273,10 @@ export const HomeScreen: React.FC = () => {
       >
         {/* Floating apps on canvas */}
         {floatingApps
-          .filter(app => app.label.toLowerCase().includes(searchQuery.toLowerCase()))
+          .filter(app => {
+            return !app.id.includes('homepage:homepage:sys')  // don't show the clock icon because it does nothing.
+              && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
+          })
           .map((app, index, allApps) => {
             const position = appPositions[app.id] || calculateAppIconPosition(app.id, index, allApps.length);
 
@@ -309,7 +312,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* Widgets */}
         {widgetApps
-          .filter(app => app.label.toLowerCase().includes(searchQuery.toLowerCase()))
+          .filter(app => !searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           .map((app, index) => (
             <Widget key={app.id} app={app} index={index} totalWidgets={widgetApps.length} />
           ))}
