@@ -5,7 +5,7 @@ use serde_json::{json, Value, Map};
 use hyperware_process_lib::logging::{info, error};
 use hyperware_process_lib::http::client::send_request_await_response;
 use hyperware_process_lib::http::Method;
-use crate::operations::types::OperationError;
+use hyperware_process_lib::hyperwallet_client::types::OperationError;
 use std::collections::HashMap;
 use url::Url;
 
@@ -144,7 +144,8 @@ fn send_json_rpc_request(url: Url, request_body: Value) -> Result<Value, Operati
             .and_then(|c| c.as_i64())
             .unwrap_or(0);
         error!("JSON-RPC error {}: {}", error_code, error_msg);
-        return Err(OperationError::internal_error(&format!("Bundler error: {}", error_msg)));
+        
+        return Err(OperationError::invalid_params(error_msg));
     }
     
     Ok(response_data)

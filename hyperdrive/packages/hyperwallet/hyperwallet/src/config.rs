@@ -32,7 +32,6 @@ pub const OPERATOR_PROCESS: &str = "operator:operator:grid-beta.hypr";
 pub const WALLET_ID_PREFIX_LENGTH: usize = 8;
 
 /// HTTP server configuration
-pub const HTTP_SERVER_WORKERS: u64 = 5;
 pub const HTTP_BIND_AUTHENTICATED: bool = true;
 
 /// Anvil test network constants

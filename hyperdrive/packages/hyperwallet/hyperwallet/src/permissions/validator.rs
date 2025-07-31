@@ -1,6 +1,8 @@
 /// Permission validation logic
 
-use crate::operations::{Operation, OperationError, OperationRequest, OperationResponse};
+use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletMessage, HyperwalletResponse, HyperwalletResponseData};
+use hyperware_process_lib::hyperwallet_client::types::Operation;
+use hyperware_process_lib::Address;
 use crate::permissions::operation_requires_wallet;
 use crate::state::HyperwalletState;
 use hyperware_process_lib::logging::{error, info};
@@ -12,91 +14,64 @@ impl PermissionValidator {
         Self
     }
 
-    /// Execute operation with full permission validation
     pub fn execute_with_permissions(
         &self,
-        request: OperationRequest,
-        source_address: &str,
+        message: HyperwalletMessage,
+        address: &Address,
         state: &mut HyperwalletState,
-    ) -> OperationResponse {
-        // Special handling for RegisterProcess - doesn't require existing permissions
-        if matches!(request.operation, Operation::RegisterProcess) {
-            info!("Processing RegisterProcess from {}", source_address);
-            return crate::operations::execute_operation(request, state);
+    ) -> HyperwalletResponse<HyperwalletResponseData> {
+        
+        // Special handling for operations that don't require existing permissions. might be unsafe?
+        if matches!(message, HyperwalletMessage::Handshake(_)) {
+            info!("Processing Handshake from {}", address);
+            return crate::api::messages::execute_message(message, address, state);
         }
 
-        // Get permissions for the source process
-        let permissions = match state.get_permissions(source_address) {
+        let operation = message.operation_type();
+
+        let permissions = match state.get_permissions(address) {
             Some(perms) => perms,
             None => {
-                error!("No permissions found for process: {}", source_address);
-                return OperationResponse::error(OperationError::permission_denied(&format!(
-                    "Process {} is not registered. Use RegisterProcess first.",
-                    source_address
+                error!("No permissions found for process: {}", address);
+                return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                    "Process {} is not registered. Use the Handshake operation to register first.",
+                    address
                 )));
             }
         };
 
-        // Validate the operation is allowed
-        if !permissions.can_perform(&request.operation) {
-            return OperationResponse::error(OperationError::permission_denied(&format!(
+        if !permissions.allowed_operations.contains(&operation) {
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
                 "Operation {:?} is not allowed for process {}",
-                request.operation, source_address
+                operation, address
             )));
         }
 
-        // For wallet operations, verify ownership
-        if operation_requires_wallet(&request.operation) {
-            if let Some(wallet_id) = &request.wallet_id {
-                if !state.check_wallet_ownership(source_address, wallet_id) {
-                    return OperationResponse::error(OperationError::permission_denied(&format!(
-                        "Process {} does not own wallet '{}'",
-                        source_address, wallet_id
-                    )));
-                }
-            }
+        // Note: In the new architecture, wallet ownership is typically managed via session_id
+        // TODO: Implement proper wallet ownership checking based on session or explicit wallet_id
+        if operation_requires_wallet(&operation) {
+            // This is a placeholder - in the new architecture, we might need to extract
+            // wallet information from the typed request structs or session context
+            info!("Wallet operation {:?} - ownership check needed", operation);
         }
 
-        // Check spending limits for transaction operations
-        if matches!(request.operation, Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba) {
-            if let Some(limits) = &permissions.spending_limits {
-                // Extract amount from params
-                if let Some(amount) = request.params.get("amount").and_then(|v| v.as_str()) {
-                    let is_eth = matches!(request.operation, Operation::SendEth);
-                    
-                    if let Err(e) = limits.check_transaction(amount, is_eth) {
-                        return OperationResponse::error(
-                            OperationError::spending_limit_exceeded(&amount, &e)
-                        );
-                    }
-                }
-            }
+        // TODO: Implement spending limit checking for typed request structs
+        // This will require extracting amount from the specific request types
+        if matches!(operation, Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba) {
+            info!("Transaction operation {:?} - spending limit check needed", operation);
         }
 
         info!(
             "Executing operation {:?} for process {}",
-            request.operation, source_address
+            operation, address
         );
 
-        // Clone operation type and amount for spending limit update after execution
-        let operation_type = request.operation.clone();
-        let amount_str = request.params.get("amount").and_then(|v| v.as_str()).map(|s| s.to_string());
-
-        // Execute the operation
-        let response = crate::operations::execute_operation(request, state);
+        let response = crate::api::messages::execute_message(message, address, state);
         
-        // Update spending limits if transaction was successful
+        // TODO: Implement spending limit updates for successful transactions
         if response.success {
-            if matches!(operation_type, Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba) {
-                if let Some(perms) = state.process_permissions.get_mut(source_address) {
-                    if let Some(limits) = &mut perms.spending_limits {
-                        if let Some(amount) = amount_str {
-                            let is_eth = matches!(operation_type, Operation::SendEth);
-                            limits.record_spending(&amount, is_eth);
-                            state.save();
-                        }
-                    }
-                }
+            if matches!(operation, Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba) {
+                info!("Transaction successful, spending limits update needed");
             }
         }
         

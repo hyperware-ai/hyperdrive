@@ -1,18 +1,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use crate::operations::Operation;
+use hyperware_process_lib::hyperwallet_client::types::Operation;
 use crate::permissions::ProcessPermissions;
 use hyperware_process_lib::signer::{LocalSigner, EncryptedSignerData};
 use hyperware_process_lib::wallet::KeyStorage as ProcessLibKeyStorage;
 use hyperware_process_lib::logging::{info, error};
 use chrono::{DateTime, Utc};
+use hyperware_process_lib::Address;
 
-pub type ProcessAddress = String; // format: "process:package:publisher"
-pub type WalletAddress = String;  // Ethereum address
+
+pub type ProcessAddress = Address; // format: "node@process:package:publisher"
+pub type WalletAddress = String;  // Ethereum address (TODO: should use Alloy types in the future)
 pub type ChainId = u64;
 pub type SessionId = String;      // Unique session identifier
 
-/// Holds temporary data for an active client session (NOT persisted)
 #[derive(Debug, Clone)]
 pub struct SessionData {
     pub process_address: ProcessAddress,
@@ -20,36 +21,29 @@ pub struct SessionData {
     pub expiry: std::time::Instant,
 }
 
-/// Main hyperwallet service state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HyperwalletState {
-    /// Process-isolated wallet storage: process -> address -> wallet
     pub wallets_by_process: HashMap<ProcessAddress, HashMap<WalletAddress, Wallet>>,
     
-    /// Process permissions - which operations each process can perform
     pub process_permissions: HashMap<ProcessAddress, ProcessPermissions>,
     
-    /// Active signers cache - (process, address) -> decrypted signer (not persisted)
     #[serde(skip)]
     pub active_signers: HashMap<(ProcessAddress, WalletAddress), LocalSigner>,
     
-    /// Active sessions cache - SessionId -> SessionData (not persisted)
     #[serde(skip)]
     pub active_sessions: HashMap<SessionId, SessionData>,
     
     /// Hypermap data cache for performance
     pub identities: HashMap<String, Identity>,    // entry_name -> TBA/owner info
     pub notes: HashMap<String, Vec<u8>>,         // note_path -> raw data
+    //pub facts: HashMap<String, Vec<u8>>,         // TODO: add facts
     
-    /// Transaction state management
     pub pending_txs: HashMap<(ProcessAddress, WalletAddress), Vec<PendingTx>>,
     pub nonces: HashMap<(ProcessAddress, WalletAddress, ChainId), u64>,
     
-    /// Network configurations
     pub chains: HashMap<ChainId, Chain>,
     pub tokens: HashMap<ChainId, HashMap<String, Token>>,
     
-    /// Service metadata
     pub version: u32,
     pub initialized_at: u64,
 }
@@ -59,19 +53,10 @@ impl Default for HyperwalletState {
         let mut chains = HashMap::new();
         
         // Add default chain configurations
-        chains.insert(1, Chain {
-            id: 1,
-            name: "Ethereum Mainnet".to_string(),
-            rpc_url: "https://eth.llamarpc.com".to_string(),
-            block_explorer: "https://etherscan.io".to_string(),
-            native_currency: "ETH".to_string(),
-            enabled: true,
-        });
-        
         chains.insert(8453, Chain {
             id: 8453,
             name: "Base".to_string(),
-            rpc_url: "https://mainnet.base.org".to_string(),
+            rpc_url: "goes-here".to_string(), // TODO: not really needed
             block_explorer: "https://basescan.org".to_string(),
             native_currency: "ETH".to_string(),
             enabled: true,
@@ -94,7 +79,6 @@ impl Default for HyperwalletState {
     }
 }
 
-/// Individual wallet information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Wallet {
     pub address: WalletAddress,      // Primary identifier
@@ -103,12 +87,10 @@ pub struct Wallet {
     pub key_storage: KeyStorage,
     pub created_at: DateTime<Utc>,
     pub last_used: Option<DateTime<Utc>>,
-    
     /// Wallet-specific spending limits (optional, overrides process limits)
     pub spending_limits: Option<WalletSpendingLimits>,
 }
 
-/// Storage format for wallet private keys - wraps process_lib's KeyStorage
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum KeyStorage {
     /// Encrypted private key data
@@ -117,25 +99,13 @@ pub enum KeyStorage {
     Decrypted(LocalSigner),
 }
 
-/// Wallet-specific spending limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WalletSpendingLimits {
-    /// Maximum amount per call/transaction
     pub max_per_call: Option<String>,
-    
-    /// Maximum total amount (lifetime limit)
     pub max_total: Option<String>,
-    
-    /// Currency for these limits (e.g., "USDC", "ETH")
     pub currency: String,
-    
-    /// Total amount spent so far (lifetime)
     pub total_spent: String,
-    
-    /// When these limits were set
     pub set_at: DateTime<Utc>,
-    
-    /// When limits were last updated
     pub updated_at: DateTime<Utc>,
 }
 
@@ -180,7 +150,6 @@ pub struct Identity {
     pub cached_at: u64,
 }
 
-/// Pending transaction information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PendingTx {
     pub id: String,
@@ -198,7 +167,6 @@ pub enum TxStatus {
     Failed { reason: String },
 }
 
-/// Chain configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chain {
     pub id: ChainId,
@@ -209,7 +177,6 @@ pub struct Chain {
     pub enabled: bool,
 }
 
-/// Token information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Token {
     pub address: String,
@@ -219,9 +186,7 @@ pub struct Token {
 }
 
 impl HyperwalletState {
-    /// Initialize state with current timestamp, loading from storage if available
     pub fn initialize() -> Self {
-        // Try to load existing state
         if let Some(saved_state) = Self::load() {
             info!("Loaded existing wallet state (version {})", saved_state.version);
             
@@ -234,7 +199,6 @@ impl HyperwalletState {
             return saved_state;
         }
         
-        // Create new state if none exists
         info!("Creating new wallet state");
         let mut state = Self::default();
         state.initialized_at = chrono::Utc::now().timestamp() as u64;
@@ -242,8 +206,8 @@ impl HyperwalletState {
         state
     }
 
-    pub fn clear_process_permissions(&mut self, process: &str) {
-        self.process_permissions.remove(process);
+    pub fn clear_process_permissions(&mut self, process: &Address) {
+        self.process_permissions.remove(&process);
         self.save();
     }
     
@@ -266,7 +230,6 @@ impl HyperwalletState {
         v2_state
     }
     
-    /// Load state from persistent storage
     pub fn load() -> Option<Self> {
         match hyperware_process_lib::get_state() {
             Some(bytes) => {
@@ -274,12 +237,6 @@ impl HyperwalletState {
                     Ok(state) => Some(state),
                     Err(e) => {
                         error!("Failed to deserialize state: {}", e);
-                        
-                        // If the error is about missing field `_address`, it's likely an old state format
-                        if e.to_string().contains("missing field `_address`") || e.to_string().contains("missing field `address`") {
-                            error!("State appears to be from an older version with incompatible LocalSigner format. Creating fresh state.");
-                            error!("Note: Any wallets stored with the old format will need to be re-imported.");
-                        }
                         
                         None
                     }
@@ -289,7 +246,6 @@ impl HyperwalletState {
         }
     }
     
-    /// Save state to persistent storage
     pub fn save(&self) {
         match serde_json::to_vec(self) {
             Ok(bytes) => {
@@ -302,30 +258,24 @@ impl HyperwalletState {
         }
     }
     
-    /// Get wallet by address for a specific process
-    pub fn get_wallet(&self, process: &str, wallet_identifier: &str) -> Option<&Wallet> {
-        let process_wallets = self.wallets_by_process.get(process)?;
+    pub fn get_wallet(&self, address: &Address, wallet_identifier: &str) -> Option<&Wallet> {
+        let process_wallets = self.wallets_by_process.get(address)?;
         
-        // Try as address first (most common)
         if wallet_identifier.starts_with("0x") && wallet_identifier.len() == 42 {
             return process_wallets.get(wallet_identifier);
         }
         
-        // Otherwise, search by name
         process_wallets.values()
             .find(|w| w.name.as_ref() == Some(&wallet_identifier.to_string()))
     }
     
-    /// Get mutable wallet reference
-    pub fn get_wallet_mut(&mut self, process: &str, wallet_identifier: &str) -> Option<&mut Wallet> {
-        let process_wallets = self.wallets_by_process.get_mut(process)?;
+    pub fn get_wallet_mut(&mut self, address: &Address, wallet_identifier: &str) -> Option<&mut Wallet> {
+        let process_wallets = self.wallets_by_process.get_mut(address)?;
         
-        // Try as address first
         if wallet_identifier.starts_with("0x") && wallet_identifier.len() == 42 {
             return process_wallets.get_mut(wallet_identifier);
         }
-        
-        // Otherwise, search by name
+
         let address = process_wallets.values()
             .find(|w| w.name.as_ref() == Some(&wallet_identifier.to_string()))
             .map(|w| w.address.clone())?;
@@ -333,33 +283,29 @@ impl HyperwalletState {
         process_wallets.get_mut(&address)
     }
     
-    /// List all wallets for a process
-    pub fn list_wallets(&self, process: &str) -> Vec<&Wallet> {
+    pub fn list_wallets(&self, address: &Address) -> Vec<&Wallet> {
         self.wallets_by_process
-            .get(process)
+            .get(address)
             .map(|wallets| wallets.values().collect())
             .unwrap_or_default()
     }
     
-    /// Add wallet for a process
-    pub fn add_wallet(&mut self, process: &str, wallet: Wallet) {
+    pub fn add_wallet(&mut self, address: Address, wallet: Wallet) {
         let process_wallets = self.wallets_by_process
-            .entry(process.to_string())
+            .entry(address)
             .or_insert_with(HashMap::new);
         
         process_wallets.insert(wallet.address.clone(), wallet);
         self.save();
     }
     
-    /// Remove wallet
-    pub fn remove_wallet(&mut self, process: &str, address: &str) -> Option<Wallet> {
-        let process_wallets = self.wallets_by_process.get_mut(process)?;
-        let wallet = process_wallets.remove(address);
+    pub fn remove_wallet(&mut self, address: &Address, wallet_address: &WalletAddress) -> Option<Wallet> {
+        let process_wallets = self.wallets_by_process.get_mut(address)?;
+        let wallet = process_wallets.remove(wallet_address);
         
         if wallet.is_some() {
-            // Clean up empty process entries
             if process_wallets.is_empty() {
-                self.wallets_by_process.remove(process);
+                self.wallets_by_process.remove(address);
             }
             self.save();
         }
@@ -367,40 +313,30 @@ impl HyperwalletState {
         wallet
     }
     
-    /// Get process permissions
-    pub fn get_permissions(&self, process_address: &str) -> Option<&ProcessPermissions> {
-        self.process_permissions.get(process_address)
+    pub fn get_permissions(&self, address: &Address) -> Option<&ProcessPermissions> {
+        self.process_permissions.get(address)
     }
     
-    /// Set process permissions
-    pub fn set_permissions(&mut self, process_address: String, permissions: ProcessPermissions) {
-        self.process_permissions.insert(process_address, permissions);
+    pub fn set_permissions(&mut self, address: Address, permissions: ProcessPermissions) {
+        self.process_permissions.insert(address.clone(), permissions);
         self.save();
     }
     
-    /// Check if a process has permission for an operation
-    pub fn check_permission(&self, process_address: &str, operation: &Operation) -> bool {
-        // Special case: hyperwallet itself has all permissions
-        if process_address.starts_with("hyperwallet:hyperwallet:") {
-            return true;
-        }
-        
-        let Some(permissions) = self.get_permissions(process_address) else {
+    pub fn check_permission(&self, address: &Address, operation: &Operation) -> bool {
+        let Some(permissions) = self.get_permissions(address) else {
             return false;
         };
         
-        permissions.can_perform(operation)
+        permissions.allowed_operations.contains(operation)
     }
     
-    /// Check if a process owns a wallet
-    pub fn check_wallet_ownership(&self, process: &str, wallet_identifier: &str) -> bool {
+    pub fn check_wallet_ownership(&self, process: &Address, wallet_identifier: &str) -> bool {
         self.get_wallet(process, wallet_identifier).is_some()
     }
     
-    /// Set spending limits for a specific wallet
     pub fn set_wallet_spending_limits(
         &mut self, 
-        process: &str, 
+        process: &Address, 
         wallet_identifier: &str,
         limits: WalletSpendingLimits
     ) -> Result<(), String> {
@@ -412,8 +348,7 @@ impl HyperwalletState {
         Ok(())
     }
     
-    /// Get spending limits for a wallet (wallet-level overrides process-level)
-    pub fn get_effective_spending_limits(&self, process: &str, wallet_identifier: &str) -> Option<WalletSpendingLimits> {
+    pub fn get_effective_spending_limits(&self, process: &Address, wallet_identifier: &str) -> Option<WalletSpendingLimits> {
         if let Some(wallet) = self.get_wallet(process, wallet_identifier) {
             // Return wallet-specific limits if they exist
             if let Some(wallet_limits) = &wallet.spending_limits {
@@ -429,7 +364,7 @@ impl HyperwalletState {
     /// Check if a spending amount is within wallet limits
     pub fn check_spending_limit(
         &self,
-        process: &str,
+        process: &Address,
         wallet_identifier: &str,
         amount: &str,
         currency: &str
@@ -479,10 +414,9 @@ impl HyperwalletState {
         Ok(true)
     }
     
-    /// Record spending against wallet limits
     pub fn record_spending(
         &mut self,
-        process: &str,
+        process: &Address,
         wallet_identifier: &str,
         amount: &str,
         currency: &str
@@ -510,31 +444,27 @@ impl HyperwalletState {
     
     // === Session Management Methods ===
     
-    /// Create a new session for a process
-    /// If duration_secs is 0, the session will be infinite (never expire)
-    pub fn create_session(&mut self, process_address: ProcessAddress, duration_secs: u64) -> SessionId {
+    pub fn create_session(&mut self, address: &Address, duration_secs: u64) -> SessionId {
         let session_id = self.generate_session_id();
         let expiry = if duration_secs == 0 {
-            // Use a very far future time for infinite sessions (100 years from now)
             std::time::Instant::now() + std::time::Duration::from_secs(365 * 24 * 60 * 60 * 100)
         } else {
             std::time::Instant::now() + std::time::Duration::from_secs(duration_secs)
         };
         
         let session_data = SessionData {
-            process_address: process_address.clone(),
+            process_address: address.clone(),
             unlocked_wallets: HashSet::new(),
             expiry,
         };
         
         self.active_sessions.insert(session_id.clone(), session_data);
         let duration_msg = if duration_secs == 0 { "infinite".to_string() } else { format!("{}s", duration_secs) };
-        info!("Created new session {} for process {} (duration: {})", session_id, process_address, duration_msg);
+        info!("Created new session {} for process {} (duration: {})", session_id, address, duration_msg);
         
         session_id
     }
     
-    /// Generate a unique session ID
     fn generate_session_id(&self) -> SessionId {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -546,21 +476,17 @@ impl HyperwalletState {
         format!("sess_{:x}", hasher.finish())
     }
     
-    /// Validate session exists and is not expired
     pub fn validate_session(&mut self, session_id: &SessionId) -> Option<&SessionData> {
-        // Clean up expired sessions first
         self.cleanup_expired_sessions();
         
         self.active_sessions.get(session_id)
     }
     
-    /// Get mutable session data
     pub fn get_session_mut(&mut self, session_id: &SessionId) -> Option<&mut SessionData> {
         self.cleanup_expired_sessions();
         self.active_sessions.get_mut(session_id)
     }
     
-    /// Clean up expired sessions
     pub fn cleanup_expired_sessions(&mut self) {
         let now = std::time::Instant::now();
         let expired_sessions: Vec<SessionId> = self.active_sessions
@@ -580,7 +506,6 @@ impl HyperwalletState {
         }
     }
     
-    /// Remove a specific session
     pub fn remove_session(&mut self, session_id: &SessionId) -> Option<SessionData> {
         if let Some(session) = self.active_sessions.remove(session_id) {
             info!("Removed session {} for process {}", session_id, session.process_address);
@@ -595,7 +520,6 @@ impl HyperwalletState {
         }
     }
     
-    /// Add an unlocked wallet to a session
     pub fn add_unlocked_wallet(&mut self, session_id: &SessionId, wallet_address: WalletAddress) -> Result<(), String> {
         let session = self.get_session_mut(session_id)
             .ok_or_else(|| format!("Session {} not found or expired", session_id))?;
@@ -606,7 +530,6 @@ impl HyperwalletState {
         Ok(())
     }
     
-    /// Check if a wallet is unlocked in a session
     pub fn is_wallet_unlocked(&self, session_id: &SessionId, wallet_address: &WalletAddress) -> bool {
         self.active_sessions
             .get(session_id)
@@ -614,8 +537,18 @@ impl HyperwalletState {
             .unwrap_or(false)
     }
     
-    /// Get all active session count (for monitoring)
     pub fn active_session_count(&self) -> usize {
         self.active_sessions.len()
+    }
+    
+    pub fn get_total_wallet_count(&self) -> usize {
+        self.wallets_by_process
+            .values()
+            .map(|process_wallets| process_wallets.len())
+            .sum()
+    }
+    
+    pub fn get_active_process_count(&self) -> usize {
+        self.process_permissions.len()
     }
 }
