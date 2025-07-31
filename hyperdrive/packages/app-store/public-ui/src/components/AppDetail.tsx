@@ -168,7 +168,7 @@ export default function AppDetail() {
                 <div className="flex self-stretch items-center gap-2 max-w-sm">
                     <span className="text-sm opacity-50">To use this app:</span>
                     <a
-                        href="https://valet.hyperware.ai/"
+                        href={`https://valet.hyperware.ai/?installApp=${app?.package_id?.package_name}`}
                         className=" button thin text-sm"
                     >
                         <span>Get a node</span>
