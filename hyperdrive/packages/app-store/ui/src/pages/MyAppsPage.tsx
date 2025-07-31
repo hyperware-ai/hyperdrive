@@ -37,7 +37,9 @@ export default function MyAppsPage() {
         uninstallApp,
         fetchUpdates,
         clearUpdates,
-        updates
+        updates,
+        setShowPublicAppStore,
+        showPublicAppStore,
     } = useAppsStore();
 
     const [currentPath, setCurrentPath] = useState<string[]>([]);
@@ -331,6 +333,20 @@ export default function MyAppsPage() {
         return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
     };
 
+    const confirmTogglePublicAppStore = () => {
+        if (!showPublicAppStore) {
+            if (!confirm("This action will enable anyone on the internet to browse the appstore from a site served by your node. Are you sure you want to proceed?")) {
+                return;
+            }
+            setShowPublicAppStore(true);
+        } else {
+            if (!confirm("This action will disable the public appstore hosted by your node for everyone on the internet. Are you sure you want to proceed?")) {
+                return;
+            }
+            setShowPublicAppStore(false);
+        }
+    };
+
     return (
         <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
             {error && <div className="p-2 bg-red-500 text-white rounded-lg">{error}</div>}
@@ -495,11 +511,18 @@ export default function MyAppsPage() {
                             );
                         })}
                     </div>
+                    <h3 className="prose">Public App Store</h3>
+                    <div className="flex gap-2 md:flex-row flex-col md:items-center">
+                        <p>You may elect to host a public, unauthenticated appstore for anyone on the internet to browse.</p>
+                        <button onClick={confirmTogglePublicAppStore}>
+                            {showPublicAppStore ? "Disable Public App Store" : "Enable Public App Store"}
+                        </button>
+                    </div>
                 </>
             )}
 
 
-            {/* Uninstall Confirmation Modal */}
+
             {
                 showUninstallConfirm && appToUninstall && (
                     <ConfirmUninstallModal

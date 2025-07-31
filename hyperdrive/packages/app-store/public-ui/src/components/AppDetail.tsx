@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { AppListing } from "../types/app";
 import { FaChevronDown, FaChevronRight } from "react-icons/fa6";
+import classNames from "classnames";
 
 const mockApp: AppListing = {
     package_id: {
@@ -35,7 +36,7 @@ export default function AppDetail() {
     const [showScreenshots, setShowScreenshots] = useState(false);
     const [isDevMode, setIsDevMode] = useState(false);
     const [backtickPressCount, setBacktickPressCount] = useState(0);
-
+    const [detailExpanded, setDetailExpanded] = useState(false);
     useEffect(() => {
         const backTickCounter = (e: KeyboardEvent) => {
             if (e.key === '`') {
@@ -115,7 +116,7 @@ export default function AppDetail() {
 
     return (
         <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
-            {/* App Header */}
+
             <div className="flex justify-between gap-4 flex-wrap">
                 <div className="w-16 md:w-32 h-16 md:h-32 flex items-center justify-center rounded-lg">
                     {app.metadata?.image ? (
@@ -127,13 +128,13 @@ export default function AppDetail() {
                     ) : (
                         <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-iris dark:bg-neon flex items-center justify-center">
                             <span className="text-white font-bold text-2xl md:text-4xl">
-                                {app.package_id.package_name.charAt(0).toUpperCase() + app.package_id.package_name.slice(1).toLowerCase()}
+                                {app.package_id.package_name.charAt(0).toUpperCase() + (app.package_id.package_name.charAt(1) || '').toLowerCase()}
                             </span>
                         </div>
                     )}
                 </div>
 
-                {/* App Info Grid */}
+
                 <div className="grid grid-cols-2 gap-2 flex-1">
                     <span className="text-gray-600 dark:text-gray-400">Publisher:</span>
                     <span className="font-medium text-blue-600 dark:text-blue-400">
@@ -159,28 +160,35 @@ export default function AppDetail() {
                 </div>
             </div>
 
-            {/* App Title */}
+
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h1 className="text-2xl md:text-3xl font-bold text-black prose dark:text-white">
                     {app.metadata?.name || app.package_id.package_name}
                 </h1>
+                <div className="flex self-stretch items-center gap-2 max-w-sm">
+                    <span className="text-sm opacity-50">To use this app:</span>
+                    <a
+                        href="https://valet.hyperware.ai/"
+                        className=" button thin text-sm"
+                    >
+                        <span>Get a node</span>
+                    </a>
+                    <a
+                        href="https://book.hyperware.ai/getting_started/install.html"
+                        className="text-sm button thin clear"
+                    >
+                        <span className="text-black dark:text-white opacity-50">or host your own</span>
+                    </a>
+                </div>
             </div>
 
-            {/* App Description */}
+
             <div className="prose prose-gray dark:prose-invert max-w-none">
                 <p className="opacity-50 leading-relaxed">
                     {app.metadata?.description || "No description available"}
                 </p>
             </div>
 
-            {/* Public Notice */}
-            <div className="bg-iris/20 dark:bg-neon/20 border border-iris dark:border-neon rounded-lg p-4">
-                <p className="text-sm text-iris dark:text-neon">
-                    This is a public view of the app. To install and use this app, <a href={location.href.split('/public')[0]} className="font-bold text-neon dark:text-iris"> log in</a>.
-                </p>
-            </div>
-
-            {/* Screenshots */}
             {(hasScreenshots || isDevMode) && (
                 <div className="flex flex-col gap-4">
                     <button
@@ -208,12 +216,23 @@ export default function AppDetail() {
                 </div>
             )}
 
-            {/* Technical Details */}
-            <div className="bg-black/10 dark:bg-white/10 rounded-lg p-4">
-                <h3 className="text-lg font-medium text-black dark:text-white mb-3 prose">
-                    Technical Details
+            <div className={classNames("bg-black/10 dark:bg-white/10 rounded-lg p-4 flex flex-col transition-all duration-300", {
+                'gap-4': detailExpanded,
+                'gap-0': !detailExpanded
+            })}>
+                <h3 className="text-lg font-medium text-black dark:text-white prose flex gap-2 items-center">
+                    <button
+                        className="thin clear"
+                        onClick={() => setDetailExpanded(!detailExpanded)}
+                    >
+                        {detailExpanded ? <FaChevronDown /> : <FaChevronRight />}
+                    </button>
+                    <span>Technical Details</span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className={classNames("grid grid-cols-1 md:grid-cols-2 gap-3 text-sm transition-all duration-300", {
+                    "opacity-0 max-h-0 overflow-hidden": !detailExpanded,
+                    "opacity-100 max-h-96 overflow-visible": detailExpanded
+                })}>
                     <div>
                         <span className="opacity-75">Package ID:</span>
                         <p className="font-mono break-all">

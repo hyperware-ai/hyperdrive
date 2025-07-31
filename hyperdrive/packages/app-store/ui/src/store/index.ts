@@ -17,6 +17,7 @@ interface AppsStore {
   homepageApps: HomepageApp[]
   activeDownloads: Record<string, { downloaded: number, total: number }>
   updates: Record<string, UpdateInfo>
+  showPublicAppStore: boolean
 
   fetchData: (id: string) => Promise<void>
   fetchListings: () => Promise<void>
@@ -53,6 +54,7 @@ interface AppsStore {
   fetchUpdates: () => Promise<void>
   clearUpdates: (packageId: string) => Promise<void>
   checkMirrors: (packageId: string, onMirrorSelect: (mirror: string, status: boolean | null | 'http') => void) => Promise<{ mirror: string, status: boolean | null | 'http', mirrors: string[] } | { error: string, mirrors: string[] }>
+  setShowPublicAppStore: (show: boolean) => void
 }
 
 const useAppsStore = create<AppsStore>()((set, get) => ({
@@ -64,6 +66,7 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
   homepageApps: [],
   notifications: [],
   updates: {},
+  showPublicAppStore: false,
 
   fetchData: async (id: string) => {
     if (!id) return;
@@ -474,6 +477,8 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
       throw error;
     }
   },
+
+  setShowPublicAppStore: (show: boolean) => set({ showPublicAppStore: show }),
 
   ws: new HyperwareClientApi({
     uri: WEBSOCKET_URL,

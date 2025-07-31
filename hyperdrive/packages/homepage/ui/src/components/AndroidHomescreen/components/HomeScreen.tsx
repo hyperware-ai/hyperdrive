@@ -233,12 +233,12 @@ export const HomeScreen: React.FC = () => {
       data-background-image={backgroundImage}
       data-is-dark-mode={isDarkMode}
     >
-      {/* Background overlay for better text readability */}
+
       {backgroundImage && (
         <div className="absolute inset-0 bg-black/20" />
       )}
 
-      {/* Content */}
+
       <div
         className="relative z-10 h-full"
         onDragOver={(e) => {
@@ -271,7 +271,7 @@ export const HomeScreen: React.FC = () => {
           }
         }}
       >
-        {/* Floating apps on canvas */}
+
         {floatingApps
           .filter(app => {
             return !app.id.includes('homepage:homepage:sys')  // don't show the clock icon because it does nothing.
@@ -310,21 +310,21 @@ export const HomeScreen: React.FC = () => {
             );
           })}
 
-        {/* Widgets */}
+
         {widgetApps
           .filter(app => !searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           .map((app, index) => (
             <Widget key={app.id} app={app} index={index} totalWidgets={widgetApps.length} />
           ))}
 
-        {/* Dock at bottom */}
+
         <div
           className="dock-area absolute bottom-0 md:bottom-4 left-1/2 transform -translate-x-1/2"
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
           <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex items-center gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
-            {/* Dock slots */}
+
             {Array.from({ length: 4 }).map((_, index) => {
               const app = dockAppsList[index];
               return (
@@ -402,7 +402,7 @@ export const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Touch drag preview */}
+
         {draggedAppId && touchDragPosition && (
           <div
             className="fixed z-50 pointer-events-none opacity-75"
@@ -419,7 +419,7 @@ export const HomeScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Edit mode toggle and widget settings */}
+
         <div className="absolute top-2 right-2 left-2 flex items-center gap-2">
           <img
             src="/Logomark Iris.svg"
@@ -488,7 +488,7 @@ export const HomeScreen: React.FC = () => {
               <div className={classNames("flex items-start gap-2", {
                 hidden: !showBackgroundSettings && !showWidgetSettings
               })}>
-                {/* Background Settings */}
+
                 {showBackgroundSettings && (
                   <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
                     <span className="text-neon prose text-sm font-semibold mb-3">Background</span>
@@ -560,7 +560,7 @@ export const HomeScreen: React.FC = () => {
           )}
         </div>
 
-        {/* Desktop hint */}
+
         {/* <div className="hidden md:block absolute bottom-24 left-1/2 -translate-x-1/2 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">
           <div className="flex items-center gap-4">
             <span><kbd className="p-1 bg-black/10 dark:bg-white/10 rounded text-xs">A</kbd> All apps</span>

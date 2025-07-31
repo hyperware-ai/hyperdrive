@@ -78,7 +78,7 @@ export default function AppPage() {
   const [showUninstallConfirmModal, setShowUninstallConfirmModal] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [backtickPressCount, setBacktickPressCount] = useState(0);
-
+  const [detailExpanded, setDetailExpanded] = useState(false);
   useEffect(() => {
     const backTickCounter = (e: KeyboardEvent) => {
       if (e.key === '`') {
@@ -480,7 +480,7 @@ export default function AppPage() {
           {!app.metadata?.image &&
             <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-iris dark:bg-neon flex items-center justify-center">
               <span className="text-white font-bold text-2xl md:text-4xl">
-                {app.package_id.package_name.charAt(0).toUpperCase() + app.package_id.package_name.slice(1).toLowerCase()}
+                {app.package_id.package_name.charAt(0).toUpperCase() + (app.package_id.package_name.charAt(1) || '').toLowerCase()}
               </span>
             </div>}
         </div>
@@ -523,11 +523,13 @@ export default function AppPage() {
       </div>
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="prose font-bold min-w-1/2 md:max-w-2/3">{app.metadata?.name || app.package_id.package_name}</h2>
+        <h1 className="text-2xl md:text-3xl font-bold prose">
+          {app.metadata?.name || app.package_id.package_name}
+        </h1>
         {appButtons({ className: "hidden md:flex" })}
       </div>
 
-      <div className="wrap-anywhere ">
+      <div className="wrap-anywhere opacity-50 leading-relaxed">
         {app.metadata?.description || "No description available"}
       </div>
 
@@ -586,6 +588,55 @@ export default function AppPage() {
           )}
         </>
       )}
+
+      <div className={classNames("bg-black/10 dark:bg-white/10 rounded-lg p-4 flex flex-col  transition-all duration-300", {
+        'gap-4': detailExpanded,
+        'gap-0': !detailExpanded
+      })}>
+        <h3 className="text-lg font-medium text-black dark:text-white prose flex gap-2 items-center">
+          <button
+            className="thin clear"
+            onClick={() => setDetailExpanded(!detailExpanded)}
+          >
+            {detailExpanded ? <FaChevronDown /> : <FaChevronRight />}
+          </button>
+          <span>Technical Details</span>
+        </h3>
+        <div className={classNames("grid grid-cols-1 md:grid-cols-2 gap-3 text-sm transition-all duration-300", {
+          "opacity-0 max-h-0 overflow-hidden": !detailExpanded,
+          "opacity-100 max-h-96 overflow-visible": detailExpanded
+        })}>
+          <div>
+            <span className="opacity-75">Package ID:</span>
+            <p className="font-mono break-all">
+              {app.package_id.package_name}:{app.package_id.publisher_node}
+            </p>
+          </div>
+
+          <div>
+            <span className="opacity-75">Metadata Hash:</span>
+            <p className="font-mono break-all">{app.metadata_hash}</p>
+          </div>
+
+          {app.metadata?.properties?.mirrors && app.metadata.properties.mirrors.length > 0 && (
+            <div className="md:col-span-2">
+              <span className="opacity-75">Available Mirrors:</span>
+              <p className="opacity-50">
+                {app.metadata.properties.mirrors.length} mirror{app.metadata.properties.mirrors.length !== 1 ? 's' : ''} available
+              </p>
+            </div>
+          )}
+
+          {app.metadata?.properties?.code_hashes && app.metadata.properties.code_hashes.length > 0 && (
+            <div className="md:col-span-2">
+              <span className="opacity-75">Available Versions:</span>
+              <p className="opacity-50">
+                {app.metadata.properties.code_hashes.length} version{app.metadata.properties.code_hashes.length !== 1 ? 's' : ''} available
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {showUninstallConfirmModal && <ConfirmUninstallModal
         onClose={() => setShowUninstallConfirmModal(false)}

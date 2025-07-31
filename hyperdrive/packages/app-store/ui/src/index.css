@@ -136,6 +136,10 @@ button,
     }
 }
 
+a.button {
+    @apply hover:decoration-none;
+}
+
 input {
     @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
 
