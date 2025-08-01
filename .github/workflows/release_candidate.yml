@@ -19,4 +19,4 @@ jobs:
         port: ${{ secrets.SSH_PORT }}
         command_timeout: 60m
         script: |
-          curl -X PUT http://localhost:8000/monitor/build-hyperdrive
+          ~/hosting_backend/smd/backend/staging/smd_scripts/call-build-hyperdrive.sh
