@@ -70,6 +70,8 @@ pub struct State {
     pub packages: HashMap<PackageId, PackageState>,
     /// the APIs we have
     pub installed_apis: HashSet<PackageId>,
+    /// are we serving the public app store?
+    pub is_serving_public: bool,
 }
 
 impl State {
@@ -79,8 +81,10 @@ impl State {
         let mut state = State {
             packages: HashMap::new(),
             installed_apis: HashSet::new(),
+            is_serving_public: false,
         };
         state.populate_packages_from_filesystem()?;
+        state.populate_other_from_file()?;
         Ok(state)
     }
 
@@ -142,6 +146,47 @@ impl State {
         }
         Ok(())
     }
+
+    fn populate_other_from_file(&mut self) -> anyhow::Result<()> {
+        let our_package = PackageId::new("app-store", "sys");
+        let drive = vfs::create_drive(our_package, "state", Some(VFS_TIMEOUT))?;
+
+        let file = vfs::File {
+            path: format!("{drive}/state.json"),
+            timeout: 5,
+        };
+        let Ok(ref bytes) = file.read() else {
+            // no state set -> use default
+            return Ok(());
+        };
+
+        let persisted_state: FilePersistedState = serde_json::from_slice(bytes).unwrap_or_default();
+
+        self.is_serving_public = persisted_state.is_serving_public;
+
+        return Ok(());
+    }
+
+    pub fn persist_to_file(&self) -> anyhow::Result<()> {
+        let our_package = PackageId::new("app-store", "sys");
+        let drive = vfs::create_drive(our_package, "state", Some(VFS_TIMEOUT))?;
+
+        let file = vfs::open_file(&format!("{drive}/state.json"), true, Some(VFS_TIMEOUT))?;
+
+        let state_to_persist = serde_json::to_vec(&FilePersistedState {
+            is_serving_public: self.is_serving_public,
+        })
+        .unwrap();
+
+        file.write(&state_to_persist)?;
+
+        return Ok(());
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+struct FilePersistedState {
+    is_serving_public: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

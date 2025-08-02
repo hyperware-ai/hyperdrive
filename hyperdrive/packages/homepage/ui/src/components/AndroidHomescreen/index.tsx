@@ -106,10 +106,10 @@ export default function AndroidHomescreen() {
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ touchAction: 'none' }}>
-      {/* Home Screen */}
+
       <HomeScreen />
 
-      {/* Running Apps */}
+
       {runningApps.map(app => (
         <AppContainer
           key={app.id}
@@ -118,17 +118,17 @@ export default function AndroidHomescreen() {
         />
       ))}
 
-      {/* Overlays */}
+
       <AppDrawer />
       <RecentApps />
 
-      {/* Gesture Zone */}
+
       <GestureZone />
 
-      {/* PWA Update Notification */}
+
       <PWAUpdateNotification />
 
-      {/* PWA Install Prompt */}
+
       <PWAInstallPrompt />
     </div>
   );

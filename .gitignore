@@ -17,6 +17,7 @@ hyperdrive/src/bootstrapped_processes.rs
 hyperdrive/packages/**/wasi_snapshot_preview1.wasm
 
 hyperdrive/packages/app-store/pkg/ui/*
+hyperdrive/packages/app-store/pkg/public-ui/*
 hyperdrive/packages/file-explorer/api
 hyperdrive/packages/file-explorer/pkg/ui/*
 hyperdrive/packages/homepage/pkg/ui/*

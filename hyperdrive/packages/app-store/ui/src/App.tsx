@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 
 import Header from "./components/Header";
 import { APP_DETAILS_PATH, DOWNLOAD_PATH, MY_APPS_PATH, PUBLISH_PATH, STORE_PATH } from "./constants/path";
