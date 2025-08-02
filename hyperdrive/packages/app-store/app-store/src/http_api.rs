@@ -22,7 +22,7 @@ const ICON: &str = include_str!("icon");
 
 /// Bind static and dynamic HTTP paths for the app store,
 /// bind to our WS updates path, and add icon and widget to homepage.
-pub fn init_frontend(http_server: &mut server::HttpServer) {
+pub fn init_frontend(http_server: &mut server::HttpServer, state: &State) {
     let config = server::HttpBindingConfig::default().secure_subdomain(true);
 
     for path in [
@@ -45,39 +45,22 @@ pub fn init_frontend(http_server: &mut server::HttpServer) {
         "/apps/:id/auto-update",  // set auto-updating a version of a downloaded app
         "/updates/:id/clear",     // clear update info for an app.
         "/mirrorcheck/:id/:node", // check if a node/mirror is online/offline
+        "/togglepublic",          // toggle whether we're serving public view or not
     ] {
         http_server
             .bind_http_path(path, config.clone())
             .expect("failed to bind http path");
     }
 
-    // bind /apps path at base domain, in addition to secure subdomain,
-    // so that widget can access it
-    http_server
-        .bind_http_path(
-            "/apps-public",
-            server::HttpBindingConfig::default()
-                .secure_subdomain(false)
-                .authenticated(false),
-        )
-        .expect("failed to bind http path");
-
-    http_server
-        .bind_http_path(
-            "/apps-public/:id",
-            server::HttpBindingConfig::default()
-                .secure_subdomain(false)
-                .authenticated(false),
-        )
-        .expect("failed to bind http path");
-
-    http_server
-        .serve_ui(
-            "public-ui",
-            vec!["/public"],
-            server::HttpBindingConfig::default().authenticated(false),
-        )
-        .expect("failed to serve static public UI");
+    // bind /apps-public path at base domain, in addition to secure subdomain,
+    // so that widget can access it;
+    //
+    // further, potentially serve public ui, depending on settings
+    if state.is_serving_public {
+        serve_public_ui(http_server);
+    } else {
+        unserve_public_ui(http_server, true);
+    }
 
     http_server
         .serve_ui("ui", vec!["/"], config.clone())
@@ -270,9 +253,10 @@ pub fn handle_http_request(
     our: &Address,
     state: &mut State,
     updates: &mut Updates,
+    http_server: &mut server::HttpServer,
     req: &server::IncomingHttpRequest,
 ) -> (server::HttpResponse, Option<LazyLoadBlob>) {
-    match serve_paths(our, state, updates, req) {
+    match serve_paths(our, state, updates, http_server, req) {
         Ok((status_code, _headers, body)) => (
             server::HttpResponse::new(status_code),
             Some(LazyLoadBlob {
@@ -313,10 +297,58 @@ fn gen_package_info(id: &PackageId, state: &PackageState) -> serde_json::Value {
     })
 }
 
+fn serve_public_ui(http_server: &mut server::HttpServer) {
+    http_server
+        .bind_http_path(
+            "/apps-public",
+            server::HttpBindingConfig::default()
+                .secure_subdomain(false)
+                .authenticated(false),
+        )
+        .expect("failed to bind http path");
+
+    http_server
+        .bind_http_path(
+            "/apps-public/:id",
+            server::HttpBindingConfig::default()
+                .secure_subdomain(false)
+                .authenticated(false),
+        )
+        .expect("failed to bind http path");
+
+    http_server
+        .serve_ui(
+            "public-ui",
+            vec!["/public"],
+            server::HttpBindingConfig::default().authenticated(false),
+        )
+        .expect("failed to serve static public UI");
+}
+
+fn unserve_public_ui(http_server: &mut server::HttpServer, is_initialization: bool) {
+    http_server
+        .bind_http_path(
+            "/apps-public",
+            server::HttpBindingConfig::default().secure_subdomain(false),
+        )
+        .expect("failed to bind http path");
+
+    if !is_initialization {
+        http_server
+            .unbind_http_path("/apps-public/:id")
+            .expect("failed to bind http path");
+
+        http_server
+            .unserve_ui("public-ui", vec!["/public"])
+            .expect("failed to serve static public UI");
+    }
+}
+
 fn serve_paths(
     our: &Address,
     state: &mut State,
     updates: &mut Updates,
+    http_server: &mut server::HttpServer,
     req: &server::IncomingHttpRequest,
 ) -> anyhow::Result<(http::StatusCode, Option<HashMap<String, String>>, Vec<u8>)> {
     let method = req.method()?;
@@ -894,6 +926,35 @@ fn serve_paths(
                     error: None,
                 };
                 return Ok((StatusCode::OK, None, serde_json::to_vec(&check_response)?));
+            }
+        }
+        "/togglepublic" => {
+            if method == Method::GET {
+                return Ok((
+                    StatusCode::OK,
+                    None,
+                    serde_json::to_vec(&state.is_serving_public)?,
+                ));
+            } else if method == Method::POST {
+                if state.is_serving_public {
+                    unserve_public_ui(http_server, false);
+                } else {
+                    serve_public_ui(http_server);
+                }
+
+                state.is_serving_public = !state.is_serving_public;
+
+                state.persist_to_file()?;
+
+                let response_value = state.is_serving_public;
+
+                return Ok((StatusCode::OK, None, serde_json::to_vec(&response_value)?));
+            } else {
+                return Ok((
+                    StatusCode::METHOD_NOT_ALLOWED,
+                    None,
+                    format!("Invalid method {method} for {bound_path}").into_bytes(),
+                ));
             }
         }
         _ => Ok((

@@ -40,6 +40,7 @@ export default function MyAppsPage() {
         updates,
         setShowPublicAppStore,
         showPublicAppStore,
+        fetchPublicAppStoreStatus,
     } = useAppsStore();
 
     const [currentPath, setCurrentPath] = useState<string[]>([]);
@@ -62,6 +63,7 @@ export default function MyAppsPage() {
         fetchInstalled();
         fetchListings();
         fetchUpdates();
+        fetchPublicAppStoreStatus();
         loadItems();
     }, [currentPath, fetchListings]);
 
@@ -333,17 +335,17 @@ export default function MyAppsPage() {
         return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
     };
 
-    const confirmTogglePublicAppStore = () => {
+    const confirmTogglePublicAppStore = async () => {
         if (!showPublicAppStore) {
             if (!confirm("This action will enable anyone on the internet to browse the appstore from a site served by your node. Are you sure you want to proceed?")) {
                 return;
             }
-            setShowPublicAppStore(true);
+            await setShowPublicAppStore(true);
         } else {
             if (!confirm("This action will disable the public appstore hosted by your node for everyone on the internet. Are you sure you want to proceed?")) {
                 return;
             }
-            setShowPublicAppStore(false);
+            await setShowPublicAppStore(false);
         }
     };
 
