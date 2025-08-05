@@ -35,9 +35,8 @@ impl OperationResponse {
         }
     }
     
-    // Helper to convert from HyperwalletResponse<T> to OperationResponse
-    pub fn from_hyperwallet_response<T>(response: hyperware_process_lib::hyperwallet_client::types::HyperwalletResponse<T>) -> Self 
-    where T: serde::Serialize {
+    // Helper to convert from HyperwalletResponse to OperationResponse
+    pub fn from_hyperwallet_response(response: hyperware_process_lib::hyperwallet_client::types::HyperwalletResponse) -> Self {
         if response.success {
             if let Some(data) = response.data {
                 match serde_json::to_value(data) {

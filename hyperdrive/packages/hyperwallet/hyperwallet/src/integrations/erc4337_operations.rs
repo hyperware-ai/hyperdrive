@@ -1,5 +1,5 @@
 use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletRequest, HyperwalletResponse, HyperwalletResponseData, OperationError,
+    HyperwalletResponse, HyperwalletResponseData, OperationError, SessionId,
     BuildAndSignUserOperationForPaymentRequest, BuildAndSignUserOperationResponse,
     SubmitUserOperationRequest, SubmitUserOperationResponse,
     GetUserOperationReceiptRequest, UserOperationReceiptResponse,
@@ -38,8 +38,7 @@ impl OperationResponse {
     }
     
     // Helper to convert from HyperwalletResponse<T> to OperationResponse
-    pub fn from_hyperwallet_response<T>(response: hyperware_process_lib::hyperwallet_client::types::HyperwalletResponse<T>) -> Self 
-    where T: serde::Serialize {
+    pub fn from_hyperwallet_response(response: hyperware_process_lib::hyperwallet_client::types::HyperwalletResponse) -> Self {
         if response.success {
             if let Some(data) = response.data {
                 match serde_json::to_value(data) {
@@ -77,12 +76,12 @@ use crate::integrations::erc4337_bundler as bundler;
 use crate::config::DEFAULT_CHAIN_ID;
 
 pub fn build_and_sign_user_operation_for_payment(
-    hyperwallet_request: HyperwalletRequest<BuildAndSignUserOperationForPaymentRequest>,
+    request: BuildAndSignUserOperationForPaymentRequest,
+    session_id: &SessionId,
     address: &Address,
     state: &HyperwalletState,
-) -> HyperwalletResponse<HyperwalletResponseData> {
+) -> HyperwalletResponse {
     info!("Building UserOperation for payment");
-    let request = hyperwallet_request.data;
 
     let sender = EthAddress::from_str(&request.tba_address).unwrap();
 
@@ -229,8 +228,7 @@ pub fn build_and_sign_user_operation_for_payment(
         ready_to_submit: true,
     };
     
-    let result = HyperwalletResponse::success(response_data);
-    result.map(HyperwalletResponseData::BuildAndSignUserOperationForPayment)
+    HyperwalletResponse::success(HyperwalletResponseData::BuildAndSignUserOperationForPayment(response_data))
 }
 
 fn parse_hex(hex: &str) -> Result<Vec<u8>, OperationResponse> {
@@ -434,22 +432,20 @@ pub struct SubmitUserOpParams {
 }
 
 pub fn submit_user_operation(
-    request: HyperwalletRequest<SubmitUserOperationRequest>,
-) -> HyperwalletResponse<HyperwalletResponseData> {
+    req: SubmitUserOperationRequest,
+    session_id: &SessionId,
+) -> HyperwalletResponse {
     info!("Submitting UserOperation to bundler ^^");
     
-    let data = &request.data;
-    
     match bundler::submit_user_operation(
-        data.signed_user_operation.clone(),
-        data.entry_point.clone(),
+        req.signed_user_operation.clone(),
+        req.entry_point.clone(),
     ) {
         Ok(user_op_hash) => {
             info!("UserOperation submitted successfully: {}", user_op_hash);
-                         let result = HyperwalletResponse::success(SubmitUserOperationResponse {
-                 user_op_hash,
-             });
-             result.map(HyperwalletResponseData::SubmitUserOperation)
+            HyperwalletResponse::success(HyperwalletResponseData::SubmitUserOperation(SubmitUserOperationResponse {
+                user_op_hash,
+            }))
         }
         Err(e) => {
             error!("Failed to submit UserOperation: {:?}", e);
@@ -459,21 +455,19 @@ pub fn submit_user_operation(
 }
 
 pub fn get_user_operation_receipt(
-    request: HyperwalletRequest<GetUserOperationReceiptRequest>,
-) -> HyperwalletResponse<HyperwalletResponseData> {
+    req: GetUserOperationReceiptRequest,
+    session_id: &SessionId,
+) -> HyperwalletResponse {
     info!("Getting UserOperation receipt");
     
-    let data = &request.data;
-    
-    match bundler::get_user_operation_receipt(data.user_op_hash.clone()) {
+    match bundler::get_user_operation_receipt(req.user_op_hash.clone()) {
         Ok(receipt_data) => {
             info!("UserOperation receipt retrieved successfully");
-            let result = HyperwalletResponse::success(UserOperationReceiptResponse {
-                user_op_hash: data.user_op_hash.clone(),
+            HyperwalletResponse::success(HyperwalletResponseData::GetUserOperationReceipt(UserOperationReceiptResponse {
+                user_op_hash: req.user_op_hash.clone(),
                 status: "success".to_string(),
                 receipt: Some(receipt_data),
-            });
-            result.map(HyperwalletResponseData::GetUserOperationReceipt)
+            }))
         }
         Err(e) => {
             error!("Failed to get UserOperation receipt: {:?}", e);

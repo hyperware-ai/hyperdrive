@@ -1,6 +1,6 @@
 /// Permission validation logic
 
-use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletMessage, HyperwalletResponse, HyperwalletResponseData};
+use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletMessage, HyperwalletRequest, HyperwalletResponse, HyperwalletResponseData};
 use hyperware_process_lib::hyperwallet_client::types::Operation;
 use hyperware_process_lib::Address;
 use crate::permissions::operation_requires_wallet;
@@ -19,10 +19,10 @@ impl PermissionValidator {
         message: HyperwalletMessage,
         address: &Address,
         state: &mut HyperwalletState,
-    ) -> HyperwalletResponse<HyperwalletResponseData> {
+    ) -> HyperwalletResponse {
         
         // Special handling for operations that don't require existing permissions. might be unsafe?
-        if matches!(message, HyperwalletMessage::Handshake(_)) {
+        if matches!(message.request, HyperwalletRequest::Handshake(_)) {
             info!("Processing Handshake from {}", address);
             return crate::api::messages::execute_message(message, address, state);
         }
