@@ -1,7 +1,7 @@
 /// Hypermap and TBA operations using process_lib's high-level functions
 
 use crate::config::DEFAULT_CHAIN_ID;
-use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletRequest,CheckTbaOwnershipRequest, CheckTbaOwnershipResponse};
+use hyperware_process_lib::hyperwallet_client::types::OperationError;
 
 // TODO: These are legacy types - need to be migrated to new typed approach
 #[derive(serde::Serialize, serde::Deserialize)]

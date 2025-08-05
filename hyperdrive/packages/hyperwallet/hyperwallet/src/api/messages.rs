@@ -4,7 +4,7 @@
 /// the appropriate core business logic or external integrations.
 use crate::state::HyperwalletState;
 use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletMessage, HyperwalletRequest, HyperwalletResponse, HyperwalletResponseData,
+    HyperwalletMessage, HyperwalletRequest, HyperwalletResponse,
     OperationError,
 };
 use hyperware_process_lib::logging::{error, info};

@@ -1,4 +1,4 @@
-use crate::permissions::{ProcessPermissions, SpendingLimits, UpdatableSetting};
+use crate::permissions::definitions::{ProcessPermissions, SpendingLimits, UpdatableSetting};
 use crate::state::HyperwalletState;
 use hyperware_process_lib::hyperwallet_client::types::{
     HandshakeStep, HyperwalletResponse, HyperwalletResponseData, Operation,
@@ -17,16 +17,12 @@ pub fn handle_handshake_step(
     info!("Received handshake request {:?} from {:?}", step, source);
 
     match &step {
-        HandshakeStep::ClientHello {
-            client_version,
-            client_name,
-        } => handle_client_hello(client_version.clone(), client_name.clone(), state),
-        HandshakeStep::Register {
-            required_operations,
-            spending_limits,
-        } => handle_register(
-            required_operations.clone(),
-            spending_limits.clone(),
+        HandshakeStep::ClientHello(hello) => {
+            handle_client_hello(hello.client_version.clone(), hello.client_name.clone(), state)
+        }
+        HandshakeStep::Register(reg) => handle_register(
+            reg.required_operations.clone(),
+            reg.spending_limits.clone(),
             source,
             state,
         ),
@@ -70,17 +66,19 @@ fn handle_client_hello(
         1
     );
 
-    HyperwalletResponse::success(HyperwalletResponseData::Handshake(HandshakeStep::ServerWelcome {
-        server_version: env!("CARGO_PKG_VERSION").to_string(),
-        supported_operations,
-        supported_chains: vec![8453], // Base
-        features: vec![
-            "spending_limits".to_string(),
-            "session_management".to_string(),
-            "erc4337".to_string(),
-            "gasless_payments".to_string(),
-        ],
-    }))
+    HyperwalletResponse::success(HyperwalletResponseData::Handshake(HandshakeStep::ServerWelcome(
+        hyperware_process_lib::hyperwallet_client::types::ServerWelcome {
+            server_version: env!("CARGO_PKG_VERSION").to_string(),
+            supported_operations,
+            supported_chains: vec![8453], // Base
+            features: vec![
+                "spending_limits".to_string(),
+                "session_management".to_string(),
+                "erc4337".to_string(),
+                "gasless_payments".to_string(),
+            ],
+        }
+    )))
 }
 
 fn handle_register(
@@ -126,15 +124,17 @@ fn handle_register(
         session_id
     );
 
-    HyperwalletResponse::success(HyperwalletResponseData::Handshake(HandshakeStep::Complete {
-        session_id,
-        registered_permissions: permissions,
-    }))
+    HyperwalletResponse::success(HyperwalletResponseData::Handshake(HandshakeStep::Complete(
+        hyperware_process_lib::hyperwallet_client::types::CompleteHandshake {
+            session_id,
+            registered_permissions: permissions,
+        }
+    )))
 }
 
 pub fn handle_unlock_wallet(
     req: UnlockWalletRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {

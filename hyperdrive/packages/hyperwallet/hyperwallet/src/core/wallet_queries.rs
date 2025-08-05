@@ -16,11 +16,10 @@ use hyperware_process_lib::hyperwallet_client::types::{
 use hyperware_process_lib::eth::Provider;
 use hyperware_process_lib::wallet;
 use hyperware_process_lib::Address;
-use serde_json::json;
 
 pub fn get_balance(
     req: GetBalanceRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     source: &Address,
     state: &HyperwalletState,
 ) -> HyperwalletResponse {
@@ -54,35 +53,37 @@ pub fn get_balance(
 }
 
 pub fn list_wallets(
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &HyperwalletState,
 ) -> HyperwalletResponse {
-    let wallets: Vec<_> = state
+    let wallets: Vec<Wallet> = state
         .list_wallets(address)
         .into_iter()
         .map(|wallet| {
-            json!({
-                "address": wallet.address,
-                "name": wallet.name,
-                "chain_id": wallet.chain_id,
-                "created_at": wallet.created_at,
-                "encrypted": matches!(wallet.key_storage, crate::state::KeyStorage::Encrypted(_))
-            })
+            Wallet {
+                address: wallet.address.clone(),
+                name: wallet.name.clone(),
+                chain_id: wallet.chain_id,
+                encrypted: matches!(wallet.key_storage, crate::state::KeyStorage::Encrypted(_)),
+                created_at: Some(wallet.created_at.to_rfc3339()),
+                last_used: wallet.last_used.map(|dt| dt.to_rfc3339()),
+                spending_limits: None,
+            }
         })
         .collect();
 
     let wallet_count = wallets.len();
     HyperwalletResponse::success(HyperwalletResponseData::ListWallets(ListWalletsResponse {
         process: address.to_string(),
-        wallets: wallets.into_iter().map(|w| serde_json::from_value(w).unwrap()).collect(),
-        total: wallet_count,
+        wallets,
+        total: wallet_count as u64,
     }))
 }
 
 pub fn get_wallet_info(
     req: GetWalletInfoRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &HyperwalletState,
 ) -> HyperwalletResponse {
@@ -104,7 +105,7 @@ pub fn get_wallet_info(
 
 pub fn get_token_balance(
     req: GetTokenBalanceRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &HyperwalletState,
 ) -> HyperwalletResponse {

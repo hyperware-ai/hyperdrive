@@ -10,14 +10,14 @@ use crate::config::DEFAULT_CHAIN_ID;
 use crate::state::{HyperwalletState, KeyStorage, Wallet};
 use hyperware_process_lib::hyperwallet_client::types::{
     HyperwalletResponse, HyperwalletResponseData, OperationError, SessionId,
-    SendEthRequest, SendEthResponse, SendTokenRequest, SendTokenResponse, ExecuteViaTbaRequest, ExecuteViaTbaResponse,
+    SendEthRequest, SendEthResponse, SendTokenRequest, SendTokenResponse,
 };
 use hyperware_process_lib::eth::Provider;
 use hyperware_process_lib::wallet::{self, EthAmount, erc20_transfer};
 use hyperware_process_lib::signer::{LocalSigner, Signer};
 use hyperware_process_lib::logging::info;
 use hyperware_process_lib::Address;
-use serde_json::{json, Value};
+use serde_json::Value;
 use alloy_primitives::U256;
 
 pub fn get_signer_from_wallet(
@@ -65,7 +65,7 @@ pub fn sign_hash(
 
 pub fn send_eth(
     req: SendEthRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
@@ -135,7 +135,7 @@ pub fn send_eth(
 
 pub fn send_token(
     req: SendTokenRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {

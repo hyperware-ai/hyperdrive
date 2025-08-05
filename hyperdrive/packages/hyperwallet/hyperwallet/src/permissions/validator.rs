@@ -1,6 +1,6 @@
 /// Permission validation logic
 
-use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletMessage, HyperwalletRequest, HyperwalletResponse, HyperwalletResponseData};
+use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletMessage, HyperwalletRequest, HyperwalletResponse};
 use hyperware_process_lib::hyperwallet_client::types::Operation;
 use hyperware_process_lib::Address;
 use crate::permissions::operation_requires_wallet;

@@ -1,0 +1,631 @@
+interface hyperwallet {
+    use standard.{address, process-id, node-id};
+
+    /// JSON is passed over Wasm boundary as a string
+    type json = string;
+
+    /// Wallet address (Ethereum address)
+    type wallet-address = string;
+
+    /// Chain ID for blockchain networks
+    type chain-id = u64;
+
+    /// Session identifier
+    type session-id = string;
+
+    /// User operation hash
+    type user-operation-hash = string;
+
+    /// Cryptographic signature as bytes
+    type signature = list<u8>;
+
+    /// Available operations in the Hyperwallet protocol
+    enum operation {
+        handshake,
+        unlock-wallet,
+        register-process,
+        update-spending-limits,
+        create-wallet,
+        import-wallet,
+        delete-wallet,
+        rename-wallet,
+        export-wallet,
+        encrypt-wallet,
+        decrypt-wallet,
+        get-wallet-info,
+        list-wallets,
+        set-wallet-limits,
+        send-eth,
+        send-token,
+        approve-token,
+        call-contract,
+        sign-transaction,
+        sign-message,
+        execute-via-tba,
+        check-tba-ownership,
+        setup-tba-delegation,
+        build-and-sign-user-operation-for-payment,
+        submit-user-operation,
+        build-user-operation,
+        sign-user-operation,
+        build-and-sign-user-operation,
+        estimate-user-operation-gas,
+        get-user-operation-receipt,
+        configure-paymaster,
+        resolve-identity,
+        create-note,
+        read-note,
+        setup-delegation,
+        verify-delegation,
+        mint-entry,
+        get-balance,
+        get-token-balance,
+        get-transaction-history,
+        estimate-gas,
+        get-gas-price,
+        get-transaction-receipt,
+        batch-operations,
+        schedule-operation,
+        cancel-operation,
+    }
+
+    /// Categories of operations
+    enum operation-category {
+        system,
+        process-management,
+        wallet-management,
+        ethereum,
+        token-bound-account,
+        erc4337,
+        hypermap,
+        query,
+        advanced,
+    }
+
+    /// Spending limits configuration
+    record spending-limits {
+        per-tx-eth: option<string>,
+        daily-eth: option<string>,
+        per-tx-usdc: option<string>,
+        daily-usdc: option<string>,
+        daily-reset-at: u64,
+        spent-today-eth: string,
+        spent-today-usdc: string,
+    }
+
+    /// Process permissions
+    record process-permissions {
+        address: address,
+        allowed-operations: list<operation>,
+        spending-limits: option<spending-limits>,
+        updatable-settings: list<updatable-setting>,
+        registered-at: u64,
+    }
+
+    /// Settings that can be updated
+    enum updatable-setting {
+        spending-limits,
+    }
+
+    /// Session information
+    record session-info {
+        server-version: string,
+        session-id: session-id,
+        registered-permissions: process-permissions,
+        initial-chain-id: chain-id,
+    }
+
+    /// Handshake protocol steps
+    variant handshake-step {
+        client-hello(client-hello),
+        server-welcome(server-welcome),
+        register(register-request),
+        complete(complete-handshake),
+    }
+
+    record client-hello {
+        client-version: string,
+        client-name: string,
+    }
+
+    record server-welcome {
+        server-version: string,
+        supported-operations: list<operation>,
+        supported-chains: list<u64>,
+        features: list<string>,
+    }
+
+    record register-request {
+        required-operations: list<operation>,
+        spending-limits: option<spending-limits>,
+    }
+
+    record complete-handshake {
+        registered-permissions: process-permissions,
+        session-id: string,
+    }
+
+    /// Main message structure
+    record hyperwallet-message {
+        request: hyperwallet-request,
+        session-id: session-id,
+    }
+
+    /// All possible request types
+    variant hyperwallet-request {
+        // Session Management
+        handshake(handshake-step),
+        unlock-wallet(unlock-wallet-request),
+
+        // Wallet Lifecycle Management
+        create-wallet(create-wallet-request),
+        import-wallet(import-wallet-request),
+        delete-wallet(delete-wallet-request),
+        rename-wallet(rename-wallet-request),
+        export-wallet(export-wallet-request),
+        list-wallets,
+        get-wallet-info(get-wallet-info-request),
+
+        // Ethereum Operations
+        send-eth(send-eth-request),
+        send-token(send-token-request),
+        approve-token(approve-token-request),
+        get-balance(get-balance-request),
+        get-token-balance(get-token-balance-request),
+        call-contract(call-contract-request),
+        sign-transaction(sign-transaction-request),
+        sign-message(sign-message-request),
+        get-transaction-history(get-transaction-history-request),
+        estimate-gas(estimate-gas-request),
+        get-gas-price,
+        get-transaction-receipt(get-transaction-receipt-request),
+
+        // Token Bound Account Operations
+        execute-via-tba(execute-via-tba-request),
+        check-tba-ownership(check-tba-ownership-request),
+        setup-tba-delegation(setup-tba-delegation-request),
+
+        // Account Abstraction (ERC-4337)
+        build-and-sign-user-operation-for-payment(build-and-sign-user-operation-for-payment-request),
+        submit-user-operation(submit-user-operation-request),
+        get-user-operation-receipt(get-user-operation-receipt-request),
+        build-user-operation(build-user-operation-request),
+        sign-user-operation(sign-user-operation-request),
+        build-and-sign-user-operation(build-and-sign-user-operation-request),
+        estimate-user-operation-gas(estimate-user-operation-gas-request),
+        configure-paymaster(configure-paymaster-request),
+
+        // Hypermap Operations
+        resolve-identity(resolve-identity-request),
+        create-note(create-note-request),
+        read-note(read-note-request),
+        setup-delegation(setup-delegation-request),
+        verify-delegation(verify-delegation-request),
+        mint-entry(mint-entry-request),
+
+        // Process Management
+        update-spending-limits(update-spending-limits-request),
+    }
+
+    /// Response structure
+    record hyperwallet-response {
+        success: bool,
+        data: option<hyperwallet-response-data>,
+        error: option<operation-error>,
+        request-id: option<string>,
+    }
+
+    /// Error information
+    record operation-error {
+        code: error-code,
+        message: string,
+        details: option<json>,
+    }
+
+    /// Error codes
+    enum error-code {
+        permission-denied,
+        wallet-not-found,
+        insufficient-funds,
+        invalid-operation,
+        invalid-params,
+        spending-limit-exceeded,
+        chain-not-allowed,
+        blockchain-error,
+        internal-error,
+        authentication-failed,
+        wallet-locked,
+        operation-not-supported,
+        version-mismatch,
+    }
+
+    /// Response data variants
+    variant hyperwallet-response-data {
+        // Session Management
+        handshake(handshake-step),
+        unlock-wallet(unlock-wallet-response),
+
+        // Wallet Lifecycle
+        create-wallet(create-wallet-response),
+        import-wallet(import-wallet-response),
+        delete-wallet(delete-wallet-response),
+        export-wallet(export-wallet-response),
+
+        // Wallet Queries
+        list-wallets(list-wallets-response),
+        get-wallet-info(get-wallet-info-response),
+        get-balance(get-balance-response),
+        get-token-balance(get-token-balance-response),
+
+        // Transactions
+        send-eth(send-eth-response),
+        send-token(send-token-response),
+
+        // ERC4337 Account Abstraction
+        build-and-sign-user-operation-for-payment(build-and-sign-user-operation-response),
+        submit-user-operation(submit-user-operation-response),
+        get-user-operation-receipt(user-operation-receipt-response),
+
+        // Hypermap
+        create-note(create-note-response),
+
+        // Token Bound Accounts
+        execute-via-tba(execute-via-tba-response),
+        check-tba-ownership(check-tba-ownership-response),
+    }
+
+    // Request types
+
+    record unlock-wallet-request {
+        session-id: session-id,
+        wallet-id: string,
+        password: string,
+    }
+
+    record create-wallet-request {
+        name: string,
+        password: option<string>,
+    }
+
+    record import-wallet-request {
+        name: string,
+        private-key: string,
+        password: option<string>,
+    }
+
+    record delete-wallet-request {
+        wallet-id: string,
+    }
+
+    record rename-wallet-request {
+        wallet-id: string,
+        new-name: string,
+    }
+
+    record export-wallet-request {
+        wallet-id: string,
+        password: option<string>,
+    }
+
+    record get-wallet-info-request {
+        wallet-id: string,
+    }
+
+    record get-balance-request {
+        wallet-id: string,
+    }
+
+    record send-eth-request {
+        wallet-id: string,
+        to: string,
+        amount: string,
+    }
+
+    record send-token-request {
+        wallet-id: string,
+        token-address: string,
+        to: string,
+        amount: string,
+    }
+
+    record approve-token-request {
+        token-address: string,
+        spender: string,
+        amount: string,
+    }
+
+    record get-token-balance-request {
+        wallet-id: string,
+        token-address: string,
+    }
+
+    record call-contract-request {
+        to: string,
+        data: string,
+        value: option<string>,
+    }
+
+    record sign-transaction-request {
+        to: string,
+        value: string,
+        data: option<string>,
+        gas-limit: option<string>,
+        gas-price: option<string>,
+        nonce: option<u64>,
+    }
+
+    record sign-message-request {
+        message: string,
+        message-type: message-type,
+    }
+
+    variant message-type {
+        plain-text,
+        eip191,
+        eip712(eip712-data),
+    }
+
+    record eip712-data {
+        domain: json,
+        types: json,
+    }
+
+    record get-transaction-history-request {
+        limit: option<u32>,
+        offset: option<u32>,
+        from-block: option<u64>,
+        to-block: option<u64>,
+    }
+
+    record estimate-gas-request {
+        to: string,
+        data: option<string>,
+        value: option<string>,
+    }
+
+    record get-transaction-receipt-request {
+        tx-hash: string,
+    }
+
+    record execute-via-tba-request {
+        tba-address: string,
+        target: string,
+        call-data: string,
+        value: option<string>,
+    }
+
+    record check-tba-ownership-request {
+        tba-address: string,
+        signer-address: string,
+    }
+
+    record setup-tba-delegation-request {
+        tba-address: string,
+        delegate-address: string,
+        permissions: list<string>,
+    }
+
+    record build-and-sign-user-operation-for-payment-request {
+        eoa-wallet-id: string,
+        tba-address: string,
+        target: string,
+        call-data: string,
+        use-paymaster: bool,
+        paymaster-config: option<paymaster-config>,
+        password: option<string>,
+    }
+
+    record paymaster-config {
+        is-circle-paymaster: bool,
+        paymaster-address: string,
+        paymaster-verification-gas: string,
+        paymaster-post-op-gas: string,
+    }
+
+    record submit-user-operation-request {
+        signed-user-operation: json,
+        entry-point: string,
+        bundler-url: option<string>,
+    }
+
+    record get-user-operation-receipt-request {
+        user-op-hash: string,
+    }
+
+    record build-user-operation-request {
+        target: string,
+        call-data: string,
+        value: option<string>,
+    }
+
+    record sign-user-operation-request {
+        unsigned-user-operation: json,
+        entry-point: string,
+    }
+
+    record build-and-sign-user-operation-request {
+        target: string,
+        call-data: string,
+        value: option<string>,
+        entry-point: string,
+    }
+
+    record estimate-user-operation-gas-request {
+        user-operation: json,
+        entry-point: string,
+    }
+
+    record configure-paymaster-request {
+        paymaster-address: string,
+        paymaster-data: option<string>,
+        verification-gas-limit: string,
+        post-op-gas-limit: string,
+    }
+
+    record resolve-identity-request {
+        entry-name: string,
+    }
+
+    record create-note-request {
+        note-data: json,
+        metadata: option<json>,
+    }
+
+    record read-note-request {
+        note-id: string,
+    }
+
+    record setup-delegation-request {
+        delegate-address: string,
+        permissions: list<string>,
+        expiry: option<u64>,
+    }
+
+    record verify-delegation-request {
+        delegate-address: string,
+        signature: string,
+        message: string,
+    }
+
+    record mint-entry-request {
+        entry-name: string,
+        metadata: json,
+    }
+
+    record update-spending-limits-request {
+        new-limits: spending-limits,
+    }
+
+    // Response types
+
+    record unlock-wallet-response {
+        success: bool,
+        wallet-id: string,
+        message: string,
+    }
+
+    record create-wallet-response {
+        wallet-id: string,
+        address: string,
+        name: string,
+    }
+
+    record import-wallet-response {
+        wallet-id: string,
+        address: string,
+        name: string,
+    }
+
+    record delete-wallet-response {
+        success: bool,
+        wallet-id: string,
+        message: string,
+    }
+
+    record export-wallet-response {
+        address: string,
+        private-key: string,
+    }
+
+    record get-wallet-info-response {
+        wallet-id: string,
+        address: string,
+        name: string,
+        chain-id: chain-id,
+        is-locked: bool,
+    }
+
+    record list-wallets-response {
+        process: string,
+        wallets: list<wallet>,
+        total: u64,
+    }
+
+    record wallet {
+        address: wallet-address,
+        name: option<string>,
+        chain-id: chain-id,
+        encrypted: bool,
+        created-at: option<string>,
+        last-used: option<string>,
+        spending-limits: option<wallet-spending-limits>,
+    }
+
+    record wallet-spending-limits {
+        max-per-call: option<string>,
+        max-total: option<string>,
+        currency: string,
+        total-spent: string,
+        set-at: option<string>,
+        updated-at: option<string>,
+    }
+
+    record get-balance-response {
+        balance: balance,
+        wallet-id: string,
+        chain-id: chain-id,
+    }
+
+    record balance {
+        formatted: string,
+        raw: string,
+    }
+
+    record get-token-balance-response {
+        balance: string,
+        formatted: option<string>,
+        decimals: option<u8>,
+    }
+
+    record send-eth-response {
+        tx-hash: string,
+        from-address: string,
+        to-address: string,
+        amount: string,
+        chain-id: chain-id,
+    }
+
+    record send-token-response {
+        tx-hash: string,
+        from-address: string,
+        to-address: string,
+        token-address: string,
+        amount: string,
+        chain-id: chain-id,
+    }
+
+    record build-and-sign-user-operation-response {
+        signed-user-operation: json,
+        entry-point: string,
+        ready-to-submit: bool,
+    }
+
+    record submit-user-operation-response {
+        user-op-hash: string,
+    }
+
+    record user-operation-receipt-response {
+        receipt: option<json>,
+        user-op-hash: string,
+        status: string,
+    }
+
+    record create-note-response {
+        note-id: string,
+        content-hash: string,
+        created-at: u64,
+    }
+
+    record execute-via-tba-response {
+        tx-hash: string,
+        tba-address: string,
+        target-address: string,
+        success: bool,
+    }
+
+    record check-tba-ownership-response {
+        tba-address: string,
+        owner-address: string,
+        is-owned: bool,
+    }
+}

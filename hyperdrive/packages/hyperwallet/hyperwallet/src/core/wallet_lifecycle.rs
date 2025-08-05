@@ -16,7 +16,7 @@ use hyperware_process_lib::Address;
 
 pub fn create_wallet(
     req: CreateWalletRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
@@ -70,7 +70,7 @@ pub fn create_wallet(
 
 pub fn import_wallet(
     req: ImportWalletRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
@@ -131,7 +131,7 @@ pub fn import_wallet(
 
 pub fn delete_wallet(
     req: DeleteWalletRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
@@ -161,7 +161,7 @@ pub fn delete_wallet(
 
 pub fn rename_wallet(
     req: RenameWalletRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
@@ -194,7 +194,7 @@ pub fn rename_wallet(
 
 pub fn export_wallet(
     req: ExportWalletRequest,
-    session_id: &SessionId,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
