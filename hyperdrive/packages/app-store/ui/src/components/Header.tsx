@@ -92,7 +92,7 @@ const Header: React.FC = () => {
             </nav>
             <div className="flex items-center ml-auto gap-1 md:gap-2 self-stretch">
                 {!isMobile && <ConnectButton />}
-                {/* <ConnectButton /> */}
+
                 <NotificationBay />
             </div>
         </header>

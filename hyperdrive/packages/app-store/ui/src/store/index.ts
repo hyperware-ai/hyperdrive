@@ -17,6 +17,7 @@ interface AppsStore {
   homepageApps: HomepageApp[]
   activeDownloads: Record<string, { downloaded: number, total: number }>
   updates: Record<string, UpdateInfo>
+  showPublicAppStore: boolean
 
   fetchData: (id: string) => Promise<void>
   fetchListings: () => Promise<void>
@@ -53,6 +54,8 @@ interface AppsStore {
   fetchUpdates: () => Promise<void>
   clearUpdates: (packageId: string) => Promise<void>
   checkMirrors: (packageId: string, onMirrorSelect: (mirror: string, status: boolean | null | 'http') => void) => Promise<{ mirror: string, status: boolean | null | 'http', mirrors: string[] } | { error: string, mirrors: string[] }>
+  setShowPublicAppStore: (show: boolean) => Promise<void>
+  fetchPublicAppStoreStatus: () => Promise<void>
 }
 
 const useAppsStore = create<AppsStore>()((set, get) => ({
@@ -64,6 +67,7 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
   homepageApps: [],
   notifications: [],
   updates: {},
+  showPublicAppStore: false,
 
   fetchData: async (id: string) => {
     if (!id) return;
@@ -472,6 +476,45 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
     } catch (error) {
       console.error('Reset failed:', error);
       throw error;
+    }
+  },
+
+  setShowPublicAppStore: async (show: boolean) => {
+    const currentState = get().showPublicAppStore;
+
+    // Optimistically update the UI
+    set({ showPublicAppStore: !currentState });
+
+    try {
+      const res = await fetch(`${BASE_URL}/togglepublic`, { method: 'POST' });
+
+      if (res.status === HTTP_STATUS.OK) {
+        // Use the state returned from the backend
+        const newState = await res.json();
+
+        set({ showPublicAppStore: newState });
+      } else {
+        // Revert on failure
+        set({ showPublicAppStore: currentState });
+      }
+    } catch (error) {
+      console.error("Error toggling public app store:", error);
+      // Revert on error
+      set({ showPublicAppStore: currentState });
+    }
+  },
+
+  fetchPublicAppStoreStatus: async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/togglepublic`);
+
+      if (res.status === HTTP_STATUS.OK) {
+        const isEnabled = await res.json();
+
+        set({ showPublicAppStore: isEnabled });
+      }
+    } catch (error) {
+      console.error("Error fetching public app store status:", error);
     }
   },
 
