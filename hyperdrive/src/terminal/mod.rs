@@ -585,7 +585,7 @@ async fn handle_event(
             *win_cols = width - 1;
             *win_rows = height;
             if current_line.cursor_col + current_line.prompt_len as u16 > *win_cols {
-                current_line.cursor_col = *win_cols - current_line.prompt_len as u16;
+                current_line.cursor_col = win_cols.saturating_sub(current_line.prompt_len as u16);
                 // can't do this because of wide graphemes :/
                 // current_line.line_col = current_line.cursor_col as usize;
             }
