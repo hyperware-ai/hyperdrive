@@ -4,14 +4,9 @@
 /// with the Hyperwallet service via HTTP requests.
 
 use crate::state::HyperwalletState;
-use crate::api::messages::execute_message;
-use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletMessage, HyperwalletResponse, OperationError
-};
 use hyperware_process_lib::http::server::HttpServerRequest;
-use hyperware_process_lib::http::Method;
-use hyperware_process_lib::logging::{info, error};
-use hyperware_process_lib::{Address, Response};
+use hyperware_process_lib::logging::info;
+use hyperware_process_lib::Address;
 
 pub fn handle_http_request(
     server_request: HttpServerRequest,

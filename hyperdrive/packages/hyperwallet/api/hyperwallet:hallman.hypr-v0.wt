@@ -1,4 +1,0 @@
-world hyperwallet-hallman-dot-hypr-v0 {
-    import hyperwallet;
-    include process-v1;
-}

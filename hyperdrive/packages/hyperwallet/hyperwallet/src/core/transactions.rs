@@ -9,21 +9,21 @@
 use crate::config::DEFAULT_CHAIN_ID;
 use crate::state::{HyperwalletState, KeyStorage, Wallet};
 use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletRequest, HyperwalletResponse, HyperwalletResponseData, OperationError,
-    SendEthRequest, SendEthResponse, SendTokenRequest, SendTokenResponse, ExecuteViaTbaRequest, ExecuteViaTbaResponse,
+    HyperwalletResponse, HyperwalletResponseData, OperationError, SessionId,
+    SendEthRequest, SendEthResponse, SendTokenRequest, SendTokenResponse,
 };
 use hyperware_process_lib::eth::Provider;
 use hyperware_process_lib::wallet::{self, EthAmount, erc20_transfer};
 use hyperware_process_lib::signer::{LocalSigner, Signer};
 use hyperware_process_lib::logging::info;
 use hyperware_process_lib::Address;
-use serde_json::{json, Value};
+use serde_json::Value;
 use alloy_primitives::U256;
 
 pub fn get_signer_from_wallet(
     wallet: &Wallet,
     password: Option<&Value>,
-) -> Result<LocalSigner, HyperwalletResponse<serde_json::Value>> {
+) -> Result<LocalSigner, HyperwalletResponse> {
     match &wallet.key_storage {
         KeyStorage::Decrypted(signer) => Ok(signer.clone()),
         KeyStorage::Encrypted(encrypted_data) => {
@@ -46,7 +46,7 @@ pub fn sign_hash(
     wallet: &Wallet, 
     password: Option<&Value>, 
     user_op_hash: &[u8]
-) -> Result<Vec<u8>, HyperwalletResponse<serde_json::Value>> {
+) -> Result<Vec<u8>, HyperwalletResponse> {
     let signer = match get_signer_from_wallet(wallet, password) {
         Ok(s) => s,
         Err(e) => return Err(e),
@@ -64,17 +64,17 @@ pub fn sign_hash(
 }
 
 pub fn send_eth(
-    request: HyperwalletRequest<SendEthRequest>,
+    req: SendEthRequest,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
-) -> HyperwalletResponse<HyperwalletResponseData> {
-    let data = &request.data;
+) -> HyperwalletResponse {
     let chain_id = DEFAULT_CHAIN_ID;
 
-    let wallet = match state.get_wallet(address, &data.wallet_id) {
+    let wallet = match state.get_wallet(address, &req.wallet_id) {
         Some(w) => w,
         None => {
-            return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &data.wallet_id)));
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &req.wallet_id)));
         }
     };
 
@@ -98,7 +98,7 @@ pub fn send_eth(
 
     let provider = Provider::new(chain_id, 60000);
 
-    let eth_amount = match EthAmount::from_string(&data.amount) {
+    let eth_amount = match EthAmount::from_string(&req.amount) {
         Ok(amt) => amt,
         Err(e) => {
             return HyperwalletResponse::error(OperationError::invalid_params(&format!(
@@ -108,24 +108,23 @@ pub fn send_eth(
         }
     };
     
-    match wallet::send_eth(&data.to, eth_amount, provider, &signer) {
+    match wallet::send_eth(&req.to, eth_amount, provider, &signer) {
         Ok(receipt) => {
-            if let Some(wallet_mut) = state.get_wallet_mut(address, &data.wallet_id) {
+            if let Some(wallet_mut) = state.get_wallet_mut(address, &req.wallet_id) {
                 wallet_mut.last_used = Some(chrono::Utc::now());
             }
             state.save();
 
             info!("Process {} sent {} ETH from {} to {}", 
-                address, data.amount, wallet_address, data.to);
+                address, req.amount, wallet_address, req.to);
 
-            let result = HyperwalletResponse::success(SendEthResponse {
+            HyperwalletResponse::success(HyperwalletResponseData::SendEth(SendEthResponse {
                 tx_hash: format!("0x{:x}", receipt.hash),
                 from_address: wallet_address,
-                to_address: data.to.clone(),
-                amount: data.amount.clone(),
+                to_address: req.to.clone(),
+                amount: req.amount.clone(),
                 chain_id,
-            });
-            result.map(HyperwalletResponseData::SendEth)
+            }))
         }
         Err(e) => HyperwalletResponse::error(OperationError::internal_error(&format!(
             "Failed to send ETH: {}",
@@ -135,25 +134,25 @@ pub fn send_eth(
 }
 
 pub fn send_token(
-    request: HyperwalletRequest<SendTokenRequest>,
+    req: SendTokenRequest,
+    _session_id: &SessionId,
     address: &Address,
     state: &mut HyperwalletState,
-) -> HyperwalletResponse<HyperwalletResponseData> {
-    let data = &request.data;
+) -> HyperwalletResponse {
     let chain_id = DEFAULT_CHAIN_ID;
 
-    let wallet = match state.get_wallet(address, &data.wallet_id) {
+    let wallet = match state.get_wallet(address, &req.wallet_id) {
         Some(w) => w,
         None => {
-            return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &data.wallet_id)));
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &req.wallet_id)));
         }
     };
 
     info!("Token send request from {} for wallet {}: {} {} to {}", 
-          address, data.wallet_id, data.amount, data.token_address, data.to);
+          address, req.wallet_id, req.amount, req.token_address, req.to);
 
-    let amount: U256 = if data.amount.starts_with("0x") {
-        match U256::from_str_radix(&data.amount[2..], 16) {
+    let amount: U256 = if req.amount.starts_with("0x") {
+        match U256::from_str_radix(&req.amount[2..], 16) {
             Ok(amt) => amt,
             Err(_) => {
                 return HyperwalletResponse::error(OperationError::invalid_params(
@@ -161,12 +160,12 @@ pub fn send_token(
                 ));
             }
         }
-    } else if let Ok(raw_amount) = U256::from_str_radix(&data.amount, 10) {
+    } else if let Ok(raw_amount) = U256::from_str_radix(&req.amount, 10) {
         raw_amount
-    } else if let Ok(decimal_amount) = data.amount.parse::<f64>() {
+    } else if let Ok(decimal_amount) = req.amount.parse::<f64>() {
         let provider = Provider::new(chain_id, 60000);
         
-        match wallet::erc20_decimals(&data.token_address, &provider) {
+        match wallet::erc20_decimals(&req.token_address, &provider) {
             Ok(decimals) => {
                 let multiplier = 10_u128.pow(decimals as u32);
                 U256::from((decimal_amount * multiplier as f64) as u128)
@@ -196,25 +195,24 @@ pub fn send_token(
 
     let provider = Provider::new(chain_id, 60000);
 
-    match erc20_transfer(&data.token_address, &data.to, amount, &provider, &signer) {
+    match erc20_transfer(&req.token_address, &req.to, amount, &provider, &signer) {
         Ok(receipt) => {
-            if let Some(wallet_mut) = state.get_wallet_mut(address, &data.wallet_id) {
+            if let Some(wallet_mut) = state.get_wallet_mut(address, &req.wallet_id) {
                 wallet_mut.last_used = Some(chrono::Utc::now());
             }
             state.save();
 
             info!("Process {} sent {} tokens from {} to {}", 
-                address, amount, wallet_address, data.to);
+                address, amount, wallet_address, req.to);
 
-            let result = HyperwalletResponse::success(SendTokenResponse {
+            HyperwalletResponse::success(HyperwalletResponseData::SendToken(SendTokenResponse {
                 tx_hash: format!("0x{:x}", receipt.hash),
                 from_address: wallet_address,
-                to_address: data.to.clone(),
-                token_address: data.token_address.clone(),
-                amount: data.amount.clone(),
+                to_address: req.to.clone(),
+                token_address: req.token_address.clone(),
+                amount: req.amount.clone(),
                 chain_id,
-            });
-            result.map(HyperwalletResponseData::SendToken)
+            }))
         }
         Err(e) => HyperwalletResponse::error(OperationError::internal_error(&format!(
             "Failed to send token: {}", e
@@ -227,7 +225,7 @@ pub fn send_token(
 //    request: HyperwalletRequest<ExecuteViaTbaRequest>,
 //    address: &Address,
 //    state: &mut HyperwalletState,
-//) -> HyperwalletResponse<HyperwalletResponseData> {
+//) -> HyperwalletResponse {
 //    // eoa should be in request 
 //    //let eoa_signer= match request.data.wallet_id.as_deref() {
 //    //    Some(id) => id,

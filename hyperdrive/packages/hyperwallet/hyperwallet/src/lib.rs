@@ -2,23 +2,23 @@ pub mod config;
 pub mod permissions;
 pub mod state;
 
+pub mod api;
 pub mod core;
 pub mod integrations;
-pub mod api;
 
-use config::*;
 use api::terminal_commands::{MessageHandler, TerminalHandler};
-use permissions::PermissionValidator;
+use config::*;
 use hyperware_process_lib::homepage::add_to_homepage;
 use hyperware_process_lib::http::server::{HttpBindingConfig, HttpServer};
+use hyperware_process_lib::hyperwallet_client::types::HyperwalletMessage;
 use hyperware_process_lib::logging::{error, info, init_logging, Level};
 use hyperware_process_lib::{await_message, call_init, Address, Message, Response};
-use hyperware_process_lib::hyperwallet_client::types::HyperwalletMessage;
+use permissions::PermissionValidator;
 use state::HyperwalletState;
 
 wit_bindgen::generate!({
     path: "../target/wit",
-    world: "process-v1",
+    world: "hyperwallet-sys-v0",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
 });
@@ -26,7 +26,10 @@ wit_bindgen::generate!({
 call_init!(init);
 fn init(our: Address) {
     init_logging(Level::DEBUG, Level::INFO, None, None, None).unwrap();
-    info!("Initializing {} v{} for: {}", SERVICE_NAME, SERVICE_VERSION, our.node);
+    info!(
+        "Initializing {} v{} for: {}",
+        SERVICE_NAME, SERVICE_VERSION, our.node
+    );
 
     let mut state = HyperwalletState::initialize();
     let mut http_server = match init_http() {
@@ -39,13 +42,13 @@ fn init(our: Address) {
             return;
         }
     };
-    
+
     let terminal_handler = TerminalHandler::new();
     let permission_validator = PermissionValidator::new();
 
     info!("{} Service initialized successfully!", SERVICE_NAME);
     info!("Entering main message loop...");
-    
+
     loop {
         if let Err(e) = handle_message(
             &our,
@@ -71,16 +74,14 @@ fn handle_message(
     let message = await_message()?;
 
     match message {
-        Message::Request { source, body, .. } => {
-            route_request(
-                our,
-                &source,
-                body,
-                state,
-                terminal_handler,
-                permission_validator,
-            )
-        }
+        Message::Request { source, body, .. } => route_request(
+            our,
+            &source,
+            body,
+            state,
+            terminal_handler,
+            permission_validator,
+        ),
         Message::Response {
             source,
             body,
@@ -103,25 +104,21 @@ fn route_request(
 
     match process.as_str() {
         "http-server:distro:sys" => {
-            let server_request: hyperware_process_lib::http::server::HttpServerRequest = 
+            let server_request: hyperware_process_lib::http::server::HttpServerRequest =
                 serde_json::from_slice(&body)?;
             api::http_endpoints::handle_http_request(server_request, source, state)
-        },
+        }
         _ if pkg == "terminal:sys" => terminal_handler.handle(source, body, state),
         _ => {
             let message: HyperwalletMessage = serde_json::from_slice(&body)?;
-            let response = permission_validator.execute_with_permissions(
-                message,
-                source,
-                state,
-            );
-            
+            let response = permission_validator.execute_with_permissions(message, source, state);
+
             Response::new()
                 .body(serde_json::to_vec(&response)?)
                 .send()?;
-                
+
             Ok(())
-        },
+        }
     }
 }
 
@@ -142,7 +139,7 @@ fn init_http() -> anyhow::Result<HttpServer> {
 
     add_to_homepage(SERVICE_NAME, Some(ICON), Some("/"), None);
     http_server.serve_ui("ui", vec!["/"], http_config.clone())?;
-            
+
     let endpoints = vec![
         "/api/operation".to_string(),
         "/api/status".to_string(),
