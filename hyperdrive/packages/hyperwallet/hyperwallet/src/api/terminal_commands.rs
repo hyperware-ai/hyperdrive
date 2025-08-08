@@ -23,12 +23,16 @@ impl TerminalHandler {
         Self
     }
 
-    fn handle_command(&self, body: &[u8], source: &Address, state: &mut HyperwalletState) -> anyhow::Result<()> {
+    fn handle_command(
+        &self,
+        body: &[u8],
+        source: &Address,
+        state: &mut HyperwalletState,
+    ) -> anyhow::Result<()> {
         let bod = String::from_utf8(body.to_vec())?;
         let command_parts: Vec<&str> = bod.splitn(2, ' ').collect();
         let command_verb = command_parts[0];
         let command_arg = command_parts.get(1).copied();
-
 
         match command_verb {
             "state" => self.show_state(state),
@@ -57,7 +61,7 @@ impl TerminalHandler {
 
     fn clear_process_perms(&self, process: &Address, state: &mut HyperwalletState) {
         info!("Clearing process permissions for {}", process);
-        
+
         match state.get_permissions(process) {
             Some(_perms) => {
                 info!("Clearing process permissions for {}", process);
@@ -69,7 +73,12 @@ impl TerminalHandler {
         }
     }
 
-    fn create_wallet(&self, name_arg: Option<&str>, address: &Address, state: &mut HyperwalletState) {
+    fn create_wallet(
+        &self,
+        name_arg: Option<&str>,
+        address: &Address,
+        state: &mut HyperwalletState,
+    ) {
         if let Some(name) = name_arg {
             info!("Creating test wallet with name: {}", name);
             match LocalSigner::new_random(8453) {
@@ -139,7 +148,6 @@ impl TerminalHandler {
             error!("Usage: get-balance <wallet_id>");
         }
     }
-
 
     fn show_permissions(&self, state: &HyperwalletState) {
         info!("--- Process Permissions ---");

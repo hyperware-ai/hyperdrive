@@ -4,10 +4,9 @@
 /// the appropriate core business logic or external integrations.
 use crate::state::HyperwalletState;
 use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletMessage, HyperwalletRequest, HyperwalletResponse,
-    OperationError,
+    HyperwalletMessage, HyperwalletRequest, HyperwalletResponse, OperationError,
 };
-use hyperware_process_lib::logging::{error, info};
+use hyperware_process_lib::logging::{error, info, warn};
 use hyperware_process_lib::{Address, Response};
 
 use crate::core;
@@ -117,22 +116,27 @@ pub fn execute_message(
         }
 
         // Hypermap Operations (integrations/hypermap.rs)
-        //HyperwalletRequest::CheckTbaOwnership(req) => integrations::hypermap::check_tba_ownership(req, source),
+        //HyperwalletMessage::CheckTbaOwnership(req) => integrations::hypermap::check_tba_ownership(req, source),
         // TODO: Update to use typed approach when integrations are migrated. These should just be added from process_lib.
-        //HyperwalletRequest::CreateNote(_req) => {
+        //HyperwalletMessage::CreateNote(_req) => {
         //    HyperwalletResponse::error(OperationError::invalid_params(
         //        "Hypermap operations temporarily disabled during reorganization"
         //    ))
         //},
 
         //// Token Bound Account Operations (core/transactions.rs)
-        //HyperwalletRequest::ExecuteViaTba(_req) => {
+        //HyperwalletMessage::ExecuteViaTba(_req) => {
         //    HyperwalletResponse::error(OperationError::invalid_params(
         //        "TBA operations temporarily disabled during reorganization"
         //    ))
         //},
-        _ => HyperwalletResponse::error(OperationError::invalid_params(
-            "Operation not yet implemented in new architecture",
-        )),
+        _ => {
+            warn!(
+                "Received request for unsupported operation from {}",
+                source
+            );
+            let op_name = format!("{:?}", message.operation_type());
+            HyperwalletResponse::error(OperationError::operation_not_supported(&op_name))
+        }
     }
 }

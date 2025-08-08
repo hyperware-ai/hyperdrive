@@ -1,24 +1,24 @@
 /// State-changing on-chain transaction operations
-/// 
+///
 /// This module handles all transactions that modify blockchain state:
 /// - ETH transfers
 /// - ERC20 token transfers and approvals
 /// - Token Bound Account (TBA) executions
 /// - Transaction signing utilities
-
 use crate::config::DEFAULT_CHAIN_ID;
 use crate::state::{HyperwalletState, KeyStorage, Wallet};
-use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletResponse, HyperwalletResponseData, OperationError, SessionId,
-    SendEthRequest, SendEthResponse, SendTokenRequest, SendTokenResponse,
-};
+use alloy_primitives::U256;
 use hyperware_process_lib::eth::Provider;
-use hyperware_process_lib::wallet::{self, EthAmount, erc20_transfer};
-use hyperware_process_lib::signer::{LocalSigner, Signer};
+use hyperware_process_lib::hyperwallet_client::types::{
+    HyperwalletResponse,
+    HyperwalletResponseData, OperationError, SendEthRequest, SendEthResponse, SendTokenRequest,
+    SendTokenResponse,
+};
 use hyperware_process_lib::logging::info;
+use hyperware_process_lib::signer::{LocalSigner, Signer};
+use hyperware_process_lib::wallet::{self, erc20_transfer, EthAmount};
 use hyperware_process_lib::Address;
 use serde_json::Value;
-use alloy_primitives::U256;
 
 pub fn get_signer_from_wallet(
     wallet: &Wallet,
@@ -30,51 +30,59 @@ pub fn get_signer_from_wallet(
             let pwd = match password.and_then(|v| v.as_str()) {
                 Some(p) => p,
                 None => {
-                    return Err(HyperwalletResponse::error(OperationError::invalid_params("Password required for encrypted wallet")));
+                    return Err(HyperwalletResponse::error(OperationError::invalid_params(
+                        "Password required for encrypted wallet",
+                    )));
                 }
             };
 
             match LocalSigner::decrypt(encrypted_data, pwd) {
                 Ok(signer) => Ok(signer),
-                Err(_) => Err(HyperwalletResponse::error(OperationError::internal_error("Failed to decrypt wallet"))),
+                Err(_) => Err(HyperwalletResponse::error(OperationError::internal_error(
+                    "Failed to decrypt wallet",
+                ))),
             }
         }
     }
 }
 
 pub fn sign_hash(
-    wallet: &Wallet, 
-    password: Option<&Value>, 
-    user_op_hash: &[u8]
+    wallet: &Wallet,
+    password: Option<&Value>,
+    user_op_hash: &[u8],
 ) -> Result<Vec<u8>, HyperwalletResponse> {
     let signer = match get_signer_from_wallet(wallet, password) {
         Ok(s) => s,
         Err(e) => return Err(e),
     };
-    
+
     match signer.sign_hash(user_op_hash) {
         Ok(signature) => {
             info!("UserOperation signed successfully");
             Ok(signature)
         }
-        Err(e) => {
-            Err(HyperwalletResponse::error(OperationError::internal_error(&format!("Failed to sign hash: {}", e))))
-        }
+        Err(e) => Err(HyperwalletResponse::error(OperationError::internal_error(
+            &format!("Failed to sign hash: {}", e),
+        ))),
     }
 }
 
 pub fn send_eth(
-    req: SendEthRequest,
-    _session_id: &SessionId,
+    request: SendEthRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
+    let data = &request;
     let chain_id = DEFAULT_CHAIN_ID;
 
-    let wallet = match state.get_wallet(address, &req.wallet_id) {
+    let wallet = match state.get_wallet(address, &data.wallet_id) {
         Some(w) => w,
         None => {
-            return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &req.wallet_id)));
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Wallet not found: {}",
+                &data.wallet_id
+            )));
         }
     };
 
@@ -98,7 +106,7 @@ pub fn send_eth(
 
     let provider = Provider::new(chain_id, 60000);
 
-    let eth_amount = match EthAmount::from_string(&req.amount) {
+    let eth_amount = match EthAmount::from_string(&data.amount) {
         Ok(amt) => amt,
         Err(e) => {
             return HyperwalletResponse::error(OperationError::invalid_params(&format!(
@@ -107,22 +115,24 @@ pub fn send_eth(
             )));
         }
     };
-    
-    match wallet::send_eth(&req.to, eth_amount, provider, &signer) {
+
+    match wallet::send_eth(&data.to, eth_amount, provider, &signer) {
         Ok(receipt) => {
-            if let Some(wallet_mut) = state.get_wallet_mut(address, &req.wallet_id) {
+            if let Some(wallet_mut) = state.get_wallet_mut(address, &data.wallet_id) {
                 wallet_mut.last_used = Some(chrono::Utc::now());
             }
             state.save();
 
-            info!("Process {} sent {} ETH from {} to {}", 
-                address, req.amount, wallet_address, req.to);
+            info!(
+                "Process {} sent {} ETH from {} to {}",
+                address, data.amount, wallet_address, data.to
+            );
 
             HyperwalletResponse::success(HyperwalletResponseData::SendEth(SendEthResponse {
                 tx_hash: format!("0x{:x}", receipt.hash),
                 from_address: wallet_address,
-                to_address: req.to.clone(),
-                amount: req.amount.clone(),
+                to_address: data.to.clone(),
+                amount: data.amount.clone(),
                 chain_id,
             }))
         }
@@ -134,51 +144,58 @@ pub fn send_eth(
 }
 
 pub fn send_token(
-    req: SendTokenRequest,
-    _session_id: &SessionId,
+    request: SendTokenRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
+    let data = &request;
     let chain_id = DEFAULT_CHAIN_ID;
 
-    let wallet = match state.get_wallet(address, &req.wallet_id) {
+    let wallet = match state.get_wallet(address, &data.wallet_id) {
         Some(w) => w,
         None => {
-            return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &req.wallet_id)));
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Wallet not found: {}",
+                &data.wallet_id
+            )));
         }
     };
 
-    info!("Token send request from {} for wallet {}: {} {} to {}", 
-          address, req.wallet_id, req.amount, req.token_address, req.to);
+    info!(
+        "Token send request from {} for wallet {}: {} {} to {}",
+        address, data.wallet_id, data.amount, data.token_address, data.to
+    );
 
-    let amount: U256 = if req.amount.starts_with("0x") {
-        match U256::from_str_radix(&req.amount[2..], 16) {
+    let amount: U256 = if data.amount.starts_with("0x") {
+        match U256::from_str_radix(&data.amount[2..], 16) {
             Ok(amt) => amt,
             Err(_) => {
                 return HyperwalletResponse::error(OperationError::invalid_params(
-                    "Invalid hex amount format"
+                    "Invalid hex amount format",
                 ));
             }
         }
-    } else if let Ok(raw_amount) = U256::from_str_radix(&req.amount, 10) {
+    } else if let Ok(raw_amount) = U256::from_str_radix(&data.amount, 10) {
         raw_amount
-    } else if let Ok(decimal_amount) = req.amount.parse::<f64>() {
+    } else if let Ok(decimal_amount) = data.amount.parse::<f64>() {
         let provider = Provider::new(chain_id, 60000);
-        
-        match wallet::erc20_decimals(&req.token_address, &provider) {
+
+        match wallet::erc20_decimals(&data.token_address, &provider) {
             Ok(decimals) => {
                 let multiplier = 10_u128.pow(decimals as u32);
                 U256::from((decimal_amount * multiplier as f64) as u128)
             }
             Err(e) => {
                 return HyperwalletResponse::error(OperationError::internal_error(&format!(
-                    "Failed to get token decimals: {}", e
+                    "Failed to get token decimals: {}",
+                    e
                 )));
             }
         }
     } else {
         return HyperwalletResponse::error(OperationError::invalid_params(
-            "Invalid amount format - must be decimal number, integer, or hex"
+            "Invalid amount format - must be decimal number, integer, or hex",
         ));
     };
 
@@ -195,27 +212,30 @@ pub fn send_token(
 
     let provider = Provider::new(chain_id, 60000);
 
-    match erc20_transfer(&req.token_address, &req.to, amount, &provider, &signer) {
+    match erc20_transfer(&data.token_address, &data.to, amount, &provider, &signer) {
         Ok(receipt) => {
-            if let Some(wallet_mut) = state.get_wallet_mut(address, &req.wallet_id) {
+            if let Some(wallet_mut) = state.get_wallet_mut(address, &data.wallet_id) {
                 wallet_mut.last_used = Some(chrono::Utc::now());
             }
             state.save();
 
-            info!("Process {} sent {} tokens from {} to {}", 
-                address, amount, wallet_address, req.to);
+            info!(
+                "Process {} sent {} tokens from {} to {}",
+                address, amount, wallet_address, data.to
+            );
 
             HyperwalletResponse::success(HyperwalletResponseData::SendToken(SendTokenResponse {
                 tx_hash: format!("0x{:x}", receipt.hash),
                 from_address: wallet_address,
-                to_address: req.to.clone(),
-                token_address: req.token_address.clone(),
-                amount: req.amount.clone(),
+                to_address: data.to.clone(),
+                token_address: data.token_address.clone(),
+                amount: data.amount.clone(),
                 chain_id,
             }))
         }
         Err(e) => HyperwalletResponse::error(OperationError::internal_error(&format!(
-            "Failed to send token: {}", e
+            "Failed to send token: {}",
+            e
         ))),
     }
 }
@@ -226,7 +246,7 @@ pub fn send_token(
 //    address: &Address,
 //    state: &mut HyperwalletState,
 //) -> HyperwalletResponse {
-//    // eoa should be in request 
+//    // eoa should be in request
 //    //let eoa_signer= match request.data.wallet_id.as_deref() {
 //    //    Some(id) => id,
 //    //    None => {
@@ -256,7 +276,7 @@ pub fn send_token(
 //    };
 //
 //    let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("0");
-//    
+//
 //    let call_data = match params.get("call_data").and_then(|v| v.as_str()) {
 //        Some(data) => {
 //            // Parse hex string to bytes

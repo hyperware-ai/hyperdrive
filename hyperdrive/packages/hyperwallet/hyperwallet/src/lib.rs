@@ -110,14 +110,43 @@ fn route_request(
         }
         _ if pkg == "terminal:sys" => terminal_handler.handle(source, body, state),
         _ => {
-            let message: HyperwalletMessage = serde_json::from_slice(&body)?;
-            let response = permission_validator.execute_with_permissions(message, source, state);
+            // Gracefully handle unknown or unsupported operation variants without exiting main loop
+            // Try to extract the request type for better error reporting
+            let req_type = serde_json::from_slice::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|v| v.get("request").cloned())
+                .and_then(|req| req.get("type").cloned())
+                .and_then(|t| t.as_str().map(|s| s.to_string()));
 
-            Response::new()
-                .body(serde_json::to_vec(&response)?)
-                .send()?;
+            match serde_json::from_slice::<HyperwalletMessage>(&body) {
+                Ok(message) => {
+                    let response = permission_validator
+                        .execute_with_permissions(message, source, state);
 
-            Ok(())
+                    Response::new()
+                        .body(serde_json::to_vec(&response)?)
+                        .send()?;
+
+                    Ok(())
+                }
+                Err(e) => {
+                    // Map unknown variant parse errors to OperationNotSupported; otherwise invalid params
+                    let error = if let Some(t) = req_type {
+                        hyperware_process_lib::hyperwallet_client::types::OperationError::operation_not_supported(&t)
+                    } else {
+                        hyperware_process_lib::hyperwallet_client::types::OperationError::invalid_params(&format!(
+                            "Invalid message format: {}",
+                            e
+                        ))
+                    };
+
+                    let response = hyperware_process_lib::hyperwallet_client::types::HyperwalletResponse::error(error);
+                    Response::new()
+                        .body(serde_json::to_vec(&response)?)
+                        .send()?;
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -137,7 +166,7 @@ fn init_http() -> anyhow::Result<HttpServer> {
     let mut http_server = HttpServer::new(5);
     let http_config = HttpBindingConfig::default().authenticated(HTTP_BIND_AUTHENTICATED);
 
-    add_to_homepage(SERVICE_NAME, Some(ICON), Some("/"), None);
+    add_to_homepage(SERVICE_NAME, None, Some("/"), None);
     http_server.serve_ui("ui", vec!["/"], http_config.clone())?;
 
     let endpoints = vec![

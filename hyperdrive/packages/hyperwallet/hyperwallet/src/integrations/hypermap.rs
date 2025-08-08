@@ -1,7 +1,8 @@
 /// Hypermap and TBA operations using process_lib's high-level functions
-
 use crate::config::DEFAULT_CHAIN_ID;
-use hyperware_process_lib::hyperwallet_client::types::OperationError;
+use hyperware_process_lib::hyperwallet_client::types::{
+    OperationError,
+};
 
 // TODO: These are legacy types - need to be migrated to new typed approach
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -26,7 +27,7 @@ impl OperationResponse {
             error: None,
         }
     }
-    
+
     pub fn error(error: OperationError) -> Self {
         Self {
             success: false,
@@ -34,33 +35,36 @@ impl OperationResponse {
             error: Some(error),
         }
     }
-    
+
     // Helper to convert from HyperwalletResponse to OperationResponse
     pub fn from_hyperwallet_response(response: hyperware_process_lib::hyperwallet_client::types::HyperwalletResponse) -> Self {
         if response.success {
             if let Some(data) = response.data {
                 match serde_json::to_value(data) {
                     Ok(json_data) => Self::success(json_data),
-                    Err(_) => Self::error(OperationError::internal_error("Failed to serialize response data"))
+                    Err(_) => Self::error(OperationError::internal_error(
+                        "Failed to serialize response data",
+                    )),
                 }
             } else {
                 Self::success(serde_json::Value::Null)
             }
         } else {
-            Self::error(response.error.unwrap_or_else(|| 
-                OperationError::internal_error("Unknown error")
-            ))
+            Self::error(
+                response
+                    .error
+                    .unwrap_or_else(|| OperationError::internal_error("Unknown error")),
+            )
         }
     }
 }
 use crate::state::HyperwalletState;
+use alloy_primitives::hex;
+use alloy_primitives::U256;
 use hyperware_process_lib::eth::Provider;
 use hyperware_process_lib::hypermap;
 use hyperware_process_lib::Address;
 use serde_json::json;
-use alloy_primitives::hex;
-use alloy_primitives::U256;
-
 
 /// Resolve a Hypermap identity (name -> address)
 pub fn resolve_identity(
@@ -76,26 +80,24 @@ pub fn resolve_identity(
             ));
         }
     };
-    
+
     let chain_id = chain_id.unwrap_or(DEFAULT_CHAIN_ID);
-    
+
     match hyperware_process_lib::wallet::resolve_name(entry_name, chain_id) {
         Ok(address) => {
             let provider = Provider::new(chain_id, 60000);
             let hypermap_info = provider.hypermap();
-            
+
             let namehash = hypermap::namehash(entry_name);
             match hypermap_info.get_hash(&namehash) {
-                Ok((tba, owner, _data)) => {
-                    OperationResponse::success(json!({
-                        "entry_name": entry_name,
-                        "resolved_address": address.to_string(),
-                        "tba_address": tba.to_string(),
-                        "owner_address": owner.to_string(),
-                        "chain_id": chain_id,
-                        "type": "hypermap_entry"
-                    }))
-                }
+                Ok((tba, owner, _data)) => OperationResponse::success(json!({
+                    "entry_name": entry_name,
+                    "resolved_address": address.to_string(),
+                    "tba_address": tba.to_string(),
+                    "owner_address": owner.to_string(),
+                    "chain_id": chain_id,
+                    "type": "hypermap_entry"
+                })),
                 Err(_) => {
                     // Not a hypermap entry, just return the resolved address
                     OperationResponse::success(json!({
@@ -130,7 +132,7 @@ pub fn create_note(
     };
 
     let params = request.params;
-    
+
     // Extract parameters
     let entry_name = match params.get("entry_name").and_then(|v| v.as_str()) {
         Some(name) => name,
@@ -159,10 +161,11 @@ pub fn create_note(
         }
     };
 
-    let signer = match crate::core::transactions::get_signer_from_wallet(wallet, params.get("password")) {
-        Ok(s) => s,
-        Err(e) => return OperationResponse::from_hyperwallet_response(e),
-    };
+    let signer =
+        match crate::core::transactions::get_signer_from_wallet(wallet, params.get("password")) {
+            Ok(s) => s,
+            Err(e) => return OperationResponse::from_hyperwallet_response(e),
+        };
 
     let provider = Provider::new(chain_id, 60000);
 
@@ -170,8 +173,10 @@ pub fn create_note(
     // Note: The wallet module's create_note expects different parameters
     // For now, we'll convert the note_data to bytes
     let note_bytes = serde_json::to_vec(note_data).unwrap_or_default();
-    
-    match hyperware_process_lib::wallet::create_note(entry_name, "~note", note_bytes, provider, &signer) {
+
+    match hyperware_process_lib::wallet::create_note(
+        entry_name, "~note", note_bytes, provider, &signer,
+    ) {
         Ok(receipt) => {
             // Update wallet last used
             if let Some(wallet_mut) = state.get_wallet_mut(address, wallet_id) {
@@ -210,7 +215,7 @@ pub fn execute_via_tba(
     };
 
     let params = request.params;
-    
+
     // Extract parameters
     let tba_address = match params.get("tba_address").and_then(|v| v.as_str()) {
         Some(addr) => addr,
@@ -231,7 +236,7 @@ pub fn execute_via_tba(
     };
 
     let value = params.get("value").and_then(|v| v.as_str()).unwrap_or("0");
-    
+
     let call_data = match params.get("call_data").and_then(|v| v.as_str()) {
         Some(data) => {
             // Parse hex string to bytes
@@ -248,7 +253,10 @@ pub fn execute_via_tba(
         None => Vec::new(),
     };
 
-    let operation = params.get("operation").and_then(|v| v.as_u64()).unwrap_or(0);
+    let operation = params
+        .get("operation")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
     let chain_id = request.chain_id.unwrap_or(DEFAULT_CHAIN_ID);
 
     // Get the wallet
@@ -260,10 +268,11 @@ pub fn execute_via_tba(
     };
 
     // Get the signer
-    let signer = match crate::core::transactions::get_signer_from_wallet(wallet, params.get("password")) {
-        Ok(s) => s,
-        Err(e) => return OperationResponse::from_hyperwallet_response(e),
-    };
+    let signer =
+        match crate::core::transactions::get_signer_from_wallet(wallet, params.get("password")) {
+            Ok(s) => s,
+            Err(e) => return OperationResponse::from_hyperwallet_response(e),
+        };
 
     // Get provider for the chain
     let provider = Provider::new(chain_id, 60000);
@@ -307,11 +316,11 @@ pub fn execute_via_tba(
 //pub fn check_tba_ownership(
 //    request: HyperwalletRequest<CheckTbaOwnershipRequest>,
 //    address: &Address,
-//) -> HyperwalletResponse<HyperwalletResponseData> {
-//    
+//) -> HyperwalletResponse {
+//
 //    let chain_id = DEFAULT_CHAIN_ID;
 //    let provider = Provider::new(chain_id, 60000);
-//    
+//
 //    // Check if the signer is valid
 //    match wallet::tba_is_valid_signer(request.tba_address, request.signer_address, &provider) {
 //        Ok(is_valid) => {
@@ -346,4 +355,4 @@ pub fn execute_via_tba(
 //            e
 //        ))),
 //    }
-//} 
+//}

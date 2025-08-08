@@ -1,4 +1,4 @@
-use crate::permissions::definitions::{ProcessPermissions, SpendingLimits, UpdatableSetting};
+use crate::permissions::{ProcessPermissions, SpendingLimits, UpdatableSetting};
 use crate::state::HyperwalletState;
 use hyperware_process_lib::hyperwallet_client::types::{
     HandshakeStep, HyperwalletResponse, HyperwalletResponseData, Operation,
@@ -139,6 +139,8 @@ pub fn handle_unlock_wallet(
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
     state.cleanup_expired_sessions();
+
+
 
     match state.validate_session(&req.session_id) {
         Some(session) if session.process_address == *address => {}

@@ -1,8 +1,7 @@
 /// HTTP API endpoints for the Hyperwallet web interface
-/// 
+///
 /// This module provides REST API endpoints for external clients to interact
 /// with the Hyperwallet service via HTTP requests.
-
 use crate::state::HyperwalletState;
 use hyperware_process_lib::http::server::HttpServerRequest;
 use hyperware_process_lib::logging::info;
@@ -15,7 +14,10 @@ pub fn handle_http_request(
 ) -> anyhow::Result<()> {
     match server_request {
         HttpServerRequest::Http(incoming_request) => {
-            info!("HTTP request received: {:#?} from {:?}", incoming_request, source);
+            info!(
+                "HTTP request received: {:#?} from {:?}",
+                incoming_request, source
+            );
         }
         HttpServerRequest::WebSocketOpen { .. } => {
             info!("WebSocket connection opened");
@@ -27,6 +29,6 @@ pub fn handle_http_request(
             info!("WebSocket message received");
         }
     }
-    
+
     Ok(())
 }

@@ -1,32 +1,32 @@
 /// Wallet lifecycle management operations
-/// 
+///
 /// This module manages wallet creation, import, deletion, renaming, export and limits
-
 use crate::config::DEFAULT_CHAIN_ID;
 use crate::state::{HyperwalletState, KeyStorage, Wallet};
 use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletResponse, HyperwalletResponseData, OperationError, SessionId,
-    CreateWalletRequest, CreateWalletResponse, ImportWalletRequest, ImportWalletResponse,
-    DeleteWalletRequest, DeleteWalletResponse, ExportWalletRequest, ExportWalletResponse,
-    RenameWalletRequest
+    CreateWalletRequest, CreateWalletResponse, DeleteWalletRequest, DeleteWalletResponse,
+    ExportWalletRequest, ExportWalletResponse, HyperwalletResponse,
+    HyperwalletResponseData, ImportWalletRequest, ImportWalletResponse, OperationError,
+    RenameWalletRequest,
 };
-use hyperware_process_lib::signer::{LocalSigner, Signer};
 use hyperware_process_lib::logging::info;
+use hyperware_process_lib::signer::{LocalSigner, Signer};
 use hyperware_process_lib::Address;
 
 pub fn create_wallet(
-    req: CreateWalletRequest,
-    _session_id: &SessionId,
+    request: CreateWalletRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
+    let data = &request;
     let chain_id = DEFAULT_CHAIN_ID;
 
     match LocalSigner::new_random(chain_id) {
         Ok(signer) => {
             let wallet_address = signer.address().to_string();
 
-            let key_storage = if let Some(ref password) = req.password {
+            let key_storage = if let Some(ref password) = data.password {
                 match signer.encrypt(password) {
                     Ok(encrypted) => KeyStorage::Encrypted(encrypted),
                     Err(e) => {
@@ -41,7 +41,7 @@ pub fn create_wallet(
 
             let wallet = Wallet {
                 address: wallet_address.clone(),
-                name: Some(req.name.clone()),
+                name: Some(data.name.clone()),
                 chain_id,
                 key_storage,
                 created_at: chrono::Utc::now(),
@@ -50,16 +50,14 @@ pub fn create_wallet(
             };
 
             state.add_wallet(address.clone(), wallet);
-            
+
             info!("Created wallet {} for process {}", wallet_address, address);
 
-            HyperwalletResponse::success(HyperwalletResponseData::CreateWallet(
-                CreateWalletResponse {
-                    wallet_id: wallet_address.clone(),
-                    address: wallet_address,
-                    name: req.name.clone(),
-                }
-            ))
+            HyperwalletResponse::success(HyperwalletResponseData::CreateWallet(CreateWalletResponse {
+                wallet_id: wallet_address.clone(),
+                address: wallet_address,
+                name: data.name.clone(),
+            }))
         }
         Err(e) => HyperwalletResponse::error(OperationError::internal_error(&format!(
             "Failed to create wallet: {}",
@@ -69,24 +67,25 @@ pub fn create_wallet(
 }
 
 pub fn import_wallet(
-    req: ImportWalletRequest,
-    _session_id: &SessionId,
+    request: ImportWalletRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
+    let data = &request;
     let chain_id = DEFAULT_CHAIN_ID;
 
-    match LocalSigner::from_private_key(&req.private_key, chain_id) {
+    match LocalSigner::from_private_key(&data.private_key, chain_id) {
         Ok(signer) => {
             let wallet_address = signer.address().to_string();
-            
+
             if state.get_wallet(address, &wallet_address).is_some() {
                 return HyperwalletResponse::error(OperationError::invalid_params(
-                    "Wallet with this address already exists for this process"
+                    "Wallet with this address already exists for this process",
                 ));
             }
 
-            let key_storage = if let Some(ref password) = req.password {
+            let key_storage = if let Some(ref password) = data.password {
                 match signer.encrypt(password) {
                     Ok(encrypted) => KeyStorage::Encrypted(encrypted),
                     Err(e) => {
@@ -102,7 +101,7 @@ pub fn import_wallet(
             // Create the wallet
             let wallet = Wallet {
                 address: wallet_address.clone(),
-                name: Some(req.name.clone()),
+                name: Some(data.name.clone()),
                 chain_id,
                 key_storage,
                 created_at: chrono::Utc::now(),
@@ -111,16 +110,14 @@ pub fn import_wallet(
             };
 
             state.add_wallet(address.clone(), wallet);
-            
+
             info!("Imported wallet {} for process {}", wallet_address, address);
 
-            HyperwalletResponse::success(HyperwalletResponseData::ImportWallet(
-                ImportWalletResponse {
-                    wallet_id: wallet_address.clone(),
-                    address: wallet_address,
-                    name: req.name.clone(),
-                }
-            ))
+            HyperwalletResponse::success(HyperwalletResponseData::ImportWallet(ImportWalletResponse {
+                wallet_id: wallet_address.clone(),
+                address: wallet_address,
+                name: data.name.clone(),
+            }))
         }
         Err(e) => HyperwalletResponse::error(OperationError::internal_error(&format!(
             "Failed to import wallet: {}",
@@ -130,93 +127,113 @@ pub fn import_wallet(
 }
 
 pub fn delete_wallet(
-    req: DeleteWalletRequest,
-    _session_id: &SessionId,
+    request: DeleteWalletRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
-    let wallet_id = &req.wallet_id;
+    let wallet_id = &request.wallet_id;
 
     let wallet = match state.get_wallet(address, wallet_id) {
         Some(w) => w.clone(),
-        None => return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", wallet_id))),
+        None => {
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Wallet not found: {}",
+                wallet_id
+            )))
+        }
     };
 
     if state.remove_wallet(address, &wallet.address).is_some() {
-        state.active_signers.remove(&(address.clone(), wallet.address.clone()));
-        
+        state
+            .active_signers
+            .remove(&(address.clone(), wallet.address.clone()));
+
         info!("Deleted wallet {} for process {}", wallet.address, address);
-        
-        HyperwalletResponse::success(HyperwalletResponseData::DeleteWallet(
-            DeleteWalletResponse {
-                wallet_id: wallet.address.clone(),
-                success: true,
-                message: "Wallet deleted successfully".to_string(),
-            }
-        ))
+
+        HyperwalletResponse::success(HyperwalletResponseData::DeleteWallet(DeleteWalletResponse {
+            wallet_id: wallet.address.clone(),
+            success: true,
+            message: "Wallet deleted successfully".to_string(),
+        }))
     } else {
         HyperwalletResponse::error(OperationError::internal_error("Failed to delete wallet"))
     }
 }
 
 pub fn rename_wallet(
-    req: RenameWalletRequest,
-    _session_id: &SessionId,
+    request: RenameWalletRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
-    let new_name = &req.new_name;
-    let wallet_id = &req.wallet_id;
-    
+    let data = &request;
+    let new_name = &data.new_name;
+    let wallet_id = &data.wallet_id;
+
     match state.get_wallet_mut(address, wallet_id) {
         Some(wallet) => {
             wallet.name = Some(new_name.clone());
             let wallet_address = wallet.address.clone();
-            
+
             let _ = wallet;
             state.save();
-            
-            info!("Renamed wallet {} to '{}' for process {}", wallet_id, new_name, address);
-            
-            // TODO: Add RenameWallet variant to HyperwalletResponseData enum and use it here
-            // For now, use CreateWallet variant as a workaround
-            HyperwalletResponse::success(HyperwalletResponseData::CreateWallet(
-                CreateWalletResponse {
-                    wallet_id: wallet_address.clone(),
-                    address: wallet_address,
-                    name: new_name.clone(),
-                }
-            ))
+
+            info!(
+                "Renamed wallet {} to '{}' for process {}",
+                wallet_id, new_name, address
+            );
+
+            // Temporary: return updated wallet info via CreateWalletResponse shape until dedicated RenameWallet exists
+            HyperwalletResponse::success(HyperwalletResponseData::CreateWallet(CreateWalletResponse {
+                wallet_id: wallet_address.clone(),
+                address: wallet_address,
+                name: new_name.clone(),
+            }))
         }
-        None => HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", wallet_id))),
+        None => HyperwalletResponse::error(OperationError::invalid_params(&format!(
+            "Wallet not found: {}",
+            wallet_id
+        ))),
     }
 }
 
 pub fn export_wallet(
-    req: ExportWalletRequest,
-    _session_id: &SessionId,
+    request: ExportWalletRequest,
+    _session_id: &str,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
-    let wallet = match state.get_wallet(address, &req.wallet_id) {
+    let data = &request;
+
+    let wallet = match state.get_wallet(address, &data.wallet_id) {
         Some(w) => w,
-        None => return HyperwalletResponse::error(OperationError::invalid_params(&format!("Wallet not found: {}", &req.wallet_id))),
+        None => {
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Wallet not found: {}",
+                &data.wallet_id
+            )))
+        }
     };
 
     let private_key = match &wallet.key_storage {
         KeyStorage::Decrypted(signer) => signer.export_private_key(),
         KeyStorage::Encrypted(encrypted_data) => {
-            let pwd = match req.password.as_deref() {
+            let pwd = match data.password.as_deref() {
                 Some(p) => p,
                 None => {
-                    return HyperwalletResponse::error(OperationError::invalid_params("Password required for encrypted wallet"));
+                    return HyperwalletResponse::error(OperationError::invalid_params(
+                        "Password required for encrypted wallet",
+                    ));
                 }
             };
 
             match LocalSigner::decrypt(encrypted_data, pwd) {
                 Ok(signer) => signer.export_private_key(),
                 Err(_) => {
-                    return HyperwalletResponse::error(OperationError::internal_error("Failed to decrypt wallet"));
+                    return HyperwalletResponse::error(OperationError::internal_error(
+                        "Failed to decrypt wallet",
+                    ));
                 }
             }
         }
@@ -224,28 +241,32 @@ pub fn export_wallet(
 
     info!("Exported wallet {} for {}", wallet.address, address);
 
-    HyperwalletResponse::success(HyperwalletResponseData::ExportWallet(
-        ExportWalletResponse {
-            address: wallet.address.clone(),
-            private_key,
-        }
-    ))
+    HyperwalletResponse::success(HyperwalletResponseData::ExportWallet(ExportWalletResponse {
+        address: wallet.address.clone(),
+        private_key,
+    }))
 }
 
-// NOTE: This function still uses the generic HyperwalletResponse<serde_json::Value> type
-// because there is no SetWalletLimits variant in HyperwalletResponseData enum yet.
-// Once the variant is added to types.rs, this function should be updated to match
-// the pattern used by other functions in this module.
 pub fn set_wallet_limits(
     wallet_id: &str,
     params: serde_json::Value,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
-    let max_per_call = params.get("max_per_call").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let max_total = params.get("max_total").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let currency = params.get("currency").and_then(|v| v.as_str()).unwrap_or("USDC").to_string();
-    
+    let max_per_call = params
+        .get("max_per_call")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let max_total = params
+        .get("max_total")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let currency = params
+        .get("currency")
+        .and_then(|v| v.as_str())
+        .unwrap_or("USDC")
+        .to_string();
+
     let limits = crate::state::WalletSpendingLimits {
         max_per_call: max_per_call.clone(),
         max_total: max_total.clone(),
@@ -254,18 +275,23 @@ pub fn set_wallet_limits(
         set_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    
+
     match state.set_wallet_spending_limits(address, wallet_id, limits) {
         Ok(()) => {
             info!("Set spending limits for wallet {} (process {}): max_per_call={:?}, max_total={:?}, currency={}", 
                   wallet_id, address, max_per_call, max_total, currency);
-            
-            // TODO: Replace json! macro with typed SetWalletLimitsResponse struct
-            // For now, return an error since there's no SetWalletLimits variant in HyperwalletResponseData
-            HyperwalletResponse::error(OperationError::operation_not_supported("SetWalletLimits response type not yet implemented"))
+
+            // TODO: Replace with typed SetWalletLimitsResponse struct
+            // For now, returning a success response with a message
+            HyperwalletResponse::success(HyperwalletResponseData::CreateWallet(
+                hyperware_process_lib::hyperwallet_client::types::CreateWalletResponse {
+                    wallet_id: wallet_id.to_string(),
+                    address: wallet_id.to_string(),
+                    name: format!("Spending limits set: max_per_call={:?}, max_total={:?}, currency={}", 
+                                  max_per_call, max_total, currency),
+                }
+            ))
         }
-        Err(e) => {
-            HyperwalletResponse::error(OperationError::invalid_params(&e))
-        }
+        Err(e) => HyperwalletResponse::error(OperationError::invalid_params(&e)),
     }
-} 
+}

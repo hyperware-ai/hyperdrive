@@ -1,11 +1,12 @@
-/// Permission validation logic
-
-use hyperware_process_lib::hyperwallet_client::types::{OperationError, HyperwalletMessage, HyperwalletRequest, HyperwalletResponse};
-use hyperware_process_lib::hyperwallet_client::types::Operation;
-use hyperware_process_lib::Address;
 use crate::permissions::operation_requires_wallet;
 use crate::state::HyperwalletState;
+use hyperware_process_lib::hyperwallet_client::types::Operation;
+/// Permission validation logic
+use hyperware_process_lib::hyperwallet_client::types::{
+    HyperwalletMessage, HyperwalletRequest, HyperwalletResponse, OperationError,
+};
 use hyperware_process_lib::logging::{error, info};
+use hyperware_process_lib::Address;
 
 pub struct PermissionValidator;
 
@@ -20,7 +21,6 @@ impl PermissionValidator {
         address: &Address,
         state: &mut HyperwalletState,
     ) -> HyperwalletResponse {
-        
         // Special handling for operations that don't require existing permissions. might be unsafe?
         if matches!(message.request, HyperwalletRequest::Handshake(_)) {
             info!("Processing Handshake from {}", address);
@@ -57,8 +57,14 @@ impl PermissionValidator {
 
         // TODO: Implement spending limit checking for typed request structs
         // This will require extracting amount from the specific request types
-        if matches!(operation, Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba) {
-            info!("Transaction operation {:?} - spending limit check needed", operation);
+        if matches!(
+            operation,
+            Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba
+        ) {
+            info!(
+                "Transaction operation {:?} - spending limit check needed",
+                operation
+            );
         }
 
         info!(
@@ -67,14 +73,17 @@ impl PermissionValidator {
         );
 
         let response = crate::api::messages::execute_message(message, address, state);
-        
+
         // TODO: Implement spending limit updates for successful transactions
         if response.success {
-            if matches!(operation, Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba) {
+            if matches!(
+                operation,
+                Operation::SendEth | Operation::SendToken | Operation::ExecuteViaTba
+            ) {
                 info!("Transaction successful, spending limits update needed");
             }
         }
-        
+
         response
     }
 }
