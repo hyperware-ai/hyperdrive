@@ -990,7 +990,9 @@ async fn handle_key_event(
                     } else {
                         current_line.line_col -= 1;
                         let c = current_line.delete_char();
-                        current_line.cursor_col = current_line.cursor_col.saturating_sub(utils::display_width(&c) as u16);
+                        current_line.cursor_col = current_line
+                            .cursor_col
+                            .saturating_sub(utils::display_width(&c) as u16);
                     }
                 }
                 //

@@ -135,16 +135,7 @@ async fn main() {
         serde_json::from_str(DEFAULT_ETH_PROVIDERS).unwrap()
     };
 
-    // TODO: Remove debug logging before merging - before modification
-    eprintln!(
-        "[DEBUG-AUTH] eth_provider_config before --rpc/--rpc-config processing: {:#?}",
-        eth_provider_config
-    );
-
     if let Some(rpc) = rpc {
-        // TODO: Remove debug logging before merging
-        eprintln!("[DEBUG-AUTH] Processing --rpc flag with URL: {}", rpc);
-
         let new_provider = lib::eth::ProviderConfig {
             chain_id: CHAIN_ID,
             trusted: true,
@@ -156,91 +147,33 @@ async fn main() {
 
         add_provider_to_config(&mut eth_provider_config, new_provider);
         is_eth_provider_config_updated = true;
-
-        // TODO: Remove debug logging before merging
-        eprintln!("[DEBUG-AUTH] Added --rpc provider (with deduplication)");
     }
     if let Some(rpc_config) = rpc_config {
-        // TODO: Remove debug logging before merging
-        eprintln!(
-            "[DEBUG-AUTH] Processing --rpc-config flag with file: {}",
-            rpc_config.display()
-        );
+        if let Ok(contents) = std::fs::read_to_string(&rpc_config) {
+            if let Ok(rpc_configs) =
+                serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents)
+            {
+                // Process in reverse order so the first entry in the file becomes highest priority
+                for (_reverse_index, rpc_url_config) in rpc_configs.into_iter().rev().enumerate() {
+                    let new_provider = lib::eth::ProviderConfig {
+                        chain_id: CHAIN_ID,
+                        trusted: true,
+                        provider: lib::eth::NodeOrRpcUrl::RpcUrl {
+                            url: rpc_url_config.url,
+                            auth: rpc_url_config.auth,
+                        },
+                    };
 
-        match std::fs::read_to_string(&rpc_config) {
-            Ok(contents) => {
-                match serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents) {
-                    Ok(rpc_configs) => {
-                        // TODO: Remove debug logging before merging
-                        eprintln!(
-                            "[DEBUG-AUTH] Loaded {} providers from config file",
-                            rpc_configs.len()
-                        );
-
-                        // Store the length before consuming the vector
-                        let total_configs = rpc_configs.len();
-
-                        // Process in reverse order so the first entry in the file becomes highest priority
-                        for (reverse_index, rpc_url_config) in
-                            rpc_configs.into_iter().rev().enumerate()
-                        {
-                            let original_index = total_configs - 1 - reverse_index;
-
-                            // TODO: Remove debug logging before merging
-                            eprintln!("[DEBUG-AUTH] Processing config provider {} (original position {}): {}",
-                                      reverse_index + 1, original_index + 1, rpc_url_config.url);
-                            if let Some(ref auth) = rpc_url_config.auth {
-                                match auth {
-                                    lib::eth::Authorization::Basic(creds) => {
-                                        eprintln!("[DEBUG-AUTH] Config provider has Basic auth (length: {})", creds.len());
-                                    }
-                                    lib::eth::Authorization::Bearer(token) => {
-                                        eprintln!("[DEBUG-AUTH] Config provider has Bearer auth (length: {})", token.len());
-                                    }
-                                    lib::eth::Authorization::Raw(raw) => {
-                                        eprintln!("[DEBUG-AUTH] Config provider has Raw auth (length: {})", raw.len());
-                                    }
-                                }
-                            } else {
-                                eprintln!("[DEBUG-AUTH] Config provider has no auth");
-                            }
-
-                            let new_provider = lib::eth::ProviderConfig {
-                                chain_id: CHAIN_ID,
-                                trusted: true,
-                                provider: lib::eth::NodeOrRpcUrl::RpcUrl {
-                                    url: rpc_url_config.url,
-                                    auth: rpc_url_config.auth,
-                                },
-                            };
-
-                            add_provider_to_config(&mut eth_provider_config, new_provider);
-                        }
-                        is_eth_provider_config_updated = true;
-
-                        // TODO: Remove debug logging before merging
-                        eprintln!("[DEBUG-AUTH] Added all --rpc-config providers (with deduplication, order preserved)");
-                    }
-                    Err(e) => {
-                        // TODO: Remove debug logging before merging
-                        eprintln!("[DEBUG-AUTH] Failed to parse RPC config file: {}", e);
-                        eprintln!("Failed to parse RPC config file: {e}");
-                    }
+                    add_provider_to_config(&mut eth_provider_config, new_provider);
                 }
+                is_eth_provider_config_updated = true;
+            } else {
+                eprintln!("Failed to parse RPC config file");
             }
-            Err(e) => {
-                // TODO: Remove debug logging before merging
-                eprintln!("[DEBUG-AUTH] Failed to read RPC config file: {}", e);
-                eprintln!("Failed to read RPC config file: {e}");
-            }
+        } else {
+            eprintln!("Failed to read RPC config file");
         }
     }
-
-    // TODO: Remove debug logging before merging - after modification
-    eprintln!(
-        "[DEBUG-AUTH] eth_provider_config after --rpc/--rpc-config processing: {:#?}",
-        eth_provider_config
-    );
 
     if is_eth_provider_config_updated {
         // save the new provider config

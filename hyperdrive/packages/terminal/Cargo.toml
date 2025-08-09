@@ -1,9 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
+    "add-node-provider",
+    "add-rpcurl-provider",
     "alias",
     "cat",
     "echo",
+    "get-providers",
     "help",
     "hfetch",
     "hi",
@@ -12,6 +15,7 @@ members = [
     "net-diagnostics",
     "peer",
     "peers",
+    "remove-provider",
     "terminal",
     "top",
 ]
