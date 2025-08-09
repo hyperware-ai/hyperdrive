@@ -77,6 +77,9 @@ pub fn execute_message(
         HyperwalletRequest::ExportWallet(req) => {
             core::wallet_lifecycle::export_wallet(req, session_id, source, state)
         }
+        HyperwalletRequest::SetWalletLimits(req) => {
+            core::wallet_lifecycle::set_wallet_limits(req, session_id, source, state)
+        }
 
         // Queries (core/wallet_queries.rs)
         HyperwalletRequest::ListWallets => {

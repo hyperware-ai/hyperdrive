@@ -170,6 +170,7 @@ interface hyperwallet {
         export-wallet(export-wallet-request),
         list-wallets,
         get-wallet-info(get-wallet-info-request),
+        set-wallet-limits(set-wallet-limits-request),
 
         // Ethereum Operations
         send-eth(send-eth-request),
@@ -255,6 +256,7 @@ interface hyperwallet {
         import-wallet(import-wallet-response),
         delete-wallet(delete-wallet-response),
         export-wallet(export-wallet-response),
+        set-wallet-limits(set-wallet-limits-response),
 
         // Wallet Queries
         list-wallets(list-wallets-response),
@@ -480,6 +482,12 @@ interface hyperwallet {
         note-id: string,
     }
 
+    // Wallet limits update
+    record set-wallet-limits-request {
+        wallet-id: string,
+        limits: wallet-spending-limits,
+    }
+
     record setup-delegation-request {
         delegate-address: string,
         permissions: list<string>,
@@ -632,6 +640,12 @@ interface hyperwallet {
         tba-address: string,
         owner-address: string,
         is-owned: bool,
+    }
+
+    record set-wallet-limits-response {
+        success: bool,
+        wallet-id: string,
+        message: string,
     }
 }
 

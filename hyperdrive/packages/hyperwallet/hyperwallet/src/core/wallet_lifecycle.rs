@@ -7,7 +7,7 @@ use hyperware_process_lib::hyperwallet_client::types::{
     CreateWalletRequest, CreateWalletResponse, DeleteWalletRequest, DeleteWalletResponse,
     ExportWalletRequest, ExportWalletResponse, HyperwalletResponse,
     HyperwalletResponseData, ImportWalletRequest, ImportWalletResponse, OperationError,
-    RenameWalletRequest,
+    RenameWalletRequest, SetWalletLimitsRequest, SetWalletLimitsResponse,
 };
 use hyperware_process_lib::logging::info;
 use hyperware_process_lib::signer::{LocalSigner, Signer};
@@ -248,49 +248,53 @@ pub fn export_wallet(
 }
 
 pub fn set_wallet_limits(
-    wallet_id: &str,
-    params: serde_json::Value,
+    request: SetWalletLimitsRequest,
+    session_id: &String,
     address: &Address,
     state: &mut HyperwalletState,
 ) -> HyperwalletResponse {
-    let max_per_call = params
-        .get("max_per_call")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-    let max_total = params
-        .get("max_total")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-    let currency = params
-        .get("currency")
-        .and_then(|v| v.as_str())
-        .unwrap_or("USDC")
-        .to_string();
+    // Validate session
+    match state.validate_session(session_id) {
+        Some(session) if session.process_address == *address => {}
+        Some(_) => {
+            return HyperwalletResponse::error(OperationError::invalid_params(
+                "Session does not belong to this process",
+            ));
+        }
+        None => {
+            return HyperwalletResponse::error(OperationError::invalid_params(
+                "Invalid or expired session_id",
+            ));
+        }
+    }
+
+    // Validate wallet exists
+    let wallet_id = &request.wallet_id;
+    if state.get_wallet(address, wallet_id).is_none() {
+        return HyperwalletResponse::error(OperationError::wallet_not_found(wallet_id));
+    }
 
     let limits = crate::state::WalletSpendingLimits {
-        max_per_call: max_per_call.clone(),
-        max_total: max_total.clone(),
-        currency: currency.clone(),
-        total_spent: "0".to_string(),
+        max_per_call: request.limits.max_per_call.clone(),
+        max_total: request.limits.max_total.clone(),
+        currency: request.limits.currency.clone(),
+        total_spent: request.limits.total_spent.clone(),
         set_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
 
     match state.set_wallet_spending_limits(address, wallet_id, limits) {
         Ok(()) => {
-            info!("Set spending limits for wallet {} (process {}): max_per_call={:?}, max_total={:?}, currency={}", 
-                  wallet_id, address, max_per_call, max_total, currency);
+            info!(
+                "Set spending limits for wallet {} (process {}): max_per_call={:?}, max_total={:?}, currency={}",
+                wallet_id, address, request.limits.max_per_call, request.limits.max_total, request.limits.currency
+            );
 
-            // TODO: Replace with typed SetWalletLimitsResponse struct
-            // For now, returning a success response with a message
-            HyperwalletResponse::success(HyperwalletResponseData::CreateWallet(
-                hyperware_process_lib::hyperwallet_client::types::CreateWalletResponse {
-                    wallet_id: wallet_id.to_string(),
-                    address: wallet_id.to_string(),
-                    name: format!("Spending limits set: max_per_call={:?}, max_total={:?}, currency={}", 
-                                  max_per_call, max_total, currency),
-                }
-            ))
+            HyperwalletResponse::success(HyperwalletResponseData::SetWalletLimits(SetWalletLimitsResponse {
+                success: true,
+                wallet_id: wallet_id.clone(),
+                message: "Spending limits set successfully".to_string(),
+            }))
         }
         Err(e) => HyperwalletResponse::error(OperationError::invalid_params(&e)),
     }

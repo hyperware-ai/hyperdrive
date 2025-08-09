@@ -83,11 +83,13 @@ export async function listWallets(): Promise<ApiResponse> {
  */
 export async function createWallet(
   name: string,
-  chainId: number
+  chainId: number,
+  encrypt: boolean = false
 ): Promise<ApiResponse> {
   return callWalletOperation('CreateWallet', {
     name,
-    chain_id: chainId
+    chain_id: chainId,
+    encrypt
   })
 }
 
@@ -97,12 +99,14 @@ export async function createWallet(
 export async function importWallet(
   name: string,
   privateKey: string,
-  chainId: number
+  chainId: number,
+  encrypt: boolean = false
 ): Promise<ApiResponse> {
   return callWalletOperation('ImportWallet', {
     name,
     private_key: privateKey,
-    chain_id: chainId
+    chain_id: chainId,
+    encrypt
   })
 }
 

@@ -57,7 +57,8 @@ function App() {
         operation: 'CreateWallet',
         params: {
           name: 'Test Wallet',
-          chain_id: 8453
+          chain_id: 8453,
+          encrypt: false
         },
         timestamp: Date.now() / 1000
       })
