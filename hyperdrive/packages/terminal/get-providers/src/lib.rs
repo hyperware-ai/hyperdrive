@@ -17,17 +17,6 @@ fn init(_our: Address, _args: String) -> String {
     else {
         return "Failed to get providers from eth module".to_string();
     };
-
-    //// Parse as generic JSON and pretty-print
-    //match serde_json::from_slice::<Value>(&body) {
-    //    Ok(json_value) => {
-    //        serde_json::to_string_pretty(&json_value)
-    //            .unwrap_or_else(|_| "Failed to format JSON".to_string())
-    //    }
-    //    Err(e) => {
-    //        format!("Failed to parse response as JSON: {}\nRaw response: {}", e, String::from_utf8_lossy(&body))
-    //    }
-    //}
     if let Ok(json_value) = serde_json::from_slice::<Value>(&body) {
         // Check if it looks like a Providers response
         if let Some(obj) = json_value.as_object() {
