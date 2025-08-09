@@ -71,7 +71,8 @@ impl State {
             Print(self.current_line.prompt),
             Print(utils::truncate_in_place(
                 &self.current_line.line,
-                self.win_cols - self.current_line.prompt_len as u16,
+                self.win_cols
+                    .saturating_sub(self.current_line.prompt_len as u16),
                 self.current_line.line_col,
                 self.current_line.cursor_col,
                 show_end
@@ -96,7 +97,8 @@ impl State {
                 style::Print(&search_prompt),
                 style::Print(utils::truncate_in_place(
                     &result_underlined,
-                    self.win_cols - self.current_line.prompt_len as u16,
+                    self.win_cols
+                        .saturating_sub(self.current_line.prompt_len as u16),
                     self.current_line.line_col,
                     search_cursor_col,
                     false,
@@ -115,7 +117,8 @@ impl State {
                 style::Print(&search_prompt),
                 style::Print(utils::truncate_in_place(
                     &format!("{}: no results", &self.current_line.line),
-                    self.win_cols - self.current_line.prompt_len as u16,
+                    self.win_cols
+                        .saturating_sub(self.current_line.prompt_len as u16),
                     self.current_line.line_col,
                     self.current_line.cursor_col,
                     false,
@@ -585,7 +588,7 @@ async fn handle_event(
             *win_cols = width - 1;
             *win_rows = height;
             if current_line.cursor_col + current_line.prompt_len as u16 > *win_cols {
-                current_line.cursor_col = *win_cols - current_line.prompt_len as u16;
+                current_line.cursor_col = win_cols.saturating_sub(current_line.prompt_len as u16);
                 // can't do this because of wide graphemes :/
                 // current_line.line_col = current_line.cursor_col as usize;
             }
@@ -603,7 +606,7 @@ async fn handle_event(
             current_line.line_col = current_line.line_col + pasted.graphemes(true).count();
             current_line.cursor_col = std::cmp::min(
                 current_line.cursor_col + utils::display_width(&pasted) as u16,
-                *win_cols - current_line.prompt_len as u16,
+                (*win_cols).saturating_sub(current_line.prompt_len as u16),
             );
         }
         Event::Key(key_event) => {
@@ -816,8 +819,10 @@ async fn handle_key_event(
                     let width = utils::display_width(&line);
                     current_line.line_col = line.graphemes(true).count();
                     current_line.line = line;
-                    current_line.cursor_col =
-                        std::cmp::min(width as u16, *win_cols - current_line.prompt_len as u16);
+                    current_line.cursor_col = std::cmp::min(
+                        width as u16,
+                        (*win_cols).saturating_sub(current_line.prompt_len as u16),
+                    );
                 }
                 None => {
                     // the "no-no" ding
@@ -848,8 +853,10 @@ async fn handle_key_event(
                     let width = utils::display_width(&line);
                     current_line.line_col = line.graphemes(true).count();
                     current_line.line = line;
-                    current_line.cursor_col =
-                        std::cmp::min(width as u16, *win_cols - current_line.prompt_len as u16);
+                    current_line.cursor_col = std::cmp::min(
+                        width as u16,
+                        (*win_cols).saturating_sub(current_line.prompt_len as u16),
+                    );
                 }
                 None => {
                     // the "no-no" ding
@@ -887,7 +894,7 @@ async fn handle_key_event(
             current_line.line_col = current_line.line.graphemes(true).count();
             current_line.cursor_col = std::cmp::min(
                 utils::display_width(&current_line.line) as u16,
-                *win_cols - current_line.prompt_len as u16,
+                (*win_cols).saturating_sub(current_line.prompt_len as u16),
             );
         }
         //
@@ -940,7 +947,7 @@ async fn handle_key_event(
                     current_line.line_col = current_line.line.graphemes(true).count();
                     current_line.cursor_col = std::cmp::min(
                         utils::display_width(&current_line.line) as u16,
-                        *win_cols - current_line.prompt_len as u16,
+                        (*win_cols).saturating_sub(current_line.prompt_len as u16),
                     );
                 }
 
@@ -983,7 +990,7 @@ async fn handle_key_event(
                     } else {
                         current_line.line_col -= 1;
                         let c = current_line.delete_char();
-                        current_line.cursor_col -= utils::display_width(&c) as u16;
+                        current_line.cursor_col = current_line.cursor_col.saturating_sub(utils::display_width(&c) as u16);
                     }
                 }
                 //
@@ -1029,7 +1036,8 @@ async fn handle_key_event(
                         // at the very end of the current typed line
                         return Ok(Some(false));
                     };
-                    if (current_line.cursor_col + current_line.prompt_len as u16) < (*win_cols - 1)
+                    if (current_line.cursor_col + current_line.prompt_len as u16)
+                        < (*win_cols).saturating_sub(1)
                     {
                         // simply move cursor and line position right
                         let width = current_line
