@@ -57,8 +57,12 @@ fn init(_our: Address, _args: String) -> String {
                                             output.push_str(&format!("   Node: {}\n", name));
                                         }
                                     }
-                                    if let Some(use_as_provider) = node_info.get("use_as_provider") {
-                                        output.push_str(&format!("   Use as Provider: {}\n", use_as_provider));
+                                    if let Some(use_as_provider) = node_info.get("use_as_provider")
+                                    {
+                                        output.push_str(&format!(
+                                            "   Use as Provider: {}\n",
+                                            use_as_provider
+                                        ));
                                     }
                                 }
                             }
@@ -69,8 +73,15 @@ fn init(_our: Address, _args: String) -> String {
             }
         }
         // If it's not a Providers response, show the JSON structure
-        format!("Response (not Providers): {}", serde_json::to_string_pretty(&json_value).unwrap_or_else(|_| "Could not format JSON".to_string()))
+        format!(
+            "Response (not Providers): {}",
+            serde_json::to_string_pretty(&json_value)
+                .unwrap_or_else(|_| "Could not format JSON".to_string())
+        )
     } else {
-        format!("Failed to parse as JSON\nRaw response: {}", String::from_utf8_lossy(&body))
+        format!(
+            "Failed to parse as JSON\nRaw response: {}",
+            String::from_utf8_lossy(&body)
+        )
     }
 }

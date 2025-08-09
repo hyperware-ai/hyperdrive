@@ -26,8 +26,7 @@ fn init(_our: Address, args: String) -> String {
     // Manually construct the JSON for RemoveProvider
     let request_json = format!(
         r#"{{"RemoveProvider": [{}, "{}"]}}"#,
-        chain_id,
-        provider_identifier
+        chain_id, provider_identifier
     );
 
     let Ok(Ok(Message::Response { body, .. })) = Request::to(("our", "eth", "distro", "sys"))
@@ -41,22 +40,33 @@ fn init(_our: Address, args: String) -> String {
     if let Ok(json_value) = serde_json::from_slice::<Value>(&body) {
         match json_value.as_str() {
             Some("Ok") => {
-                format!("Successfully removed provider '{}' from chain {}", provider_identifier, chain_id)
+                format!(
+                    "Successfully removed provider '{}' from chain {}",
+                    provider_identifier, chain_id
+                )
             }
             Some("ProviderNotFound") => {
-                format!("Provider '{}' not found on chain {} (may have already been removed)", provider_identifier, chain_id)
+                format!(
+                    "Provider '{}' not found on chain {} (may have already been removed)",
+                    provider_identifier, chain_id
+                )
             }
             Some("PermissionDenied") => {
                 "Permission denied: you don't have root capability for eth module".to_string()
             }
             _ => {
                 // Handle any other response types
-                format!("Unexpected response: {}", serde_json::to_string_pretty(&json_value)
-                    .unwrap_or_else(|_| "Failed to format response".to_string()))
+                format!(
+                    "Unexpected response: {}",
+                    serde_json::to_string_pretty(&json_value)
+                        .unwrap_or_else(|_| "Failed to format response".to_string())
+                )
             }
         }
-
     } else {
-        format!("Failed to parse response as JSON\nRaw response: {}", String::from_utf8_lossy(&body))
+        format!(
+            "Failed to parse response as JSON\nRaw response: {}",
+            String::from_utf8_lossy(&body)
+        )
     }
 }

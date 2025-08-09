@@ -18,8 +18,11 @@ fn init(_our: Address, args: String) -> String {
     let provider_str = parts[0];
 
     // Validate URL format
-    if !provider_str.starts_with("http://") && !provider_str.starts_with("https://") &&
-        !provider_str.starts_with("wss://") && !provider_str.starts_with("ws://") {
+    if !provider_str.starts_with("http://")
+        && !provider_str.starts_with("https://")
+        && !provider_str.starts_with("wss://")
+        && !provider_str.starts_with("ws://")
+    {
         return "Error: URL must start with http://, https://, ws://, or wss://".to_string();
     }
 
@@ -40,7 +43,10 @@ fn init(_our: Address, args: String) -> String {
 
             // Only include auth field if authentication is provided
             if let Some(auth_value) = auth_option {
-                rpc_config.as_object_mut().unwrap().insert("auth".to_string(), auth_value);
+                rpc_config
+                    .as_object_mut()
+                    .unwrap()
+                    .insert("auth".to_string(), auth_value);
             }
 
             let provider_config = json!({
@@ -56,9 +62,10 @@ fn init(_our: Address, args: String) -> String {
                 "AddProvider": provider_config
             });
 
-            let Ok(Ok(Message::Response { body, .. })) = Request::to(("our", "eth", "distro", "sys"))
-                .body(serde_json::to_vec(&request_body).unwrap())
-                .send_and_await_response(60)
+            let Ok(Ok(Message::Response { body, .. })) =
+                Request::to(("our", "eth", "distro", "sys"))
+                    .body(serde_json::to_vec(&request_body).unwrap())
+                    .send_and_await_response(60)
             else {
                 return "Failed to communicate with eth module".to_string();
             };
@@ -69,19 +76,29 @@ fn init(_our: Address, args: String) -> String {
                     match response {
                         "Ok" => {
                             let auth_info = if has_auth { " with authentication" } else { "" };
-                            format!("Successfully added RPC URL provider: {} on chain {}{}", provider_str, chain_id, auth_info)
-                        },
-                        "PermissionDenied" => "Permission denied: insufficient privileges".to_string(),
+                            format!(
+                                "Successfully added RPC URL provider: {} on chain {}{}",
+                                provider_str, chain_id, auth_info
+                            )
+                        }
+                        "PermissionDenied" => {
+                            "Permission denied: insufficient privileges".to_string()
+                        }
                         other => format!("Error: {}", other),
                     }
                 } else {
                     // Handle any other response types with better formatting
-                    format!("Unexpected response: {}",
-                            serde_json::to_string_pretty(&json_value)
-                                .unwrap_or_else(|_| "Failed to format response".to_string()))
+                    format!(
+                        "Unexpected response: {}",
+                        serde_json::to_string_pretty(&json_value)
+                            .unwrap_or_else(|_| "Failed to format response".to_string())
+                    )
                 }
             } else {
-                format!("Failed to parse response as JSON\nRaw response: {}", String::from_utf8_lossy(&body))
+                format!(
+                    "Failed to parse response as JSON\nRaw response: {}",
+                    String::from_utf8_lossy(&body)
+                )
             }
         }
         Err(err_msg) => err_msg,
@@ -158,7 +175,9 @@ fn parse_auth_options(args: &[&str]) -> Result<Option<Value>, String> {
                 "basic" => json!({"Basic": auth_value}),
                 "bearer" => json!({"Bearer": auth_value}),
                 "raw" => json!({"Raw": auth_value}),
-                _ => return Err("Invalid auth type. Must be 'basic', 'bearer', or 'raw'".to_string()),
+                _ => {
+                    return Err("Invalid auth type. Must be 'basic', 'bearer', or 'raw'".to_string())
+                }
             };
             Ok(Some(auth_json))
         }
