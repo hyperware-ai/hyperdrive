@@ -421,20 +421,28 @@ export const HomeScreen: React.FC = () => {
               );
             })}
             <div className="w-px h-12 bg-black/20 dark:bg-white/20 mx-1" />
-            <button
+            <div
+              className="flex flex-col gap-1 items-center"
               onClick={toggleAppDrawer}
-              className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              <BsGridFill className="text-2xl" />
-              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap absolute top-full left-1/2 -translate-x-1/2">My apps</span>
-            </button>
-            <button
+              <button
+                className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+              >
+                <BsGridFill className="text-2xl" />
+              </button>
+              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap">My apps</span>
+            </div>
+            <div
+              className="flex flex-col gap-1 items-center"
               onClick={toggleRecentApps}
-              className="!hidden md:!flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              <BsClock className="text-2xl" />
-              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap absolute top-full left-1/2 -translate-x-1/2">Recent</span>
-            </button>
+              <button
+                className="!hidden md:!flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+              >
+                <BsClock className="text-2xl" />
+              </button>
+              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap">Recent</span>
+            </div>
           </div>
         </div>
 
@@ -580,7 +588,7 @@ export const HomeScreen: React.FC = () => {
           {!isEditMode && <>
             <a
               href="mailto:support@hyperware.ai"
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
+              className="button bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm ml-auto !p-2"
               target="_blank"
               rel="noopener noreferrer"
               title="Get help & support"
@@ -589,12 +597,12 @@ export const HomeScreen: React.FC = () => {
             </a>
             <button
               onClick={() => setEditMode(true)}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !p-2"
               title="Edit apps, widgets, and background"
             >
               <BsPencilSquare />
             </button>
-            <div className="ml-auto flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
+            <div className=" flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
               <BsSearch className="opacity-50" />
               <input
                 type="text"
@@ -618,7 +626,10 @@ export const HomeScreen: React.FC = () => {
             <p>Your node, your data: finally, you have full control over your information.</p>
             <div className="flex flex-col items-center gap-2 ">
               <button
-                onClick={() => setDoNotShowOnboardingAgain(true)}
+                onClick={() => {
+                  setDoNotShowOnboardingAgain(true)
+                  setShowOnboarding(false)
+                }}
                 className="clear text-sm self-stretch !rounded-full"
               >
                 Don't show again

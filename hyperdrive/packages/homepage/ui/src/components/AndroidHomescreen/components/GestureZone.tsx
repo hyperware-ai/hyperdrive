@@ -75,15 +75,16 @@ export const GestureZone: React.FC = () => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {!isActive && <div className="bg-black/20 dark:bg-white/20  backdrop-blur-xl px-1 py-3 rounded-l-xl flex flex-col self-end">
+        {!isActive && <div className="bg-black/20 dark:bg-white/20 items-center backdrop-blur-xl px-1 py-3 rounded-l-xl flex flex-col self-end">
           <button
             onClick={handleClick}
-            className="thin !bg-black/10 dark:!bg-white/10 !px-1 !py-2 dark:!text-white !rounded-b-none mb-px">
+            className="thin clear">
             <BsClock className="text-lg" />
           </button>
+          <div className="h-px bg-black/20 dark:bg-white/20 w-full" />
           <button
             onClick={closeAllOverlays}
-            className="thin !bg-black/10 dark:!bg-white/10 !px-1 !py-2 dark:!text-white !rounded-t-none">
+            className="thin clear">
             <BsHouse className="text-lg" />
           </button>
         </div>}
