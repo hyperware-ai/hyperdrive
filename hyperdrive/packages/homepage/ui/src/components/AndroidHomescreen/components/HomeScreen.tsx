@@ -6,12 +6,30 @@ import { Draggable } from './Draggable';
 import { AppIcon } from './AppIcon';
 import { Widget } from './Widget';
 import type { HomepageApp } from '../../../types/app.types';
-import { BsCheck, BsClock, BsGridFill, BsImage, BsLayers, BsSearch, BsX } from 'react-icons/bs';
+import { BsCheck, BsClock, BsEnvelope, BsGridFill, BsImage, BsLayers, BsPencilSquare, BsSearch, BsX } from 'react-icons/bs';
 import classNames from 'classnames';
+import { Modal } from './Modal';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
-  const { homeScreenApps, dockApps, appPositions, widgetSettings, removeFromHomeScreen, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock, isInitialized, setIsInitialized, addToHomeScreen } = usePersistenceStore();
+  const {
+    homeScreenApps,
+    dockApps,
+    appPositions,
+    widgetSettings,
+    removeFromHomeScreen,
+    toggleWidget,
+    moveItem,
+    backgroundImage,
+    setBackgroundImage,
+    addToDock,
+    removeFromDock,
+    isInitialized,
+    setIsInitialized,
+    addToHomeScreen,
+    doNotShowOnboardingAgain,
+    setDoNotShowOnboardingAgain,
+  } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { toggleAppDrawer, toggleRecentApps } = useNavigationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
@@ -19,6 +37,8 @@ export const HomeScreen: React.FC = () => {
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
   const [showWidgetSettings, setShowWidgetSettings] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
+  const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
 
   console.log({ appPositions })
 
@@ -312,9 +332,22 @@ export const HomeScreen: React.FC = () => {
 
 
         {widgetApps
-          .filter(app => !searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           .map((app, index) => (
-            <Widget key={app.id} app={app} index={index} totalWidgets={widgetApps.length} />
+            <Widget
+              key={app.id}
+              app={app}
+              index={index}
+              totalWidgets={widgetApps.length}
+              className={classNames({
+                'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase())
+              })}
+            >
+              {showWidgetOnboarding && index === 0 && <div
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-neon w-fit text-xs animate-pulse text-black"
+              >
+                This is a widget. Drag it, resize it, or hide it!
+              </div>}
+            </Widget>
           ))}
 
 
@@ -323,7 +356,7 @@ export const HomeScreen: React.FC = () => {
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
-          <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex items-center gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
+          <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex  gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
 
             {Array.from({ length: 4 }).map((_, index) => {
               const app = dockAppsList[index];
@@ -331,7 +364,10 @@ export const HomeScreen: React.FC = () => {
                 <div
                   key={`slot-${index}`}
                   data-dock-index={index}
-                  className="w-16 h-16 relative"
+                  className={classNames("w-16 relative", {
+                    'h-16': !app,
+                    'self-stretch': app,
+                  })}
                   onDragOver={handleDockDragOver}
                   onDrop={(e) => {
                     e.stopPropagation();
@@ -375,7 +411,7 @@ export const HomeScreen: React.FC = () => {
                       <AppIcon
                         app={app}
                         isEditMode={isEditMode}
-                        showLabel={false}
+                        isUndocked={false}
                       />
                     </div>
                   ) : (
@@ -389,15 +425,15 @@ export const HomeScreen: React.FC = () => {
               onClick={toggleAppDrawer}
               className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              <BsGridFill />
-              <span className="text-xs">Apps</span>
+              <BsGridFill className="text-2xl" />
+              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap absolute top-full left-1/2 -translate-x-1/2">My apps</span>
             </button>
             <button
               onClick={toggleRecentApps}
               className="!hidden md:!flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              <BsClock />
-              <span className="text-xs">Recent</span>
+              <BsClock className="text-2xl" />
+              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap absolute top-full left-1/2 -translate-x-1/2">Recent</span>
             </button>
           </div>
         </div>
@@ -414,7 +450,7 @@ export const HomeScreen: React.FC = () => {
             <AppIcon
               app={apps.find(a => a.id === draggedAppId)!}
               isEditMode={false}
-              showLabel={false}
+              isUndocked={false}
             />
           </div>
         )}
@@ -431,24 +467,6 @@ export const HomeScreen: React.FC = () => {
             alt="Hyperdrive"
             className="h-8 hidden md:block self-start"
           />
-          {!isEditMode && <>
-            <div className="ml-auto flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
-              <BsSearch className="opacity-50" />
-              <input
-                type="text"
-                className=" grow self-stretch !bg-transparent !p-0"
-                placeholder="Search apps..."
-                onChange={(e) => setSearchQuery(e.target.value)}
-                value={searchQuery}
-              />
-            </div>
-            <button
-              onClick={() => setEditMode(true)}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
-            >
-              Edit
-            </button>
-          </>}
 
           {isEditMode && (
             <div className="flex flex-col items-end gap-2 grow">
@@ -558,7 +576,62 @@ export const HomeScreen: React.FC = () => {
               </div>
             </div>
           )}
+
+          {!isEditMode && <>
+            <a
+              href="mailto:support@hyperware.ai"
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Get help & support"
+            >
+              <BsEnvelope />
+            </a>
+            <button
+              onClick={() => setEditMode(true)}
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
+              title="Edit apps, widgets, and background"
+            >
+              <BsPencilSquare />
+            </button>
+            <div className="ml-auto flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
+              <BsSearch className="opacity-50" />
+              <input
+                type="text"
+                className=" grow self-stretch !bg-transparent !p-0"
+                placeholder="Search apps..."
+                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchQuery}
+              />
+            </div>
+          </>}
+
         </div>
+
+        {showOnboarding && (
+          <Modal
+            onClose={() => setShowOnboarding(false)}
+          >
+            <h2 className="prose">Welcome to Hyperware</h2>
+            <p>Your gateway to the internet, reimagined.</p>
+            <p>Treat your node like your desktop by customizing the interface and pinning your favorite apps.</p>
+            <p>Your node, your data: finally, you have full control over your information.</p>
+            <div className="flex flex-col items-center gap-2 ">
+              <button
+                onClick={() => setDoNotShowOnboardingAgain(true)}
+                className="clear text-sm self-stretch !rounded-full"
+              >
+                Don't show again
+              </button>
+              <button
+                onClick={() => setShowOnboarding(false)}
+                className="bg-neon text-black font-bold self-stretch md:grow !rounded-full"
+              >
+                Let's go
+              </button>
+            </div>
+          </Modal>
+        )}
 
 
         {/* <div className="hidden md:block absolute bottom-24 left-1/2 -translate-x-1/2 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">

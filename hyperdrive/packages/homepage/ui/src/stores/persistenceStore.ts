@@ -20,6 +20,8 @@ interface PersistenceStore {
   setWidgetSize: (appId: string, size: Size) => void;
   setBackgroundImage: (imageUrl: string | null) => void;
   setIsInitialized: (isInitialized: boolean) => void;
+  doNotShowOnboardingAgain: boolean;
+  setDoNotShowOnboardingAgain: (doNotShowOnboardingAgain: boolean) => void;
 }
 
 export const usePersistenceStore = create<PersistenceStore>()(
@@ -31,6 +33,8 @@ export const usePersistenceStore = create<PersistenceStore>()(
       appPositions: {},
       widgetSettings: {},
       backgroundImage: null,
+      doNotShowOnboardingAgain: false,
+      setDoNotShowOnboardingAgain: (doNotShowOnboardingAgain) => set({ doNotShowOnboardingAgain }),
 
       setIsInitialized: (isInitialized) => set({ isInitialized }),
 

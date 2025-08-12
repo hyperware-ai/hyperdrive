@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
-import { BsChevronLeft, BsClock } from 'react-icons/bs';
+import { BsChevronLeft, BsClock, BsHouse } from 'react-icons/bs';
 
 export const GestureZone: React.FC = () => {
-  const { toggleRecentApps, runningApps, currentAppId, switchToApp, isRecentAppsOpen } = useNavigationStore();
+  const { toggleRecentApps, runningApps, currentAppId, switchToApp, isRecentAppsOpen, closeAllOverlays } = useNavigationStore();
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [_isHovered, setIsHovered] = useState(false);
@@ -66,19 +66,26 @@ export const GestureZone: React.FC = () => {
       <div
         className={classNames("gesture-zone fixed right-0 w-12 z-40 transition-transform cursor-pointer",
           {
-            'bg-radial-[at_100%_50%] from-black/20 dark:from-white/20 to-transparent w-12 h-full top-0': isActive,
+            'bg-radial-[at_100%_50%] from-black/10 dark:from-white/10 to-transparent w-12 h-full top-0': isActive,
             'flex flex-col place-items-center place-content-center  h-1/2 top-1/4': !isActive
           })}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {!isActive && <div className="bg-black/20 dark:bg-white/20 h-8 backdrop-blur-xl px-1 py-6 rounded-l-xl flex items-center justify-center self-end gap-1">
-          <BsChevronLeft className="text-xs" />
-          <BsClock className="text-lg" />
+        {!isActive && <div className="bg-black/20 dark:bg-white/20  backdrop-blur-xl px-1 py-3 rounded-l-xl flex flex-col self-end">
+          <button
+            onClick={handleClick}
+            className="thin !bg-black/10 dark:!bg-white/10 !px-1 !py-2 dark:!text-white !rounded-b-none mb-px">
+            <BsClock className="text-lg" />
+          </button>
+          <button
+            onClick={closeAllOverlays}
+            className="thin !bg-black/10 dark:!bg-white/10 !px-1 !py-2 dark:!text-white !rounded-t-none">
+            <BsHouse className="text-lg" />
+          </button>
         </div>}
       </div>
 

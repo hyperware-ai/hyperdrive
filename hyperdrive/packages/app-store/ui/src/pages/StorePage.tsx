@@ -233,9 +233,9 @@ export default function StorePage() {
           </button>
         </div>
       )}
-      <div className="flex flex-col items-center justify-center text-center gap-2">
-        <p className="text-sm font-bold uppercase">Can't find the app you're looking for?</p>
-        <ResetButton />
+      <div className="flex items-center justify-center text-center gap-2">
+        <p className="text-xs">Can't find the app?</p>
+        <ResetButton className="thin clear !text-red-500 !text-xs" />
       </div>
     </div>
   );

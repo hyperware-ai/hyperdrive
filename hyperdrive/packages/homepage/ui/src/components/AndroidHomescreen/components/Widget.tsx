@@ -9,9 +9,11 @@ interface WidgetProps {
   app: HomepageApp;
   index: number;
   totalWidgets: number;
+  children?: React.ReactNode;
+  className?: string;
 }
 
-export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
+export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, children, className }) => {
   const { toggleWidget, widgetSettings, setWidgetPosition, setWidgetSize } = usePersistenceStore();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -129,7 +131,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
       position={position}
       onMove={(pos) => setWidgetPosition(app.id, pos)}
       enableHtmlDrag={false}
-      className="z-20"
+      className={classNames("z-20", className)}
     >
       <button
         onClick={(e) => {
@@ -188,6 +190,8 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation-by-user-activation"
             />
           )}
+
+          {children}
         </div>
 
         <div
