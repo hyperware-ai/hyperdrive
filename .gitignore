@@ -22,6 +22,10 @@ hyperdrive/packages/file-explorer/api
 hyperdrive/packages/file-explorer/pkg/ui/*
 hyperdrive/packages/homepage/pkg/ui/*
 hyperdrive/packages/settings/pkg/ui/*
+hyperdrive/packages/hyperwallet/pkg/ui
+hyperdrive/packages/hyperwallet/ui/dist
+hyperdrive/packages/docs/pkg/ui
+
 hyperdrive/src/register-ui/build/
 hyperdrive/src/register-ui/dist/
 hyperdrive/packages/docs/pkg/ui
