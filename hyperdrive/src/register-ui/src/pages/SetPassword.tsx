@@ -2,9 +2,10 @@ import React, { useState, useEffect, FormEvent, useCallback } from "react";
 import Loader from "../components/Loader";
 import { downloadKeyfile } from "../utils/download-keyfile";
 import { Tooltip } from "../components/Tooltip";
-import { useSignTypedData, useAccount, useChainId } from 'wagmi'
+import { useSignTypedData, useAccount, useChainId, usePublicClient } from 'wagmi'
 import { HYPERMAP } from "../abis";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
+import { getWalletType, WalletType } from "../utils/wallet-detection";
 
 type SetPasswordProps = {
   direct: boolean;
@@ -26,10 +27,13 @@ function SetPassword({
   const [pw2, setPw2] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [walletType, setWalletType] = useState<WalletType>('EOA');
+  const [loadingMessage, setLoadingMessage] = useState<string>("Please sign the structured message in your wallet to set your password.");
 
   const { signTypedDataAsync } = useSignTypedData();
   const { address } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     document.title = "Set Password";
@@ -38,6 +42,26 @@ function SetPassword({
   useEffect(() => {
     setError("");
   }, [pw, pw2]);
+
+  // Detect wallet type when address changes
+  useEffect(() => {
+    async function detectWallet() {
+      if (address && publicClient) {
+        const type = await getWalletType(address, publicClient);
+        setWalletType(type);
+
+        // Update loading message based on wallet type
+        if (type === 'SAFE') {
+          setLoadingMessage("Please approve the message in your Safe app. All required owners must sign.");
+        } else if (type === 'UNKNOWN_CONTRACT') {
+          setLoadingMessage("Please sign the message in your smart contract wallet.");
+        } else {
+          setLoadingMessage("Please sign the structured message in your wallet to set your password.");
+        }
+      }
+    }
+    detectWallet();
+  }, [address, publicClient]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -137,7 +161,7 @@ function SetPassword({
   return (
     <>
       {loading ? (
-        <Loader msg="Please sign the structured message in your wallet to set your password." />
+        <Loader msg={loadingMessage} />
       ) : (
         <form className="form" onSubmit={handleSubmit}>
           <div className="form-group">

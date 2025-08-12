@@ -61,4 +61,10 @@ sol! {
     ) external payable returns (uint256 blockNumber, bytes[] memory returnData);
 
     function token() external view returns (uint256,address,uint256);
+
+    // EIP-1271: Standard Signature Validation Method for Contracts
+    function isValidSignature(
+        bytes32 hash,
+        bytes calldata signature
+    ) external view returns (bytes4 magicValue);
 }
