@@ -129,27 +129,28 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets }) => {
       position={position}
       onMove={(pos) => setWidgetPosition(app.id, pos)}
       enableHtmlDrag={false}
+      className="z-20"
     >
+      <button
+        onClick={(e) => {
+          try {
+            e.stopPropagation();
+          } catch { }
+
+          toggleWidget(app.id);
+        }}
+        className="clear thin w-3 h-3 !p-0 absolute top-3 right-3 z-30"
+      >
+        <BsX className="text-lg" />
+      </button>
       <div
         className={classNames('widget bg-black/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-lg border border-white/20', {
           'pointer-events-none': isResizing
         })}
         style={{ width: `${size.width}px`, height: `${size.height}px` }}
       >
-        <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-2 border-b border-white/10">
+        <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-2 border-b border-white/10 relative">
           <span className="text-black dark:text-white/90 text-sm font-medium">{app.label}</span>
-          <button
-            onClick={(e) => {
-              try {
-                e.stopPropagation();
-              } catch { }
-
-              toggleWidget(app.id);
-            }}
-            className="clear thin w-3 h-3 !p-0"
-          >
-            <BsX />
-          </button>
         </div>
 
         <div className="relative w-full h-[calc(100%-40px)]">
