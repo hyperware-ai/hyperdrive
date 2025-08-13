@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import type { HomepageApp } from '../../../types/app.types';
 import { useNavigationStore } from '../../../stores/navigationStore';
-import { usePersistenceStore } from '../../../stores/persistenceStore';
 import classNames from 'classnames';
-import { BsX } from 'react-icons/bs';
 
 interface AppIconProps {
   app: HomepageApp;
@@ -19,18 +17,12 @@ export const AppIcon: React.FC<AppIconProps> = ({
   isFloating = false
 }) => {
   const { openApp } = useNavigationStore();
-  const { removeFromHomeScreen } = usePersistenceStore();
   const [isPressed, setIsPressed] = useState(false);
 
   const handlePress = () => {
     if (!isEditMode && app.path) {
       openApp(app);
     }
-  };
-
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    removeFromHomeScreen(app.id);
   };
 
   return (
@@ -52,14 +44,6 @@ export const AppIcon: React.FC<AppIconProps> = ({
       data-app-process={app.process}
       data-app-publisher={app.publisher}
     >
-      {isEditMode && isFloating && (
-        <button
-          onClick={handleRemove}
-          className="absolute -top-2 -right-2 w-6 h-6 !p-0 !bg-red-500 !text-white !rounded-full  text-xs z-10 shadow-lg hover:!bg-red-600 transition-colors"
-        >
-          <BsX />
-        </button>
-      )}
 
       <div className={classNames("rounded-xl w-16 h-16 overflow-hidden flex items-center justify-center shadow-lg", {
         'mb-1': showLabel,

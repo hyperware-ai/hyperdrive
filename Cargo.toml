@@ -1,7 +1,7 @@
 [package]
 name = "hyperdrive_lib"
 authors = ["Sybil Technologies AG"]
-version = "1.5.0"
+version = "1.6.0"
 edition = "2021"
 description = "A general-purpose sovereign cloud computing platform"
 homepage = "https://hyperware.ai"
@@ -25,11 +25,11 @@ members = [
     "hyperdrive/packages/hypermap-cacher/hypermap-cacher", "hyperdrive/packages/hypermap-cacher/reset-cache", "hyperdrive/packages/hypermap-cacher/set-nodes",
     "hyperdrive/packages/hypermap-cacher/start-providing", "hyperdrive/packages/hypermap-cacher/stop-providing",
     "hyperdrive/packages/sign/sign",
-    "hyperdrive/packages/terminal/terminal",
-    "hyperdrive/packages/terminal/alias", "hyperdrive/packages/terminal/cat", "hyperdrive/packages/terminal/echo",
+    "hyperdrive/packages/terminal/terminal", "hyperdrive/packages/terminal/add-node-provider", "hyperdrive/packages/terminal/add-rpcurl-provider",
+    "hyperdrive/packages/terminal/alias", "hyperdrive/packages/terminal/cat", "hyperdrive/packages/terminal/echo", "hyperdrive/packages/terminal/get-providers",
     "hyperdrive/packages/terminal/help", "hyperdrive/packages/terminal/hfetch", "hyperdrive/packages/terminal/hi",
     "hyperdrive/packages/terminal/kill", "hyperdrive/packages/terminal/m", "hyperdrive/packages/terminal/top",
-    "hyperdrive/packages/terminal/net-diagnostics", "hyperdrive/packages/terminal/peer", "hyperdrive/packages/terminal/peers",
+    "hyperdrive/packages/terminal/net-diagnostics", "hyperdrive/packages/terminal/peer", "hyperdrive/packages/terminal/peers", "hyperdrive/packages/terminal/remove-provider",
     "hyperdrive/packages/tester/tester",
     "scripts/build-packages",
 ]

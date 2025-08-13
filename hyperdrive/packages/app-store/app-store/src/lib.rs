@@ -77,12 +77,14 @@ pub enum Resp {
 call_init!(init);
 fn init(our: Address) {
     let mut http_server = http::server::HttpServer::new(5);
-    http_api::init_frontend(&mut http_server);
 
-    // state = state built from the filesystem, installed packages
+    // state = state built from the filesystem, installed packages, other vars saved to disk
     // updates = state saved with get/set_state(), auto_update metadata.
     let mut state = State::load().expect("state loading failed");
     let mut updates = Updates::load();
+
+    http_api::init_frontend(&mut http_server, &state);
+
     loop {
         match await_message() {
             Err(send_error) => {
@@ -128,13 +130,32 @@ fn handle_message(
                 if !message.is_local() || message.source().process != "http-server:distro:sys" {
                     return Err(anyhow::anyhow!("http-server from non-local node"));
                 }
-                http_server.handle_request(
-                    server_request,
-                    |incoming| http_api::handle_http_request(our, state, updates, &incoming),
-                    |_channel_id, _message_type, _blob| {
-                        // not expecting any websocket messages from FE currently
-                    },
-                );
+
+                match server_request {
+                    http::server::HttpServerRequest::Http(ref http_request) => {
+                        let (response, blob) = http_api::handle_http_request(
+                            our,
+                            state,
+                            updates,
+                            http_server,
+                            http_request,
+                        );
+                        let response = Response::new().body(serde_json::to_vec(&response).unwrap());
+                        if let Some(blob) = blob {
+                            response.blob(blob).send().unwrap();
+                        } else {
+                            response.send().unwrap();
+                        }
+                    }
+                    http::server::HttpServerRequest::WebSocketOpen { path, channel_id } => {
+                        http_server.handle_websocket_open(&path, channel_id);
+                    }
+                    http::server::HttpServerRequest::WebSocketClose(channel_id) => {
+                        http_server.handle_websocket_close(channel_id);
+                    }
+                    // not expecting any websocket messages from FE currently
+                    http::server::HttpServerRequest::WebSocketPush { .. } => {}
+                }
             }
             Req::Progress(progress) => {
                 if !message.is_local() {

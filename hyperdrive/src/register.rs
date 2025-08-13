@@ -39,7 +39,7 @@ pub async fn register(
     tcp_networking: (Option<&tokio::net::TcpListener>, bool),
     http_port: u16,
     keyfile: Option<Vec<u8>>,
-    maybe_rpc: Option<String>,
+    eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
 ) {
     // Networking info is generated and passed to the UI, but not used until confirmed
@@ -88,7 +88,7 @@ pub async fn register(
         },
     });
 
-    let provider = Arc::new(connect_to_provider(maybe_rpc).await);
+    let provider = Arc::new(connect_to_provider_from_config(&eth_provider_config).await);
 
     let keyfile = warp::any().map(move || keyfile.clone());
     let our_temp_id = warp::any().map(move || our_temp_id.clone());
@@ -245,38 +245,56 @@ pub async fn register(
         .await;
 }
 
-/// Connect to given provider or one of two public RPC providers as fallbacks.
-/// TODO: add more fallbacks
-pub async fn connect_to_provider(maybe_rpc: Option<String>) -> RootProvider<PubSubFrontend> {
-    let url = if let Some(ref rpc_url) = maybe_rpc {
-        rpc_url
-    } else {
-        "wss://base-rpc.publicnode.com"
-    };
+/// Connect to provider using the saved configuration with fallbacks
+pub async fn connect_to_provider_from_config(
+    eth_provider_config: &lib::eth::SavedConfigs,
+) -> RootProvider<PubSubFrontend> {
+    let saved_configs = &eth_provider_config.0;
 
-    let rpc_urls = [
-        url,
-        "wss://base.llamarpc.com",
-        "wss://base-rpc.publicnode.com",
-        //"wss://1rpc.io/base",
-        //"wss://base.blockpi.network/v1/rpc/public",
-    ];
+    // Try each configured provider first
+    for (_index, provider_config) in saved_configs.iter().enumerate() {
+        match &provider_config.provider {
+            lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
+                let ws_connect = WsConnect {
+                    url: url.clone(),
+                    auth: auth.clone().map(|a| a.into()),
+                    config: None,
+                };
 
-    for rpc_url in rpc_urls {
-        if let Ok(client) = ProviderBuilder::new()
-            .on_ws(WsConnect::new(rpc_url.to_string()))
-            .await
-        {
-            println!("Connected to {rpc_url}\r");
+                if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
+                    println!("Connected to configured provider: {url}\r");
+                    return client;
+                } else {
+                    println!("Failed to connect to provider: {url}\r");
+                }
+            }
+            lib::eth::NodeOrRpcUrl::Node { .. } => {
+                // Node providers are not supported in registration, skip to next
+            }
+        }
+    }
+
+    // Fall back to default providers if configured ones fail
+    let default_rpc_urls = ["wss://base.llamarpc.com", "wss://base-rpc.publicnode.com"];
+
+    for (_index, rpc_url) in default_rpc_urls.iter().enumerate() {
+        let ws_connect = WsConnect {
+            url: rpc_url.to_string(),
+            auth: None,
+            config: None,
+        };
+
+        if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
+            println!("Connected to fallback provider: {rpc_url}\r");
             return client;
         }
     }
 
     panic!(
-        "Error: runtime could not connect to Base ETH RPCs {rpc_urls:?}\n\
+        "Error: runtime could not connect to configured or fallback Base ETH RPC providers\n\
         This is necessary in order to verify node identity onchain.\n\
         Please make sure you are using a valid WebSockets URL if using \
-        the --rpc flag, and you are connected to the internet."
+        the --rpc or --rpc-config flag, and you are connected to the internet."
     );
 }
 
