@@ -13,7 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hyperware-ai/client-api": "^0.1.0",
+    "@hyperware-ai/client-api": "^0.1.4",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

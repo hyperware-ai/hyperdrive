@@ -56,10 +56,13 @@ dependencies = [
  "alloy-eips",
  "alloy-genesis",
  "alloy-json-rpc",
+ "alloy-network",
  "alloy-provider",
  "alloy-rpc-client",
  "alloy-rpc-types",
  "alloy-serde",
+ "alloy-signer",
+ "alloy-signer-local",
  "alloy-transport",
  "alloy-transport-http",
 ]
@@ -428,6 +431,22 @@ dependencies = [
  "auto_impl",
  "elliptic-curve",
  "k256",
+ "thiserror 2.0.9",
+]
+
+[[package]]
+name = "alloy-signer-local"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47fababf5a745133490cde927d48e50267f97d3d1209b9fc9f1d1d666964d172"
+dependencies = [
+ "alloy-consensus",
+ "alloy-network",
+ "alloy-primitives",
+ "alloy-signer",
+ "async-trait",
+ "k256",
+ "rand",
  "thiserror 2.0.9",
 ]
 
@@ -1532,9 +1551,9 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6be2438db0ae3a32f56bad480822df88fb01e201138d36ffd9faa8244e16f143"
+checksum = "3f3abd008d22c3b96ee43300c4c8dffbf1d072a680a13635b5f9da11a0ce9395"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1543,6 +1562,7 @@ dependencies = [
  "anyhow",
  "base64",
  "bincode",
+ "hex",
  "http",
  "mime_guess",
  "rand",
@@ -1550,6 +1570,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
+ "sha3",
  "thiserror 1.0.69",
  "url",
  "wit-bindgen",

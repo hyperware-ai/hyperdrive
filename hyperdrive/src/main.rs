@@ -6,7 +6,6 @@ use lib::types::core::{
     NetworkErrorSender, NodeRouting, PrintReceiver, PrintSender, ProcessId, ProcessVerbosity,
     Request, KERNEL_PROCESS_ID,
 };
-use lib::types::eth::RpcUrlConfigInput;
 #[cfg(feature = "simulation-mode")]
 use ring::{rand::SystemRandom, signature, signature::KeyPair};
 use std::collections::HashMap;
@@ -88,6 +87,12 @@ async fn main() {
     let rpc_config = matches.get_one::<String>("rpc-config").map(|p| {
         std::fs::canonicalize(&p).expect(&format!("specified rpc-config path {p} not found"))
     });
+
+    // Prevent using both --rpc and --rpc-config flags simultaneously
+    if rpc.is_some() && rpc_config.is_some() {
+        panic!("Cannot use both --rpc and --rpc-config flags simultaneously. Please use either --rpc for a single RPC URL or --rpc-config for multiple URLs and/or advanced configs (e.g., auth), but not both.");
+    }
+
     let password = matches.get_one::<String>("password");
 
     // logging mode is toggled at runtime by CTRL+L
@@ -129,38 +134,47 @@ async fn main() {
         is_eth_provider_config_updated = true;
         serde_json::from_str(DEFAULT_ETH_PROVIDERS).unwrap()
     };
+
     if let Some(rpc) = rpc {
-        eth_provider_config.insert(
-            0,
-            lib::eth::ProviderConfig {
-                chain_id: CHAIN_ID,
-                trusted: true,
-                provider: lib::eth::NodeOrRpcUrl::RpcUrl {
-                    url: rpc.to_string(),
-                    auth: None,
-                },
+        let new_provider = lib::eth::ProviderConfig {
+            chain_id: CHAIN_ID,
+            trusted: true,
+            provider: lib::eth::NodeOrRpcUrl::RpcUrl {
+                url: rpc.to_string(),
+                auth: None,
             },
-        );
+        };
+
+        add_provider_to_config(&mut eth_provider_config, new_provider);
         is_eth_provider_config_updated = true;
     }
     if let Some(rpc_config) = rpc_config {
-        let rpc_config = tokio::fs::read_to_string(rpc_config)
-            .await
-            .expect("cant read rpc-config");
-        let rpc_config: Vec<RpcUrlConfigInput> =
-            serde_json::from_str(&rpc_config).expect("rpc-config had invalid format");
-        for RpcUrlConfigInput { url, auth } in rpc_config {
-            eth_provider_config.insert(
-                0,
-                lib::eth::ProviderConfig {
-                    chain_id: CHAIN_ID,
-                    trusted: true,
-                    provider: lib::eth::NodeOrRpcUrl::RpcUrl { url, auth },
-                },
-            );
+        if let Ok(contents) = std::fs::read_to_string(&rpc_config) {
+            if let Ok(rpc_configs) =
+                serde_json::from_str::<Vec<lib::eth::RpcUrlConfigInput>>(&contents)
+            {
+                // Process in reverse order so the first entry in the file becomes highest priority
+                for (_reverse_index, rpc_url_config) in rpc_configs.into_iter().rev().enumerate() {
+                    let new_provider = lib::eth::ProviderConfig {
+                        chain_id: CHAIN_ID,
+                        trusted: true,
+                        provider: lib::eth::NodeOrRpcUrl::RpcUrl {
+                            url: rpc_url_config.url,
+                            auth: rpc_url_config.auth,
+                        },
+                    };
+
+                    add_provider_to_config(&mut eth_provider_config, new_provider);
+                }
+                is_eth_provider_config_updated = true;
+            } else {
+                eprintln!("Failed to parse RPC config file");
+            }
+        } else {
+            eprintln!("Failed to read RPC config file");
         }
-        is_eth_provider_config_updated = true;
     }
+
     if is_eth_provider_config_updated {
         // save the new provider config
         tokio::fs::write(
@@ -274,7 +288,7 @@ async fn main() {
                 (ws_tcp_handle, ws_flag_used),
                 (tcp_tcp_handle, tcp_flag_used),
                 http_server_port,
-                rpc.cloned(),
+                eth_provider_config.clone(),
                 detached,
             )
             .await
@@ -285,7 +299,7 @@ async fn main() {
                 our_ip.to_string(),
                 (ws_tcp_handle, ws_flag_used),
                 (tcp_tcp_handle, tcp_flag_used),
-                rpc.cloned(),
+                eth_provider_config.clone(),
                 password,
             )
             .await
@@ -842,7 +856,7 @@ async fn serve_register_fe(
     ws_networking: (Option<tokio::net::TcpListener>, bool),
     tcp_networking: (Option<tokio::net::TcpListener>, bool),
     http_server_port: u16,
-    maybe_rpc: Option<String>,
+    eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
 ) -> (Identity, Vec<u8>, Keyfile) {
     let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<bool>();
@@ -861,7 +875,7 @@ async fn serve_register_fe(
                 (tcp_networking.0.as_ref(), tcp_networking.1),
                 http_server_port,
                 disk_keyfile,
-                maybe_rpc,
+                eth_provider_config,
                 detached) => {
             panic!("registration failed")
         }
@@ -888,7 +902,7 @@ async fn login_with_password(
     our_ip: String,
     ws_networking: (Option<tokio::net::TcpListener>, bool),
     tcp_networking: (Option<tokio::net::TcpListener>, bool),
-    maybe_rpc: Option<String>,
+    eth_provider_config: lib::eth::SavedConfigs,
     password: &str,
 ) -> (Identity, Vec<u8>, Keyfile) {
     use argon2::Argon2;
@@ -962,7 +976,7 @@ async fn login_with_password(
         },
     };
 
-    let provider = Arc::new(register::connect_to_provider(maybe_rpc).await);
+    let provider = Arc::new(register::connect_to_provider_from_config(&eth_provider_config).await);
 
     register::assign_routing(
         &mut our,
@@ -984,6 +998,45 @@ async fn login_with_password(
         .unwrap();
 
     (our, disk_keyfile, k)
+}
+
+/// Add a provider config with deduplication logic (same as runtime system)
+fn add_provider_to_config(
+    eth_provider_config: &mut lib::eth::SavedConfigs,
+    new_provider: lib::eth::ProviderConfig,
+) {
+    match &new_provider.provider {
+        lib::eth::NodeOrRpcUrl::RpcUrl { url, .. } => {
+            // Remove any existing provider with this URL
+            eth_provider_config.0.retain(|config| {
+                if let lib::eth::NodeOrRpcUrl::RpcUrl {
+                    url: existing_url, ..
+                } = &config.provider
+                {
+                    existing_url != url
+                } else {
+                    true
+                }
+            });
+        }
+        lib::eth::NodeOrRpcUrl::Node { hns_update, .. } => {
+            // Remove any existing provider with this node name
+            eth_provider_config.0.retain(|config| {
+                if let lib::eth::NodeOrRpcUrl::Node {
+                    hns_update: existing_update,
+                    ..
+                } = &config.provider
+                {
+                    existing_update.name != hns_update.name
+                } else {
+                    true
+                }
+            });
+        }
+    }
+
+    // Insert the new provider at the front (position 0)
+    eth_provider_config.0.insert(0, new_provider);
 }
 
 fn make_remote_link(url: &str, text: &str) -> String {

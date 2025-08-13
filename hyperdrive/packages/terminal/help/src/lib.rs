@@ -5,10 +5,13 @@ wit_bindgen::generate!({
     world: "process-v1",
 });
 
-const HELP_MESSAGES: [[&str; 2]; 11] = [
+const HELP_MESSAGES: [[&str; 2]; 15] = [
+    ["add-node-provider", "\n\x1b[1madd-node-provider\x1b[0m <chain-id> <node-name> <public-key> <ip-address> <ws-port> [--trusted <true|false>]: add a node provider to the providers configuration.\n    - Examples:\n      \x1b[1madd-node-provider 8453 other-node.hypr abc123pubkey 192.168.1.1 9000\x1b[0m (defaults to trusted=false)\n      \x1b[1madd-node-provider 1 other-node.hypr abc123pubkey 192.168.1.1 9000 --trusted true\x1b[0m"],
+    ["add-rpcurl-provider", "\n\x1b[1madd-rpcurl-provider\x1b[0m <rpc-url> [--chain-id <id>] [--trusted <true|false>] [--auth-type <basic|bearer|raw> --auth-value <value>]: add an RPC URL provider to the providers configuration.\n    - Examples:\n      \x1b[1madd-rpcurl-provider wss://base-mainnet.infura.io/v3/your-key\x1b[0m (defaults to chain-id=8453, trusted=true)\n      \x1b[1madd-rpcurl-provider wss://mainnet.infura.io/v3/your-key --chain-id 1\x1b[0m\n      \x1b[1madd-rpcurl-provider wss://base-mainnet.infura.io/ws/v3/your-key --trusted false\x1b[0m\n      \x1b[1madd-rpcurl-provider wss://rpc.example.com --auth-type bearer --auth-value your-token\x1b[0m"],
     ["alias", "\n\x1b[1malias\x1b[0m <shorthand> <process-id>: create an alias for a script.\n    - Example: \x1b[1malias get-block get-block:hns-indexer:sys\x1b[0m\n    - note: all of these listed commands are just default aliases for terminal scripts."],
     ["cat", "\n\x1b[1mcat\x1b[0m <vfs-file-path>: print the contents of a file in the terminal.\n    - Example: \x1b[1mcat /terminal:sys/pkg/scripts.json\x1b[0m"],
     ["echo", "\n\x1b[1mecho\x1b[0m <text>: print text to the terminal.\n    - Example: \x1b[1mecho foo\x1b[0m"],
+    ["get-providers", "\n\x1b[1mget-providers\x1b[0m: display the providers configuration."],
     ["hi", "\n\x1b[1mhi\x1b[0m <name> <string>: send a text message to another node's command line.\n    - Example: \x1b[1mhi mothu.hypr hello world\x1b[0m"],
     ["kfetch", "\n\x1b[1mkfetch\x1b[0m: print system information a la neofetch. No arguments."],
     ["kill", "\n\x1b[1mkill\x1b[0m <process-id>: terminate a running process. This will bypass any restart behavior; use judiciously.\n    - Example: \x1b[1mkill chess:chess:sys\x1b[0m"],
@@ -16,6 +19,7 @@ const HELP_MESSAGES: [[&str; 2]; 11] = [
     ["net-diagnostics", "\n\x1b[1mnet-diagnostics\x1b[0m: print some useful networking diagnostic data."],
     ["peer", "\n\x1b[1mpeer\x1b[0m <name>: print the peer's PKI info, if it exists."],
     ["peers", "\n\x1b[1mpeers\x1b[0m: print the peers the node currently hold connections with."],
+    ["remove-provider", "\n\x1b[1mremove-provider\x1b[0m <chain-id> <nodename or rpc-url>: remove a provider from the providers configuration.\n    - Example: \x1b[1mremove-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key\x1b[0m"],
     ["top", "\n\x1b[1mtop\x1b[0m <process-id>: display kernel debugging info about a process. Leave the process ID blank to display info about all processes and get the total number of running processes.\n    - Example: \x1b[1mtop net:distro:sys\x1b[0m\n    - Example: \x1b[1mtop\x1b[0m"],
 ];
 

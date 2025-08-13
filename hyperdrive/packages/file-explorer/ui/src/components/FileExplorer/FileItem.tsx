@@ -267,7 +267,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         )}
       </div>
 
-      {/* Render children when expanded */}
+
       {isExpanded && viewMode === 'list' && childrenToRender.length > 0 && (
         <div className="file-children">
           {childrenToRender.map((child) => (

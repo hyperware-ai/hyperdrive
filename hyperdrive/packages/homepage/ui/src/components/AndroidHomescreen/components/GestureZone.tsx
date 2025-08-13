@@ -81,7 +81,7 @@ export const GestureZone: React.FC = () => {
           <BsClock className="text-lg" />
         </div>}
       </div>
-      {/* Desktop hint */}
+
       {/* {isHovered && !isActive && (
         <div className="hidden md:block fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/90 backdrop-blur text-white px-4 py-3 rounded-lg text-sm pointer-events-none z-50 shadow-xl">
           <div className="flex items-center gap-2 mb-1">

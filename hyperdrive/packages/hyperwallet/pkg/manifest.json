@@ -1,0 +1,22 @@
+[
+    {
+      "process_name": "hyperwallet",
+      "process_wasm_path": "/hyperwallet.wasm",
+      "on_exit": "Restart",
+      "request_networking": true,
+      "request_capabilities": [
+        "http-server:distro:sys",
+        "http-client:distro:sys",
+        "vfs:distro:sys",
+        "eth:distro:sys",
+        "homepage:homepage:sys",
+        "sqlite:distro:sys",
+        "timer:distro:sys",
+        "hypermap-cacher:hypermap-cacher:sys",
+        "sign:sign:sys",
+        "hns-indexer:hns-indexer:sys"
+      ],
+      "grant_capabilities": ["http-server:distro:sys", "terminal:terminal:sys"],
+      "public": true
+    }
+  ]
