@@ -6,6 +6,7 @@ import { ResetButton } from "../components";
 import { AppCard } from "../components/AppCard";
 import { BsSearch } from "react-icons/bs";
 import classNames from "classnames";
+import { useLocation } from "react-router-dom";
 const mockApps: AppListing[] = [
   {
     package_id: {
@@ -101,6 +102,16 @@ export default function StorePage() {
   const [isDevMode, setIsDevMode] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
+
+  // if we have ?search=something, set the search query to that
+  const location = useLocation();
+  useEffect(() => {
+    const search = new URLSearchParams(location.search).get("search");
+    if (search) {
+      setSearchQuery(search);
+      setCurrentPage(1);
+    }
+  }, [location.search]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value, searchQuery);

@@ -7,7 +7,7 @@ interface NavigationStore {
   isAppDrawerOpen: boolean;
   isRecentAppsOpen: boolean;
 
-  openApp: (app: HomepageApp) => void;
+  openApp: (app: HomepageApp, query?: string) => void;
   closeApp: (appId: string) => void;
   switchToApp: (appId: string) => void;
   toggleAppDrawer: () => void;
@@ -65,7 +65,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     // If already on homepage, let default browser behavior handle it
   },
 
-  openApp: async (app) => {
+  openApp: async (app: HomepageApp, query?: string) => {
     console.log('openApp called with:', app);
 
     // Don't open apps without a valid path
@@ -128,7 +128,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
             const hostname = currentHost.split(':')[0]; // 'localhost' from 'localhost:3000'
             const baseDomain = hostname; // For localhost, we just use 'localhost'
 
-            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
+            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}${query || ''}`;
 
             // Debug logging
             console.log('Opening secure subdomain app in new tab:', {
@@ -139,7 +139,8 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
               expectedSubdomain,
               subdomainUrl,
               protocol,
-              port
+              port,
+              query,
             });
 
             const newWindow = window.open(subdomainUrl, '_blank');

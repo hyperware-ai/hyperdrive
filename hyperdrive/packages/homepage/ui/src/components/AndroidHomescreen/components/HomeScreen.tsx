@@ -31,7 +31,7 @@ export const HomeScreen: React.FC = () => {
     setDoNotShowOnboardingAgain,
   } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
-  const { toggleAppDrawer, toggleRecentApps } = useNavigationStore();
+  const { openApp, toggleAppDrawer, toggleRecentApps } = useNavigationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
   const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
@@ -602,7 +602,7 @@ export const HomeScreen: React.FC = () => {
             >
               <BsPencilSquare />
             </button>
-            <div className=" flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
+            <div className=" flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md relative">
               <BsSearch className="opacity-50" />
               <input
                 type="text"
@@ -611,6 +611,32 @@ export const HomeScreen: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 value={searchQuery}
               />
+
+              <div
+              className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center gap-2 justify-center', {
+                'invisible pointer-events-none': !searchQuery,
+                'absolute top-full left-1/2 -translate-x-1/2 w-fit max-w-md z-10': searchQuery,
+              })}
+              >
+                <span>No installed apps found.</span>
+                <span
+                  // href={`/main:app-store:sys/?search=${searchQuery}`}
+                  className="underline text-iris font-bold cursor-pointer"
+                  onClick={() => {
+                    openApp({
+                      id: 'app-store',
+                      label: 'App Store',
+                      process: 'main',
+                      package_name: 'app-store',
+                      publisher: 'sys',
+                      order: 0,
+                      favorite: false,
+                    }, `?search=${searchQuery}`)
+                  }}
+                >
+                  Search the app store
+                </span>
+              </div>
             </div>
           </>}
 
