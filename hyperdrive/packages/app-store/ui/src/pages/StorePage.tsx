@@ -106,12 +106,13 @@ export default function StorePage() {
   // if we have ?search=something, set the search query to that
   const location = useLocation();
   useEffect(() => {
+    console.log({ location })
     const search = new URLSearchParams(location.search).get("search");
     if (search) {
       setSearchQuery(search);
       setCurrentPage(1);
     }
-  }, [location.search]);
+  }, [location]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value, searchQuery);
@@ -172,6 +173,7 @@ export default function StorePage() {
           value={searchQuery}
           onChange={onInputChange}
           className="grow  text-sm !bg-transparent"
+          autoFocus
         />
       </div>
 

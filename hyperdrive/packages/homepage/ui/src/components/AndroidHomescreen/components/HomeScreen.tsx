@@ -613,25 +613,18 @@ export const HomeScreen: React.FC = () => {
               />
 
               <div
-              className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center gap-2 justify-center', {
-                'invisible pointer-events-none': !searchQuery,
-                'absolute top-full left-1/2 -translate-x-1/2 w-fit max-w-md z-10': searchQuery,
-              })}
+                className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center', {
+                  'hidden pointer-events-none': !searchQuery,
+                  'absolute top-full left-1/2 -translate-x-1/2 w-fit max-w-md z-10': searchQuery,
+                })}
               >
                 <span>No installed apps found.</span>
                 <span
                   // href={`/main:app-store:sys/?search=${searchQuery}`}
                   className="underline text-iris font-bold cursor-pointer"
                   onClick={() => {
-                    openApp({
-                      id: 'app-store',
-                      label: 'App Store',
-                      process: 'main',
-                      package_name: 'app-store',
-                      publisher: 'sys',
-                      order: 0,
-                      favorite: false,
-                    }, `?search=${searchQuery}`)
+                    setSearchQuery('')
+                    openApp(apps.find(a => a.id === 'main:app-store:sys')!, `?search=${searchQuery}`)
                   }}
                 >
                   Search the app store
