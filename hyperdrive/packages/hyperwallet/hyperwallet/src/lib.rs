@@ -8,8 +8,8 @@ pub mod integrations;
 
 use api::terminal_commands::{MessageHandler, TerminalHandler};
 use config::*;
-use hyperware_process_lib::homepage::add_to_homepage;
-use hyperware_process_lib::http::server::{HttpBindingConfig, HttpServer};
+//use hyperware_process_lib::homepage::add_to_homepage;
+//use hyperware_process_lib::http::server::{HttpBindingConfig, HttpServer};
 use hyperware_process_lib::hyperwallet_client::types::HyperwalletMessage;
 use hyperware_process_lib::logging::{error, info, init_logging, Level};
 use hyperware_process_lib::{await_message, call_init, Address, Message, Response};
@@ -32,16 +32,16 @@ fn init(our: Address) {
     );
 
     let mut state = HyperwalletState::initialize();
-    let mut http_server = match init_http() {
-        Ok(server) => {
-            info!("Successfully initialized and bound HTTP server.");
-            server
-        }
-        Err(e) => {
-            error!("FATAL: Failed to initialize HTTP server: {:?}", e);
-            return;
-        }
-    };
+    //let mut http_server = match init_http() {
+    //    Ok(server) => {
+    //        info!("Successfully initialized and bound HTTP server.");
+    //        server
+    //    }
+    //    Err(e) => {
+    //        error!("FATAL: Failed to initialize HTTP server: {:?}", e);
+    //        return;
+    //    }
+    //};
 
     let terminal_handler = TerminalHandler::new();
     let permission_validator = PermissionValidator::new();
@@ -53,7 +53,7 @@ fn init(our: Address) {
         if let Err(e) = handle_message(
             &our,
             &mut state,
-            &mut http_server,
+            //&mut http_server,
             &terminal_handler,
             &permission_validator,
         ) {
@@ -67,7 +67,7 @@ fn init(our: Address) {
 fn handle_message(
     our: &Address,
     state: &mut HyperwalletState,
-    _http_server: &mut HttpServer,
+    //_http_server: &mut HttpServer,
     terminal_handler: &TerminalHandler,
     permission_validator: &PermissionValidator,
 ) -> anyhow::Result<()> {
@@ -120,8 +120,8 @@ fn route_request(
 
             match serde_json::from_slice::<HyperwalletMessage>(&body) {
                 Ok(message) => {
-                    let response = permission_validator
-                        .execute_with_permissions(message, source, state);
+                    let response =
+                        permission_validator.execute_with_permissions(message, source, state);
 
                     Response::new()
                         .body(serde_json::to_vec(&response)?)
@@ -162,23 +162,23 @@ fn handle_response(
     Ok(())
 }
 
-fn init_http() -> anyhow::Result<HttpServer> {
-    let mut http_server = HttpServer::new(5);
-    let http_config = HttpBindingConfig::default().authenticated(HTTP_BIND_AUTHENTICATED);
-
-    add_to_homepage(SERVICE_NAME, None, Some("/"), None);
-    http_server.serve_ui("ui", vec!["/"], http_config.clone())?;
-
-    let endpoints = vec![
-        "/api/operation".to_string(),
-        "/api/status".to_string(),
-        "/api/wallets".to_string(),
-        "/api/permissions".to_string(),
-    ];
-
-    for endpoint in endpoints {
-        http_server.bind_http_path(endpoint, http_config.clone())?;
-    }
-
-    Ok(http_server)
-}
+//fn init_http() -> anyhow::Result<HttpServer> {
+//    let mut http_server = HttpServer::new(5);
+//    let http_config = HttpBindingConfig::default().authenticated(HTTP_BIND_AUTHENTICATED);
+//
+//    add_to_homepage(SERVICE_NAME, None, Some("/"), None);
+//    http_server.serve_ui("ui", vec!["/"], http_config.clone())?;
+//
+//    let endpoints = vec![
+//        "/api/operation".to_string(),
+//        "/api/status".to_string(),
+//        "/api/wallets".to_string(),
+//        "/api/permissions".to_string(),
+//    ];
+//
+//    for endpoint in endpoints {
+//        http_server.bind_http_path(endpoint, http_config.clone())?;
+//    }
+//
+//    Ok(http_server)
+//}
