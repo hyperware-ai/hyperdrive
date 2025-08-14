@@ -6,6 +6,7 @@ import { ResetButton } from "../components";
 import { AppCard } from "../components/AppCard";
 import { BsSearch } from "react-icons/bs";
 import classNames from "classnames";
+import { useLocation, useNavigate } from "react-router-dom";
 const mockApps: AppListing[] = [
   {
     package_id: {
@@ -102,6 +103,18 @@ export default function StorePage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  // if we have ?search=something, set the search query to that
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    console.log({ location })
+    const search = new URLSearchParams(location.search).get("search");
+    if (search) {
+      setSearchQuery(search);
+      setCurrentPage(1);
+    }
+  }, [location]);
+
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value, searchQuery);
     setSearchQuery(e.target.value);
@@ -173,8 +186,14 @@ export default function StorePage() {
             key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`}
             app={app}
           >
-            <ActionChip label="Install" />
-            <ActionChip label="Launch" />
+            <ActionChip
+              label="Install"
+              onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=install`)}
+            />
+            <ActionChip
+              label="Launch"
+              onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=launch`)}
+            />
           </AppCard>
         ))}
       </div>}
@@ -194,9 +213,15 @@ export default function StorePage() {
               app={app}
             >
               {appsNotInstalled.includes(app)
-                ? <ActionChip label="Install" />
+                ? <ActionChip
+                  label="Install"
+                  onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=install`)}
+                />
                 : launchableApps.includes(app)
-                  ? <ActionChip label="Launch" />
+                  ? <ActionChip
+                    label="Launch"
+                    onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=launch`)}
+                  />
                   : <ActionChip label="Installed" />}
             </AppCard>
           ))}
@@ -244,8 +269,13 @@ export default function StorePage() {
 const ActionChip: React.FC<{
   label: string;
   className?: string;
-}> = ({ label, className }) => {
+  onClick?: () => void;
+}> = ({ label, className, onClick }) => {
   return <div
-    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", className)}>{label}
+    onClick={onClick}
+    data-action-button={!!onClick}
+    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", {
+      'cursor-pointer hover:opacity-80': onClick,
+    }, className)}>{label}
   </div>
 }

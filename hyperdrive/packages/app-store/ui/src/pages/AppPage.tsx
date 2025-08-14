@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import useAppsStore from "../store";
 import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
@@ -40,6 +40,7 @@ const isMobile = window.innerWidth < 768;
 
 export default function AppPage() {
   const { id } = useParams();
+  const location = useLocation();
   const {
     fetchListing,
     fetchInstalledApp,
@@ -339,6 +340,37 @@ export default function AppPage() {
     window.scrollTo(0, 0);
   }, [loadData, clearAllActiveDownloads]);
 
+  // Handle intent parameter from URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const intent = searchParams.get('intent');
+
+    if (!intent || !app || !id) return;
+
+    // Auto-trigger actions based on intent
+    if (intent === 'launch' && canLaunch) {
+      // Automatically launch the app
+      setTimeout(() => {
+        handleLaunch();
+      }, 500); // Small delay to ensure UI is ready
+    } else if (intent === 'install' && !installedApp) {
+      // Automatically trigger install modal
+      setTimeout(() => {
+        if (!isDownloaded) {
+          // Need to download first
+          if (!selectedMirror || isMirrorOnline === null) {
+            setAttemptedDownload(true);
+          } else {
+            handleInstallFlow(true);
+          }
+        } else {
+          // Already downloaded, just install
+          handleInstallFlow(false);
+        }
+      }, 500); // Small delay to ensure UI is ready
+    }
+  }, [location.search, app, id, canLaunch, installedApp, isDownloaded, selectedMirror, isMirrorOnline, handleLaunch, handleInstallFlow]);
+
   if (isLoading) {
     return (
       <div className="app-page min-h-screen">
@@ -479,7 +511,7 @@ export default function AppPage() {
           />}
           {!app.metadata?.image &&
             <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-iris dark:bg-neon flex items-center justify-center">
-              <span className="text-white font-bold text-2xl md:text-4xl">
+              <span className="text-white dark:text-black font-bold text-2xl md:text-4xl">
                 {app.package_id.package_name.charAt(0).toUpperCase() + (app.package_id.package_name.charAt(1) || '').toLowerCase()}
               </span>
             </div>}
