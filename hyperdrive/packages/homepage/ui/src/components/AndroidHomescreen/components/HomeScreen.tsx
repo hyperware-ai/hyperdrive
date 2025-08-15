@@ -532,7 +532,7 @@ export const HomeScreen: React.FC = () => {
               })}>
 
                 {showBackgroundSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100 w-sm">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100">
                     <span className="text-neon prose text-sm font-semibold mb-3">Background</span>
                     <div className="space-y-3">
                       <div>
@@ -574,11 +574,11 @@ export const HomeScreen: React.FC = () => {
                   </div>
                 )}
                 {showWidgetSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 w-sm shadow-2xl border border-white/20 z-100">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100">
                     <span className="text-neon text-sm font-semibold mb-3 prose">Widgets</span>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {homeApps.filter(app => app.widget).map(app => (
-                        <div key={app.id} className="flex items-center justify-between text-white/80 text-sm p-2 rounded-lg hover:bg-white/10 transition-colors">
+                        <div key={app.id} className="flex gap-2 items-center justify-between text-white/80 text-sm p-2 rounded-lg hover:bg-white/10 transition-colors">
                           <span>{app.label}</span>
                           <button
                             onClick={() => toggleWidget(app.id)}
@@ -613,7 +613,7 @@ export const HomeScreen: React.FC = () => {
             </a> */}
             <button
               onClick={() => setEditMode(true)}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm "
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !px-2"
               title="Edit apps, widgets, and background"
             >
               <BsPencilSquare />
