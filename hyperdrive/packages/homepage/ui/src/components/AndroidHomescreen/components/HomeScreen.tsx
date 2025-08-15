@@ -40,7 +40,7 @@ export const HomeScreen: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
 
-  console.log({ appPositions })
+  // console.log({ appPositions })
 
   useEffect(() => {
     console.log('isInitialized', isInitialized);
@@ -470,7 +470,7 @@ export const HomeScreen: React.FC = () => {
         )}
 
 
-        <div className="absolute top-2 right-2 left-2 flex items-center gap-2">
+        <div className="absolute top-2 right-2 left-2 flex items-center gap-2 max-w-screen">
           <img
             src="/Logomark Iris.svg"
             alt="Hyperdrive"
@@ -486,7 +486,10 @@ export const HomeScreen: React.FC = () => {
             <div className="flex flex-col items-end gap-2 grow">
               <div className={"flex items-center justify-end gap-2"}>
                 <button
-                  onClick={() => setShowBackgroundSettings(!showBackgroundSettings)}
+                  onClick={() => {
+                    setShowBackgroundSettings(!showBackgroundSettings)
+                    setShowWidgetSettings(false)
+                  }}
                   className={classNames("!p-2 text-sm", {
                     'bg-gradient-to-r from-gray-600 to-gray-700 !text-neon': !showBackgroundSettings,
                     'bg-neon text-black': showBackgroundSettings,
@@ -498,7 +501,10 @@ export const HomeScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setShowWidgetSettings(!showWidgetSettings)}
+                  onClick={() => {
+                    setShowWidgetSettings(!showWidgetSettings)
+                    setShowBackgroundSettings(false)
+                  }}
                   className={classNames("!p-2 text-sm", {
                     'bg-gradient-to-r from-gray-600 to-gray-700 !text-neon': !showWidgetSettings,
                     'bg-neon text-black': showWidgetSettings,
@@ -607,7 +613,7 @@ export const HomeScreen: React.FC = () => {
             </a> */}
             <button
               onClick={() => setEditMode(true)}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !p-2"
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm "
               title="Edit apps, widgets, and background"
             >
               <BsPencilSquare />

@@ -5,7 +5,7 @@ import { BsClock } from 'react-icons/bs';
 
 export const GestureZone: React.FC = () => {
   const { toggleRecentApps, isRecentAppsOpen } = useNavigationStore();
-  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight / 2 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
   const dragThreshold = 5; // pixels - swipes smaller than this will be treated as taps

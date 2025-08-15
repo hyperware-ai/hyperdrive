@@ -79,7 +79,6 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
   };
 
   const handleResize = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
     e.stopPropagation();
 
     const isTouch = 'touches' in e;
@@ -105,7 +104,6 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
 
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
       handleMove(e.touches[0].clientX, e.touches[0].clientY);
     };
 
