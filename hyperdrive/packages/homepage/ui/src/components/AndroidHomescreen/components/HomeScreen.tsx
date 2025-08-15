@@ -420,13 +420,13 @@ export const HomeScreen: React.FC = () => {
                 </div>
               );
             })}
-            <div className="w-px h-12 bg-black/20 dark:bg-white/20 mx-1" />
+            <div className="w-px h-12 bg-black/20 dark:bg-white/20 mx-1 mt-1" />
             <div
               className="flex flex-col gap-1 items-center"
               onClick={toggleAppDrawer}
             >
               <button
-                className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+                className=" w-14 h-14 md:w-16 md:h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
               >
                 <BsGridFill className="text-2xl" />
               </button>
@@ -437,7 +437,7 @@ export const HomeScreen: React.FC = () => {
               onClick={toggleRecentApps}
             >
               <button
-                className="flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+                className="flex w-14 h-14 md:w-16 md:h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
               >
                 <BsClock className="text-2xl" />
               </button>
@@ -520,7 +520,7 @@ export const HomeScreen: React.FC = () => {
               })}>
 
                 {showBackgroundSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100">
                     <span className="text-neon prose text-sm font-semibold mb-3">Background</span>
                     <div className="space-y-3">
                       <div>
@@ -562,7 +562,7 @@ export const HomeScreen: React.FC = () => {
                   </div>
                 )}
                 {showWidgetSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20 z-100">
                     <span className="text-neon text-sm font-semibold mb-3 prose">Widget Manager</span>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {homeApps.filter(app => app.widget).map(app => (

@@ -10,6 +10,7 @@ export const GestureZone: React.FC = () => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
   const dragThreshold = 5; // pixels - swipes smaller than this will be treated as taps
   const buttonRef = useRef<HTMLDivElement>(null);
+  const isMobile = window.innerWidth < 768;
 
   // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -57,6 +58,7 @@ export const GestureZone: React.FC = () => {
 
   // Mouse handlers for desktop
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isMobile) return;
     try { e.preventDefault(); } catch { }
     try { e.stopPropagation(); } catch { }
     setDragStart({
@@ -68,6 +70,7 @@ export const GestureZone: React.FC = () => {
   };
 
   const handleMouseMove = (e: MouseEvent) => {
+    if (isMobile) return;
     try { e.preventDefault(); } catch { }
     try { e.stopPropagation(); } catch { }
     if (!dragStart) return;
@@ -87,6 +90,7 @@ export const GestureZone: React.FC = () => {
   };
 
   const handleMouseUp = () => {
+    if (isMobile) return;
     if (!isDragging && dragStart) {
       toggleRecentApps();
     }
@@ -152,8 +156,7 @@ export const GestureZone: React.FC = () => {
 
       {/* White circle with icon */}
       <div className="relative w-16 h-16 flex items-center justify-center">
-        <div className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center">
-        </div>
+        <div className="w-12 h-12 bg-neon/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center" />
       </div>
     </div>
   );
