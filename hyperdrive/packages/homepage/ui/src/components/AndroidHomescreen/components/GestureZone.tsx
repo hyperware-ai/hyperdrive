@@ -14,7 +14,6 @@ export const GestureZone: React.FC = () => {
 
   // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.cancelable && e.preventDefault();
     e.stopPropagation();
     const touch = e.touches[0];
     setDragStart({
@@ -27,7 +26,6 @@ export const GestureZone: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!dragStart) return;
-    e.cancelable && e.preventDefault();
     e.stopPropagation();
 
     const touch = e.touches[0];
@@ -59,7 +57,6 @@ export const GestureZone: React.FC = () => {
   // Mouse handlers for desktop
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isMobile) return;
-    e.cancelable && e.preventDefault();
     e.stopPropagation();
     setDragStart({
       x: e.clientX,
@@ -71,7 +68,6 @@ export const GestureZone: React.FC = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isMobile) return;
-    e.cancelable && e.preventDefault();
     e.stopPropagation();
     if (!dragStart) return;
 
