@@ -256,9 +256,9 @@ export const HomeScreen: React.FC = () => {
       data-is-dark-mode={isDarkMode}
     >
 
-      {backgroundImage && (
-        <div className="absolute inset-0 bg-black/20" />
-      )}
+      {/* {backgroundImage && (
+        <div className="absolute inset-0 bg-black/5" />
+      )} */}
 
 
       <div
@@ -569,7 +569,7 @@ export const HomeScreen: React.FC = () => {
                 )}
                 {showWidgetSettings && (
                   <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20 z-100">
-                    <span className="text-neon text-sm font-semibold mb-3 prose">Widget Manager</span>
+                    <span className="text-neon text-sm font-semibold mb-3 prose">Widgets</span>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {homeApps.filter(app => app.widget).map(app => (
                         <div key={app.id} className="flex items-center justify-between text-white/80 text-sm p-2 rounded-lg hover:bg-white/10 transition-colors">

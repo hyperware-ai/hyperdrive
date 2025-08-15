@@ -152,11 +152,11 @@ export const GestureZone: React.FC = () => {
       onMouseDown={handleMouseDown}
     >
       {/* Black rounded square background */}
-      <div className="absolute inset-0 w-16 h-16 bg-black/40 backdrop-blur-sm rounded-2xl shadow-lg" />
+      <div className="absolute inset-0 w-16 h-16 bg-black/40 backdrop-blur-sm rounded-2xl shadow-lg touch-none" />
 
       {/* White circle with icon */}
-      <div className="relative w-16 h-16 flex items-center justify-center">
-        <div className="w-12 h-12 bg-neon/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center" />
+      <div className="relative w-16 h-16 flex items-center justify-center touch-none">
+        <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center touch-none" />
       </div>
     </div>
   );
