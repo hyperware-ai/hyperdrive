@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
-import { BsClock } from 'react-icons/bs';
-
+import { usePersistenceStore } from '../../../stores/persistenceStore';
 export const GestureZone: React.FC = () => {
   const { toggleRecentApps, isRecentAppsOpen } = useNavigationStore();
-  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: 80 });
+  const { omnibuttonPosition, setOmnibuttonPosition } = usePersistenceStore();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
   const dragThreshold = 5; // pixels - swipes smaller than this will be treated as taps
@@ -19,8 +18,8 @@ export const GestureZone: React.FC = () => {
     setDragStart({
       x: touch.clientX,
       y: touch.clientY,
-      buttonX: position.x,
-      buttonY: position.y
+      buttonX: omnibuttonPosition.x,
+      buttonY: omnibuttonPosition.y
     });
   };
 
@@ -41,7 +40,7 @@ export const GestureZone: React.FC = () => {
     if (isDragging || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
       const newX = Math.max(30, Math.min(window.innerWidth - 30, dragStart.buttonX + deltaX));
       const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
-      setPosition({ x: newX, y: newY });
+      setOmnibuttonPosition({ x: newX, y: newY });
     }
   };
 
@@ -61,8 +60,8 @@ export const GestureZone: React.FC = () => {
     setDragStart({
       x: e.clientX,
       y: e.clientY,
-      buttonX: position.x,
-      buttonY: position.y
+      buttonX: omnibuttonPosition.x,
+      buttonY: omnibuttonPosition.y
     });
   };
 
@@ -81,7 +80,7 @@ export const GestureZone: React.FC = () => {
     if (isDragging || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
       const newX = Math.max(30, Math.min(window.innerWidth - 30, dragStart.buttonX + deltaX));
       const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
-      setPosition({ x: newX, y: newY });
+      setOmnibuttonPosition({ x: newX, y: newY });
     }
   };
 
@@ -109,15 +108,15 @@ export const GestureZone: React.FC = () => {
   // Handle window resize to keep button in bounds
   useEffect(() => {
     const handleResize = () => {
-      setPosition(prev => ({
-        x: Math.max(30, Math.min(window.innerWidth - 30, prev.x)),
-        y: Math.max(30, Math.min(window.innerHeight - 30, prev.y))
-      }));
+      setOmnibuttonPosition({
+        x: Math.max(30, Math.min(window.innerWidth - 30, omnibuttonPosition.x)),
+        y: Math.max(30, Math.min(window.innerHeight - 30, omnibuttonPosition.y))
+      });
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [omnibuttonPosition]);
 
   useEffect(() => {
     if (!isRecentAppsOpen) {
@@ -138,8 +137,8 @@ export const GestureZone: React.FC = () => {
         }
       )}
       style={{
-        left: position.x - 30,
-        top: position.y - 30,
+        left: omnibuttonPosition.x - 30,
+        top: omnibuttonPosition.y - 30,
         transform: 'translate(0, 0)' // Prevent transform conflicts
       }}
       onTouchStart={handleTouchStart}
