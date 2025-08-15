@@ -99,7 +99,7 @@ export const RecentApps: React.FC = () => {
 
   return (
     <div
-    onClick={toggleRecentApps}
+    onClick={closeAllOverlays}
     className="recent-apps fixed inset-0 bg-gradient-to-b from-gray-900/50 to-white/50 dark:to-black/50 backdrop-blur-xl z-50 flex items-center justify-center"
     >
       {runningApps.length === 0 ? (

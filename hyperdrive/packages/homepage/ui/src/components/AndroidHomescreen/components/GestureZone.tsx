@@ -3,7 +3,7 @@ import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 export const GestureZone: React.FC = () => {
-  const { toggleRecentApps, isRecentAppsOpen } = useNavigationStore();
+  const { toggleRecentApps, isRecentAppsOpen, closeAllOverlays } = useNavigationStore();
   const { omnibuttonPosition, setOmnibuttonPosition } = usePersistenceStore();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
@@ -87,7 +87,8 @@ export const GestureZone: React.FC = () => {
   const handleMouseUp = () => {
     if (isMobile) return;
     if (!isDragging && dragStart) {
-      toggleRecentApps();
+      if (!isRecentAppsOpen) toggleRecentApps();
+      else closeAllOverlays();
     }
     setDragStart(null);
     setIsDragging(false);
@@ -147,7 +148,7 @@ export const GestureZone: React.FC = () => {
       onMouseDown={handleMouseDown}
     >
       {/* Black rounded square background */}
-      <div className="absolute inset-0 w-16 h-16 bg-black/40 backdrop-blur-sm rounded-2xl shadow-lg touch-none" />
+      <div className="absolute inset-0 w-16 h-16 bg-black/40 dark:bg-white/10 backdrop-blur-sm rounded-2xl shadow-lg touch-none" />
 
       {/* White circle with icon */}
       <div className="relative w-16 h-16 flex items-center justify-center touch-none">
