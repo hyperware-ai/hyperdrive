@@ -626,11 +626,9 @@ export const HomeScreen: React.FC = () => {
               <BsSearch
                 className="opacity-50"
               />
-              <div
-                className="grow"
-              >
+              <span>
                 Search apps...
-              </div>
+              </span>
             </button>
           </>}
 

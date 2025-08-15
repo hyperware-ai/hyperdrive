@@ -47,7 +47,13 @@ export const AppDrawer: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-6">
+        <div className={classNames(`
+          grid
+          gap-4 md:gap-6 lg:gap-8
+          `, {
+            'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6': filteredApps.length > 0,
+            'grid-cols-2': filteredApps.length === 0,
+          })}>
           {filteredApps.map(app => (
             <div key={app.id} className="relative group" data-app-id={app.id}>
               <div onClick={() => openApp(app)}>
@@ -65,7 +71,7 @@ export const AppDrawer: React.FC = () => {
           ))}
           {filteredApps.length === 0 && (
               <div
-                className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center')}
+                className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center col-span-full')}
               >
                 <span>No installed apps found.</span>
                 <span
