@@ -143,12 +143,31 @@
           <div id="password-err" class="login-row flex" style="display: none;"> Incorrect Password </div>
           <div class="flex flex-col leading-6 self-stretch gap-2">
             <button id="login-button" disabled> Login </button>
-            <div class="text-xs text-iris dark:text-neon" id="fake-or-not"></div>
+            <div class="text-xs text-iris dark:text-neon" id="fake-or-not">
+            </div>
+            <div class="text-xs text-iris dark:text-neon cursor-pointer" id="help-message">
+              Need help?
+            </div>
           </div>
         </form>
         <div id="loading" class="flex flex-col font-bold z-10" style="display: none;">
           <h3 class="prose">Logging in...</h3>
           <div id="loader"></div>
+        </div>
+      </div>
+      <div class="fixed inset-0 backdrop-blur-sm bg-black/10 dark:bg-black/50 items-center justify-center z-50 hidden"
+        id="help-modal-backdrop">
+        <div id="help-modal"
+          class="bg-white dark:bg-black shadow-lg dark:shadow-white/10 p-4 rounded-lg relative w-full max-w-screen max-w-md min-h-0 max-h-screen overflow-y-auto flex flex-col items-stretch gap-4">
+          <button
+            class="clear thin absolute top-2 right-2 hover:scale-110 hover:text-red-500 transition-all duration-200"
+            id="help-modal-x">
+            &times;
+          </button>
+          <div class="font-bold text-lg">Login Help</div>
+          <div>You need to login again to access your node.</div>
+          <div class="font-bold">Trying to change network settings?</div>
+          <div>First, restart your node, then click "Reset Password & Networking Info".</div>
         </div>
       </div>
     </div>
@@ -163,7 +182,7 @@
       if ('${fake}' === 'true') {
         document.getElementById("fake-or-not").innerHTML = "Fake node -- any password will work!";
       } else {
-        document.getElementById("fake-or-not").innerHTML = "Restart your node to change networking settings.";
+        document.getElementById("fake-or-not").remove();
       }
 
       const firstPathItem = window.location.pathname.split('/')[1];
@@ -242,6 +261,16 @@
       return subdomain;
     }
 
+    function showHelpModal() {
+      document.getElementById("help-modal-backdrop").classList.remove("hidden");
+      document.getElementById("help-modal-backdrop").classList.add("flex");
+    }
+
+    function hideHelpModal() {
+      document.getElementById("help-modal-backdrop").classList.remove("flex");
+      document.getElementById("help-modal-backdrop").classList.add("hidden");
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       const [isSecureSubdomain, firstPathItem] = initializeLoginForm();
       const form = document.getElementById("login-form");
@@ -253,6 +282,11 @@
           login(password, isSecureSubdomain, firstPathItem);
         }
       });
+
+      document.getElementById("help-modal-x").addEventListener("click", hideHelpModal);
+      document.getElementById("help-modal-backdrop").addEventListener("click", hideHelpModal);
+      document.getElementById("help-message").addEventListener("click", showHelpModal);
+
     });
   </script>
 </body>

@@ -6,6 +6,7 @@ import { ResetButton } from "../components";
 import { AppCard } from "../components/AppCard";
 import { BsSearch } from "react-icons/bs";
 import classNames from "classnames";
+import { useLocation } from "react-router-dom";
 const mockApps: AppListing[] = [
   {
     package_id: {
@@ -102,6 +103,17 @@ export default function StorePage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  // if we have ?search=something, set the search query to that
+  const location = useLocation();
+  useEffect(() => {
+    console.log({ location })
+    const search = new URLSearchParams(location.search).get("search");
+    if (search) {
+      setSearchQuery(search);
+      setCurrentPage(1);
+    }
+  }, [location]);
+
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value, searchQuery);
     setSearchQuery(e.target.value);
@@ -161,6 +173,7 @@ export default function StorePage() {
           value={searchQuery}
           onChange={onInputChange}
           className="grow  text-sm !bg-transparent"
+          autoFocus
         />
       </div>
 
@@ -233,9 +246,9 @@ export default function StorePage() {
           </button>
         </div>
       )}
-      <div className="flex flex-col items-center justify-center text-center gap-2">
-        <p className="text-sm font-bold uppercase">Can't find the app you're looking for?</p>
-        <ResetButton />
+      <div className="flex items-center justify-center text-center gap-2">
+        <p className="text-xs">Can't find the app?</p>
+        <ResetButton className="thin clear !text-red-500 !text-xs" />
       </div>
     </div>
   );

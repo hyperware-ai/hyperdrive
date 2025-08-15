@@ -6,14 +6,14 @@ import classNames from 'classnames';
 interface AppIconProps {
   app: HomepageApp;
   isEditMode: boolean;
-  showLabel?: boolean;
+  isUndocked?: boolean;
   isFloating?: boolean;
 }
 
 export const AppIcon: React.FC<AppIconProps> = ({
   app,
   isEditMode,
-  showLabel = true,
+  isUndocked = true,
   isFloating = false
 }) => {
   const { openApp } = useNavigationStore();
@@ -33,7 +33,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
         'animate-wiggle': isEditMode && isFloating,
         'hover:scale-110': !isEditMode && isFloating,
         'opacity-50': !app.path && !(app.process && app.publisher) && !app.base64_icon,
-        'p-2': showLabel,
+        'p-2': isUndocked,
       })}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
@@ -45,8 +45,8 @@ export const AppIcon: React.FC<AppIconProps> = ({
       data-app-publisher={app.publisher}
     >
 
-      <div className={classNames("rounded-xl w-16 h-16 overflow-hidden flex items-center justify-center shadow-lg", {
-        'mb-1': showLabel,
+      <div className={classNames("rounded-xl w-14 h-14 md:w-16 md:h-16 overflow-hidden flex items-center justify-center shadow-lg relative", {
+        'mb-1': isUndocked,
       })}>
         {app.base64_icon ? (
           <img src={app.base64_icon} alt={app.label} className="w-full h-full object-cover" />
@@ -57,11 +57,13 @@ export const AppIcon: React.FC<AppIconProps> = ({
         )}
       </div>
 
-      {showLabel && (
-        <span className="text-xs text-center max-w-full truncate px-2 py-1 bg-black/5 dark:bg-white/5 rounded-full backdrop-blur-xl">
-          {app.label}
-        </span>
-      )}
+      <span
+        className={classNames(" text-center max-w-full self-stretch truncate", {
+          'text-xs px-2 py-1 bg-black/5 dark:bg-white/5 rounded-full backdrop-blur-xl': isUndocked,
+          'text-[10px]': !isUndocked,
+        })}>
+        {app.label}
+      </span>
     </div>
   );
 };

@@ -6,21 +6,40 @@ import { Draggable } from './Draggable';
 import { AppIcon } from './AppIcon';
 import { Widget } from './Widget';
 import type { HomepageApp } from '../../../types/app.types';
-import { BsCheck, BsClock, BsGridFill, BsImage, BsLayers, BsSearch, BsX } from 'react-icons/bs';
+import { BsCheck, BsClock, BsEnvelope, BsGridFill, BsImage, BsLayers, BsPencilSquare, BsSearch, BsX } from 'react-icons/bs';
 import classNames from 'classnames';
+import { Modal } from './Modal';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
-  const { homeScreenApps, dockApps, appPositions, widgetSettings, removeFromHomeScreen, toggleWidget, moveItem, backgroundImage, setBackgroundImage, addToDock, removeFromDock, isInitialized, setIsInitialized, addToHomeScreen } = usePersistenceStore();
+  const {
+    homeScreenApps,
+    dockApps,
+    appPositions,
+    widgetSettings,
+    removeFromHomeScreen,
+    toggleWidget,
+    moveItem,
+    backgroundImage,
+    setBackgroundImage,
+    addToDock,
+    removeFromDock,
+    isInitialized,
+    setIsInitialized,
+    addToHomeScreen,
+    doNotShowOnboardingAgain,
+    setDoNotShowOnboardingAgain,
+  } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
-  const { toggleAppDrawer, toggleRecentApps } = useNavigationStore();
+  const { openApp, toggleAppDrawer, toggleRecentApps } = useNavigationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
   const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
   const [showWidgetSettings, setShowWidgetSettings] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
+  const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
 
-  console.log({ appPositions })
+  // console.log({ appPositions })
 
   useEffect(() => {
     console.log('isInitialized', isInitialized);
@@ -53,8 +72,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleDockDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+    try {e.preventDefault();} catch {}
+    try {e.stopPropagation();} catch {}
     const appId = e.dataTransfer.getData('appId');
     if (appId) {
       // Add to dock at the specified index
@@ -64,7 +83,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleDockDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     e.dataTransfer.dropEffect = 'move';
   };
 
@@ -79,7 +99,8 @@ export const HomeScreen: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!draggedAppId || !touchDragPosition) return;
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     const touch = e.touches[0];
     setTouchDragPosition({ x: touch.clientX, y: touch.clientY });
   };
@@ -184,8 +205,8 @@ export const HomeScreen: React.FC = () => {
   }, [apps, homeScreenApps]);
 
   const widgetApps = useMemo(() => {
-    return homeApps.filter(app => app.widget && !widgetSettings[app.id]?.hide);
-  }, [homeApps, widgetSettings]);
+    return homeApps.filter(app => app.widget);
+  }, [homeApps]);
 
   // Get actual dock app objects from IDs
   const dockAppsList = useMemo(() => {
@@ -234,19 +255,21 @@ export const HomeScreen: React.FC = () => {
       data-is-dark-mode={isDarkMode}
     >
 
-      {backgroundImage && (
-        <div className="absolute inset-0 bg-black/20" />
-      )}
+      {/* {backgroundImage && (
+        <div className="absolute inset-0 bg-black/5" />
+      )} */}
 
 
       <div
         className="relative z-10 h-full"
         onDragOver={(e) => {
-          e.preventDefault();
+          try { e.preventDefault(); } catch { }
+          try { e.stopPropagation(); } catch { }
           e.dataTransfer.dropEffect = 'move';
         }}
         onDrop={(e) => {
-          e.preventDefault();
+          try { e.preventDefault(); } catch { }
+          try { e.stopPropagation(); } catch { }
           const appId = e.dataTransfer.getData('appId');
           // Only handle drops from dock apps or if dropping outside dock area
           const isDroppingOnDock = (e.target as HTMLElement).closest('.dock-area');
@@ -267,7 +290,8 @@ export const HomeScreen: React.FC = () => {
           const touch = e.touches[0];
           const element = document.elementFromPoint(touch.clientX, touch.clientY);
           if (element?.closest('.dock-area')) {
-            e.preventDefault();
+            try { e.preventDefault(); } catch { }
+            try { e.stopPropagation(); } catch { }
           }
         }}
       >
@@ -275,7 +299,7 @@ export const HomeScreen: React.FC = () => {
         {floatingApps
           .filter(app => {
             return !app.id.includes('homepage:homepage:sys')  // don't show the clock icon because it does nothing.
-              && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
+              // && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           })
           .map((app, index, allApps) => {
             const position = appPositions[app.id] || calculateAppIconPosition(app.id, index, allApps.length);
@@ -312,9 +336,24 @@ export const HomeScreen: React.FC = () => {
 
 
         {widgetApps
-          .filter(app => !searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           .map((app, index) => (
-            <Widget key={app.id} app={app} index={index} totalWidgets={widgetApps.length} />
+            <Widget
+              key={app.id}
+              app={app}
+              index={index}
+              totalWidgets={widgetApps.length}
+              className={classNames({
+                // 'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase()) && !widgetSettings[app.id]?.hide
+                'invisible pointer-events-none': !widgetSettings[app.id]?.hide
+              })}
+            >
+              {showWidgetOnboarding && index === 0 && <div
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-neon w-fit text-xs animate-pulse text-black cursor-pointer hover:opacity-80"
+                onClick={() => setShowWidgetOnboarding(false)}
+              >
+                This is a widget. Drag it, resize it, or hide it!
+              </div>}
+            </Widget>
           ))}
 
 
@@ -323,7 +362,7 @@ export const HomeScreen: React.FC = () => {
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
-          <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex items-center gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
+          <div className="bg-white/10 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex  gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
 
             {Array.from({ length: 4 }).map((_, index) => {
               const app = dockAppsList[index];
@@ -331,10 +370,14 @@ export const HomeScreen: React.FC = () => {
                 <div
                   key={`slot-${index}`}
                   data-dock-index={index}
-                  className="w-16 h-16 relative"
+                  className={classNames("w-14 md:w-16 relative", {
+                    'h-14 md:h-16': !app,
+                    'self-stretch': app,
+                  })}
                   onDragOver={handleDockDragOver}
                   onDrop={(e) => {
-                    e.stopPropagation();
+                    try { e.preventDefault(); } catch { }
+                    try { e.stopPropagation(); } catch { }
                     handleDockDrop(e, index);
                   }}
                 >
@@ -375,7 +418,7 @@ export const HomeScreen: React.FC = () => {
                       <AppIcon
                         app={app}
                         isEditMode={isEditMode}
-                        showLabel={false}
+                        isUndocked={false}
                       />
                     </div>
                   ) : (
@@ -384,21 +427,29 @@ export const HomeScreen: React.FC = () => {
                 </div>
               );
             })}
-            <div className="w-px h-12 bg-black/20 dark:bg-white/20 mx-1" />
-            <button
+            <div className="w-px h-12 bg-black/20 dark:bg-white/20 mx-1 mt-1" />
+            <div
+              className="flex flex-col gap-1 items-center"
               onClick={toggleAppDrawer}
-              className="w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              <BsGridFill />
-              <span className="text-xs">Apps</span>
-            </button>
-            <button
+              <button
+                className=" w-14 h-14 md:w-16 md:h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+              >
+                <BsGridFill className="text-2xl" />
+              </button>
+              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap">My apps</span>
+            </div>
+            <div
+              className="hidden md:flex flex-col gap-1 items-center"
               onClick={toggleRecentApps}
-              className="!hidden md:!flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris flex-col justify-center !gap-1"
             >
-              <BsClock />
-              <span className="text-xs">Recent</span>
-            </button>
+              <button
+                className="flex w-14 h-14 md:w-16 md:h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+              >
+                <BsClock className="text-2xl" />
+              </button>
+              <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap">Recent</span>
+            </div>
           </div>
         </div>
 
@@ -414,13 +465,13 @@ export const HomeScreen: React.FC = () => {
             <AppIcon
               app={apps.find(a => a.id === draggedAppId)!}
               isEditMode={false}
-              showLabel={false}
+              isUndocked={false}
             />
           </div>
         )}
 
 
-        <div className="absolute top-2 right-2 left-2 flex items-center gap-2">
+        <div className="absolute top-2 right-2 left-2 flex items-center gap-2 max-w-screen">
           <img
             src="/Logomark Iris.svg"
             alt="Hyperdrive"
@@ -431,46 +482,38 @@ export const HomeScreen: React.FC = () => {
             alt="Hyperdrive"
             className="h-8 hidden md:block self-start"
           />
-          {!isEditMode && <>
-            <div className="ml-auto flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md">
-              <BsSearch className="opacity-50" />
-              <input
-                type="text"
-                className=" grow self-stretch !bg-transparent !p-0"
-                placeholder="Search apps..."
-                onChange={(e) => setSearchQuery(e.target.value)}
-                value={searchQuery}
-              />
-            </div>
-            <button
-              onClick={() => setEditMode(true)}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
-            >
-              Edit
-            </button>
-          </>}
 
           {isEditMode && (
             <div className="flex flex-col items-end gap-2 grow">
               <div className={"flex items-center justify-end gap-2"}>
                 <button
-                  onClick={() => setShowBackgroundSettings(!showBackgroundSettings)}
-                  className={classNames(" text-sm", {
+                  onClick={() => {
+                    setShowBackgroundSettings(!showBackgroundSettings)
+                    setShowWidgetSettings(false)
+                  }}
+                  className={classNames("!p-2 text-sm", {
                     'bg-gradient-to-r from-gray-600 to-gray-700 !text-neon': !showBackgroundSettings,
+                    'bg-neon text-black': showBackgroundSettings,
                   })}
                   title="Settings"
                 >
-                  <BsImage /> <span>Background</span>
+                  <BsImage />
+                  <span>Background</span>
                 </button>
 
                 <button
-                  onClick={() => setShowWidgetSettings(!showWidgetSettings)}
-                  className={classNames(" text-sm", {
+                  onClick={() => {
+                    setShowWidgetSettings(!showWidgetSettings)
+                    setShowBackgroundSettings(false)
+                  }}
+                  className={classNames("!p-2 text-sm", {
                     'bg-gradient-to-r from-gray-600 to-gray-700 !text-neon': !showWidgetSettings,
+                    'bg-neon text-black': showWidgetSettings,
                   })}
                   title="Settings"
                 >
-                  <BsLayers /> <span>Widgets</span>
+                  <BsLayers />
+                  <span>Widgets</span>
                 </button>
                 <button
                   onClick={() => {
@@ -478,7 +521,7 @@ export const HomeScreen: React.FC = () => {
                     setShowBackgroundSettings(false);
                     setShowWidgetSettings(false);
                   }}
-                  className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
+                  className="!p-2 bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
                 >
                   <BsCheck />
                   <span>Done</span>
@@ -490,11 +533,11 @@ export const HomeScreen: React.FC = () => {
               })}>
 
                 {showBackgroundSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100">
                     <span className="text-neon prose text-sm font-semibold mb-3">Background</span>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-white/80 text-xs">Upload Image:</label>
+                        <label className="text-white/80 text-xs">Upload</label>
                         <input
                           type="file"
                           accept="image/*"
@@ -525,18 +568,18 @@ export const HomeScreen: React.FC = () => {
                           onClick={() => setBackgroundImage(null)}
                           className="w-full px-3 py-1.5 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white text-sm font-medium transition-all"
                         >
-                          Remove Background
+                          Remove
                         </button>
                       )}
                     </div>
                   </div>
                 )}
                 {showWidgetSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20">
-                    <span className="text-neon text-sm font-semibold mb-3 prose">Widget Manager</span>
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100">
+                    <span className="text-neon text-sm font-semibold mb-3 prose">Widgets</span>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {homeApps.filter(app => app.widget).map(app => (
-                        <div key={app.id} className="flex items-center justify-between text-white/80 text-sm p-2 rounded-lg hover:bg-white/10 transition-colors">
+                        <div key={app.id} className="flex gap-2 items-center justify-between text-white/80 text-sm p-2 rounded-lg hover:bg-white/10 transition-colors">
                           <span>{app.label}</span>
                           <button
                             onClick={() => toggleWidget(app.id)}
@@ -558,7 +601,66 @@ export const HomeScreen: React.FC = () => {
               </div>
             </div>
           )}
+
+          {!isEditMode && <>
+            {/* <a
+              href="mailto:support@hyperware.ai"
+              className="button bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm ml-auto !p-2"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Get help & support"
+            >
+              <BsEnvelope />
+            </a> */}
+            <button
+              onClick={() => setEditMode(true)}
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !px-2 ml-auto"
+              title="Edit apps, widgets, and background"
+            >
+              <BsPencilSquare />
+            </button>
+            <button
+            className=" thin  grow self-stretch max-w-sm md:max-w-md !justify-start !bg-black/10 dark:!bg-white/10 backdrop-blur-xl"
+              onClick={() => toggleAppDrawer()}
+            >
+              <BsSearch
+                className="opacity-50"
+              />
+              <span>
+                Search apps...
+              </span>
+            </button>
+          </>}
+
         </div>
+
+        {showOnboarding && (
+          <Modal
+            onClose={() => setShowOnboarding(false)}
+            title="Welcome to Hyperware"
+          >
+            <p>Your gateway to the internet, reimagined.</p>
+            <p>Your node, your device: customize the interface, pin your favorite apps.</p>
+            <p>Your node, your data: take full control over your information.</p>
+            <div className="flex flex-col items-center gap-2 ">
+              <button
+                onClick={() => {
+                  setDoNotShowOnboardingAgain(true)
+                  setShowOnboarding(false)
+                }}
+                className="clear text-sm self-stretch !rounded-full"
+              >
+                Don't show again
+              </button>
+              <button
+                onClick={() => setShowOnboarding(false)}
+                className="bg-neon text-black font-bold self-stretch md:grow !rounded-full"
+              >
+                Let's go
+              </button>
+            </div>
+          </Modal>
+        )}
 
 
         {/* <div className="hidden md:block absolute bottom-24 left-1/2 -translate-x-1/2 text-black/30 dark:text-white/30 text-xs bg-white/50 dark:bg-black/50 backdrop-blur rounded-lg px-3 py-2">

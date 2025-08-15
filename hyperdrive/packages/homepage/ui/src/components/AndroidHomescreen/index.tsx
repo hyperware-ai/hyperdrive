@@ -5,7 +5,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { AppContainer } from './components/AppContainer';
 import { AppDrawer } from './components/AppDrawer';
 import { RecentApps } from './components/RecentApps';
-import { GestureZone } from './components/GestureZone';
+import { OmniButton } from './components/OmniButton';
 import PWAUpdateNotification from '../PWAUpdateNotification';
 import PWAInstallPrompt from '../PWAInstallPrompt';
 import './styles/animations.css';
@@ -96,8 +96,8 @@ export default function AndroidHomescreen() {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+        <div className="text-center flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin "></div>
           <div className="text-gray-300 text-xl">Loading Hyperware...</div>
         </div>
       </div>
@@ -123,7 +123,7 @@ export default function AndroidHomescreen() {
       <RecentApps />
 
 
-      <GestureZone />
+      <OmniButton />
 
 
       <PWAUpdateNotification />

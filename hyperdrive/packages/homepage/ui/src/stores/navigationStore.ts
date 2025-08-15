@@ -7,7 +7,7 @@ interface NavigationStore {
   isAppDrawerOpen: boolean;
   isRecentAppsOpen: boolean;
 
-  openApp: (app: HomepageApp) => void;
+  openApp: (app: HomepageApp, query?: string) => void;
   closeApp: (appId: string) => void;
   switchToApp: (appId: string) => void;
   toggleAppDrawer: () => void;
@@ -65,7 +65,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     // If already on homepage, let default browser behavior handle it
   },
 
-  openApp: async (app) => {
+  openApp: async (app: HomepageApp, query?: string) => {
     console.log('openApp called with:', app);
 
     // Don't open apps without a valid path
@@ -128,7 +128,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
             const hostname = currentHost.split(':')[0]; // 'localhost' from 'localhost:3000'
             const baseDomain = hostname; // For localhost, we just use 'localhost'
 
-            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
+            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}${query || ''}`;
 
             // Debug logging
             console.log('Opening secure subdomain app in new tab:', {
@@ -139,7 +139,8 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
               expectedSubdomain,
               subdomainUrl,
               protocol,
-              port
+              port,
+              query,
             });
 
             const newWindow = window.open(subdomainUrl, '_blank');
@@ -166,13 +167,11 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     const existingApp = runningApps.find(a => a.id === app.id);
 
     // Add to browser history for back button support
-    if (typeof window !== 'undefined') {
-      window.history.pushState(
-        { type: 'app', appId: app.id, previousAppId: currentAppId },
-        '',
-        `#app-${app.id}`
-      );
-    }
+    window?.history?.pushState(
+      { type: 'app', appId: app.id, previousAppId: currentAppId },
+      '',
+      `#app-${app.id}${query || ''}`
+    );
 
     if (existingApp) {
       set({
@@ -182,7 +181,11 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       });
     } else {
       set({
-        runningApps: [...runningApps, { ...app, openedAt: Date.now() }],
+        runningApps: [...runningApps, {
+          ...app,
+          path: `${app.path}${query ? `${query.startsWith('?') ? '' : '?'}${query}` : ''}`,
+          openedAt: Date.now()
+        }],
         currentAppId: app.id,
         isAppDrawerOpen: false,
         isRecentAppsOpen: false,

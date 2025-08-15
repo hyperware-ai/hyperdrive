@@ -3,8 +3,12 @@ import { FaExclamationTriangle } from 'react-icons/fa';
 import useAppsStore from '../store';
 import { BsArrowClockwise } from 'react-icons/bs';
 import { Modal } from './Modal';
+import classNames from 'classnames'
 
-const ResetButton: React.FC = () => {
+interface ResetButtonProps {
+    className?: string
+}
+const ResetButton: React.FC<ResetButtonProps> = ({ className }) => {
     const resetStore = useAppsStore(state => state.resetStore);
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -26,10 +30,11 @@ const ResetButton: React.FC = () => {
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="button grow md:grow-0 self-stretch md:self-center !bg-red-500 !text-white"
+                className={classNames(className, {
+                    '!bg-red-500 !text-white grow md:grow-0 self-stretch md:self-center ': !className
+                })}
             >
-                <span>Reset Store</span>
-                <BsArrowClockwise className="text-xl" />
+                <span>Reset store</span>
             </button>
 
             {isOpen && (
