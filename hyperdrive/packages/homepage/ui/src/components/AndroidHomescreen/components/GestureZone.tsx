@@ -134,7 +134,7 @@ export const GestureZone: React.FC = () => {
     <div
       ref={buttonRef}
       className={classNames(
-        "fixed z-50 select-none",
+        "fixed z-50 select-none touch-none",
         {
           "cursor-grabbing": isDragging,
           "cursor-pointer": !isDragging,

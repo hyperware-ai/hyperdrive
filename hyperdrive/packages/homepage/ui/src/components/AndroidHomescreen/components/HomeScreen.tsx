@@ -73,8 +73,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleDockDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+    try {e.preventDefault();} catch {}
+    try {e.stopPropagation();} catch {}
     const appId = e.dataTransfer.getData('appId');
     if (appId) {
       // Add to dock at the specified index
@@ -84,7 +84,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleDockDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     e.dataTransfer.dropEffect = 'move';
   };
 
@@ -99,7 +100,8 @@ export const HomeScreen: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!draggedAppId || !touchDragPosition) return;
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     const touch = e.touches[0];
     setTouchDragPosition({ x: touch.clientX, y: touch.clientY });
   };
@@ -262,11 +264,13 @@ export const HomeScreen: React.FC = () => {
       <div
         className="relative z-10 h-full"
         onDragOver={(e) => {
-          e.preventDefault();
+          try { e.preventDefault(); } catch { }
+          try { e.stopPropagation(); } catch { }
           e.dataTransfer.dropEffect = 'move';
         }}
         onDrop={(e) => {
-          e.preventDefault();
+          try { e.preventDefault(); } catch { }
+          try { e.stopPropagation(); } catch { }
           const appId = e.dataTransfer.getData('appId');
           // Only handle drops from dock apps or if dropping outside dock area
           const isDroppingOnDock = (e.target as HTMLElement).closest('.dock-area');
@@ -287,7 +291,8 @@ export const HomeScreen: React.FC = () => {
           const touch = e.touches[0];
           const element = document.elementFromPoint(touch.clientX, touch.clientY);
           if (element?.closest('.dock-area')) {
-            e.preventDefault();
+            try { e.preventDefault(); } catch { }
+            try { e.stopPropagation(); } catch { }
           }
         }}
       >
@@ -370,7 +375,8 @@ export const HomeScreen: React.FC = () => {
                   })}
                   onDragOver={handleDockDragOver}
                   onDrop={(e) => {
-                    e.stopPropagation();
+                    try { e.preventDefault(); } catch { }
+                    try { e.stopPropagation(); } catch { }
                     handleDockDrop(e, index);
                   }}
                 >
