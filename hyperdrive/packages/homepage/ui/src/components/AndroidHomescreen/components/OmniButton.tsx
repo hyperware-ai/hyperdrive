@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
-export const GestureZone: React.FC = () => {
+export const OmniButton: React.FC = () => {
   const { toggleRecentApps, isRecentAppsOpen, closeAllOverlays } = useNavigationStore();
   const { omnibuttonPosition, setOmnibuttonPosition } = usePersistenceStore();
   const [isDragging, setIsDragging] = useState(false);
@@ -47,7 +47,8 @@ export const GestureZone: React.FC = () => {
   const handleTouchEnd = () => {
     if (!isDragging && dragStart) {
       // Tap - open recent apps
-      toggleRecentApps();
+      if (!isRecentAppsOpen) toggleRecentApps();
+      else closeAllOverlays();
     }
     setDragStart(null);
     setIsDragging(false);

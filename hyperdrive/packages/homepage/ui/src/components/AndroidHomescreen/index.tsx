@@ -5,7 +5,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { AppContainer } from './components/AppContainer';
 import { AppDrawer } from './components/AppDrawer';
 import { RecentApps } from './components/RecentApps';
-import { GestureZone } from './components/GestureZone';
+import { OmniButton } from './components/OmniButton';
 import PWAUpdateNotification from '../PWAUpdateNotification';
 import PWAInstallPrompt from '../PWAInstallPrompt';
 import './styles/animations.css';
@@ -123,7 +123,7 @@ export default function AndroidHomescreen() {
       <RecentApps />
 
 
-      <GestureZone />
+      <OmniButton />
 
 
       <PWAUpdateNotification />
