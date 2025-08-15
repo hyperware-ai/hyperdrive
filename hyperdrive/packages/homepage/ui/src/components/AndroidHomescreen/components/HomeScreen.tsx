@@ -206,8 +206,8 @@ export const HomeScreen: React.FC = () => {
   }, [apps, homeScreenApps]);
 
   const widgetApps = useMemo(() => {
-    return homeApps.filter(app => app.widget && !widgetSettings[app.id]?.hide);
-  }, [homeApps, widgetSettings]);
+    return homeApps.filter(app => app.widget);
+  }, [homeApps]);
 
   // Get actual dock app objects from IDs
   const dockAppsList = useMemo(() => {
@@ -344,11 +344,12 @@ export const HomeScreen: React.FC = () => {
               index={index}
               totalWidgets={widgetApps.length}
               className={classNames({
-                'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase())
+                'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase()) && !widgetSettings[app.id]?.hide
               })}
             >
               {showWidgetOnboarding && index === 0 && <div
-                className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-neon w-fit text-xs animate-pulse text-black"
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-neon w-fit text-xs animate-pulse text-black cursor-pointer hover:opacity-80"
+                onClick={() => setShowWidgetOnboarding(false)}
               >
                 This is a widget. Drag it, resize it, or hide it!
               </div>}
