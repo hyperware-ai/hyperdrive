@@ -20,6 +20,10 @@ interface PersistenceStore {
   setWidgetSize: (appId: string, size: Size) => void;
   setBackgroundImage: (imageUrl: string | null) => void;
   setIsInitialized: (isInitialized: boolean) => void;
+  doNotShowOnboardingAgain: boolean;
+  setDoNotShowOnboardingAgain: (doNotShowOnboardingAgain: boolean) => void;
+  omnibuttonPosition: Position;
+  setOmnibuttonPosition: (position: Position) => void;
 }
 
 export const usePersistenceStore = create<PersistenceStore>()(
@@ -31,7 +35,10 @@ export const usePersistenceStore = create<PersistenceStore>()(
       appPositions: {},
       widgetSettings: {},
       backgroundImage: null,
-
+      doNotShowOnboardingAgain: false,
+      setDoNotShowOnboardingAgain: (doNotShowOnboardingAgain) => set({ doNotShowOnboardingAgain }),
+      omnibuttonPosition: { x: window.innerWidth - 80, y: 80 },
+      setOmnibuttonPosition: (position) => set({ omnibuttonPosition: position }),
       setIsInitialized: (isInitialized) => set({ isInitialized }),
 
       addToHomeScreen: (appId) => {
