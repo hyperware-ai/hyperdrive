@@ -14,8 +14,8 @@ export const GestureZone: React.FC = () => {
 
   // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
-    try { e.preventDefault(); } catch { }
-    try { e.stopPropagation(); } catch { }
+    e.cancelable && e.preventDefault();
+    e.stopPropagation();
     const touch = e.touches[0];
     setDragStart({
       x: touch.clientX,
@@ -27,8 +27,8 @@ export const GestureZone: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!dragStart) return;
-    try { e.preventDefault(); } catch { }
-    try { e.stopPropagation(); } catch { }
+    e.cancelable && e.preventDefault();
+    e.stopPropagation();
 
     const touch = e.touches[0];
     const deltaX = touch.clientX - dragStart.x;
@@ -59,8 +59,8 @@ export const GestureZone: React.FC = () => {
   // Mouse handlers for desktop
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isMobile) return;
-    try { e.preventDefault(); } catch { }
-    try { e.stopPropagation(); } catch { }
+    e.cancelable && e.preventDefault();
+    e.stopPropagation();
     setDragStart({
       x: e.clientX,
       y: e.clientY,
@@ -71,8 +71,8 @@ export const GestureZone: React.FC = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isMobile) return;
-    try { e.preventDefault(); } catch { }
-    try { e.stopPropagation(); } catch { }
+    e.cancelable && e.preventDefault();
+    e.stopPropagation();
     if (!dragStart) return;
 
     const deltaX = e.clientX - dragStart.x;
@@ -101,11 +101,11 @@ export const GestureZone: React.FC = () => {
   // Mouse event listeners
   useEffect(() => {
     if (dragStart) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove), { passive: false };
+      document.addEventListener('mouseup', handleMouseUp), { passive: false };
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mousemove', handleMouseMove), { passive: false };
+        document.removeEventListener('mouseup', handleMouseUp), { passive: false };
       };
     }
   }, [dragStart, isDragging]);

@@ -526,11 +526,11 @@ export const HomeScreen: React.FC = () => {
               })}>
 
                 {showBackgroundSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 z-100 w-sm">
                     <span className="text-neon prose text-sm font-semibold mb-3">Background</span>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-white/80 text-xs">Upload Image:</label>
+                        <label className="text-white/80 text-xs">Upload</label>
                         <input
                           type="file"
                           accept="image/*"
@@ -561,14 +561,14 @@ export const HomeScreen: React.FC = () => {
                           onClick={() => setBackgroundImage(null)}
                           className="w-full px-3 py-1.5 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white text-sm font-medium transition-all"
                         >
-                          Remove Background
+                          Remove
                         </button>
                       )}
                     </div>
                   </div>
                 )}
                 {showWidgetSettings && (
-                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 max-w-xs shadow-2xl border border-white/20 z-100">
+                  <div className="bg-black/80 backdrop-blur-xl rounded-2xl p-4 w-sm shadow-2xl border border-white/20 z-100">
                     <span className="text-neon text-sm font-semibold mb-3 prose">Widgets</span>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {homeApps.filter(app => app.widget).map(app => (
