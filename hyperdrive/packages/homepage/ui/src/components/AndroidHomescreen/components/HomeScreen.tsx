@@ -620,7 +620,7 @@ export const HomeScreen: React.FC = () => {
               <BsPencilSquare />
             </button>
             <button
-            className=" thin clear grow self-stretch max-w-sm md:max-w-md"
+            className=" thin  grow self-stretch max-w-sm md:max-w-md !justify-start !bg-black/10 dark:!bg-white/10 backdrop-blur-xl"
               onClick={() => toggleAppDrawer()}
             >
               <BsSearch
