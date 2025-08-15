@@ -614,7 +614,7 @@ export const HomeScreen: React.FC = () => {
             </a> */}
             <button
               onClick={() => setEditMode(true)}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !px-2"
+              className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !px-2 ml-auto"
               title="Edit apps, widgets, and background"
             >
               <BsPencilSquare />

@@ -29,9 +29,14 @@ export const AppDrawer: React.FC = () => {
 
   if (!isAppDrawerOpen) return null;
 
+  const isMobile = window.innerWidth < 768;
+
   return (
-    <div className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col">
-      <div className="p-2 self-stretch flex items-center gap-2">
+    <div
+    className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col"
+    onClick={toggleAppDrawer}
+    >
+      <div className="px-2 py-1 self-stretch flex items-center gap-2">
         <h2 className="prose">My Apps</h2>
         <div className="bg-black/10 dark:bg-white/10 flex items-center gap-2 ml-auto max-w-sm grow self-stretch rounded-lg pl-2">
           <BsSearch className="opacity-50" />
@@ -40,8 +45,8 @@ export const AppDrawer: React.FC = () => {
             placeholder="Search apps..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="grow self-stretch !bg-transparent p-0"
-            autoFocus
+            className="grow self-stretch !bg-transparent !p-0"
+            autoFocus={!isMobile}
           />
         </div>
       </div>
@@ -55,8 +60,15 @@ export const AppDrawer: React.FC = () => {
             'grid-cols-2': filteredApps.length === 0,
           })}>
           {filteredApps.map(app => (
-            <div key={app.id} className="relative group" data-app-id={app.id}>
-              <div onClick={() => openApp(app)}>
+            <div
+            key={app.id}
+            className="relative group"
+            data-app-id={app.id}
+            >
+              <div onClick={(e) => {
+                e.stopPropagation();
+                openApp(app);
+              }}>
                 <AppIcon app={app} isEditMode={false} />
               </div>
               {!homeScreenApps.includes(app.id) && (
@@ -77,7 +89,8 @@ export const AppDrawer: React.FC = () => {
                 <span
                   // href={`/main:app-store:sys/?search=${searchQuery}`}
                   className="underline text-iris font-bold cursor-pointer"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setSearchQuery('')
                     openApp(apps.find(a => a.id === 'main:app-store:sys')!, `?search=${searchQuery}`)
                   }}
@@ -88,14 +101,6 @@ export const AppDrawer: React.FC = () => {
             )}
         </div>
       </div>
-
-      <button
-        onClick={toggleAppDrawer}
-        className="m-4 p-4 text-center rounded-xl md:ml-auto"
-      >
-        <BsX className="text-lg" />
-        <span>Close</span>
-      </button>
     </div>
   );
 };
