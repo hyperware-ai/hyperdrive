@@ -1,113 +1,156 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
-import { BsChevronLeft, BsClock, BsHouse } from 'react-icons/bs';
+import { BsClock } from 'react-icons/bs';
 
 export const GestureZone: React.FC = () => {
-  const { toggleRecentApps, runningApps, currentAppId, switchToApp, isRecentAppsOpen, closeAllOverlays } = useNavigationStore();
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [isActive, setIsActive] = useState(false);
-  const [_isHovered, setIsHovered] = useState(false);
+  const { toggleRecentApps, isRecentAppsOpen } = useNavigationStore();
+  const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight / 2 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
+  const dragThreshold = 5; // pixels - swipes smaller than this will be treated as taps
+  const buttonRef = useRef<HTMLDivElement>(null);
 
-  // Touch handlers
+  // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
     const touch = e.touches[0];
-    setTouchStart({ x: touch.clientX, y: touch.clientY });
-    setIsActive(true);
+    setDragStart({
+      x: touch.clientX,
+      y: touch.clientY,
+      buttonX: position.x,
+      buttonY: position.y
+    });
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart) return;
+    if (!dragStart) return;
+    e.preventDefault();
 
     const touch = e.touches[0];
-    const deltaX = touchStart.x - touch.clientX;
-    const deltaY = touch.clientY - touchStart.y;
+    const deltaX = touch.clientX - dragStart.x;
+    const deltaY = touch.clientY - dragStart.y;
 
-    // Swipe left (show recent apps)
-    if (deltaX > 50 && Math.abs(deltaY) < 30) {
-      toggleRecentApps();
-      setTouchStart(null);
+    // Check if movement exceeds threshold to start dragging
+    if (!isDragging && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+      setIsDragging(true);
     }
 
-    // Swipe up/down (switch apps)
-    if (Math.abs(deltaY) > 50 && Math.abs(deltaX) < 30) {
-      const currentIndex = runningApps.findIndex(app => app.id === currentAppId);
-      if (currentIndex !== -1) {
-        const newIndex = deltaY > 0
-          ? Math.min(currentIndex + 1, runningApps.length - 1)
-          : Math.max(currentIndex - 1, 0);
-        if (newIndex !== currentIndex) {
-          switchToApp(runningApps[newIndex].id);
-        }
-      }
-      setTouchStart(null);
+    // Update position if dragging
+    if (isDragging || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
+      const newX = Math.max(30, Math.min(window.innerWidth - 30, dragStart.buttonX + deltaX));
+      const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
+      setPosition({ x: newX, y: newY });
     }
   };
 
   const handleTouchEnd = () => {
-    setTouchStart(null);
-    setIsActive(false);
+    if (!isDragging && dragStart) {
+      // Tap - open recent apps
+      toggleRecentApps();
+    }
+    setDragStart(null);
+    setIsDragging(false);
   };
 
-  // Desktop click handler
-  const handleClick = () => {
-    toggleRecentApps();
+  // Mouse handlers for desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      buttonX: position.x,
+      buttonY: position.y
+    });
   };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!dragStart) return;
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    if (!isDragging && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+      setIsDragging(true);
+    }
+
+    if (isDragging || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
+      const newX = Math.max(30, Math.min(window.innerWidth - 30, dragStart.buttonX + deltaX));
+      const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
+      setPosition({ x: newX, y: newY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging && dragStart) {
+      toggleRecentApps();
+    }
+    setDragStart(null);
+    setIsDragging(false);
+  };
+
+  // Mouse event listeners
+  useEffect(() => {
+    if (dragStart) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [dragStart, isDragging]);
+
+  // Handle window resize to keep button in bounds
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => ({
+        x: Math.max(30, Math.min(window.innerWidth - 30, prev.x)),
+        y: Math.max(30, Math.min(window.innerHeight - 30, prev.y))
+      }));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!isRecentAppsOpen) {
-      setTouchStart(null);
-      setIsActive(false);
+      setDragStart(null);
+      setIsDragging(false);
     }
   }, [isRecentAppsOpen]);
 
   return (
-    <>
-      <div
-        className={classNames("gesture-zone fixed right-0 w-12 z-40 transition-transform cursor-pointer",
-          {
-            'bg-radial-[at_100%_50%] from-black/10 dark:from-white/10 to-transparent w-12 h-full top-0': isActive,
-            'flex flex-col place-items-center place-content-center  h-1/2 top-1/4': !isActive
-          })}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {!isActive && <div className="bg-black/20 dark:bg-white/20 items-center backdrop-blur-xl px-1 py-3 rounded-l-xl flex flex-col self-end">
-          <button
-            onClick={handleClick}
-            className="thin clear">
-            <BsClock className="text-lg" />
-          </button>
-          <div className="h-px bg-black/20 dark:bg-white/20 w-full" />
-          <button
-            onClick={closeAllOverlays}
-            className="thin clear">
-            <BsHouse className="text-lg" />
-          </button>
-        </div>}
-      </div>
+    <div
+      ref={buttonRef}
+      className={classNames(
+        "fixed z-50 select-none transition-all duration-200",
+        {
+          "cursor-grabbing": isDragging,
+          "cursor-pointer": !isDragging,
+          "scale-110": isDragging
+        }
+      )}
+      style={{
+        left: position.x - 30,
+        top: position.y - 30,
+        transform: 'translate(0, 0)' // Prevent transform conflicts
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+    >
+      {/* Black rounded square background */}
+      <div className="absolute inset-0 w-16 h-16 bg-black/40 backdrop-blur-sm rounded-2xl shadow-lg" />
 
-      {/* {isHovered && !isActive && (
-        <div className="hidden md:block fixed right-12 top-1/2 transform -translate-y-1/2 bg-black/90 backdrop-blur text-white px-4 py-3 rounded-lg text-sm pointer-events-none z-50 shadow-xl">
-          <div className="flex items-center gap-2 mb-1">
-            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">Click</kbd>
-            <span>or</span>
-            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">S</kbd>
-            <span>Recent apps</span>
-          </div>
-          <div className="flex items-center gap-2 mb-1">
-            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">A</kbd>
-            <span>All apps</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <kbd className="px-2 py-1 bg-white/20 rounded text-xs">H</kbd>
-            <span>Home</span>
-          </div>
+      {/* White circle with icon */}
+      <div className="relative w-16 h-16 flex items-center justify-center">
+        <div className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center">
+          <BsClock className="text-lg text-black/80" />
         </div>
-      )} */}
-    </>
+      </div>
+    </div>
   );
 };

@@ -586,7 +586,7 @@ export const HomeScreen: React.FC = () => {
           )}
 
           {!isEditMode && <>
-            <a
+            {/* <a
               href="mailto:support@hyperware.ai"
               className="button bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm ml-auto !p-2"
               target="_blank"
@@ -594,7 +594,7 @@ export const HomeScreen: React.FC = () => {
               title="Get help & support"
             >
               <BsEnvelope />
-            </a>
+            </a> */}
             <button
               onClick={() => setEditMode(true)}
               className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !p-2"
@@ -638,11 +638,11 @@ export const HomeScreen: React.FC = () => {
         {showOnboarding && (
           <Modal
             onClose={() => setShowOnboarding(false)}
+            title="Welcome to Hyperware"
           >
-            <h2 className="prose">Welcome to Hyperware</h2>
             <p>Your gateway to the internet, reimagined.</p>
-            <p>Treat your node like your desktop by customizing the interface and pinning your favorite apps.</p>
-            <p>Your node, your data: finally, you have full control over your information.</p>
+            <p>Your node, your device: customize the interface, pin your favorite apps.</p>
+            <p>Your node, your data: take full control over your information.</p>
             <div className="flex flex-col items-center gap-2 ">
               <button
                 onClick={() => {

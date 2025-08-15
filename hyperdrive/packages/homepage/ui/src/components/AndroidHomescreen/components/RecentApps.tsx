@@ -9,9 +9,15 @@ export const RecentApps: React.FC = () => {
   if (!isRecentAppsOpen) return null;
 
   return (
-    <div className="recent-apps fixed inset-0 bg-gradient-to-b from-gray-900/50 to-white/50 dark:to-black/50 backdrop-blur-xl z-50 flex items-center justify-center">
+    <div
+    onClick={closeAllOverlays}
+    className="recent-apps fixed inset-0 bg-gradient-to-b from-gray-900/50 to-white/50 dark:to-black/50 backdrop-blur-xl z-50 flex items-center justify-center"
+    >
       {runningApps.length === 0 ? (
-        <div className="text-center flex flex-col items-center justify-center gap-4">
+        <div
+        onClick={closeAllOverlays}
+        className="text-center flex flex-col items-center justify-center gap-4"
+        >
           <div className="text-6xl">📱</div>
           <h2 className="text-xl opacity-70">No running apps</h2>
           <p className="opacity-50">Open an app to see it here</p>
@@ -29,16 +35,24 @@ export const RecentApps: React.FC = () => {
               {runningApps.map(app => (
                 <div
                   key={app.id}
-                  className="relative flex-shrink-0 w-72 h-96 bg-gradient-to-b from-black/10 to-black/20 dark:from-white/10 dark:to-white/20 rounded-3xl overflow-hidden cursor-pointer group transform transition-all hover:scale-105 hover:shadow-2xl"
-                  onClick={() => switchToApp(app.id)}
+                  className={`
+                    relative flex-shrink-0 w-72 h-96
+                    bg-gradient-to-b from-black/10 to-black/20 dark:from-white/10 dark:to-white/20
+                    rounded-3xl overflow-hidden cursor-pointer
+                     group transform transition-all hover:scale-105 hover:shadow-2xl
+                     `}
+                  onClick={(e) => {
+                    try { e.stopPropagation(); } catch { }
+                    try { e.preventDefault(); } catch { }
+                    switchToApp(app.id);
+                  }}
                 >
                   <div className="p-4 bg-gradient-to-r from-iris/20 dark:from-neon/20 to-transparent flex items-center justify-between">
                     <span className="font-medium">{app.label}</span>
                     <button
                       onClick={(e) => {
-                        try {
-                          e.stopPropagation();
-                        } catch { }
+                        try { e.stopPropagation(); } catch { }
+                        try { e.preventDefault(); } catch { }
                         closeApp(app.id);
                         if (runningApps.length === 1) {
                           closeAllOverlays();
