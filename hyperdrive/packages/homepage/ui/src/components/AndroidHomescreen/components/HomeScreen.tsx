@@ -364,8 +364,8 @@ export const HomeScreen: React.FC = () => {
                 <div
                   key={`slot-${index}`}
                   data-dock-index={index}
-                  className={classNames("w-16 relative", {
-                    'h-16': !app,
+                  className={classNames("w-14 md:w-16 relative", {
+                    'h-14 md:h-16': !app,
                     'self-stretch': app,
                   })}
                   onDragOver={handleDockDragOver}
@@ -433,11 +433,11 @@ export const HomeScreen: React.FC = () => {
               <span className="text-[10px] !text-black dark:!text-white whitespace-nowrap">My apps</span>
             </div>
             <div
-              className="flex flex-col gap-1 items-center"
+              className="hidden md:flex flex-col gap-1 items-center"
               onClick={toggleRecentApps}
             >
               <button
-                className="!hidden md:!flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
+                className="flex w-16 h-16 !bg-iris !text-neon !rounded-xl text-2xl hover:!bg-neon hover:!text-iris "
               >
                 <BsClock className="text-2xl" />
               </button>
@@ -481,22 +481,26 @@ export const HomeScreen: React.FC = () => {
               <div className={"flex items-center justify-end gap-2"}>
                 <button
                   onClick={() => setShowBackgroundSettings(!showBackgroundSettings)}
-                  className={classNames(" text-sm", {
+                  className={classNames("!p-2 text-sm", {
                     'bg-gradient-to-r from-gray-600 to-gray-700 !text-neon': !showBackgroundSettings,
+                    'bg-neon text-black': showBackgroundSettings,
                   })}
                   title="Settings"
                 >
-                  <BsImage /> <span>Background</span>
+                  <BsImage />
+                  <span>Background</span>
                 </button>
 
                 <button
                   onClick={() => setShowWidgetSettings(!showWidgetSettings)}
-                  className={classNames(" text-sm", {
+                  className={classNames("!p-2 text-sm", {
                     'bg-gradient-to-r from-gray-600 to-gray-700 !text-neon': !showWidgetSettings,
+                    'bg-neon text-black': showWidgetSettings,
                   })}
                   title="Settings"
                 >
-                  <BsLayers /> <span>Widgets</span>
+                  <BsLayers />
+                  <span>Widgets</span>
                 </button>
                 <button
                   onClick={() => {
@@ -504,7 +508,7 @@ export const HomeScreen: React.FC = () => {
                     setShowBackgroundSettings(false);
                     setShowWidgetSettings(false);
                   }}
-                  className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
+                  className="!p-2 bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm"
                 >
                   <BsCheck />
                   <span>Done</span>
@@ -602,7 +606,7 @@ export const HomeScreen: React.FC = () => {
             >
               <BsPencilSquare />
             </button>
-            <div className=" flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-md relative">
+            <div className=" flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-sm md:max-w-md relative">
               <BsSearch className="opacity-50" />
               <input
                 type="text"

@@ -13,7 +13,8 @@ export const GestureZone: React.FC = () => {
 
   // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     const touch = e.touches[0];
     setDragStart({
       x: touch.clientX,
@@ -25,7 +26,8 @@ export const GestureZone: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!dragStart) return;
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
 
     const touch = e.touches[0];
     const deltaX = touch.clientX - dragStart.x;
@@ -55,7 +57,8 @@ export const GestureZone: React.FC = () => {
 
   // Mouse handlers for desktop
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     setDragStart({
       x: e.clientX,
       y: e.clientY,
@@ -65,6 +68,8 @@ export const GestureZone: React.FC = () => {
   };
 
   const handleMouseMove = (e: MouseEvent) => {
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     if (!dragStart) return;
 
     const deltaX = e.clientX - dragStart.x;
@@ -125,7 +130,7 @@ export const GestureZone: React.FC = () => {
     <div
       ref={buttonRef}
       className={classNames(
-        "fixed z-50 select-none transition-all duration-200",
+        "fixed z-50 select-none",
         {
           "cursor-grabbing": isDragging,
           "cursor-pointer": !isDragging,
@@ -147,8 +152,7 @@ export const GestureZone: React.FC = () => {
 
       {/* White circle with icon */}
       <div className="relative w-16 h-16 flex items-center justify-center">
-        <div className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center">
-          <BsClock className="text-lg text-black/80" />
+        <div className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center">
         </div>
       </div>
     </div>

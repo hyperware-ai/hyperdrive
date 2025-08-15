@@ -45,7 +45,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
       data-app-publisher={app.publisher}
     >
 
-      <div className={classNames("rounded-xl w-16 h-16 overflow-hidden flex items-center justify-center shadow-lg relative", {
+      <div className={classNames("rounded-xl w-14 h-14 md:w-16 md:h-16 overflow-hidden flex items-center justify-center shadow-lg relative", {
         'mb-1': isUndocked,
       })}>
         {app.base64_icon ? (
