@@ -36,7 +36,6 @@ export const HomeScreen: React.FC = () => {
   const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
   const [showWidgetSettings, setShowWidgetSettings] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
   const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
 
@@ -300,7 +299,7 @@ export const HomeScreen: React.FC = () => {
         {floatingApps
           .filter(app => {
             return !app.id.includes('homepage:homepage:sys')  // don't show the clock icon because it does nothing.
-              && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
+              // && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           })
           .map((app, index, allApps) => {
             const position = appPositions[app.id] || calculateAppIconPosition(app.id, index, allApps.length);
@@ -344,7 +343,8 @@ export const HomeScreen: React.FC = () => {
               index={index}
               totalWidgets={widgetApps.length}
               className={classNames({
-                'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase()) && !widgetSettings[app.id]?.hide
+                // 'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase()) && !widgetSettings[app.id]?.hide
+                'invisible pointer-events-none': !widgetSettings[app.id]?.hide
               })}
             >
               {showWidgetOnboarding && index === 0 && <div
@@ -362,7 +362,7 @@ export const HomeScreen: React.FC = () => {
           onDragOver={handleDockDragOver}
           onDrop={(e) => handleDockDrop(e, dockAppsList.length)}
         >
-          <div className="bg-white dark:bg-black/60 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex  gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
+          <div className="bg-white/10 backdrop-blur-xl rounded-t-3xl md:rounded-b-3xl p-3 flex  gap-2 shadow-2xl border-b-0 md:border-b border border-white/20">
 
             {Array.from({ length: 4 }).map((_, index) => {
               const app = dockAppsList[index];
@@ -619,35 +619,19 @@ export const HomeScreen: React.FC = () => {
             >
               <BsPencilSquare />
             </button>
-            <div className=" flex grow self-stretch items-center gap-2 bg-white dark:bg-black rounded-lg px-2 max-w-sm md:max-w-md relative">
-              <BsSearch className="opacity-50" />
-              <input
-                type="text"
-                className=" grow self-stretch !bg-transparent !p-0"
-                placeholder="Search apps..."
-                onChange={(e) => setSearchQuery(e.target.value)}
-                value={searchQuery}
+            <button
+            className=" thin clear grow self-stretch max-w-sm md:max-w-md"
+              onClick={() => toggleAppDrawer()}
+            >
+              <BsSearch
+                className="opacity-50"
               />
-
               <div
-                className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center', {
-                  'hidden pointer-events-none': !searchQuery,
-                  'absolute top-full left-1/2 -translate-x-1/2 w-fit max-w-md z-10': searchQuery,
-                })}
+                className="grow"
               >
-                <span>No installed apps found.</span>
-                <span
-                  // href={`/main:app-store:sys/?search=${searchQuery}`}
-                  className="underline text-iris font-bold cursor-pointer"
-                  onClick={() => {
-                    setSearchQuery('')
-                    openApp(apps.find(a => a.id === 'main:app-store:sys')!, `?search=${searchQuery}`)
-                  }}
-                >
-                  Search the app store
-                </span>
+                Search apps...
               </div>
-            </div>
+            </button>
           </>}
 
         </div>

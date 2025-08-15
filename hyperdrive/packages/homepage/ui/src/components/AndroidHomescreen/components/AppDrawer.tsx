@@ -5,6 +5,7 @@ import { useNavigationStore } from '../../../stores/navigationStore';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import { AppIcon } from './AppIcon';
 import { BsSearch, BsX } from 'react-icons/bs';
+import classNames from 'classnames';
 
 export const AppDrawer: React.FC = () => {
   const { apps } = useAppStore();
@@ -30,16 +31,16 @@ export const AppDrawer: React.FC = () => {
 
   return (
     <div className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col">
-      <div className="p-4 self-stretch flex items-center gap-2">
+      <div className="p-2 self-stretch flex items-center gap-2">
         <h2 className="prose">My Apps</h2>
-        <div className="bg-black/10 dark:bg-white/10 flex items-center gap-2 ml-auto max-w-md grow self-stretch rounded-lg pl-2">
-          <BsSearch className="opacity-50 text-lg" />
+        <div className="bg-black/10 dark:bg-white/10 flex items-center gap-2 ml-auto max-w-sm grow self-stretch rounded-lg pl-2">
+          <BsSearch className="opacity-50" />
           <input
             type="text"
             placeholder="Search apps..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="grow self-stretch bg-transparent"
+            className="grow self-stretch !bg-transparent p-0"
             autoFocus
           />
         </div>
@@ -62,6 +63,23 @@ export const AppDrawer: React.FC = () => {
               )}
             </div>
           ))}
+          {filteredApps.length === 0 && (
+              <div
+                className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center')}
+              >
+                <span>No installed apps found.</span>
+                <span
+                  // href={`/main:app-store:sys/?search=${searchQuery}`}
+                  className="underline text-iris font-bold cursor-pointer"
+                  onClick={() => {
+                    setSearchQuery('')
+                    openApp(apps.find(a => a.id === 'main:app-store:sys')!, `?search=${searchQuery}`)
+                  }}
+                >
+                  Search the app store
+                </span>
+              </div>
+            )}
         </div>
       </div>
 
