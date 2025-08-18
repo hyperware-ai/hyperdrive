@@ -5,6 +5,7 @@ wit/
 **/wit-*/
 **/*.wasm
 .vscode
+/.idea
 .app-signing
 .DS_Store
 *.swp
@@ -29,4 +30,3 @@ hyperdrive/packages/docs/pkg/ui
 hyperdrive/src/register-ui/build/
 hyperdrive/src/register-ui/dist/
 hyperdrive/packages/docs/pkg/ui
-/.idea
