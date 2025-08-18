@@ -6,15 +6,15 @@ import { AppContainer } from './components/AppContainer';
 import { AppDrawer } from './components/AppDrawer';
 import { RecentApps } from './components/RecentApps';
 import { OmniButton } from './components/OmniButton';
-import PWAUpdateNotification from '../PWAUpdateNotification';
-import PWAInstallPrompt from '../PWAInstallPrompt';
+import UpdateNotification from '../UpdateNotification';
+import InstallPrompt from '../InstallPrompt';
 import './styles/animations.css';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
-export default function AndroidHomescreen() {
-  const { setApps } = useAppStore();
+export default function Home() {
+  const { apps, setApps } = useAppStore();
   const {
     runningApps,
     currentAppId,
@@ -24,9 +24,58 @@ export default function AndroidHomescreen() {
     switchToApp,
     toggleAppDrawer,
     closeAllOverlays,
-    initBrowserBackHandling
+    initBrowserBackHandling,
+    openApp,
   } = useNavigationStore();
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event?.data?.type) {
+        // ignore other iframe messages e.g. metamask 
+        return;
+      }
+      let allGood = true;
+      // App Store is a good boy, he can send messages to us
+      const replaced = window.location.origin.replace(/^(https?:\/\/)/, '$1app-store-sys.')
+      if (
+        replaced !== event.origin
+      ) {
+        console.log('expected same origin or app-store-sys, got:', event.origin, window.location.origin, replaced);
+        allGood = false;
+      }
+      if (event.data.type !== 'OPEN_APP') {
+        console.log('expected OPEN_APP, got:', event.data.type);
+        allGood = false;
+      }
+      if (!allGood) {
+        console.log('not all good', { event });
+        return;
+      }
+
+      if (event.data.type === 'OPEN_APP') {
+        const { id } = event.data;
+        const appMatches = apps.filter(app => app.id.endsWith(':' + id));
+        if (appMatches.length > 1) {
+          console.error('Multiple apps found with the same id:', { id, apps });
+        } else if (appMatches.length === 0) {
+          console.error('App not found:', { id, apps });
+        }
+        const app = appMatches[0];
+        if (app) {
+          openApp(app);
+        } else {
+          console.error('App not found:', { id, apps });
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [apps, openApp]);
+
 
   // Keyboard shortcuts for desktop
   useEffect(() => {
@@ -126,10 +175,10 @@ export default function AndroidHomescreen() {
       <OmniButton />
 
 
-      <PWAUpdateNotification />
+      <UpdateNotification />
 
 
-      <PWAInstallPrompt />
+      <InstallPrompt />
     </div>
   );
 }

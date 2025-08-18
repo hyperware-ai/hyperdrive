@@ -6,105 +6,19 @@ import { ResetButton } from "../components";
 import { AppCard } from "../components/AppCard";
 import { BsSearch } from "react-icons/bs";
 import classNames from "classnames";
-import { useLocation } from "react-router-dom";
-const mockApps: AppListing[] = [
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App",
-      description: "This is a test app",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App",
-      description: "This is a test app",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App TestappTestappTestappTestappTestapp",
-      description: "adsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege a",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App",
-      description: "This is a test app",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-nodetest-nodetest-nodetest-nodetest-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-];
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function StorePage() {
-  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, fetchHomepageApps, getLaunchUrl } = useAppsStore();
+  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, fetchHomepageApps, getLaunchUrl, navigateToApp } = useAppsStore();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [launchableApps, setLaunchableApps] = useState<AppListing[]>([]);
   const [appsNotInstalled, setAppsNotInstalled] = useState<AppListing[]>([]);
-  const [isDevMode, setIsDevMode] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // if we have ?search=something, set the search query to that
   const location = useLocation();
+  const navigate = useNavigate();
   useEffect(() => {
     console.log({ location })
     const search = new URLSearchParams(location.search).get("search");
@@ -124,12 +38,6 @@ export default function StorePage() {
     setPageSize(newPageSize);
     setCurrentPage(Math.ceil(filteredApps.length / newPageSize));
   }
-
-  useEffect(() => {
-    if (searchQuery.match(/``````/)) {
-      setIsDevMode(!isDevMode);
-    }
-  }, [searchQuery]);
 
   useEffect(() => {
     fetchListings();
@@ -177,20 +85,6 @@ export default function StorePage() {
         />
       </div>
 
-
-      {isDevMode && <div
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-      >
-        {mockApps.map((app) => (
-          <AppCard
-            key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`}
-            app={app}
-          >
-            <ActionChip label="Install" />
-            <ActionChip label="Launch" />
-          </AppCard>
-        ))}
-      </div>}
       {!listings ? (
         <p>Loading...</p>
       ) : filteredApps.length === 0 ? (
@@ -207,9 +101,15 @@ export default function StorePage() {
               app={app}
             >
               {appsNotInstalled.includes(app)
-                ? <ActionChip label="Install" />
+                ? <ActionChip
+                  label="Install"
+                  onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=install`)}
+                />
                 : launchableApps.includes(app)
-                  ? <ActionChip label="Launch" />
+                  ? <ActionChip
+                    label="Launch"
+                    onClick={() => navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`)}
+                  />
                   : <ActionChip label="Installed" />}
             </AppCard>
           ))}
@@ -257,8 +157,13 @@ export default function StorePage() {
 const ActionChip: React.FC<{
   label: string;
   className?: string;
-}> = ({ label, className }) => {
+  onClick?: () => void;
+}> = ({ label, className, onClick }) => {
   return <div
-    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", className)}>{label}
+    onClick={onClick}
+    data-action-button={!!onClick}
+    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", {
+      'cursor-pointer hover:opacity-80': onClick,
+    }, className)}>{label}
   </div>
 }

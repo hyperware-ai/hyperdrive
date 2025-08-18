@@ -4,6 +4,7 @@ import { PackageState, AppListing, MirrorCheckFile, DownloadItem, HomepageApp, M
 import { HTTP_STATUS } from '../constants/http'
 import HyperwareClientApi from "@hyperware-ai/client-api"
 import { WEBSOCKET_URL } from '../utils/ws'
+import { toast } from 'react-toastify';
 
 const BASE_URL = '/main:app-store:sys'
 
@@ -56,6 +57,10 @@ interface AppsStore {
   checkMirrors: (packageId: string, onMirrorSelect: (mirror: string, status: boolean | null | 'http') => void) => Promise<{ mirror: string, status: boolean | null | 'http', mirrors: string[] } | { error: string, mirrors: string[] }>
   setShowPublicAppStore: (show: boolean) => Promise<void>
   fetchPublicAppStoreStatus: () => Promise<void>
+
+  navigateToApp: (id: string) => void
+
+  addToast: (message: string, status: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
 const useAppsStore = create<AppsStore>()((set, get) => ({
@@ -369,10 +374,20 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
     }));
   },
 
+  addToast: (message: string, status: 'success' | 'error' | 'info' | 'warning') => {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    toast[status](message, {
+      toastId: message,
+      theme: isDark ? 'dark' : 'light',
+    });
+  },
 
-  addNotification: (notification) => set(state => ({
-    notifications: [...state.notifications, notification]
-  })),
+  addNotification: (notification) => {
+    set(state => ({
+      notifications: [...state.notifications, notification]
+    }));
+    get().addToast(notification.message, notification.type === 'error' ? 'error' : 'info');
+  },
 
   removeNotification: (id) => set(state => ({
     notifications: state.notifications.filter(n => n.id !== id)
@@ -455,6 +470,13 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
       onMirrorSelect("", false);
       return { error: "Failed mirror check", mirrors: [] };
     }
+  },
+
+  navigateToApp: (id: string) => {
+    window.parent.postMessage({
+      type: 'OPEN_APP',
+      id
+    }, '*');
   },
 
   resetStore: async () => {

@@ -20,7 +20,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
   const [isPressed, setIsPressed] = useState(false);
 
   const handlePress = () => {
-    if (!isEditMode && app.path) {
+    if (!isEditMode && app.path && app.path !== null) {
       openApp(app);
     }
   };

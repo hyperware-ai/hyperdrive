@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import useAppsStore from "../store";
 import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
@@ -36,10 +36,9 @@ const MOCK_APP: AppListing = {
   auto_update: false
 };
 
-const isMobile = window.innerWidth < 768;
-
 export default function AppPage() {
   const { id } = useParams();
+  const location = useLocation();
   const {
     fetchListing,
     fetchInstalledApp,
@@ -53,7 +52,9 @@ export default function AppPage() {
     activeDownloads,
     installApp,
     clearAllActiveDownloads,
-    checkMirrors
+    checkMirrors,
+    navigateToApp,
+    addNotification,
   } = useAppsStore();
 
   const [app, setApp] = useState<AppListing | null>(null);
@@ -243,7 +244,13 @@ export default function AppPage() {
       }
     } catch (error) {
       console.error('Installation flow failed:', error);
-      setError('Installation failed. Please try again.');
+      const errorString = Object.keys(error).length > 0 ? `: ${JSON.stringify(error).slice(0, 100)}...` : '';
+      addNotification({
+        id: `installation-flow-failed-${id}-${selectedVersion}`,
+        timestamp: Date.now(),
+        type: 'error',
+        message: `Installation flow failed${errorString ? ': ' + errorString : ''}`,
+      });
     }
   }, [id, selectedMirror, app, selectedVersion, sortedVersions, downloadApp, fetchDownloadsForApp]);
 
@@ -268,18 +275,15 @@ export default function AppPage() {
       }, 3000);
     } catch (error) {
       console.error('Installation failed:', error);
-      setError('Installation failed. Please try again.');
+      const errorString = Object.keys(error).length > 0 ? `: ${JSON.stringify(error).slice(0, 100)}...` : '';
+      addNotification({
+        id: `installation-failed-${id}-${selectedVersion}`,
+        timestamp: Date.now(),
+        type: 'error',
+        message: `Installation failed${errorString ? ': ' + errorString : ''}`,
+      });
     }
   }, [id, selectedVersion, app, sortedVersions, installApp, fetchHomepageApps, loadData]);
-
-  const handleLaunch = useCallback(() => {
-    if (!app) return;
-    const launchUrl = getLaunchUrl(`${app.package_id.package_name}:${app.package_id.publisher_node}`);
-    if (launchUrl) {
-      window.location.href = window.location.origin.replace('//app-store-sys.', '//') + launchUrl;
-    }
-  }, [app, getLaunchUrl]);
-
 
   const handleUninstall = async () => {
     if (!app) return;
@@ -289,7 +293,13 @@ export default function AppPage() {
       await loadData();
     } catch (error) {
       console.error('Uninstallation failed:', error);
-      setError(`Uninstallation failed: ${error instanceof Error ? error.message : String(error)}`);
+      const errorString = Object.keys(error).length > 0 ? `: ${JSON.stringify(error).slice(0, 100)}...` : '';
+      addNotification({
+        id: `uninstallation-failed-${id}`,
+        timestamp: Date.now(),
+        type: 'error',
+        message: `Uninstallation failed${errorString ? ': ' + errorString : ''}`,
+      });
     } finally {
       setIsUninstalling(false);
       window.location.reload();
@@ -308,7 +318,13 @@ export default function AppPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to toggle auto-update:', error);
-      setError(`Failed to toggle auto-update: ${error instanceof Error ? error.message : String(error)}`);
+      const errorString = Object.keys(error).length > 0 ? `: ${JSON.stringify(error).slice(0, 100)}...` : '';
+      addNotification({
+        id: `auto-update-failed-${id}-${latestVersion}`,
+        timestamp: Date.now(),
+        type: 'error',
+        message: `Failed to toggle auto-update${errorString ? ': ' + errorString : ''}`,
+      });
     } finally {
       setIsTogglingAutoUpdate(false);
     }
@@ -339,6 +355,37 @@ export default function AppPage() {
     window.scrollTo(0, 0);
   }, [loadData, clearAllActiveDownloads]);
 
+  // Handle intent parameter from URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const intent = searchParams.get('intent');
+
+    if (!intent || !app || !id) return;
+
+    // Auto-trigger actions based on intent
+    if (intent === 'launch' && canLaunch) {
+      // Automatically launch the app
+      setTimeout(() => {
+        navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`);
+      }, 500); // Small delay to ensure UI is ready
+    } else if (intent === 'install' && !installedApp) {
+      // Automatically trigger install modal
+      setTimeout(() => {
+        if (!isDownloaded) {
+          // Need to download first
+          if (!selectedMirror || isMirrorOnline === null) {
+            setAttemptedDownload(true);
+          } else {
+            handleInstallFlow(true);
+          }
+        } else {
+          // Already downloaded, just install
+          handleInstallFlow(false);
+        }
+      }, 500); // Small delay to ensure UI is ready
+    }
+  }, [location.search, app, id, canLaunch, installedApp, isDownloaded, selectedMirror, isMirrorOnline, handleInstallFlow]);
+
   if (isLoading) {
     return (
       <div className="app-page min-h-screen">
@@ -348,17 +395,6 @@ export default function AppPage() {
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="app-page min-h-screen">
-        <div className="h-40 flex items-center justify-center">
-          <h4>{error}</h4>
-        </div>
-      </div>
-    );
-  }
-
   if (!app) {
     return (
       <div className="app-page min-h-screen">
@@ -394,7 +430,7 @@ export default function AppPage() {
       </button>
       {(canLaunch || isDevMode) && (
         <button
-          onClick={handleLaunch}
+          onClick={() => navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`)}
         >
           <FaPlay />
           <span >Launch</span>
@@ -470,6 +506,9 @@ export default function AppPage() {
           </div>
         </Modal>
       )}
+      {error && <div className="h-40 flex items-center justify-center">
+        <h4 className="text-red-500 bg-red-500/10 p-2 rounded-lg">{error.slice(0, 100)}...</h4>
+      </div>}
       <div className="flex justify-between gap-2 flex-wrap">
         <div className="w-16 md:w-32 h-16 md:h-32 flex items-center justify-center rounded-lg">
           {app.metadata?.image && <img
@@ -479,7 +518,7 @@ export default function AppPage() {
           />}
           {!app.metadata?.image &&
             <div className="w-16 md:w-32 h-16 md:h-32 rounded-lg aspect-square bg-iris dark:bg-neon flex items-center justify-center">
-              <span className="text-white font-bold text-2xl md:text-4xl">
+              <span className="text-white dark:text-black font-bold text-2xl md:text-4xl">
                 {app.package_id.package_name.charAt(0).toUpperCase() + (app.package_id.package_name.charAt(1) || '').toLowerCase()}
               </span>
             </div>}
