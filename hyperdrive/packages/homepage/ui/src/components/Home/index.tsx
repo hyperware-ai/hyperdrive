@@ -14,6 +14,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
 export default function Home() {
+
   const { apps, setApps } = useAppStore();
   const {
     runningApps,
@@ -35,21 +36,67 @@ export default function Home() {
         // ignore other iframe messages e.g. metamask 
         return;
       }
+
       let allGood = true;
-      // App Store is a good boy, he can send messages to us
-      const replaced = window.location.origin.replace(/^(https?:\/\/)/, '$1app-store-sys.')
-      if (
-        replaced !== event.origin
-      ) {
-        console.log('expected same origin or app-store-sys, got:', event.origin, window.location.origin, replaced);
+
+      const isValidOrigin = (() => {
+        const currentOrigin = window.location.origin;
+        const eventOrigin = event.origin;
+
+        // Allow same origin (homepage calling itself)
+        if (eventOrigin === currentOrigin) {
+          return true;
+        }
+
+        // App Store is a good boy, he can send messages to us
+        const appStoreOrigin = currentOrigin.replace(/^(https?:\/\/)/, '$1app-store-sys.');
+        if (eventOrigin === appStoreOrigin) {
+          return true;
+        }
+
+        // Allow other apps from same domain/host
+        // Pattern: https://[app-name]-[publisher].domain.com or http://[app-name]-[publisher].localhost:port
+        const currentUrl = new URL(currentOrigin);
+        const eventUrl = new URL(eventOrigin);
+
+        // Must be same protocol and port
+        if (currentUrl.protocol !== eventUrl.protocol || currentUrl.port !== eventUrl.port) {
+          return false;
+        }
+
+        // For localhost: allow any subdomain pattern
+        if (currentUrl.hostname.includes('localhost')) {
+          return eventUrl.hostname.endsWith('.localhost') || eventUrl.hostname === 'localhost';
+        }
+
+        // For production: allow subdomains of same base domain
+        const getCurrentBaseDomain = (hostname: string) => {
+          const parts = hostname.split('.');
+          return parts.length >= 2 ? parts.slice(-2).join('.') : hostname;
+        };
+
+        const currentBaseDomain = getCurrentBaseDomain(currentUrl.hostname);
+        const eventBaseDomain = getCurrentBaseDomain(eventUrl.hostname);
+
+        return currentBaseDomain === eventBaseDomain;
+      })();
+
+      if (!isValidOrigin) {
+        console.log('Invalid origin for OPEN_APP:', {
+          expected: window.location.origin,
+          got: event.origin,
+          type: event.data.type
+        });
         allGood = false;
       }
+
       if (event.data.type !== 'OPEN_APP') {
         console.log('expected OPEN_APP, got:', event.data.type);
         allGood = false;
       }
+
       if (!allGood) {
-        console.log('not all good', { event });
+        console.log('Message rejected:', { event });
         return;
       }
 

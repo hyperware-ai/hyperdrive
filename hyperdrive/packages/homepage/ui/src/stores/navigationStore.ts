@@ -166,6 +166,11 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     const { runningApps, currentAppId } = get();
     const existingApp = runningApps.find(a => a.id === app.id);
 
+    if (existingApp && currentAppId === app.id) {
+      console.log('App already open:', { app });
+      return;
+    }
+
     // Add to browser history for back button support
     window?.history?.pushState(
       { type: 'app', appId: app.id, previousAppId: currentAppId },
