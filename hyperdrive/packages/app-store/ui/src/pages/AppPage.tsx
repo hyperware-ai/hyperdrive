@@ -80,6 +80,8 @@ export default function AppPage() {
   const [isDevMode, setIsDevMode] = useState(false);
   const [backtickPressCount, setBacktickPressCount] = useState(0);
   const [detailExpanded, setDetailExpanded] = useState(false);
+  const [hasProcessedIntent, setHasProcessedIntent] = useState(false);
+
   useEffect(() => {
     const backTickCounter = (e: KeyboardEvent) => {
       if (e.key === '`') {
@@ -353,6 +355,8 @@ export default function AppPage() {
     loadData();
     clearAllActiveDownloads();
     window.scrollTo(0, 0);
+    // Reset intent processing flag when navigating to a different app
+    setHasProcessedIntent(false);
   }, [loadData, clearAllActiveDownloads]);
 
   // Handle intent parameter from URL
@@ -360,7 +364,20 @@ export default function AppPage() {
     const searchParams = new URLSearchParams(location.search);
     const intent = searchParams.get('intent');
 
-    if (!intent || !app || !id) return;
+    if (!intent || !app || !id) {
+      setHasProcessedIntent(true);
+      return;
+    }
+
+    if (hasProcessedIntent) return;
+
+    // For install intent, ensure all required data is loaded before proceeding
+    if (intent === 'install' && !installedApp) {
+      // Wait for selectedVersion to be set (indicates app data is fully loaded)
+      if (!selectedVersion || isLoading) return;
+    }
+
+    setHasProcessedIntent(true);
 
     // Auto-trigger actions based on intent
     if (intent === 'launch' && canLaunch) {
@@ -384,7 +401,7 @@ export default function AppPage() {
         }
       }, 500); // Small delay to ensure UI is ready
     }
-  }, [location.search, app, id, canLaunch, installedApp, isDownloaded, selectedMirror, isMirrorOnline, handleInstallFlow]);
+  }, [location.search, app, id, canLaunch, installedApp, isDownloaded, selectedMirror, isMirrorOnline, handleInstallFlow, hasProcessedIntent, selectedVersion, isLoading]);
 
   if (isLoading) {
     return (

@@ -11,6 +11,7 @@ import InstallPrompt from '../InstallPrompt';
 import './styles/animations.css';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { isIframeMessage } from '../../types/messages';
 dayjs.extend(relativeTime);
 
 export default function Home() {
@@ -32,8 +33,8 @@ export default function Home() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (!event?.data?.type) {
-        // ignore other iframe messages e.g. metamask 
+      if (!isIframeMessage(event.data)) {
+        // ignore other iframe messages e.g. metamask
         return;
       }
 
