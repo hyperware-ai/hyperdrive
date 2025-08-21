@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import useAppsStore from "../store";
+import useAppsStore from "../store/appStoreStore";
 import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
@@ -231,7 +231,9 @@ export default function AppPage() {
       }
 
       const downloads = await fetchDownloadsForApp(id);
+      console.log({ downloads });
       const download = downloads.find(d => d.File?.name === `${versionData.hash}.zip`);
+      console.log({ download });
 
       if (download?.File?.manifest) {
         const manifest_response: ManifestResponse = {
@@ -364,42 +366,59 @@ export default function AppPage() {
     const searchParams = new URLSearchParams(location.search);
     const intent = searchParams.get('intent');
 
+    console.log({ intent, app, id });
+
     if (!intent || !app || !id) {
-      setHasProcessedIntent(true);
+      console.log('no intent or app or id; returning');
       return;
     }
 
-    if (hasProcessedIntent) return;
+    if (hasProcessedIntent) {
+      console.log('has processed intent; returning');
+      return;
+    }
 
     // For install intent, ensure all required data is loaded before proceeding
     if (intent === 'install' && !installedApp) {
+      console.log('install intent; waiting for selectedVersion to be set');
       // Wait for selectedVersion to be set (indicates app data is fully loaded)
-      if (!selectedVersion || isLoading) return;
+      if (!selectedVersion || isLoading) {
+        console.log('selectedVersion or isLoading; returning');
+        return;
+      }
     }
 
+    console.log('setting hasProcessedIntent to true');
     setHasProcessedIntent(true);
 
     // Auto-trigger actions based on intent
     if (intent === 'launch' && canLaunch) {
       // Automatically launch the app
+      console.log('launch intent; navigating to app');
       setTimeout(() => {
         navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`);
       }, 500); // Small delay to ensure UI is ready
     } else if (intent === 'install' && !installedApp) {
       // Automatically trigger install modal
+      console.log('install intent; triggering install modal');
       setTimeout(() => {
         if (!isDownloaded) {
           // Need to download first
           if (!selectedMirror || isMirrorOnline === null) {
+            console.log('no selectedMirror or isMirrorOnline; setting attemptedDownload to true');
             setAttemptedDownload(true);
           } else {
+            console.log('selectedMirror and isMirrorOnline; triggering install flow');
             handleInstallFlow(true);
           }
         } else {
           // Already downloaded, just install
+          console.log('already downloaded; triggering install flow');
           handleInstallFlow(false);
         }
       }, 500); // Small delay to ensure UI is ready
+    } else {
+      console.log('unknown intent; returning');
     }
   }, [location.search, app, id, canLaunch, installedApp, isDownloaded, selectedMirror, isMirrorOnline, handleInstallFlow, hasProcessedIntent, selectedVersion, isLoading]);
 

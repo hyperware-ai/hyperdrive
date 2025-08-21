@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import useAppsStore from "../store";
+import useAppsStore from "../store/appStoreStore";
 
 interface PackageSelectorProps {
     onPackageSelect: (packageName: string, publisherId: string) => void;

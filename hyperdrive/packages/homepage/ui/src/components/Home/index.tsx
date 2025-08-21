@@ -11,7 +11,7 @@ import InstallPrompt from '../InstallPrompt';
 import './styles/animations.css';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { isIframeMessage } from '../../types/messages';
+import { IframeMessageType, isIframeMessage } from '../../types/messages';
 dayjs.extend(relativeTime);
 
 export default function Home() {
@@ -35,6 +35,7 @@ export default function Home() {
     const handleMessage = (event: MessageEvent) => {
       if (!isIframeMessage(event.data)) {
         // ignore other iframe messages e.g. metamask
+        console.log('ignoring message', { event });
         return;
       }
 
@@ -91,7 +92,7 @@ export default function Home() {
         allGood = false;
       }
 
-      if (event.data.type !== 'OPEN_APP') {
+      if (event.data.type !== IframeMessageType.OPEN_APP) {
         console.log('expected OPEN_APP, got:', event.data.type);
         allGood = false;
       }
@@ -101,7 +102,7 @@ export default function Home() {
         return;
       }
 
-      if (event.data.type === 'OPEN_APP') {
+      if (event.data.type === IframeMessageType.OPEN_APP) {
         const { id } = event.data;
         const appMatches = apps.filter(app => app.id.endsWith(':' + id));
         if (appMatches.length > 1) {

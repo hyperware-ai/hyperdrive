@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import useAppsStore from "../store";
+import useAppsStore from "../store/appStoreStore";
 import { AppListing } from "../types/Apps";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { ResetButton } from "../components";
@@ -9,9 +9,8 @@ import classNames from "classnames";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function StorePage() {
-  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, fetchHomepageApps, getLaunchUrl, navigateToApp } = useAppsStore();
+  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, homepageApps, fetchHomepageApps, getLaunchUrl, navigateToApp } = useAppsStore();
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [launchableApps, setLaunchableApps] = useState<AppListing[]>([]);
   const [appsNotInstalled, setAppsNotInstalled] = useState<AppListing[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -29,7 +28,6 @@ export default function StorePage() {
   }, [location]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e.target.value, searchQuery);
     setSearchQuery(e.target.value);
   }
 
@@ -48,17 +46,16 @@ export default function StorePage() {
 
   useEffect(() => {
     if (listings) {
-      setLaunchableApps(Object.values(listings).filter((app) => getLaunchUrl(`${app.package_id.package_name}:${app.package_id.publisher_node}`)));
-
       // Check if app is installed by looking in the installed state
       const notInstalledApps = Object.values(listings).filter((app) => {
         const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
+        console.log({ appId, installed, listings });
         return !installed[appId];
       });
       console.log({ notInstalledApps, installedKeys: Object.keys(installed) });
       setAppsNotInstalled(notInstalledApps);
     }
-  }, [listings, installed, getLaunchUrl]);
+  }, [listings, installed]);
 
   // extensive temp null handling due to weird prod bug
   const filteredApps = React.useMemo(() => {
@@ -105,7 +102,13 @@ export default function StorePage() {
                   label="Install"
                   onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=install`)}
                 />
-                : launchableApps.includes(app)
+                : homepageApps.find((hpa) => {
+                  const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
+                  const hpaId = hpa.id;
+                  const path = hpa.path || '';
+                  console.log({ appId, hpaId, path });
+                  return hpaId.endsWith(appId) && path
+                })
                   ? <ActionChip
                     label="Launch"
                     onClick={() => navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`)}

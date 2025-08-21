@@ -5,6 +5,7 @@ import { HTTP_STATUS } from '../constants/http'
 import HyperwareClientApi from "@hyperware-ai/client-api"
 import { WEBSOCKET_URL } from '../utils/ws'
 import { toast } from 'react-toastify';
+import { IframeMessageType } from '../types/messages'
 
 const BASE_URL = '/main:app-store:sys'
 
@@ -133,6 +134,7 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
           acc[`${pkg.package_id.package_name}:${pkg.package_id.publisher_node}`] = pkg;
           return acc;
         }, {} as Record<string, PackageState>);
+        console.log({ installedMap });
         set({ installed: installedMap });
       }
     } catch (error) {
@@ -205,6 +207,7 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
         const data = await res.json();
         const apps = data.GetApps || [];
         set({ homepageApps: apps });
+        console.log({ homepageApps: apps });
       }
     } catch (error) {
       console.error("Error fetching homepage apps:", error);
@@ -473,10 +476,22 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
   },
 
   navigateToApp: (id: string) => {
-    window.parent.postMessage({
-      type: 'OPEN_APP',
-      id
-    }, '*');
+    console.log('navigateToApp', id);
+    if (window.location.hostname.endsWith('.localhost')) {
+      console.log('localhost nav');
+      const app = get().homepageApps.find(app => `${app.package_name}:${app.publisher}` === id);
+      if (app) {
+        const path = app.path || '';
+        console.log('path', path);
+        window.location.href = path;
+      }
+    } else {
+      console.log('non-localhost nav')
+      window.parent.postMessage({
+        type: IframeMessageType.OPEN_APP,
+        id
+      }, '*');
+    }
   },
 
   resetStore: async () => {
