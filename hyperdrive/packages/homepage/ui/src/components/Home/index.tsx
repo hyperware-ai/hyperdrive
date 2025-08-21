@@ -32,7 +32,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (!isIframeMessage(event.data)) {
         // ignore other iframe messages e.g. metamask
         console.log('ignoring message', { event });
@@ -103,14 +103,18 @@ export default function Home() {
       }
 
       if (event.data.type === IframeMessageType.OPEN_APP) {
+        console.log({ openApp: event });
         const { id } = event.data;
-        const appMatches = apps.filter(app => app.id.endsWith(':' + id));
-        if (appMatches.length > 1) {
+        const apps = await fetchApps() as any[];
+        console.log({ apps });
+        const appMatches = apps?.filter(app => app.id.endsWith(':' + id));
+        console.log({ appMatches });
+        if (appMatches?.length > 1) {
           console.error('Multiple apps found with the same id:', { id, apps });
         } else if (appMatches.length === 0) {
           console.error('App not found:', { id, apps });
         }
-        const app = appMatches[0];
+        const app = appMatches?.[0];
         if (app) {
           openApp(app);
         } else {
@@ -166,29 +170,33 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [runningApps, isRecentAppsOpen, isAppDrawerOpen, toggleRecentApps, toggleAppDrawer, switchToApp, closeAllOverlays]);
 
+  const fetchApps = async () => {
+    try {
+      const res = await fetch('/apps', { credentials: 'include' })
+      const apps = await res.json() as any[]
+      setApps(apps);
+      setLoading(false);
+      return apps;
+    } catch (error) {
+      console.warn('Failed to fetch apps from backend:', error);
+      // Fallback demo apps for development
+      setApps([
+        { id: '1', process: 'settings', package_name: 'settings', publisher: 'sys', path: '/app:settings:sys.os/', label: 'Settings', order: 1, favorite: true },
+        { id: '2', process: 'files', package_name: 'files', publisher: 'sys', path: '/app:files:sys.os/', label: 'Files', order: 2, favorite: false },
+        { id: '3', process: 'terminal', package_name: 'terminal', publisher: 'sys', path: '/app:terminal:sys.os/', label: 'Terminal', order: 3, favorite: false },
+        { id: '4', process: 'browser', package_name: 'browser', publisher: 'sys', path: '/app:browser:sys.os/', label: 'Browser', order: 4, favorite: true },
+        { id: '5', process: 'app-store', package_name: 'app-store', publisher: 'sys', path: '/main:app-store:sys/', label: 'App Store', order: 5, favorite: false, widget: 'true' },
+      ]);
+      setLoading(false);
+    };
+  }
+
   // Fetch apps from backend and initialize browser back handling
   useEffect(() => {
     // Initialize browser back button handling
     initBrowserBackHandling();
 
-    fetch('/apps', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        setApps(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.warn('Failed to fetch apps from backend:', error);
-        // Fallback demo apps for development
-        setApps([
-          { id: '1', process: 'settings', package_name: 'settings', publisher: 'sys', path: '/app:settings:sys.os/', label: 'Settings', order: 1, favorite: true },
-          { id: '2', process: 'files', package_name: 'files', publisher: 'sys', path: '/app:files:sys.os/', label: 'Files', order: 2, favorite: false },
-          { id: '3', process: 'terminal', package_name: 'terminal', publisher: 'sys', path: '/app:terminal:sys.os/', label: 'Terminal', order: 3, favorite: false },
-          { id: '4', process: 'browser', package_name: 'browser', publisher: 'sys', path: '/app:browser:sys.os/', label: 'Browser', order: 4, favorite: true },
-          { id: '5', process: 'app-store', package_name: 'app-store', publisher: 'sys', path: '/main:app-store:sys/', label: 'App Store', order: 5, favorite: false, widget: 'true' },
-        ]);
-        setLoading(false);
-      });
+    fetchApps();
   }, [setApps, initBrowserBackHandling]);
 
   if (loading) {

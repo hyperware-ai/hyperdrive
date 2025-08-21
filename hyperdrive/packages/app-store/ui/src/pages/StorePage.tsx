@@ -9,7 +9,7 @@ import classNames from "classnames";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function StorePage() {
-  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, homepageApps, fetchHomepageApps, getLaunchUrl, navigateToApp } = useAppsStore();
+  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, homepageApps, fetchHomepageApps, navigateToApp } = useAppsStore();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [appsNotInstalled, setAppsNotInstalled] = useState<AppListing[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
