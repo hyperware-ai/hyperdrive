@@ -118,6 +118,20 @@ pub async fn state_sender(
             continue;
         }
 
+        if (km.source.process.package() != "distro" && km.source.process.package() != "terminal") || km.source.process.publisher() != "sys" {
+            Printout::new(
+                1,
+                STATE_PROCESS_ID.clone(),
+                format!(
+                    "state: got request from {}, but requests must come from kernel or terminal",
+                    km.source.process
+                ),
+            )
+            .send(&send_to_terminal)
+            .await;
+            continue;
+        }
+
         let queue = process_queues
             .get(&km.source.process)
             .cloned()
