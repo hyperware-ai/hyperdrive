@@ -118,7 +118,9 @@ pub async fn state_sender(
             continue;
         }
 
-        if (km.source.process.package() != "distro" && km.source.process.package() != "terminal") || km.source.process.publisher() != "sys" {
+        if (km.source.process.package() != "distro" && km.source.process.package() != "terminal")
+            || km.source.process.publisher() != "sys"
+        {
             Printout::new(
                 1,
                 STATE_PROCESS_ID.clone(),
