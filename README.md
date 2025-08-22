@@ -251,34 +251,40 @@ Subsequent use of the shorthand will then be interpolated as the process ID.
 
 A list of the terminal scripts included in this distro:
 
-- `alias <shorthand> <process_id>`: create an alias for a script.
-    - Example: `alias get_block get-block:hns-indexer:sys`
+- `add-node-provider <chain-id> <node-name> <public-key> <ip-address> <ws-port> [--trusted <true|false>]`: add a node provider to the providers configuration.
+    - Examples:
+      - `add-node-provider 8453 other-node.hypr abc123pubkey 192.168.1.1 9000` (defaults to trusted=false)
+      - `add-node-provider 1 other-node.hypr abc123pubkey 192.168.1.1 9000 --trusted true`
+- `add-rpcurl-provider <rpc-url> [--chain-id <id>] [--trusted <true|false>] [--auth-type <basic|bearer|raw> --auth-value <value>]`: add an RPC URL provider to the providers configuration.
+    - Examples:
+      - `add-rpcurl-provider wss://base-mainnet.infura.io/v3/your-key` (defaults to chain-id=8453, trusted=true)
+      - `add-rpcurl-provider wss://mainnet.infura.io/v3/your-key --chain-id 1`
+      - `add-rpcurl-provider wss://base-mainnet.infura.io/ws/v3/your-key --trusted false`
+      - `add-rpcurl-provider wss://rpc.example.com --auth-type bearer --auth-value your-token`
+- `alias <shorthand> <process-id>`: create an alias for a script.
+    - Example: `alias get-block get-block:hns-indexer:sys`
     - note: all of these listed commands are just default aliases for terminal scripts.
 - `cat <vfs-file-path>`: print the contents of a file in the terminal.
     - Example: `cat /terminal:sys/pkg/scripts.json`
-- `echo <text>`: print text to the terminal.
+- `clear-state <process-id>`: clear the state of the given process.
+- `echo <text>: print text to the terminal.
     - Example: `echo foo`
-- `help <command>`: print the help message for a command.
-  Leave the command blank to print the help message for all commands.
+- `get-providers`: display the providers configuration.
 - `hi <name> <string>`: send a text message to another node's command line.
     - Example: `hi mothu.hypr hello world`
-- `hfetch`: print system information a la neofetch.
-  No arguments.
-- `kill <process-id>`: terminate a running process.
-  This will bypass any restart behavior–use judiciously.
-    - Example: `kill chess:chess:template.os`
-- `m <address> '<json>'`: send an inter-process message.
-  <address> is formatted as <node>@<process-id>.
-  <process-id> is formatted as <process-name>:<package-name>:<publisher-node>.
-  JSON containing spaces must be wrapped in single-quotes (`''`).
+- `kfetch`: print system information a la neofetch. No arguments.
+- `kill <process-id>`: terminate a running process. This will bypass any restart behavior; use judiciously.
+    - Example: `kill chess:chess:sys`
+- `m <address> '<json>'`: send an inter-process message. `<address>` is formatted as `<node>@<process-id>`. `<process-id>` is formatted as `<process-name>:<package-name>:<publisher-node>`. JSON containing spaces must be wrapped in single-quotes ('').
     - Example: `m our@eth:distro:sys "SetPublic" -a 5`
-    - the '-a' flag is used to expect a response with a given timeout
+    - the `-a` flag is used to expect a response with a given timeout
     - `our` will always be interpolated by the system as your node's name
 - `net-diagnostics`: print some useful networking diagnostic data.
 - `peer <name>`: print the peer's PKI info, if it exists.
 - `peers`: print the peers the node currently hold connections with.
-- `top <process_id>`: display kernel debugging info about a process.
-  Leave the process ID blank to display info about all processes and get the total number of running processes.
+- `remove-provider <chain-id> <nodename or rpc-url>`: remove a provider from the providers configuration.
+    - Example: `remove-provider 8453 wss://base-mainnet.infura.io/ws/v3/your-key`
+- `top <process-id>`: display kernel debugging info about a process. Leave the process ID blank to display info about all processes and get the total number of running processes.
     - Example: `top net:distro:sys`
     - Example: `top`
 

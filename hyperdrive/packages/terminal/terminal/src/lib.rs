@@ -77,6 +77,10 @@ impl VersionedState {
                     ProcessId::new(Some("cat"), "terminal", "sys"),
                 ),
                 (
+                    "clear-state".to_string(),
+                    ProcessId::new(Some("clear-state"), "terminal", "sys"),
+                ),
+                (
                     "echo".to_string(),
                     ProcessId::new(Some("echo"), "terminal", "sys"),
                 ),
