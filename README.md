@@ -253,14 +253,14 @@ A list of the terminal scripts included in this distro:
 
 - `add-node-provider <chain-id> <node-name> <public-key> <ip-address> <ws-port> [--trusted <true|false>]`: add a node provider to the providers configuration.
     - Examples:
-      `add-node-provider 8453 other-node.hypr abc123pubkey 192.168.1.1 9000` (defaults to trusted=false)
-      `add-node-provider 1 other-node.hypr abc123pubkey 192.168.1.1 9000 --trusted true`
+      - `add-node-provider 8453 other-node.hypr abc123pubkey 192.168.1.1 9000` (defaults to trusted=false)
+      - `add-node-provider 1 other-node.hypr abc123pubkey 192.168.1.1 9000 --trusted true`
 - `add-rpcurl-provider <rpc-url> [--chain-id <id>] [--trusted <true|false>] [--auth-type <basic|bearer|raw> --auth-value <value>]`: add an RPC URL provider to the providers configuration.
     - Examples:
-      `add-rpcurl-provider wss://base-mainnet.infura.io/v3/your-key` (defaults to chain-id=8453, trusted=true)
-      `add-rpcurl-provider wss://mainnet.infura.io/v3/your-key --chain-id 1`
-      `add-rpcurl-provider wss://base-mainnet.infura.io/ws/v3/your-key --trusted false`
-      `add-rpcurl-provider wss://rpc.example.com --auth-type bearer --auth-value your-token`
+      - `add-rpcurl-provider wss://base-mainnet.infura.io/v3/your-key` (defaults to chain-id=8453, trusted=true)
+      - `add-rpcurl-provider wss://mainnet.infura.io/v3/your-key --chain-id 1`
+      - `add-rpcurl-provider wss://base-mainnet.infura.io/ws/v3/your-key --trusted false`
+      - `add-rpcurl-provider wss://rpc.example.com --auth-type bearer --auth-value your-token`
 - `alias <shorthand> <process-id>`: create an alias for a script.
     - Example: `alias get-block get-block:hns-indexer:sys`
     - note: all of these listed commands are just default aliases for terminal scripts.
