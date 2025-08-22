@@ -1324,6 +1324,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "caller-utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "futures-util",
+ "hyperware_app_common",
+ "once_cell",
+ "process_macros",
+ "serde",
+ "serde_json",
+ "uuid 1.17.0",
+ "wit-bindgen 0.41.0",
+]
+
+[[package]]
 name = "camino"
 version = "1.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2484,6 +2500,7 @@ name = "explorer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "caller-utils",
  "hyperprocess_macro",
  "hyperware_app_common",
  "md5",
@@ -3291,7 +3308,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "aes-gcm",
  "alloy",
@@ -3346,7 +3363,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive_lib"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "lib",
 ]
@@ -3972,7 +3989,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "alloy",
  "anyhow",

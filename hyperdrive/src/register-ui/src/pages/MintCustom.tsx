@@ -7,9 +7,10 @@ import DirectNodeCheckbox from "../components/DirectCheckbox";
 
 import { useAccount, useWaitForTransactionReceipt, useSendTransaction } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
-import { tbaMintAbi, generateNetworkingKeys, HYPER_ACCOUNT_IMPL } from "../abis";
+import { tbaMintAbi, generateNetworkingKeys, HYPER_ACCOUNT_IMPL, HYPERMAP } from "../abis";
 import { encodePacked, encodeFunctionData, stringToHex } from "viem";
 import BackButton from "../components/BackButton";
+import { predictTBAAddress } from "../utils/predictTBA";
 interface MintCustomNameProps extends PageProps { }
 
 function MintCustom({
@@ -65,6 +66,13 @@ function MintCustom({
             return
         }
 
+        const name = formData.get('name') as string
+        const tbaAddr = formData.get('tba') as `0x${string}` || HYPERMAP;
+        const fullLabel = `${name}.${tbaAddr === HYPERMAP ? '' : tbaAddr}`;
+
+        // Predict the TBA address that will be created
+        const predictedTBA = predictTBAAddress(tbaAddr, name);
+
         const initCall = await generateNetworkingKeys({
             direct,
             our_address: address,
@@ -75,14 +83,14 @@ function MintCustom({
             setTcpPort,
             setRouters,
             reset: false,
+            tbaAddress: predictedTBA,
         });
 
         setHnsName(formData.get('full-hns-name') as string)
 
-        const name = formData.get('name') as string
-
         console.log("full hns name", formData.get('full-hns-name'))
         console.log("name", name)
+        console.log("predicted TBA", predictedTBA)
 
         const data = encodeFunctionData({
             abi: tbaMintAbi,

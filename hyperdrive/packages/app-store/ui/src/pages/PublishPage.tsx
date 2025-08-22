@@ -5,6 +5,7 @@ import { ConnectButton, useConnectModal } from '@rainbow-me/rainbowkit';
 import { keccak256, toBytes } from 'viem';
 import { mechAbi, HYPERMAP, encodeIntoMintCall, encodeMulticalls, hypermapAbi, MULTICALL } from "../abis";
 import { hyperhash } from '../utils/hyperhash';
+import { predictTBAAddress } from '../utils/predictTBA';
 import useAppsStore from "../store";
 import { PackageSelector } from "../components";
 import { Tooltip } from '../components/Tooltip';
@@ -229,7 +230,9 @@ export default function PublishPage() {
           metadata = keccak256(toBytes(metadataText));
         }
 
-        const multicall = encodeMulticalls(metadataUrl, metadata);
+        // When creating a new package, predict the TBA address that will be created
+        const predictedTBA = !isUpdate ? predictTBAAddress(currentTBA || HYPERMAP, packageName, publicClient?.chain?.id || 8453) : undefined;
+        const multicall = encodeMulticalls(metadataUrl, metadata, predictedTBA);
         const args = isUpdate ? multicall : encodeIntoMintCall(multicall, address, packageName);
 
         writeContract({

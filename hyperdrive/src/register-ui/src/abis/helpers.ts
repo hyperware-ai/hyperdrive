@@ -19,6 +19,7 @@ export const generateNetworkingKeys = async ({
     setTcpPort,
     setRouters,
     reset,
+    tbaAddress,
 }: {
     direct: boolean,
     label: string,
@@ -29,6 +30,7 @@ export const generateNetworkingKeys = async ({
     setTcpPort: (tcpPort: number) => void;
     setRouters: (routers: string[]) => void;
     reset: boolean;
+    tbaAddress?: `0x${string}`;
 }) => {
     const {
         networking_key,
@@ -106,7 +108,14 @@ export const generateNetworkingKeys = async ({
                 )]
         });
 
-    const calls = direct ? [
+    // Add initialize call if TBA address is provided
+    const initializeCall = tbaAddress ? encodeFunctionData({
+        abi: [{"inputs":[],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"}],
+        functionName: 'initialize',
+        args: []
+    }) : null;
+
+    const baseCalls = direct ? [
         { target: HYPERMAP, callData: netkeycall },
         { target: HYPERMAP, callData: ws_port_call },
         { target: HYPERMAP, callData: tcp_port_call },
@@ -115,6 +124,10 @@ export const generateNetworkingKeys = async ({
         { target: HYPERMAP, callData: netkeycall },
         { target: HYPERMAP, callData: router_call },
     ];
+
+    const calls = initializeCall && tbaAddress ?
+        [{ target: tbaAddress, callData: initializeCall }, ...baseCalls] :
+        baseCalls;
 
     const multicalls = encodeFunctionData({
         abi: multicallAbi,

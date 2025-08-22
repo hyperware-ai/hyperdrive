@@ -8,6 +8,7 @@ import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit
 import { generateNetworkingKeys, HYPER_ACCOUNT_IMPL, DOTOS, tbaMintAbi } from "../abis";
 import { createPublicClient, encodePacked, http, stringToHex, BaseError, ContractFunctionRevertedError } from "viem";
 import { base } from 'viem/chains'
+import { predictTBAAddress } from "../utils/predictTBA";
 
 interface RegisterOsNameProps extends PageProps { }
 
@@ -60,6 +61,12 @@ function MintDotOsName({
 
     setHasMinted(true);
 
+    // strip .os suffix
+    const name = hnsName.replace(/\.os$/, '');
+
+    // Predict the TBA address that will be created
+    const predictedTBA = predictTBAAddress(DOTOS, name, base.id);
+
     const initCall = await generateNetworkingKeys({
       direct,
       our_address: address,
@@ -70,10 +77,8 @@ function MintDotOsName({
       setTcpPort,
       setRouters,
       reset: false,
+      tbaAddress: predictedTBA,
     });
-
-    // strip .os suffix
-    const name = hnsName.replace(/\.os$/, '');
 
     const publicClient = createPublicClient({
       chain: base,
