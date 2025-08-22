@@ -1592,6 +1592,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
+name = "clear-state"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "hyperware_process_lib 2.1.0",
+ "serde",
+ "serde_json",
+ "wit-bindgen 0.42.1",
+]
+
+[[package]]
 name = "cmake"
 version = "0.1.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3291,7 +3302,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "aes-gcm",
  "alloy",
@@ -3346,7 +3357,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive_lib"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "lib",
 ]
@@ -3972,7 +3983,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "alloy",
  "anyhow",
