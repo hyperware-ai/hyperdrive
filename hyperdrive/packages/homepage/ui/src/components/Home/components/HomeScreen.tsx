@@ -72,8 +72,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleDockDrop = (e: React.DragEvent, index: number) => {
-    try {e.preventDefault();} catch {}
-    try {e.stopPropagation();} catch {}
+    try { e.preventDefault(); } catch { }
+    try { e.stopPropagation(); } catch { }
     const appId = e.dataTransfer.getData('appId');
     if (appId) {
       // Add to dock at the specified index
@@ -299,7 +299,7 @@ export const HomeScreen: React.FC = () => {
         {floatingApps
           .filter(app => {
             return !app.id.includes('homepage:homepage:sys')  // don't show the clock icon because it does nothing.
-              // && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
+            // && (!searchQuery || app.label.toLowerCase().includes(searchQuery.toLowerCase()))
           })
           .map((app, index, allApps) => {
             const position = appPositions[app.id] || calculateAppIconPosition(app.id, index, allApps.length);
@@ -620,11 +620,11 @@ export const HomeScreen: React.FC = () => {
               <BsPencilSquare />
             </button>
             <button
-            className=" thin  grow self-stretch max-w-sm md:max-w-md !justify-start !bg-black/10 dark:!bg-white/10 backdrop-blur-xl"
+              className=" thin  grow self-stretch max-w-sm md:max-w-md !justify-start !bg-black/10 dark:!bg-white/10 backdrop-blur-xl"
               onClick={() => toggleAppDrawer()}
             >
               <BsSearch
-                className="opacity-50"
+                className="opacity-50 dark:placeholder-white dark:text-white"
               />
               <span>
                 Search apps...

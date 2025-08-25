@@ -32,8 +32,8 @@ interface AppsStore {
   checkMirror: (id: string, node: string) => Promise<MirrorCheckFile | null>
   resetStore: () => Promise<void>
 
-  fetchHomepageApps: () => Promise<void>
-  getLaunchUrl: (id: string) => string | null
+  fetchHomepageApps: () => Promise<HomepageApp[]>
+  getLaunchUrl: (id: string) => { foundApp: boolean, path: string | null }
 
   addNotification: (notification: Notification) => void;
   removeNotification: (id: string) => void;
@@ -200,7 +200,7 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
     return [];
   },
 
-  fetchHomepageApps: async () => {
+  fetchHomepageApps: async (): Promise<HomepageApp[]> => {
     try {
       const res = await fetch(`${BASE_URL}/homepageapps`);
       if (res.status === HTTP_STATUS.OK) {
@@ -208,16 +208,23 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
         const apps = data.GetApps || [];
         set({ homepageApps: apps });
         console.log({ homepageApps: apps });
+        return apps;
       }
     } catch (error) {
       console.error("Error fetching homepage apps:", error);
       set({ homepageApps: [] });
     }
+    return [];
   },
 
   getLaunchUrl: (id: string) => {
-    const app = get().homepageApps?.find(app => `${app.package_name}:${app.publisher}` === id);
-    return app?.path || null;
+    const { homepageApps } = get();
+    const app = homepageApps.find(app => `${app.package_name}:${app.publisher}` === id);
+    console.log('getLaunchUrl', { id, app, homepageApps });
+    return {
+      foundApp: !!app,
+      path: app?.path || null
+    };
   },
 
   checkMirror: async (id: string, node: string) => {
@@ -476,22 +483,10 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
   },
 
   navigateToApp: (id: string) => {
-    console.log('navigateToApp', id);
-    if (window.location.hostname.endsWith('.localhost')) {
-      console.log('localhost nav');
-      const app = get().homepageApps.find(app => `${app.package_name}:${app.publisher}` === id);
-      if (app) {
-        const path = app.path || '';
-        console.log('path', path);
-        window.location.href = path;
-      }
-    } else {
-      console.log('non-localhost nav')
-      window.parent.postMessage({
-        type: IframeMessageType.OPEN_APP,
-        id
-      }, '*');
-    }
+    window.parent.postMessage({
+      type: IframeMessageType.OPEN_APP,
+      id
+    }, '*');
   },
 
   resetStore: async () => {

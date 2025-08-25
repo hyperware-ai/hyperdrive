@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import useAppsStore from "../store/appStoreStore";
 import { AppListing } from "../types/Apps";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
@@ -68,6 +68,24 @@ export default function StorePage() {
     });
   }, [listings, searchQuery]);
 
+  const getLocalhostLink = useCallback((app: AppListing) => {
+    const isLocalhost = window.location.hostname.endsWith('.localhost');
+    console.log({ isLocalhost });
+    if (!isLocalhost) return null;
+    let path = homepageApps.find((hpa) => hpa.id.match(new RegExp(`${app.package_id.package_name}:${app.package_id.publisher_node}(\/)?$`)))?.path;
+    if (path?.[0] !== '/') path = `/${path}`;
+    console.log({ path });
+    if (!path) return null;
+    const href = `${window.location.protocol}//localhost${window.location.port ? `:${window.location.port}` : ''}${path}`.replace(/\/$/, '');
+    console.log({ href });
+    return <a
+      className="absolute inset-0"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    />
+  }, [homepageApps]);
+
   return (
     <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
       <div className="flex items-center self-stretch gap-2 items-center bg-black/10 dark:bg-white/10 rounded-lg pl-4">
@@ -112,7 +130,10 @@ export default function StorePage() {
                   ? <ActionChip
                     label="Launch"
                     onClick={() => navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`)}
-                  />
+                    className="relative"
+                  >
+                    {getLocalhostLink(app) || null}
+                  </ActionChip>
                   : <ActionChip label="Installed" />}
             </AppCard>
           ))}
@@ -161,12 +182,13 @@ const ActionChip: React.FC<{
   label: string;
   className?: string;
   onClick?: () => void;
-}> = ({ label, className, onClick }) => {
+  children?: React.ReactNode;
+}> = ({ label, className, onClick, children }) => {
   return <div
     onClick={onClick}
     data-action-button={!!onClick}
     className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", {
       'cursor-pointer hover:opacity-80': onClick,
-    }, className)}>{label}
+    }, className)}>{label}{children}
   </div>
 }

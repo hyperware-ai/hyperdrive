@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import useAppsStore from "../store/appStoreStore";
-import { AppListing, PackageState, ManifestResponse } from "../types/Apps";
+import { AppListing, PackageState, ManifestResponse, HomepageApp } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
 import { FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay } from "react-icons/fa6";
@@ -19,7 +19,7 @@ const MOCK_APP: AppListing = {
   },
   metadata: {
     name: 'Mock App with an Unreasonably Long Name for Testing Wrapping, Obviously, why else would you have a name this long?',
-    description: `This is a mock app. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page.`,
+    description: `to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page. I have written an incredibly long description to test the app page.`,
     image: 'https://via.placeholder.com/150',
     properties: {
       code_hashes: [['1.0.0', '1234567890']],
@@ -46,6 +46,7 @@ export default function AppPage() {
     uninstallApp,
     setAutoUpdate,
     getLaunchUrl,
+    homepageApps,
     fetchHomepageApps,
     downloadApp,
     downloads,
@@ -81,6 +82,8 @@ export default function AppPage() {
   const [backtickPressCount, setBacktickPressCount] = useState(0);
   const [detailExpanded, setDetailExpanded] = useState(false);
   const [hasProcessedIntent, setHasProcessedIntent] = useState(false);
+  const [awaitPresenceInHomepageApps, setAwaitPresenceInHomepageApps] = useState(false);
+  const [launchUrl, setLaunchUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const backTickCounter = (e: KeyboardEvent) => {
@@ -135,10 +138,8 @@ export default function AppPage() {
     setError(null);
 
     try {
-      const [appData, installedAppData] = await Promise.all([
-        isDevMode ? Promise.resolve(MOCK_APP) : fetchListing(id),
-        fetchInstalledApp(id)
-      ]);
+      const appData = isDevMode ? MOCK_APP : await fetchListing(id);
+      const installedAppData = await fetchInstalledApp(id);
 
       if (!appData) {
         setError("App not found");
@@ -166,8 +167,7 @@ export default function AppPage() {
         }
       }
 
-      await fetchHomepageApps();
-      setCanLaunch(!!getLaunchUrl(`${appData.package_id.package_name}:${appData.package_id.publisher_node}`));
+      setAwaitPresenceInHomepageApps(true);
     } catch (err) {
       setError("Failed to load app details. Please try again.");
       console.error(err);
@@ -175,6 +175,36 @@ export default function AppPage() {
       setIsLoading(false);
     }
   }, [id, fetchListing, fetchInstalledApp, fetchHomepageApps, getLaunchUrl]);
+
+  const calculateCanLaunch = useCallback((appData: AppListing) => {
+    const { foundApp, path } = getLaunchUrl(`${appData?.package_id.package_name}:${appData?.package_id.publisher_node}`);
+    setCanLaunch(foundApp);
+    setLaunchUrl(path);
+    if (foundApp) {
+      setAwaitPresenceInHomepageApps(false);
+    }
+  }, [getLaunchUrl]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (awaitPresenceInHomepageApps) {
+        const homepageApps = await fetchHomepageApps();
+        console.log('[app-page] checking for presence in homepageApps', { id, homepageApps });
+        if (homepageApps.find(app => app.id.endsWith(`:${app.package_name}:${app.publisher}`))) {
+          console.log('[app-page] found in homepageApps');
+          const appData = id && await fetchListing(id);
+          console.log('[app-page] appData', { appData });
+          if (appData) {
+            setApp(appData);
+            calculateCanLaunch(appData);
+          }
+        } else {
+          console.log('[app-page] not found in homepageApps');
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [awaitPresenceInHomepageApps, fetchHomepageApps, calculateCanLaunch]);
 
   const handleMirrorSelect = useCallback((mirror: string, status: boolean | null | 'http') => {
     setSelectedMirror(mirror);
@@ -262,21 +292,20 @@ export default function AppPage() {
     if (!id || !selectedVersion || !app) return;
 
     const versionData = sortedVersions.find(v => v.version === selectedVersion);
-    if (!versionData) return;
-
+    if (!versionData) {
+      console.error('Installation flow failed to find version data', { sortedVersions });
+      addNotification({
+        id: `installation-flow-failed-versionData`,
+        timestamp: Date.now(),
+        type: 'error',
+        message: `Installation flow failed to obtain correct version data.`,
+      });
+      return;
+    }
     try {
       setIsInstalling(true);
       await installApp(id, versionData.hash);
-      // Refresh all relevant data after 3 seconds
-      setTimeout(async () => {
-        setShowCapApproval(false);
-        setManifestResponse(null);
-        setIsInstalling(false);
-        await Promise.all([
-          fetchHomepageApps(),
-          loadData()
-        ]);
-      }, 3000);
+      await loadData();
     } catch (error) {
       console.error('Installation failed:', error);
       const errorString = Object.keys(error).length > 0 ? `: ${JSON.stringify(error).slice(0, 100)}...` : '';
@@ -286,6 +315,10 @@ export default function AppPage() {
         type: 'error',
         message: `Installation failed${errorString ? ': ' + errorString : ''}`,
       });
+    } finally {
+      setShowCapApproval(false);
+      setManifestResponse(null);
+      setIsInstalling(false);
     }
   }, [id, selectedVersion, app, sortedVersions, installApp, fetchHomepageApps, loadData]);
 
@@ -391,6 +424,11 @@ export default function AppPage() {
     console.log('setting hasProcessedIntent to true');
     setHasProcessedIntent(true);
 
+    // after processing intent, remove the intent parameter from the URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('intent');
+    window.history.replaceState({}, '', url.toString());
+
     // Auto-trigger actions based on intent
     if (intent === 'launch' && canLaunch) {
       // Automatically launch the app
@@ -464,12 +502,20 @@ export default function AppPage() {
             : <VscSyncIgnored className="text-lg" />}
         <span >Updates {app.auto_update ? " ON" : " OFF"}</span>
       </button>
-      {(canLaunch || isDevMode) && (
+      {(awaitPresenceInHomepageApps || canLaunch || isDevMode) && (
         <button
           onClick={() => navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`)}
+          disabled={awaitPresenceInHomepageApps}
+          className="relative"
         >
-          <FaPlay />
-          <span >Launch</span>
+          {awaitPresenceInHomepageApps ? <FaCircleNotch className="animate-spin" /> : <FaPlay />}
+          <span >{awaitPresenceInHomepageApps ? "Loading..." : "Launch"}</span>
+          {window.location.hostname.endsWith('.localhost') && launchUrl && <a className="absolute inset-0"
+            href={`${window.location.protocol}//localhost${window.location.port ? `:${window.location.port}` : ''}${launchUrl}`.replace(/\/$/, '')}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+          </a>}
         </button>
       )}
     </>}
