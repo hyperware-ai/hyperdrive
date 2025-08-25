@@ -11,6 +11,7 @@
 //!     set-nodes:hypermap-cacher:sys alice.os bob.os charlie.os
 
 use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
+use crate::hyperware::process::binding_cacher::{BindingCacherRequest, BindingCacherResponse};
 use hyperware_process_lib::{await_next_message_body, call_init, println, Address, Request};
 
 wit_bindgen::generate!({
@@ -37,6 +38,7 @@ fn init(_our: Address) {
     }
 
     let nodes: Vec<String> = parts.iter().map(|s| s.to_string()).collect();
+    let binding_nodes = nodes.clone();
 
     println!("Setting hypermap-cacher nodes to: {:?}", nodes);
 
@@ -50,10 +52,36 @@ fn init(_our: Address) {
                 println!("✓ {}", msg);
             }
             Ok(CacherResponse::SetNodes(Err(err))) => {
-                println!("✗ Failed to set nodes: {}", err);
+                println!("✗ Failed to set nodes for hypermap-cacher: {}", err);
             }
             _ => {
                 println!("✗ Unexpected response from hypermap-cacher");
+            }
+        },
+        Ok(Err(err)) => {
+            println!("✗ Request failed: {:?}", err);
+        }
+        Err(err) => {
+            println!("✗ Communication error: {:?}", err);
+        }
+    }
+
+    println!("Setting binding-cacher nodes to: {:?}", binding_nodes);
+
+    let response = Request::to(("our", "binding-cacher", "hypermap-cacher", "sys"))
+        .body(BindingCacherRequest::SetNodes(binding_nodes))
+        .send_and_await_response(5);
+
+    match response {
+        Ok(Ok(message)) => match message.body().try_into() {
+            Ok(BindingCacherResponse::SetNodes(Ok(msg))) => {
+                println!("✓ {}", msg);
+            }
+            Ok(BindingCacherResponse::SetNodes(Err(err))) => {
+                println!("✗ Failed to set nodes for binding-cacher: {}", err);
+            }
+            _ => {
+                println!("✗ Unexpected response from binding-cacher");
             }
         },
         Ok(Err(err)) => {

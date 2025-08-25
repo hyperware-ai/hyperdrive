@@ -818,6 +818,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "binding-cacher"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-types",
+ "anyhow",
+ "chrono",
+ "hex",
+ "hyperware_process_lib",
+ "process_macros",
+ "rand 0.8.5",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1641,25 +1660,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hypermap-binding-cacher"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "alloy-primitives",
- "alloy-sol-types",
- "anyhow",
- "chrono",
- "hex",
- "hyperware_process_lib",
- "process_macros",
- "rand 0.8.5",
- "rmp-serde",
- "serde",
- "serde_json",
- "wit-bindgen",
-]
-
-[[package]]
 name = "hypermap-cacher"
 version = "0.1.0"
 dependencies = [
@@ -1680,9 +1680,8 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f3abd008d22c3b96ee43300c4c8dffbf1d072a680a13635b5f9da11a0ce9395"
+version = "2.2.0"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=8b6c2e5#8b6c2e5c32b543cc6358465ebd8cf51932b4b633"
 dependencies = [
  "alloy",
  "alloy-primitives",

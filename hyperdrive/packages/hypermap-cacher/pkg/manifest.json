@@ -1,7 +1,7 @@
 [
     {
-        "process_name": "hypermap-binding-cacher",
-        "process_wasm_path": "/hypermap-binding-cacher.wasm",
+        "process_name": "binding-cacher",
+        "process_wasm_path": "/binding-cacher.wasm",
         "on_exit": "Restart",
         "request_networking": true,
         "request_capabilities": [

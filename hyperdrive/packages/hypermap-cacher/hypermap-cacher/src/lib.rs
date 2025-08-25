@@ -1149,11 +1149,11 @@ fn handle_request(
                 state.save();
 
                 info!(
-                    "Hypermap-cacher reset complete. New nodes: {:?}",
+                    "hypermap-cacher reset complete. New nodes: {:?}",
                     state.nodes
                 );
                 CacherResponse::Reset(Ok(
-                    "Reset completed successfully. Cacher will restart with new settings."
+                    "Reset completed successfully. Hypermap Cacher will restart with new settings."
                         .to_string(),
                 ))
             }

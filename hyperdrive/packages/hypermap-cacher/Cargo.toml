@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "hypermap-binding-cacher",
+    "binding-cacher",
     "hypermap-cacher",
     "reset-cache",
     "set-nodes",

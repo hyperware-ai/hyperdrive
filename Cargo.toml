@@ -22,7 +22,7 @@ members = [
     "hyperdrive/packages/homepage/homepage",
     "hyperdrive/packages/hns-indexer/hns-indexer", "hyperdrive/packages/hns-indexer/get-block", "hyperdrive/packages/settings/settings", "hyperdrive/packages/hns-indexer/reset",
     "hyperdrive/packages/hns-indexer/node-info", "hyperdrive/packages/hns-indexer/state",
-    "hyperdrive/packages/hypermap-cacher/hypermap-binding-cacher", "hyperdrive/packages/hypermap-cacher/hypermap-cacher", "hyperdrive/packages/hypermap-cacher/reset-cache", "hyperdrive/packages/hypermap-cacher/set-nodes",
+    "hyperdrive/packages/hypermap-cacher/binding-cacher", "hyperdrive/packages/hypermap-cacher/hypermap-cacher", "hyperdrive/packages/hypermap-cacher/reset-cache", "hyperdrive/packages/hypermap-cacher/set-nodes",
     "hyperdrive/packages/hypermap-cacher/start-providing", "hyperdrive/packages/hypermap-cacher/stop-providing",
     "hyperdrive/packages/sign/sign",
     "hyperdrive/packages/terminal/terminal", "hyperdrive/packages/terminal/add-node-provider", "hyperdrive/packages/terminal/add-rpcurl-provider",
