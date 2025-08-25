@@ -61,6 +61,18 @@
         "grant_capabilities": [],
         "wit_version": 1
     },
+    "clear-state.wasm": {
+        "root": false,
+        "public": false,
+        "request_networking": false,
+        "request_capabilities": [
+            "state:distro:sys"
+        ],
+        "grant_capabilities": [
+            "state:distro:sys"
+        ],
+        "wit_version": 1
+    },
     "echo.wasm": {
         "root": false,
         "public": false,
