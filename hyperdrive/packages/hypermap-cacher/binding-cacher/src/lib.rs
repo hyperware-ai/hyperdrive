@@ -19,7 +19,7 @@ use crate::hyperware::process::binding_cacher::{
 };
 
 use hyperware_process_lib::{
-    await_message, call_init, eth, get_state, http, hypermap,
+    await_message, bindings, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
     net::{NetAction, NetResponse},
     our, set_state, sign, timer, vfs, Address, ProcessId, Request, Response,
@@ -124,7 +124,7 @@ fn is_local_request(our: &Address, source: &Address) -> bool {
 impl State {
     fn new(drive_path: &str) -> Self {
         let chain_id = hypermap::HYPERMAP_CHAIN_ID.to_string();
-        let hypermap_binding_address = eth::Address::from_str(hypermap::HYPERMAP_BINDING_ADDRESS)
+        let hypermap_binding_address = eth::Address::from_str(bindings::HYPERMAP_BINDING_ADDRESS)
             .expect("Failed to parse HYPERMAP_BINDING_ADDRESS");
 
         let manifest_filename = format!(
