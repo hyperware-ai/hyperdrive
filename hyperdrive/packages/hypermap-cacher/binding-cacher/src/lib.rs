@@ -123,9 +123,9 @@ fn is_local_request(our: &Address, source: &Address) -> bool {
 
 impl State {
     fn new(drive_path: &str) -> Self {
-        let chain_id = hypermap::HYPERMAP_CHAIN_ID.to_string();
-        let hypermap_binding_address = eth::Address::from_str(bindings::HYPERMAP_BINDING_ADDRESS)
-            .expect("Failed to parse HYPERMAP_BINDING_ADDRESS");
+        let chain_id = bindings::BINDINGS_CHAIN_ID.to_string();
+        let hypermap_binding_address = eth::Address::from_str(bindings::BINDINGS_ADDRESS)
+            .expect("Failed to parse BINDINGS_ADDRESS");
 
         let manifest_filename = format!(
             "manifest-chain{}-protocol{}.json",
@@ -141,7 +141,7 @@ impl State {
         State {
             hypermap_binding_address,
             manifest: initial_manifest,
-            last_cached_block: hypermap::HYPERMAP_FIRST_BLOCK,
+            last_cached_block: bindings::BINDINGS_FIRST_BLOCK,
             chain_id,
             protocol_version: PROTOCOL_VERSION.to_string(),
             cache_interval_s: DEFAULT_CACHE_INTERVAL_S,
