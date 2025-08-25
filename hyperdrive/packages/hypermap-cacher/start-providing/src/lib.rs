@@ -1,5 +1,5 @@
-use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use crate::hyperware::process::binding_cacher::{BindingCacherRequest, BindingCacherResponse};
+use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use hyperware_process_lib::{call_init, println, Address, Request};
 
 wit_bindgen::generate!({

@@ -11,8 +11,11 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
 use crate::hyperware::process::binding_cacher::{
-    BindingCacherRequest as CacherRequest, BindingCacherResponse as CacherResponse, BindingCacherStatus as CacherStatus, BindingGetLogsByRangeOkResponse as GetLogsByRangeOkResponse, BindingGetLogsByRangeRequest as GetLogsByRangeRequest,
-    BindingLogsMetadata as WitLogsMetadata, BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
+    BindingCacherRequest as CacherRequest, BindingCacherResponse as CacherResponse,
+    BindingCacherStatus as CacherStatus,
+    BindingGetLogsByRangeOkResponse as GetLogsByRangeOkResponse,
+    BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
+    BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
 
 use hyperware_process_lib::{
@@ -1170,7 +1173,10 @@ fn main_loop(
     hypermap: &hypermap::Hypermap,
     server: &http::server::HttpServer,
 ) -> anyhow::Result<()> {
-    info!("Hypermap Binding Cacher main_loop started. Our address: {}", our);
+    info!(
+        "Hypermap Binding Cacher main_loop started. Our address: {}",
+        our
+    );
     info!(
         "Monitoring Binding contract: {}",
         state.hypermap_binding_address.to_string()

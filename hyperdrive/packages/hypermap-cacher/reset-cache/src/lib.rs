@@ -12,8 +12,8 @@
 //!     reset:hypermap-cacher:sys                      # Reset with default nodes
 //!     reset:hypermap-cacher:sys alice.os bob.os      # Reset with custom nodes
 
-use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use crate::hyperware::process::binding_cacher::{BindingCacherRequest, BindingCacherResponse};
+use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use hyperware_process_lib::{await_next_message_body, call_init, println, Address, Request};
 
 wit_bindgen::generate!({
