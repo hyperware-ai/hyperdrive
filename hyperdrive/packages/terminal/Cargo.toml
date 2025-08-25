@@ -5,6 +5,7 @@ members = [
     "add-rpcurl-provider",
     "alias",
     "cat",
+    "clear-state",
     "echo",
     "get-providers",
     "help",
