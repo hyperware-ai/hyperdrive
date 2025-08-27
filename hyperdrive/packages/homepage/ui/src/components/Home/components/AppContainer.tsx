@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { RunningApp } from '../../../types/app.types';
 
 interface AppContainerProps {

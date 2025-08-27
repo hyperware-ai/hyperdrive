@@ -66,7 +66,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
   },
 
   openApp: async (app: HomepageApp, query?: string) => {
-    console.log('openApp called with:', { app });
+    console.log('openApp called with:', { app, query });
 
     // Don't open apps without a valid path
     if (!app.path || !app.process || !app.publisher) {
@@ -79,7 +79,9 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     if (isLocalhost) {
       console.log('[homepage] opening app in new tab:', { app });
       // don't use secure subdomain for localhost
-      window.open(app.path.replace(/^(https?:\/\/)(.*)localhost/, '$1localhost'), '_blank');
+      const path = app.path.replace(/^(https?:\/\/)(.*)localhost/, '$1localhost') + (query || '');
+      console.log({ path })
+      window.open(path, '_blank');
       set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
       return;
     }
@@ -111,7 +113,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       set({
         runningApps: [...runningApps, {
           ...app,
-          path: `${app.path}${query ? `${query.startsWith('?') ? '' : '?'}${query}` : ''}`,
+          path: `${app.path}${query || ''}`,
           openedAt: Date.now()
         }],
         currentAppId: app.id,
