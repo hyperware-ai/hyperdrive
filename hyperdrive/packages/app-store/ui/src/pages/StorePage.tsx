@@ -1,110 +1,23 @@
-import React, { useState, useEffect } from "react";
-import useAppsStore from "../store";
+import React, { useState, useEffect, useCallback } from "react";
+import useAppsStore from "../store/appStoreStore";
 import { AppListing } from "../types/Apps";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { ResetButton } from "../components";
 import { AppCard } from "../components/AppCard";
 import { BsSearch } from "react-icons/bs";
 import classNames from "classnames";
-import { useLocation } from "react-router-dom";
-const mockApps: AppListing[] = [
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App",
-      description: "This is a test app",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App",
-      description: "This is a test app",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App TestappTestappTestappTestappTestapp",
-      description: "adsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege aadsf adf adsf asdf asdf adgfagafege a",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-  {
-    package_id: {
-      package_name: "test-app",
-      publisher_node: "test-node",
-    },
-    tba: "0x0000000000000000000000000000000000000000",
-    metadata_uri: "https://example.com/metadata",
-    metadata_hash: "1234567890",
-    auto_update: false,
-    metadata: {
-      name: "Test App",
-      description: "This is a test app",
-      properties: {
-        package_name: "test-app",
-        publisher: "test-nodetest-nodetest-nodetest-nodetest-node",
-        current_version: "1.0.0",
-        mirrors: [],
-        code_hashes: [],
-      },
-    },
-  },
-];
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function StorePage() {
-  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, fetchHomepageApps, getLaunchUrl } = useAppsStore();
+  const { listings, installed, fetchListings, fetchInstalled, fetchUpdates, homepageApps, fetchHomepageApps, navigateToApp } = useAppsStore();
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [launchableApps, setLaunchableApps] = useState<AppListing[]>([]);
   const [appsNotInstalled, setAppsNotInstalled] = useState<AppListing[]>([]);
-  const [isDevMode, setIsDevMode] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // if we have ?search=something, set the search query to that
   const location = useLocation();
+  const navigate = useNavigate();
   useEffect(() => {
     console.log({ location })
     const search = new URLSearchParams(location.search).get("search");
@@ -115,7 +28,6 @@ export default function StorePage() {
   }, [location]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e.target.value, searchQuery);
     setSearchQuery(e.target.value);
   }
 
@@ -126,12 +38,6 @@ export default function StorePage() {
   }
 
   useEffect(() => {
-    if (searchQuery.match(/``````/)) {
-      setIsDevMode(!isDevMode);
-    }
-  }, [searchQuery]);
-
-  useEffect(() => {
     fetchListings();
     fetchInstalled();
     fetchUpdates();
@@ -140,17 +46,16 @@ export default function StorePage() {
 
   useEffect(() => {
     if (listings) {
-      setLaunchableApps(Object.values(listings).filter((app) => getLaunchUrl(`${app.package_id.package_name}:${app.package_id.publisher_node}`)));
-
       // Check if app is installed by looking in the installed state
       const notInstalledApps = Object.values(listings).filter((app) => {
         const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
+        console.log({ appId, installed, listings });
         return !installed[appId];
       });
       console.log({ notInstalledApps, installedKeys: Object.keys(installed) });
       setAppsNotInstalled(notInstalledApps);
     }
-  }, [listings, installed, getLaunchUrl]);
+  }, [listings, installed]);
 
   // extensive temp null handling due to weird prod bug
   const filteredApps = React.useMemo(() => {
@@ -162,6 +67,24 @@ export default function StorePage() {
       return nameMatch || descMatch;
     });
   }, [listings, searchQuery]);
+
+  const getLocalhostLink = useCallback((app: AppListing) => {
+    const isLocalhost = window.location.hostname.endsWith('.localhost');
+    console.log({ isLocalhost });
+    if (!isLocalhost) return null;
+    let path = homepageApps.find((hpa) => hpa.id.match(new RegExp(`${app.package_id.package_name}:${app.package_id.publisher_node}(\/)?$`)))?.path;
+    if (path?.[0] !== '/') path = `/${path}`;
+    console.log({ path });
+    if (!path) return null;
+    const href = `${window.location.protocol}//localhost${window.location.port ? `:${window.location.port}` : ''}${path}`.replace(/\/$/, '');
+    console.log({ href });
+    return <a
+      className="absolute inset-0"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    />
+  }, [homepageApps]);
 
   return (
     <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
@@ -177,20 +100,6 @@ export default function StorePage() {
         />
       </div>
 
-
-      {isDevMode && <div
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-      >
-        {mockApps.map((app) => (
-          <AppCard
-            key={`${app.package_id?.package_name}:${app.package_id?.publisher_node}`}
-            app={app}
-          >
-            <ActionChip label="Install" />
-            <ActionChip label="Launch" />
-          </AppCard>
-        ))}
-      </div>}
       {!listings ? (
         <p>Loading...</p>
       ) : filteredApps.length === 0 ? (
@@ -207,9 +116,24 @@ export default function StorePage() {
               app={app}
             >
               {appsNotInstalled.includes(app)
-                ? <ActionChip label="Install" />
-                : launchableApps.includes(app)
-                  ? <ActionChip label="Launch" />
+                ? <ActionChip
+                  label="Install"
+                  onClick={() => navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}?intent=install`)}
+                />
+                : homepageApps.find((hpa) => {
+                  const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
+                  const hpaId = hpa.id;
+                  const path = hpa.path || '';
+                  console.log({ appId, hpaId, path });
+                  return hpaId.endsWith(appId) && path
+                })
+                  ? <ActionChip
+                    label="Launch"
+                    onClick={() => navigateToApp(`${app.package_id.package_name}:${app.package_id.publisher_node}`)}
+                    className="relative"
+                  >
+                    {getLocalhostLink(app) || null}
+                  </ActionChip>
                   : <ActionChip label="Installed" />}
             </AppCard>
           ))}
@@ -257,8 +181,14 @@ export default function StorePage() {
 const ActionChip: React.FC<{
   label: string;
   className?: string;
-}> = ({ label, className }) => {
+  onClick?: () => void;
+  children?: React.ReactNode;
+}> = ({ label, className, onClick, children }) => {
   return <div
-    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", className)}>{label}
+    onClick={onClick}
+    data-action-button={!!onClick}
+    className={classNames("bg-iris/10 text-iris dark:bg-black dark:text-neon font-bold px-3 py-1 rounded-full flex items-center gap-2", {
+      'cursor-pointer hover:opacity-80': onClick,
+    }, className)}>{label}{children}
   </div>
 }

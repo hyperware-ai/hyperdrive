@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import useAppsStore from "../store";
+import useAppsStore from "../store/appStoreStore";
 
 interface MirrorSelectorProps {
     packageId: string | undefined;

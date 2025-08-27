@@ -33,8 +33,8 @@ export const AppDrawer: React.FC = () => {
 
   return (
     <div
-    className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col"
-    onClick={toggleAppDrawer}
+      className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col"
+      onClick={toggleAppDrawer}
     >
       <div className="px-2 py-1 self-stretch flex items-center gap-2">
         <h2 className="prose">My Apps</h2>
@@ -56,17 +56,20 @@ export const AppDrawer: React.FC = () => {
           grid
           gap-4 md:gap-6 lg:gap-8
           `, {
-            'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6': filteredApps.length > 0,
-            'grid-cols-2': filteredApps.length === 0,
-          })}>
+          'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6': filteredApps.length > 0,
+          'grid-cols-2': filteredApps.length === 0,
+        })}>
           {filteredApps.map(app => (
             <div
-            key={app.id}
-            className="relative group"
-            data-app-id={app.id}
+              key={app.id}
+              className="relative group"
+              data-app-id={app.id}
             >
               <div onClick={(e) => {
                 e.stopPropagation();
+                if (app.path === null) {
+                  return;
+                }
                 openApp(app);
               }}>
                 <AppIcon app={app} isEditMode={false} />
@@ -82,23 +85,23 @@ export const AppDrawer: React.FC = () => {
             </div>
           ))}
           {filteredApps.length === 0 && (
-              <div
-                className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center col-span-full')}
+            <div
+              className={classNames('bg-neon text-black rounded-lg px-2 py-1 text-xs flex flex-wrap items-center justify-center col-span-full')}
+            >
+              <span>No installed apps found.</span>
+              <span
+                // href={`/main:app-store:sys/?search=${searchQuery}`}
+                className="underline text-iris font-bold cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearchQuery('')
+                  openApp(apps.find(a => a.id === 'main:app-store:sys')!, `?search=${searchQuery}`)
+                }}
               >
-                <span>No installed apps found.</span>
-                <span
-                  // href={`/main:app-store:sys/?search=${searchQuery}`}
-                  className="underline text-iris font-bold cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchQuery('')
-                    openApp(apps.find(a => a.id === 'main:app-store:sys')!, `?search=${searchQuery}`)
-                  }}
-                >
-                  Search the app store
-                </span>
-              </div>
-            )}
+                Search the app store
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

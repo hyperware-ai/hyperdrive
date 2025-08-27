@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const PWAUpdateNotification: React.FC = () => {
+const UpdateNotification: React.FC = () => {
   const [showUpdate, setShowUpdate] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
@@ -66,4 +66,4 @@ const PWAUpdateNotification: React.FC = () => {
   );
 };
 
-export default PWAUpdateNotification;
+export default UpdateNotification;

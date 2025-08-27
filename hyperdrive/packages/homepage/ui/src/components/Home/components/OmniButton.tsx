@@ -9,10 +9,12 @@ export const OmniButton: React.FC = () => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
   const dragThreshold = 5; // pixels - swipes smaller than this will be treated as taps
   const buttonRef = useRef<HTMLDivElement>(null);
-  const isMobile = window.innerWidth < 768;
+  const isMobile = () => window.innerWidth < 768;
 
   // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile()) return;
+    console.log('omnibutton handleTouchStart', e);
     e.stopPropagation();
     const touch = e.touches[0];
     setDragStart({
@@ -24,6 +26,7 @@ export const OmniButton: React.FC = () => {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    console.log('omnibutton handleTouchMove', e);
     if (!dragStart) return;
     e.stopPropagation();
 
@@ -45,6 +48,8 @@ export const OmniButton: React.FC = () => {
   };
 
   const handleTouchEnd = () => {
+    if (!isMobile()) return;
+    console.log('omnibutton handleTouchEnd');
     if (!isDragging && dragStart) {
       // Tap - open recent apps
       if (!isRecentAppsOpen) toggleRecentApps();
@@ -56,7 +61,8 @@ export const OmniButton: React.FC = () => {
 
   // Mouse handlers for desktop
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (isMobile) return;
+    if (isMobile()) return;
+    console.log('omnibutton handleMouseDown', e);
     e.stopPropagation();
     setDragStart({
       x: e.clientX,
@@ -67,7 +73,8 @@ export const OmniButton: React.FC = () => {
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (isMobile) return;
+    if (isMobile()) return;
+    console.log('omnibutton handleMouseMove', e);
     e.stopPropagation();
     if (!dragStart) return;
 
@@ -86,7 +93,8 @@ export const OmniButton: React.FC = () => {
   };
 
   const handleMouseUp = () => {
-    if (isMobile) return;
+    if (isMobile()) return;
+    console.log('omnibutton handleMouseUp');
     if (!isDragging && dragStart) {
       if (!isRecentAppsOpen) toggleRecentApps();
       else closeAllOverlays();
