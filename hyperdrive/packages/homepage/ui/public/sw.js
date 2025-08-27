@@ -38,36 +38,28 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first strategy (online-only app)
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  // Only handle same-origin, GET requests for the app shell. Let the browser
+  // handle everything else (prevents returning undefined Responses).
+  if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
+  const url = new URL(event.request.url);
+  const isAppShellRequest = urlsToCache.includes(url.pathname);
+
+  if (!isAppShellRequest) return; // don't intercept non-app-shell routes
 
   event.respondWith(
-    // Try network first
     fetch(event.request)
       .then((response) => {
-        // Clone the response before using it
         const responseToCache = response.clone();
-
-        // Update cache with fresh response for app shell files
-        if (urlsToCache.includes(new URL(event.request.url).pathname)) {
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-        }
-
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
         return response;
       })
-      .catch(() => {
-        // If network fails, try cache (only for app shell)
-        return caches.match(event.request);
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached || new Response('', { status: 504, statusText: 'Gateway Timeout' });
       })
   );
 });

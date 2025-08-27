@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { FaDownload, FaSpinner, FaChevronDown, FaChevronUp, FaRocket, FaTrash, FaPlay } from "react-icons/fa";
-import useAppsStore from "../store";
+import useAppsStore from "../store/appStoreStore";
 import { MirrorSelector, ManifestDisplay } from '../components';
 import { ManifestResponse } from "../types/Apps";
 import { Modal } from "../components/Modal";

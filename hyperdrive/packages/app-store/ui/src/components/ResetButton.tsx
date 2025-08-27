@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaExclamationTriangle } from 'react-icons/fa';
-import useAppsStore from '../store';
+import useAppsStore from '../store/appStoreStore';
 import { BsArrowClockwise } from 'react-icons/bs';
 import { Modal } from './Modal';
 import classNames from 'classnames'

@@ -9,6 +9,7 @@ import AppPage from "./pages/AppPage";
 import DownloadPage from "./pages/DownloadPage";
 import PublishPage from "./pages/PublishPage";
 import MyAppsPage from "./pages/MyAppsPage";
+import { ToastContainer } from "react-toastify";
 
 
 //@ts-ignore
@@ -30,6 +31,9 @@ function App() {
           <Route path={`${DOWNLOAD_PATH}/:id`} element={<DownloadPage />} />
         </Routes>
       </Router>
+      <ToastContainer
+
+      />
     </div >
   );
 }
