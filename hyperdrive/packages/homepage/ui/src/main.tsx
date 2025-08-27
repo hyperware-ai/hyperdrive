@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import AndroidHomescreen from './pages/AndroidHomescreen.tsx'
+import Home from './components/Home'
 import './index.css'
 
 // Register service worker for PWA
@@ -23,6 +23,6 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AndroidHomescreen />
+    <Home />
   </React.StrictMode>,
 )

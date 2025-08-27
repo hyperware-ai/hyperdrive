@@ -5,7 +5,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const PWAInstallPrompt: React.FC = () => {
+const InstallPrompt: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
 
@@ -94,4 +94,4 @@ const PWAInstallPrompt: React.FC = () => {
   );
 };
 
-export default PWAInstallPrompt;
+export default InstallPrompt;

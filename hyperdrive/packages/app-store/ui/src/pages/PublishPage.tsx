@@ -5,7 +5,7 @@ import { ConnectButton, useConnectModal } from '@rainbow-me/rainbowkit';
 import { keccak256, toBytes } from 'viem';
 import { mechAbi, HYPERMAP, encodeIntoMintCall, encodeMulticalls, hypermapAbi, MULTICALL } from "../abis";
 import { hyperhash } from '../utils/hyperhash';
-import useAppsStore from "../store";
+import useAppsStore from "../store/appStoreStore";
 import { PackageSelector } from "../components";
 import { Tooltip } from '../components/Tooltip';
 import { FaCircleNotch, FaInfo, FaWallet } from "react-icons/fa6";
