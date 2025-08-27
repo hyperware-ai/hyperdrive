@@ -4,6 +4,8 @@ import { PackageState, AppListing, MirrorCheckFile, DownloadItem, HomepageApp, M
 import { HTTP_STATUS } from '../constants/http'
 import HyperwareClientApi from "@hyperware-ai/client-api"
 import { WEBSOCKET_URL } from '../utils/ws'
+import { toast } from 'react-toastify';
+import { IframeMessageType } from '../types/messages'
 
 const BASE_URL = '/main:app-store:sys'
 
@@ -30,8 +32,8 @@ interface AppsStore {
   checkMirror: (id: string, node: string) => Promise<MirrorCheckFile | null>
   resetStore: () => Promise<void>
 
-  fetchHomepageApps: () => Promise<void>
-  getLaunchUrl: (id: string) => string | null
+  fetchHomepageApps: () => Promise<HomepageApp[]>
+  getLaunchUrl: (id: string) => { foundApp: boolean, path: string | null }
 
   addNotification: (notification: Notification) => void;
   removeNotification: (id: string) => void;
@@ -56,6 +58,10 @@ interface AppsStore {
   checkMirrors: (packageId: string, onMirrorSelect: (mirror: string, status: boolean | null | 'http') => void) => Promise<{ mirror: string, status: boolean | null | 'http', mirrors: string[] } | { error: string, mirrors: string[] }>
   setShowPublicAppStore: (show: boolean) => Promise<void>
   fetchPublicAppStoreStatus: () => Promise<void>
+
+  navigateToApp: (id: string) => void
+
+  addToast: (message: string, status: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
 const useAppsStore = create<AppsStore>()((set, get) => ({
@@ -128,6 +134,7 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
           acc[`${pkg.package_id.package_name}:${pkg.package_id.publisher_node}`] = pkg;
           return acc;
         }, {} as Record<string, PackageState>);
+        console.log({ installedMap });
         set({ installed: installedMap });
       }
     } catch (error) {
@@ -193,23 +200,31 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
     return [];
   },
 
-  fetchHomepageApps: async () => {
+  fetchHomepageApps: async (): Promise<HomepageApp[]> => {
     try {
       const res = await fetch(`${BASE_URL}/homepageapps`);
       if (res.status === HTTP_STATUS.OK) {
         const data = await res.json();
         const apps = data.GetApps || [];
         set({ homepageApps: apps });
+        console.log({ homepageApps: apps });
+        return apps;
       }
     } catch (error) {
       console.error("Error fetching homepage apps:", error);
       set({ homepageApps: [] });
     }
+    return [];
   },
 
   getLaunchUrl: (id: string) => {
-    const app = get().homepageApps?.find(app => `${app.package_name}:${app.publisher}` === id);
-    return app?.path || null;
+    const { homepageApps } = get();
+    const app = homepageApps.find(app => `${app.package_name}:${app.publisher}` === id);
+    console.log('getLaunchUrl', { id, app, homepageApps });
+    return {
+      foundApp: !!app,
+      path: app?.path || null
+    };
   },
 
   checkMirror: async (id: string, node: string) => {
@@ -369,10 +384,20 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
     }));
   },
 
+  addToast: (message: string, status: 'success' | 'error' | 'info' | 'warning') => {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    toast[status](message, {
+      toastId: message,
+      theme: isDark ? 'dark' : 'light',
+    });
+  },
 
-  addNotification: (notification) => set(state => ({
-    notifications: [...state.notifications, notification]
-  })),
+  addNotification: (notification) => {
+    set(state => ({
+      notifications: [...state.notifications, notification]
+    }));
+    get().addToast(notification.message, notification.type === 'error' ? 'error' : 'info');
+  },
 
   removeNotification: (id) => set(state => ({
     notifications: state.notifications.filter(n => n.id !== id)
@@ -455,6 +480,13 @@ const useAppsStore = create<AppsStore>()((set, get) => ({
       onMirrorSelect("", false);
       return { error: "Failed mirror check", mirrors: [] };
     }
+  },
+
+  navigateToApp: (id: string) => {
+    window.parent.postMessage({
+      type: IframeMessageType.OPEN_APP,
+      id
+    }, '*');
   },
 
   resetStore: async () => {
