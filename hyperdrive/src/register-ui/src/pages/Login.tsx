@@ -17,6 +17,11 @@ function Login({
 }: LoginProps) {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!hnsName) navigate('/');
+  }, [hnsName]);
+
+
   const [keyErrs, setKeyErrs] = useState<string[]>([]);
   const [loading, setLoading] = useState<string>("");
 
