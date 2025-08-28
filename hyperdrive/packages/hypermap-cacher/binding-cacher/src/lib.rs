@@ -40,14 +40,25 @@ const RETRY_DELAY_S: u64 = 10;
 const LOG_ITERATION_DELAY_MS: u64 = 200;
 
 #[cfg(not(feature = "simulation-mode"))]
-const DEFAULT_NODES: &[&str] = &[
-    "us-cacher-1.hypr",
-    "eu-cacher-1.hypr",
-    "nick.hypr",
-    "nick1udwig.os",
-];
+const DEFAULT_NODES_JSON: &str = include_str!("../../default_nodes.json");
+
 #[cfg(feature = "simulation-mode")]
-const DEFAULT_NODES: &[&str] = &["fake.os"];
+const DEFAULT_NODES_JSON: &str = include_str!("../../default_nodes_simulation.json");
+
+fn load_cache_sources(config_path: Option<&str>) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    if let Some(path) = config_path {
+        // Load from user-provided file
+        let config_content = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read cache config file {}: {}", path, e))?;
+
+        serde_json::from_str::<Vec<String>>(&config_content)
+            .map_err(|e| format!("Failed to parse cache config JSON: {}", e).into())
+    } else {
+        // Fall back to embedded defaults
+        serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+            .map_err(|e| format!("Failed to parse embedded default cache nodes: {}", e).into())
+    }
+}
 
 // Internal representation of LogsMetadata, similar to WIT but for Rust logic.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -149,7 +160,7 @@ impl State {
             is_cache_timer_live: false,
             drive_path: drive_path.to_string(),
             is_providing: false,
-            nodes: DEFAULT_NODES.iter().map(|s| s.to_string()).collect(),
+            nodes: cache_sources.iter().map(|s| s.to_string()).collect(),
             is_starting: true,
         }
     }
@@ -566,7 +577,7 @@ impl State {
         let mut nodes = self.nodes.clone();
 
         // If using default nodes, shuffle them for random order
-        let default_nodes: Vec<String> = DEFAULT_NODES.iter().map(|s| s.to_string()).collect();
+        let default_nodes: Vec<String> = cache_sources.iter().map(|s| s.to_string()).collect();
         if nodes == default_nodes {
             nodes.shuffle(&mut thread_rng());
         }
@@ -1144,7 +1155,7 @@ fn handle_request(
                 // Create new state with custom nodes if provided, otherwise use defaults
                 let nodes = match custom_nodes {
                     Some(nodes) => nodes,
-                    None => DEFAULT_NODES.iter().map(|s| s.to_string()).collect(),
+                    None => cache_sources.iter().map(|s| s.to_string()).collect(),
                 };
 
                 *state = State::new(&state.drive_path);
@@ -1283,6 +1294,22 @@ fn init(our: Address) {
     let drive_path = vfs::create_drive(our.package_id(), "binding-cache", None).unwrap();
 
     let bind_config = http::server::HttpBindingConfig::default().authenticated(false);
+
+    // Read the config path from environment variable (None if not set)
+    let cache_source_config_path = std::env::var("CACHE_SOURCE_CONFIG_PATH").ok();
+
+    // Load cache sources - this handles both user config and embedded defaults
+    let cache_sources = load_cache_sources(cache_source_config_path.as_deref())
+        .unwrap_or_else(|e| {
+            // Only print error if a config was actually specified
+            if cache_source_config_path.is_some() {
+                println!("hypermap-cacher: Error loading cache sources: {}, falling back to defaults", e);
+            }
+            // Parse embedded defaults as final fallback
+            serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+                .expect("Failed to parse embedded default cache nodes")
+        });
+
     let mut server = http::server::HttpServer::new(5);
 
     let hypermap_provider = hypermap::Hypermap::default(60);
@@ -1302,6 +1329,8 @@ fn init(our: Address) {
     info!("Bound HTTP paths: /manifest, /log-cache/*, /status");
 
     let mut state = State::load(&drive_path);
+
+    state.nodes = cache_sources;
 
     loop {
         match main_loop(&our, &mut state, &hypermap_provider, &server) {

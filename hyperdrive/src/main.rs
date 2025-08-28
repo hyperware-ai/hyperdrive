@@ -52,7 +52,10 @@ const DEFAULT_MAX_PEERS: u64 = 32;
 const DEFAULT_MAX_PASSTHROUGHS: u64 = 0;
 
 /// default routers as a eth-provider fallback
+#[cfg(not(feature = "simulation-mode"))]
 const DEFAULT_ETH_PROVIDERS: &str = include_str!("eth/default_providers_mainnet.json");
+#[cfg(feature = "simulation-mode")]
+const DEFAULT_ETH_PROVIDERS: &str = include_str!("eth/default_simulation_mode_providers.json");
 #[cfg(not(feature = "simulation-mode"))]
 pub const CHAIN_ID: u64 = 8453; // base
 #[cfg(feature = "simulation-mode")]
@@ -83,6 +86,9 @@ async fn main() {
     let verbose_mode = *matches
         .get_one::<u8>("verbosity")
         .expect("verbosity required");
+    let cache_source_config = matches.get_one::<String>("cache-source-config").map(|p| {
+        std::fs::canonicalize(&p).expect(&format!("specified cache-source-config path {p} not found"))
+    });
     let rpc = matches.get_one::<String>("rpc");
     let rpc_config = matches.get_one::<String>("rpc-config").map(|p| {
         std::fs::canonicalize(&p).expect(&format!("specified rpc-config path {p} not found"))
@@ -112,6 +118,11 @@ async fn main() {
     };
 
     let expose_local = *matches.get_one::<bool>("expose-local").unwrap();
+
+    // Set environment variable for the WASM process to read
+    if let Some(config_path) = cache_source_config {
+        std::env::set_var("CACHE_SOURCE_CONFIG_PATH", config_path);
+    }
 
     #[cfg(feature = "simulation-mode")]
     let (fake_node_name, fakechain_port) = (
@@ -775,6 +786,7 @@ fn build_command() -> Command {
             arg!(-d --detached <IS_DETACHED> "Run in detached mode (don't accept input)")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(arg!(--"cache-source-config" <CACHE_CONFIG_PATH> "Add cache source nodes for hypermap and bindings contract logs"))
         .arg(arg!(--rpc <RPC> "Add a WebSockets RPC URL at boot"))
         .arg(arg!(--"rpc-config" <RPC_CONFIG_PATH> "Add WebSockets RPC URLs specified in config at boot"))
         .arg(arg!(--password <PASSWORD> "Node password (in double quotes)"))

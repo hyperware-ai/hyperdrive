@@ -1,0 +1,22 @@
+[
+  {
+    "chain_id": 31337,
+    "trusted": false,
+    "provider": {
+      "Node": {
+        "hns_update": {
+          "name": "fake.os",
+          "public_key": "0xd7732d194e46ac4b0dfb8958816e16c05512aa802e20b99613fbc15c79ea10fa",
+          "ips": [
+            "127.0.0.1"
+          ],
+          "ports": {
+            "ws": 9000
+          },
+          "routers": []
+        },
+        "use_as_provider": true
+      }
+    }
+  }
+]
