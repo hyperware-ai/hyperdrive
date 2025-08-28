@@ -157,7 +157,11 @@ impl State {
             is_cache_timer_live: false,
             drive_path: drive_path.to_string(),
             is_providing: false,
-            nodes: cache_sources.iter().map(|s| s.to_string()).collect(),
+            nodes: load_cache_sources(std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref())
+                .unwrap_or_else(|_| {
+                    serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+                        .expect("Failed to parse embedded default cache nodes")
+                }),
             is_starting: true,
         }
     }
@@ -574,7 +578,11 @@ impl State {
         let mut nodes = self.nodes.clone();
 
         // If using default nodes, shuffle them for random order
-        let default_nodes: Vec<String> = cache_sources.iter().map(|s| s.to_string()).collect();
+        let default_nodes: Vec<String> = load_cache_sources(std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref())
+            .unwrap_or_else(|_| {
+                serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+                    .expect("Failed to parse embedded default cache nodes")
+            });
         if nodes == default_nodes {
             nodes.shuffle(&mut thread_rng());
         }
@@ -1152,7 +1160,11 @@ fn handle_request(
                 // Create new state with custom nodes if provided, otherwise use defaults
                 let nodes = match custom_nodes {
                     Some(nodes) => nodes,
-                    None => cache_sources.iter().map(|s| s.to_string()).collect(),
+                    None => load_cache_sources(std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref())
+                        .unwrap_or_else(|_| {
+                            serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+                                .expect("Failed to parse embedded default cache nodes")
+                        }),
                 };
 
                 *state = State::new(&state.drive_path);
