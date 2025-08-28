@@ -39,7 +39,7 @@ export const HomeScreen: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
 
-  // console.log({ appPositions })
+  // console.log({ widgetSettings, appPositions })
 
   useEffect(() => {
     console.log('isInitialized', isInitialized);
@@ -47,10 +47,14 @@ export const HomeScreen: React.FC = () => {
     // add appstore, contacts, and settings to the homepage on initial load
     setIsInitialized(true);
     // default widgets
-    // addToHomeScreen("main:app-store:sys");
-    // addToHomeScreen("contacts:contacts:sys");
-    // addToHomeScreen("settings:settings:sys");
+    addToHomeScreen("main:app-store:sys");
+    addToHomeScreen("contacts:contacts:sys");
+    addToHomeScreen("settings:settings:sys");
     addToHomeScreen("homepage:homepage:sys"); // actually the clock widget
+
+    // disable these widgets by default
+    toggleWidget("main:app-store:sys");
+    toggleWidget("settings:settings:sys");
 
     // default dock apps
     addToDock("settings:settings:sys", 0);
@@ -205,6 +209,7 @@ export const HomeScreen: React.FC = () => {
   }, [apps, homeScreenApps]);
 
   const widgetApps = useMemo(() => {
+    console.log({ homeApps });
     return homeApps.filter(app => app.widget);
   }, [homeApps]);
 
@@ -344,7 +349,7 @@ export const HomeScreen: React.FC = () => {
               totalWidgets={widgetApps.length}
               className={classNames({
                 // 'invisible pointer-events-none': searchQuery && !app.label.toLowerCase().includes(searchQuery.toLowerCase()) && !widgetSettings[app.id]?.hide
-                'invisible pointer-events-none': !widgetSettings[app.id]?.hide
+                'invisible pointer-events-none': widgetSettings?.[app.id]?.hide
               })}
             >
               {showWidgetOnboarding && index === 0 && <div
