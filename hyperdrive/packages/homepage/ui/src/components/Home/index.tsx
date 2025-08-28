@@ -12,6 +12,8 @@ import './styles/animations.css';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { IframeMessageType, isIframeMessage } from '../../types/messages';
+import { usePersistenceStore } from '../../stores/persistenceStore';
+import { HomepageApp } from '../../types/app.types';
 dayjs.extend(relativeTime);
 
 export default function Home() {
@@ -92,8 +94,8 @@ export default function Home() {
         allGood = false;
       }
 
-      if (event.data.type !== IframeMessageType.OPEN_APP) {
-        console.log('expected OPEN_APP, got:', event.data.type);
+      if (![IframeMessageType.OPEN_APP, IframeMessageType.APP_LINK_CLICKED].includes(event.data.type)) {
+        console.log('expected IframeMessageType, got:', event.data.type);
         allGood = false;
       }
 
@@ -120,6 +122,11 @@ export default function Home() {
         } else {
           console.error('App not found:', { id, apps });
         }
+      } else if (event.data.type === IframeMessageType.APP_LINK_CLICKED) {
+        console.log({ appLinkClicked: event });
+        const { url } = event.data;
+        console.log({ url, apps });
+        openApp(apps.find(app => app.id.endsWith('app-store:sys')) as HomepageApp, url)
       }
     };
     window.addEventListener('message', handleMessage);

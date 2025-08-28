@@ -172,24 +172,27 @@ pub async fn handle_close_websocket(
     ws_senders: WebSocketSenders,
     channel_id: u32,
 ) -> bool {
-    let Some(got) = ws_senders.get(&channel_id) else {
-        return false;
-    };
+    // in block to drop `got` reference before `.remove`: avoid deadlock
+    {
+        let Some(got) = ws_senders.get(&channel_id) else {
+            return false;
+        };
 
-    if got.value().0 != source.process {
-        send_action_response(
-            id,
-            source.clone(),
-            send_to_loop,
-            Err(HttpServerError::WsChannelNotFound),
-        )
-        .await;
-        return true;
+        if got.value().0 != source.process {
+            send_action_response(
+                id,
+                source.clone(),
+                send_to_loop,
+                Err(HttpServerError::WsChannelNotFound),
+            )
+            .await;
+            return true;
+        }
+
+        let _ = got.value().1.send(warp::ws::Message::close()).await;
     }
 
-    let _ = got.value().1.send(warp::ws::Message::close()).await;
     ws_senders.remove(&channel_id);
-
     return false;
 }
 

@@ -196,10 +196,16 @@ fn make_widget() -> String {
                         data.forEach(app => {
                             if (app.metadata) {
                                 const a = document.createElement('a');
+                                a.addEventListener('click', (e) => {
+                                    if (!window.location.hostname.endsWith('.localhost')) {
+                                        e.preventDefault();
+                                    }
+                                    window.parent?.postMessage({
+                                        type: 'APP_LINK_CLICKED',
+                                        url: `app/${app.package_id.package_name}:${app.package_id.publisher_node}`,
+                                    }, '*');
+                                });
                                 a.className = 'app';
-                                a.href = `/main:app-store:sys/app/${app.package_id.package_name}:${app.package_id.publisher_node}`
-                                a.target = '_blank';
-                                a.rel = 'noopener noreferrer';
                                 const iconLetter = app.metadata_hash.replace('0x', '')[0].toUpperCase();
                                 a.innerHTML = `<div
                                     class="app-image"

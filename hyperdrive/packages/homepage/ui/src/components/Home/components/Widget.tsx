@@ -21,7 +21,6 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
   const resizeRef = useRef<HTMLDivElement>(null);
 
   const settings = widgetSettings[app.id] || {};
-  if (settings.hide) return null;
   const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
   const padding = isMobile ? 5 : 10;
   const spacing = isMobile ? 5 : 10;

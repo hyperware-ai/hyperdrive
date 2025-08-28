@@ -49,7 +49,7 @@ export default function StorePage() {
       // Check if app is installed by looking in the installed state
       const notInstalledApps = Object.values(listings).filter((app) => {
         const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
-        console.log({ appId, installed, listings });
+        // console.log({ appId, installed, listings });
         return !installed[appId];
       });
       console.log({ notInstalledApps, installedKeys: Object.keys(installed) });
@@ -124,7 +124,7 @@ export default function StorePage() {
                   const appId = `${app.package_id.package_name}:${app.package_id.publisher_node}`;
                   const hpaId = hpa.id;
                   const path = hpa.path || '';
-                  console.log({ appId, hpaId, path });
+                  // console.log({ appId, hpaId, path });
                   return hpaId.endsWith(appId) && path
                 })
                   ? <ActionChip
