@@ -42,7 +42,9 @@ const DEFAULT_NODES_JSON: &str = include_str!("../../default_nodes.json");
 #[cfg(feature = "simulation-mode")]
 const DEFAULT_NODES_JSON: &str = include_str!("../../default_nodes_simulation.json");
 
-fn load_cache_sources(config_path: Option<&str>) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn load_cache_sources(
+    config_path: Option<&str>,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     if let Some(path) = config_path {
         // Load from user-provided file
         let config_content = std::fs::read_to_string(path)
@@ -578,11 +580,12 @@ impl State {
         let mut nodes = self.nodes.clone();
 
         // If using default nodes, shuffle them for random order
-        let default_nodes: Vec<String> = load_cache_sources(std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref())
-            .unwrap_or_else(|_| {
-                serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
-                    .expect("Failed to parse embedded default cache nodes")
-            });
+        let default_nodes: Vec<String> =
+            load_cache_sources(std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref())
+                .unwrap_or_else(|_| {
+                    serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+                        .expect("Failed to parse embedded default cache nodes")
+                });
         if nodes == default_nodes {
             nodes.shuffle(&mut thread_rng());
         }
@@ -1160,11 +1163,13 @@ fn handle_request(
                 // Create new state with custom nodes if provided, otherwise use defaults
                 let nodes = match custom_nodes {
                     Some(nodes) => nodes,
-                    None => load_cache_sources(std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref())
-                        .unwrap_or_else(|_| {
-                            serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
-                                .expect("Failed to parse embedded default cache nodes")
-                        }),
+                    None => load_cache_sources(
+                        std::env::var("CACHE_SOURCE_CONFIG_PATH").ok().as_deref(),
+                    )
+                    .unwrap_or_else(|_| {
+                        serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)
+                            .expect("Failed to parse embedded default cache nodes")
+                    }),
                 };
 
                 *state = State::new(&state.drive_path);
@@ -1305,11 +1310,14 @@ fn init(our: Address) {
     let cache_source_config_path = std::env::var("CACHE_SOURCE_CONFIG_PATH").ok();
 
     // Load cache sources - this handles both user config and embedded defaults
-    let cache_sources = load_cache_sources(cache_source_config_path.as_deref())
-        .unwrap_or_else(|e| {
+    let cache_sources =
+        load_cache_sources(cache_source_config_path.as_deref()).unwrap_or_else(|e| {
             // Only print error if a config was actually specified
             if cache_source_config_path.is_some() {
-                println!("hypermap-cacher: Error loading cache sources: {}, falling back to defaults", e);
+                println!(
+                    "hypermap-cacher: Error loading cache sources: {}, falling back to defaults",
+                    e
+                );
             }
             // Parse embedded defaults as final fallback
             serde_json::from_str::<Vec<String>>(DEFAULT_NODES_JSON)

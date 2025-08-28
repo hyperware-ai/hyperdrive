@@ -87,7 +87,8 @@ async fn main() {
         .get_one::<u8>("verbosity")
         .expect("verbosity required");
     let cache_source_config = matches.get_one::<String>("cache-source-config").map(|p| {
-        std::fs::canonicalize(&p).expect(&format!("specified cache-source-config path {p} not found"))
+        std::fs::canonicalize(&p)
+            .expect(&format!("specified cache-source-config path {p} not found"))
     });
     let rpc = matches.get_one::<String>("rpc");
     let rpc_config = matches.get_one::<String>("rpc-config").map(|p| {
