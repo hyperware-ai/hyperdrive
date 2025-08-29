@@ -1274,7 +1274,7 @@ fn init(our: Address) {
     init_logging(Level::INFO, Level::DEBUG, None, None, None).unwrap();
     info!("Hypermap Cacher process starting...");
 
-    let drive_path = vfs::create_drive(our.package_id(), "hypermap-cache", None).unwrap();
+    let drive_path = vfs::create_drive(our.package_id(), "cache", None).unwrap();
 
     let bind_config = http::server::HttpBindingConfig::default().authenticated(false);
     let mut server = http::server::HttpServer::new(5);

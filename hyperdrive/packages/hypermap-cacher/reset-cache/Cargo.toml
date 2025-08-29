@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 #hyperware_process_lib = "2.1.0"
-hyperware_process_lib = { git = "https://github.com/hyperware-ai/process_lib", rev = "e11d17c" }
+hyperware_process_lib = { git = "https://github.com/hyperware-ai/process_lib", rev = "3f69276" }
 process_macros = "0.1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

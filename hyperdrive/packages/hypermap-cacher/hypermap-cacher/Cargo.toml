@@ -19,7 +19,7 @@ alloy = { version = "0.8.1", features = [
 chrono = "0.4.41"
 hex = "0.4.3"
 #hyperware_process_lib = { version = "2.1.0", features = ["logging"] }
-hyperware_process_lib = { git = "https://github.com/hyperware-ai/process_lib", rev = "e11d17c", features = ["logging"] }
+hyperware_process_lib = { git = "https://github.com/hyperware-ai/process_lib", rev = "3f69276", features = ["logging"] }
 process_macros = "0.1.0"
 rand = "0.8"
 rmp-serde = "1.1.2"
