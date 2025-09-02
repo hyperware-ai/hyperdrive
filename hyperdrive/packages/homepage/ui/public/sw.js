@@ -99,8 +99,27 @@ self.addEventListener('push', (event) => {
     renotify: true
   };
 
+  // Send notification data to all clients
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    Promise.all([
+      self.registration.showNotification(title, options),
+      // Notify all windows about the new notification
+      self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'PUSH_NOTIFICATION_RECEIVED',
+            notification: {
+              title,
+              body: options.body,
+              icon: options.icon,
+              data: notificationData.data,
+              appId: notificationData.data?.appId,
+              appLabel: notificationData.data?.appLabel
+            }
+          });
+        });
+      })
+    ])
   );
 });
 

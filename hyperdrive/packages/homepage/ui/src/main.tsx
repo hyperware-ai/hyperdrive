@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import Home from './components/Home'
 import './index.css'
+import { useNotificationStore } from './stores/notificationStore'
 
 // Helper function to convert base64 to Uint8Array
 function urlBase64ToUint8Array(base64String: string) {
@@ -155,6 +156,24 @@ async function initializePushNotifications(registration: ServiceWorkerRegistrati
   }
 }
 
+// Listen for push notification messages from service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'PUSH_NOTIFICATION_RECEIVED') {
+      const notification = event.data.notification;
+
+      // Add to notification store
+      useNotificationStore.getState().addNotification({
+        appId: notification.appId || 'system',
+        appLabel: notification.appLabel || 'System',
+        title: notification.title,
+        body: notification.body,
+        icon: notification.icon,
+      });
+    }
+  });
+}
+
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -164,6 +183,13 @@ if ('serviceWorker' in navigator) {
 
         // Initialize push notifications
         await initializePushNotifications(registration);
+
+        // Update permission state in store
+        if ('Notification' in window) {
+          useNotificationStore.getState().setPermissionGranted(
+            Notification.permission === 'granted'
+          );
+        }
 
         // Check for updates periodically
         setInterval(() => {
