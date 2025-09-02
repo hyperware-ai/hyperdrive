@@ -5,9 +5,8 @@ use thiserror::Error;
 /// IPC Requests for the notifications:distro:sys runtime module.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum NotificationsAction {
-    /// Send a push notification
+    /// Send a push notification to all registered devices
     SendNotification {
-        subscription: PushSubscription,
         title: String,
         body: String,
         icon: Option<String>,
@@ -17,6 +16,16 @@ pub enum NotificationsAction {
     GetPublicKey,
     /// Initialize or regenerate VAPID keys
     InitializeKeys,
+    /// Add a push subscription for a device
+    AddSubscription {
+        subscription: PushSubscription,
+    },
+    /// Remove a push subscription
+    RemoveSubscription {
+        endpoint: String,
+    },
+    /// Clear all subscriptions
+    ClearSubscriptions,
 }
 
 /// Push subscription information from the client
@@ -38,6 +47,9 @@ pub enum NotificationsResponse {
     NotificationSent,
     PublicKey(String),
     KeysInitialized,
+    SubscriptionAdded,
+    SubscriptionRemoved,
+    SubscriptionsCleared,
     Err(NotificationsError),
 }
 

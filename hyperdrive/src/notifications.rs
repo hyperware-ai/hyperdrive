@@ -4,6 +4,7 @@ use lib::types::core::{
     ProcessId, Request, Response, NOTIFICATIONS_PROCESS_ID,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use web_push::WebPushClient;
@@ -14,7 +15,7 @@ use web_push::{
 
 // Import our types from lib
 use lib::core::StateAction;
-use lib::notifications::{NotificationsAction, NotificationsError, NotificationsResponse};
+use lib::notifications::{NotificationsAction, NotificationsError, NotificationsResponse, PushSubscription, SubscriptionKeys};
 
 /// VAPID keys for web push notifications
 #[derive(Serialize, Deserialize, Clone)]
@@ -78,6 +79,7 @@ impl VapidKeys {
 
 pub struct NotificationsState {
     vapid_keys: Option<VapidKeys>,
+    subscriptions: Vec<PushSubscription>,
 }
 
 pub async fn notifications(
@@ -89,7 +91,10 @@ pub async fn notifications(
 ) -> Result<(), anyhow::Error> {
     println!("notifications: starting notifications module");
 
-    let state = Arc::new(RwLock::new(NotificationsState { vapid_keys: None }));
+    let state = Arc::new(RwLock::new(NotificationsState {
+        vapid_keys: None,
+        subscriptions: Vec::new(),
+    }));
 
     // Try to load existing keys from state
     println!("notifications: loading keys from state");
@@ -150,6 +155,7 @@ async fn load_keys_from_state(
     send_to_loop: &MessageSender,
     state: &Arc<RwLock<NotificationsState>>,
 ) {
+    // Load VAPID keys
     let request_id = rand::random::<u64>();
 
     let km = KernelMessage::builder()
@@ -194,6 +200,67 @@ async fn load_keys_from_state(
                                             let mut state_guard = state.write().await;
                                             state_guard.vapid_keys = Some(keys);
                                             println!("notifications: loaded existing VAPID keys from state");
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    break;
+                } else {
+                    // Not our response, put it back for main loop to handle
+                    km.send(send_to_loop).await;
+                }
+            }
+        }
+    }
+
+    // Load subscriptions
+    let request_id = rand::random::<u64>();
+
+    let km = KernelMessage::builder()
+        .id(request_id)
+        .source((our_node, NOTIFICATIONS_PROCESS_ID.clone()))
+        .target((our_node, ProcessId::new(Some("state"), "distro", "sys")))
+        .message(Message::Request(Request {
+            inherit: false,
+            expects_response: Some(5),
+            body: serde_json::to_vec(&StateAction::GetState(ProcessId::new(Some("notifications-subscriptions"), "distro", "sys")))
+                .unwrap(),
+            metadata: None,
+            capabilities: vec![],
+        }))
+        .build()
+        .unwrap();
+
+    km.send(send_to_state).await;
+
+    // Wait for response with timeout
+    let timeout = tokio::time::sleep(tokio::time::Duration::from_secs(5));
+    tokio::pin!(timeout);
+
+    loop {
+        tokio::select! {
+            _ = &mut timeout => {
+                // Timeout reached, no saved subscriptions
+                println!("notifications: no saved subscriptions found in state");
+                break;
+            }
+            Some(km) = recv_notifications.recv() => {
+                // Check if this is our response
+                if km.id == request_id {
+                    if let Message::Response((response, _context)) = km.message {
+                        // Check if we got the state successfully
+                        if let Ok(state_response) = serde_json::from_slice::<lib::core::StateResponse>(&response.body) {
+                            match state_response {
+                                lib::core::StateResponse::GetState => {
+                                    // We got the state, deserialize the subscriptions from context
+                                    if let Some(blob) = km.lazy_load_blob {
+                                        if let Ok(subscriptions) = serde_json::from_slice::<Vec<PushSubscription>>(&blob.bytes) {
+                                            let mut state_guard = state.write().await;
+                                            state_guard.subscriptions = subscriptions;
+                                            println!("notifications: loaded {} existing subscriptions from state", state_guard.subscriptions.len());
                                         }
                                     }
                                 }
@@ -293,7 +360,6 @@ async fn handle_request(
             }
         }
         NotificationsAction::SendNotification {
-            subscription,
             title,
             body,
             icon,
@@ -305,12 +371,10 @@ async fn handle_request(
                 .as_ref()
                 .ok_or(NotificationsError::KeysNotInitialized)?;
 
-            // Create subscription info for web-push
-            let subscription_info = SubscriptionInfo::new(
-                &subscription.endpoint,
-                &subscription.keys.p256dh,
-                &subscription.keys.auth,
-            );
+            if state_guard.subscriptions.is_empty() {
+                println!("notifications: No subscriptions available to send notification");
+                return Ok(());
+            }
 
             // Build the notification payload
             let payload = serde_json::json!({
@@ -320,104 +384,149 @@ async fn handle_request(
                 "data": data,
             });
 
-            // Convert raw private key bytes to PEM format for web-push
-            println!(
-                "notifications: Starting VAPID signature creation for endpoint: {}",
-                subscription.endpoint
-            );
+            println!("notifications: Sending notification to {} devices", state_guard.subscriptions.len());
 
-            let private_key_bytes = URL_SAFE_NO_PAD.decode(&keys.private_key).map_err(|e| {
-                NotificationsError::WebPushError {
-                    error: format!("Failed to decode private key: {:?}", e),
-                }
-            })?;
+            // Send to all subscriptions
+            let mut send_errors = Vec::new();
+            let mut send_count = 0;
 
-            // Convert Vec to fixed-size array
-            let private_key_array: [u8; 32] =
-                private_key_bytes
-                    .try_into()
-                    .map_err(|_| NotificationsError::WebPushError {
-                        error: "Invalid private key length".to_string(),
-                    })?;
+            for subscription in &state_guard.subscriptions {
+                // Create subscription info for web-push
+                let subscription_info = SubscriptionInfo::new(
+                    &subscription.endpoint,
+                    &subscription.keys.p256dh,
+                    &subscription.keys.auth,
+                );
 
-            // Create PEM from raw bytes using p256
-            use p256::ecdsa::SigningKey;
-            use p256::pkcs8::EncodePrivateKey;
+                // Convert raw private key bytes to PEM format for web-push
+                let private_key_bytes = URL_SAFE_NO_PAD.decode(&keys.private_key).map_err(|e| {
+                    NotificationsError::WebPushError {
+                        error: format!("Failed to decode private key: {:?}", e),
+                    }
+                })?;
 
-            let signing_key = SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
-                NotificationsError::WebPushError {
-                    error: format!("Failed to create signing key: {:?}", e),
-                }
-            })?;
+                // Convert Vec to fixed-size array
+                let private_key_array: [u8; 32] =
+                    private_key_bytes
+                        .try_into()
+                        .map_err(|_| NotificationsError::WebPushError {
+                            error: "Invalid private key length".to_string(),
+                        })?;
 
-            let pem_content = signing_key
-                .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
-                .map_err(|e| NotificationsError::WebPushError {
-                    error: format!("Failed to convert to PEM: {:?}", e),
-                })?
-                .to_string();
+                // Create PEM from raw bytes using p256
+                use p256::ecdsa::SigningKey;
+                use p256::pkcs8::EncodePrivateKey;
 
-            println!(
-                "notifications: PEM content length: {} chars",
-                pem_content.len()
-            );
-            println!(
-                "notifications: PEM header check: starts with BEGIN PRIVATE KEY: {}",
-                pem_content.contains("BEGIN PRIVATE KEY")
-            );
+                let signing_key = SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
+                    NotificationsError::WebPushError {
+                        error: format!("Failed to create signing key: {:?}", e),
+                    }
+                })?;
 
-            // Create VAPID signature from PEM
-            let mut sig_builder =
-                VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
-                    .map_err(|e| {
-                        println!(
-                            "notifications: ERROR creating VAPID signature builder: {:?}",
-                            e
-                        );
-                        NotificationsError::WebPushError {
-                            error: format!("Failed to create VAPID signature: {:?}", e),
-                        }
-                    })?;
-
-            // Add required subject claim for VAPID
-            sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
-
-            let sig_builder = sig_builder.build().map_err(|e| {
-                println!("notifications: ERROR building VAPID signature: {:?}", e);
-                NotificationsError::WebPushError {
-                    error: format!("Failed to build VAPID signature: {:?}", e),
-                }
-            })?;
-
-            println!("notifications: VAPID signature built successfully");
-
-            // Build the web push message
-            let mut message_builder = WebPushMessageBuilder::new(&subscription_info);
-            let payload = payload.to_string();
-            message_builder.set_payload(ContentEncoding::Aes128Gcm, payload.as_bytes());
-            message_builder.set_vapid_signature(sig_builder);
-
-            let message =
-                message_builder
-                    .build()
+                let pem_content = signing_key
+                    .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
                     .map_err(|e| NotificationsError::WebPushError {
-                        error: format!("Failed to build message: {:?}", e),
+                        error: format!("Failed to convert to PEM: {:?}", e),
+                    })?
+                    .to_string();
+
+                // Create VAPID signature from PEM
+                let mut sig_builder =
+                    VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
+                        .map_err(|e| {
+                            NotificationsError::WebPushError {
+                                error: format!("Failed to create VAPID signature: {:?}", e),
+                            }
+                        })?;
+
+                // Add required subject claim for VAPID
+                sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
+
+                let sig_builder = sig_builder.build().map_err(|e| {
+                    NotificationsError::WebPushError {
+                        error: format!("Failed to build VAPID signature: {:?}", e),
+                    }
+                })?;
+
+                // Build the web push message
+                let mut message_builder = WebPushMessageBuilder::new(&subscription_info);
+                let payload_str = payload.to_string();
+                message_builder.set_payload(ContentEncoding::Aes128Gcm, payload_str.as_bytes());
+                message_builder.set_vapid_signature(sig_builder);
+
+                let message =
+                    message_builder
+                        .build()
+                        .map_err(|e| NotificationsError::WebPushError {
+                            error: format!("Failed to build message: {:?}", e),
+                        })?;
+
+                // Send the notification using IsahcWebPushClient
+                let client =
+                    IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
+                        error: format!("Failed to create web push client: {:?}", e),
                     })?;
 
-            // Send the notification using IsahcWebPushClient
-            let client =
-                IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
-                    error: format!("Failed to create web push client: {:?}", e),
-                })?;
+                match client.send(message).await {
+                    Ok(_) => {
+                        send_count += 1;
+                    }
+                    Err(e) => {
+                        println!("notifications: Failed to send to {}: {:?}", subscription.endpoint, e);
+                        send_errors.push(format!("Failed to send to endpoint: {:?}", e));
+                    }
+                }
+            }
 
-            client
-                .send(message)
-                .await
-                .map_err(|e| NotificationsError::SendError {
-                    error: format!("Failed to send notification: {:?}", e),
-                })?;
+            println!("notifications: Sent to {}/{} devices", send_count, state_guard.subscriptions.len());
 
             NotificationsResponse::NotificationSent
+        }
+        NotificationsAction::AddSubscription { subscription } => {
+            let mut state_guard = state.write().await;
+
+            // Check if subscription already exists (by endpoint)
+            if !state_guard.subscriptions.iter().any(|s| s.endpoint == subscription.endpoint) {
+                state_guard.subscriptions.push(subscription.clone());
+                println!("notifications: Added subscription, total: {}", state_guard.subscriptions.len());
+
+                // Save subscriptions to state
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+            } else {
+                println!("notifications: Subscription already exists, updating it");
+                // Update existing subscription
+                if let Some(existing) = state_guard.subscriptions.iter_mut().find(|s| s.endpoint == subscription.endpoint) {
+                    *existing = subscription;
+                    save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+                }
+            }
+
+            NotificationsResponse::SubscriptionAdded
+        }
+        NotificationsAction::RemoveSubscription { endpoint } => {
+            let mut state_guard = state.write().await;
+            let initial_len = state_guard.subscriptions.len();
+            state_guard.subscriptions.retain(|s| s.endpoint != endpoint);
+
+            if state_guard.subscriptions.len() < initial_len {
+                println!("notifications: Removed subscription, remaining: {}", state_guard.subscriptions.len());
+                // Save updated subscriptions to state
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+                NotificationsResponse::SubscriptionRemoved
+            } else {
+                println!("notifications: Subscription not found to remove");
+                NotificationsResponse::SubscriptionRemoved
+            }
+        }
+        NotificationsAction::ClearSubscriptions => {
+            let mut state_guard = state.write().await;
+            state_guard.subscriptions.clear();
+            println!("notifications: Cleared all subscriptions");
+
+            // Save empty subscriptions to state
+            save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+
+            NotificationsResponse::SubscriptionsCleared
         }
     };
 
@@ -472,7 +581,7 @@ async fn save_keys_to_state(
         .target((our_node, ProcessId::new(Some("state"), "distro", "sys")))
         .message(Message::Request(Request {
             inherit: false,
-            expects_response: Some(5),
+            expects_response: None,  // Don't expect a response to avoid polluting the main loop
             body: serde_json::to_vec(&StateAction::SetState(NOTIFICATIONS_PROCESS_ID.clone()))
                 .unwrap(),
             metadata: None,
@@ -481,6 +590,39 @@ async fn save_keys_to_state(
         .lazy_load_blob(Some(LazyLoadBlob {
             mime: Some("application/octet-stream".into()),
             bytes: keys_bytes,
+        }))
+        .build()
+        .unwrap()
+        .send(send_to_state)
+        .await;
+
+    Ok(())
+}
+
+async fn save_subscriptions_to_state(
+    our_node: &str,
+    send_to_state: &MessageSender,
+    subscriptions: &[PushSubscription],
+) -> Result<(), NotificationsError> {
+    let subscriptions_bytes = serde_json::to_vec(subscriptions).map_err(|e| NotificationsError::StateError {
+        error: format!("Failed to serialize subscriptions: {:?}", e),
+    })?;
+
+    KernelMessage::builder()
+        .id(rand::random())
+        .source((our_node, NOTIFICATIONS_PROCESS_ID.clone()))
+        .target((our_node, ProcessId::new(Some("state"), "distro", "sys")))
+        .message(Message::Request(Request {
+            inherit: false,
+            expects_response: None,  // Don't expect a response to avoid polluting the main loop
+            body: serde_json::to_vec(&StateAction::SetState(ProcessId::new(Some("notifications-subscriptions"), "distro", "sys")))
+                .unwrap(),
+            metadata: None,
+            capabilities: vec![],
+        }))
+        .lazy_load_blob(Some(LazyLoadBlob {
+            mime: Some("application/octet-stream".into()),
+            bytes: subscriptions_bytes,
         }))
         .build()
         .unwrap()

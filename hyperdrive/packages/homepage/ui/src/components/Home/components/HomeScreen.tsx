@@ -49,7 +49,6 @@ export const HomeScreen: React.FC = () => {
   const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const unreadCount = getUnreadCount();
 
-  // console.log({ widgetSettings, appPositions })
 
   const handleNotificationClick = async () => {
     // Request permission if not granted
@@ -62,7 +61,6 @@ export const HomeScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('isInitialized', isInitialized);
     if (isInitialized) return;
     // add appstore, contacts, and settings to the homepage on initial load
     setIsInitialized(true);
@@ -229,7 +227,6 @@ export const HomeScreen: React.FC = () => {
   }, [apps, homeScreenApps]);
 
   const widgetApps = useMemo(() => {
-    console.log({ homeApps });
     return homeApps.filter(app => app.widget);
   }, [homeApps]);
 
@@ -261,7 +258,6 @@ export const HomeScreen: React.FC = () => {
     const x = index * (screenPortion + spacing) + screenPortion / 4
     // ensure position sets so future movements do not cause a jump
     moveItem(appId, { x, y });
-    console.log('autosetting position', appId, { x, y });
     return { x, y }
   }
 
