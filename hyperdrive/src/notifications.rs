@@ -1,22 +1,20 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use lib::types::core::{
-    KernelMessage, LazyLoadBlob, Message, MessageReceiver, MessageSender,
-    PrintSender, Printout, ProcessId, Request, Response, NOTIFICATIONS_PROCESS_ID,
+    KernelMessage, LazyLoadBlob, Message, MessageReceiver, MessageSender, PrintSender, Printout,
+    ProcessId, Request, Response, NOTIFICATIONS_PROCESS_ID,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use web_push::WebPushClient;
 use web_push::{
     ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder,
     WebPushMessageBuilder,
 };
-use web_push::WebPushClient;
 
 // Import our types from lib
-use lib::notifications::{
-    NotificationsAction, NotificationsError, NotificationsResponse,
-};
 use lib::core::StateAction;
+use lib::notifications::{NotificationsAction, NotificationsError, NotificationsResponse};
 
 /// VAPID keys for web push notifications
 #[derive(Serialize, Deserialize, Clone)]
@@ -35,15 +33,13 @@ impl VapidKeys {
         rand::thread_rng().fill_bytes(&mut private_key_bytes);
 
         // Use p256 crate to generate proper keys
-        use p256::{
-            ecdsa::SigningKey,
-            PublicKey,
-        };
+        use p256::{ecdsa::SigningKey, PublicKey};
 
-        let signing_key = SigningKey::from_bytes(&private_key_bytes.into())
-            .map_err(|e| NotificationsError::KeyGenerationError {
+        let signing_key = SigningKey::from_bytes(&private_key_bytes.into()).map_err(|e| {
+            NotificationsError::KeyGenerationError {
                 error: format!("Failed to create signing key: {:?}", e),
-            })?;
+            }
+        })?;
 
         let verifying_key = signing_key.verifying_key();
         let public_key_point = verifying_key.to_encoded_point(false); // false = uncompressed
@@ -51,9 +47,15 @@ impl VapidKeys {
 
         if public_key_bytes.len() != 65 || public_key_bytes[0] != 0x04 {
             return Err(NotificationsError::KeyGenerationError {
-                error: format!("Invalid public key format: len={}, first_byte=0x{:02x}",
+                error: format!(
+                    "Invalid public key format: len={}, first_byte=0x{:02x}",
                     public_key_bytes.len(),
-                    if public_key_bytes.len() > 0 { public_key_bytes[0] } else { 0 }),
+                    if public_key_bytes.len() > 0 {
+                        public_key_bytes[0]
+                    } else {
+                        0
+                    }
+                ),
             });
         }
 
@@ -62,7 +64,10 @@ impl VapidKeys {
         let private_key = URL_SAFE_NO_PAD.encode(&private_key_bytes);
 
         println!("notifications: Generated public key: {}", public_key);
-        println!("notifications: Public key length: {} bytes", public_key_bytes.len());
+        println!(
+            "notifications: Public key length: {} bytes",
+            public_key_bytes.len()
+        );
 
         Ok(VapidKeys {
             public_key,
@@ -84,13 +89,18 @@ pub async fn notifications(
 ) -> Result<(), anyhow::Error> {
     println!("notifications: starting notifications module");
 
-    let state = Arc::new(RwLock::new(NotificationsState {
-        vapid_keys: None,
-    }));
+    let state = Arc::new(RwLock::new(NotificationsState { vapid_keys: None }));
 
     // Try to load existing keys from state
     println!("notifications: loading keys from state");
-    load_keys_from_state(&our_node, &mut recv_notifications, &send_to_state, &send_to_loop, &state).await;
+    load_keys_from_state(
+        &our_node,
+        &mut recv_notifications,
+        &send_to_state,
+        &send_to_loop,
+        &state,
+    )
+    .await;
     println!("notifications: finished loading keys from state");
 
     while let Some(km) = recv_notifications.recv().await {
@@ -149,7 +159,8 @@ async fn load_keys_from_state(
         .message(Message::Request(Request {
             inherit: false,
             expects_response: Some(5),
-            body: serde_json::to_vec(&StateAction::GetState(NOTIFICATIONS_PROCESS_ID.clone())).unwrap(),
+            body: serde_json::to_vec(&StateAction::GetState(NOTIFICATIONS_PROCESS_ID.clone()))
+                .unwrap(),
             metadata: None,
             capabilities: vec![],
         }))
@@ -227,11 +238,10 @@ async fn handle_request(
         });
     };
 
-    let action: NotificationsAction = serde_json::from_slice(&body).map_err(|e| {
-        NotificationsError::BadJson {
+    let action: NotificationsAction =
+        serde_json::from_slice(&body).map_err(|e| NotificationsError::BadJson {
             error: format!("parse into NotificationsAction failed: {:?}", e),
-        }
-    })?;
+        })?;
 
     let response = match action {
         NotificationsAction::InitializeKeys => {
@@ -249,11 +259,17 @@ async fn handle_request(
             NotificationsResponse::KeysInitialized
         }
         NotificationsAction::GetPublicKey => {
-            println!("notifications: GetPublicKey action received from {:?}", source);
+            println!(
+                "notifications: GetPublicKey action received from {:?}",
+                source
+            );
             let state_guard = state.read().await;
             match &state_guard.vapid_keys {
                 Some(keys) => {
-                    println!("notifications: returning existing public key: {}", keys.public_key);
+                    println!(
+                        "notifications: returning existing public key: {}",
+                        keys.public_key
+                    );
                     NotificationsResponse::PublicKey(keys.public_key.clone())
                 }
                 None => {
@@ -261,7 +277,10 @@ async fn handle_request(
                     // Try to initialize keys
                     drop(state_guard);
                     let keys = VapidKeys::generate()?;
-                    println!("notifications: generated new keys, public key: {}", keys.public_key);
+                    println!(
+                        "notifications: generated new keys, public key: {}",
+                        keys.public_key
+                    );
                     save_keys_to_state(our_node, send_to_state, &keys).await?;
 
                     let mut state_guard = state.write().await;
@@ -281,7 +300,10 @@ async fn handle_request(
             data,
         } => {
             let state_guard = state.read().await;
-            let keys = state_guard.vapid_keys.as_ref().ok_or(NotificationsError::KeysNotInitialized)?;
+            let keys = state_guard
+                .vapid_keys
+                .as_ref()
+                .ok_or(NotificationsError::KeysNotInitialized)?;
 
             // Create subscription info for web-push
             let subscription_info = SubscriptionInfo::new(
@@ -299,55 +321,68 @@ async fn handle_request(
             });
 
             // Convert raw private key bytes to PEM format for web-push
-            println!("notifications: Starting VAPID signature creation for endpoint: {}", subscription.endpoint);
+            println!(
+                "notifications: Starting VAPID signature creation for endpoint: {}",
+                subscription.endpoint
+            );
 
-            let private_key_bytes = URL_SAFE_NO_PAD.decode(&keys.private_key)
-                .map_err(|e| NotificationsError::WebPushError {
+            let private_key_bytes = URL_SAFE_NO_PAD.decode(&keys.private_key).map_err(|e| {
+                NotificationsError::WebPushError {
                     error: format!("Failed to decode private key: {:?}", e),
-                })?;
+                }
+            })?;
 
             // Convert Vec to fixed-size array
-            let private_key_array: [u8; 32] = private_key_bytes.try_into()
-                .map_err(|_| NotificationsError::WebPushError {
-                    error: "Invalid private key length".to_string(),
-                })?;
+            let private_key_array: [u8; 32] =
+                private_key_bytes
+                    .try_into()
+                    .map_err(|_| NotificationsError::WebPushError {
+                        error: "Invalid private key length".to_string(),
+                    })?;
 
             // Create PEM from raw bytes using p256
             use p256::ecdsa::SigningKey;
             use p256::pkcs8::EncodePrivateKey;
 
-            let signing_key = SigningKey::from_bytes(&private_key_array.into())
-                .map_err(|e| NotificationsError::WebPushError {
+            let signing_key = SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
+                NotificationsError::WebPushError {
                     error: format!("Failed to create signing key: {:?}", e),
-                })?;
+                }
+            })?;
 
-            let pem_content = signing_key.to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
+            let pem_content = signing_key
+                .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
                 .map_err(|e| NotificationsError::WebPushError {
                     error: format!("Failed to convert to PEM: {:?}", e),
                 })?
                 .to_string();
 
-            println!("notifications: PEM content length: {} chars", pem_content.len());
-            println!("notifications: PEM header check: starts with BEGIN PRIVATE KEY: {}",
-                pem_content.contains("BEGIN PRIVATE KEY"));
+            println!(
+                "notifications: PEM content length: {} chars",
+                pem_content.len()
+            );
+            println!(
+                "notifications: PEM header check: starts with BEGIN PRIVATE KEY: {}",
+                pem_content.contains("BEGIN PRIVATE KEY")
+            );
 
             // Create VAPID signature from PEM
-            let mut sig_builder = VapidSignatureBuilder::from_pem(
-                pem_content.as_bytes(),
-                &subscription_info,
-            )
-            .map_err(|e| {
-                println!("notifications: ERROR creating VAPID signature builder: {:?}", e);
-                NotificationsError::WebPushError {
-                    error: format!("Failed to create VAPID signature: {:?}", e),
-                }
-            })?;
+            let mut sig_builder =
+                VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
+                    .map_err(|e| {
+                        println!(
+                            "notifications: ERROR creating VAPID signature builder: {:?}",
+                            e
+                        );
+                        NotificationsError::WebPushError {
+                            error: format!("Failed to create VAPID signature: {:?}", e),
+                        }
+                    })?;
 
             // Add required subject claim for VAPID
             sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
 
-            let sig_builder = sig_builder.build()
-            .map_err(|e| {
+            let sig_builder = sig_builder.build().map_err(|e| {
                 println!("notifications: ERROR building VAPID signature: {:?}", e);
                 NotificationsError::WebPushError {
                     error: format!("Failed to build VAPID signature: {:?}", e),
@@ -362,14 +397,18 @@ async fn handle_request(
             message_builder.set_payload(ContentEncoding::Aes128Gcm, payload.as_bytes());
             message_builder.set_vapid_signature(sig_builder);
 
-            let message = message_builder.build().map_err(|e| NotificationsError::WebPushError {
-                error: format!("Failed to build message: {:?}", e),
-            })?;
+            let message =
+                message_builder
+                    .build()
+                    .map_err(|e| NotificationsError::WebPushError {
+                        error: format!("Failed to build message: {:?}", e),
+                    })?;
 
             // Send the notification using IsahcWebPushClient
-            let client = IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
-                error: format!("Failed to create web push client: {:?}", e),
-            })?;
+            let client =
+                IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
+                    error: format!("Failed to create web push client: {:?}", e),
+                })?;
 
             client
                 .send(message)
@@ -384,9 +423,15 @@ async fn handle_request(
 
     // Send response if expected
     if let Some(target) = rsvp.or_else(|| expects_response.map(|_| source)) {
-        println!("notifications: sending response {:?} to {:?}", response, target);
+        println!(
+            "notifications: sending response {:?} to {:?}",
+            response, target
+        );
         let response_bytes = serde_json::to_vec(&response).unwrap();
-        println!("notifications: response serialized to {} bytes", response_bytes.len());
+        println!(
+            "notifications: response serialized to {} bytes",
+            response_bytes.len()
+        );
 
         KernelMessage::builder()
             .id(id)
@@ -428,7 +473,8 @@ async fn save_keys_to_state(
         .message(Message::Request(Request {
             inherit: false,
             expects_response: Some(5),
-            body: serde_json::to_vec(&StateAction::SetState(NOTIFICATIONS_PROCESS_ID.clone())).unwrap(),
+            body: serde_json::to_vec(&StateAction::SetState(NOTIFICATIONS_PROCESS_ID.clone()))
+                .unwrap(),
             metadata: None,
             capabilities: vec![],
         }))
