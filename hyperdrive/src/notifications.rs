@@ -64,9 +64,9 @@ impl VapidKeys {
         let public_key = URL_SAFE_NO_PAD.encode(public_key_bytes);
         let private_key = URL_SAFE_NO_PAD.encode(&private_key_bytes);
 
-        println!("notifications: Generated public key: {}", public_key);
+        println!("notifications: Generated public key: {}\r", public_key);
         println!(
-            "notifications: Public key length: {} bytes",
+            "notifications: Public key length: {} bytes\r",
             public_key_bytes.len()
         );
 
@@ -89,7 +89,7 @@ pub async fn notifications(
     mut recv_notifications: MessageReceiver,
     send_to_state: MessageSender,
 ) -> Result<(), anyhow::Error> {
-    println!("notifications: starting notifications module");
+    println!("notifications: starting notifications module\r");
 
     let state = Arc::new(RwLock::new(NotificationsState {
         vapid_keys: None,
@@ -97,7 +97,7 @@ pub async fn notifications(
     }));
 
     // Try to load existing keys from state
-    println!("notifications: loading keys from state");
+    println!("notifications: loading keys from state\r");
     load_keys_from_state(
         &our_node,
         &mut recv_notifications,
@@ -106,7 +106,7 @@ pub async fn notifications(
         &state,
     )
     .await;
-    println!("notifications: finished loading keys from state");
+    println!("notifications: finished loading keys from state\r");
 
     while let Some(km) = recv_notifications.recv().await {
         if *our_node != km.source.node {
@@ -140,7 +140,7 @@ pub async fn notifications(
             )
             .await
             {
-                println!("notifications: error handling request: {:?}", e);
+                println!("notifications: error handling request: {:?}\r", e);
             }
         });
     }
@@ -183,7 +183,7 @@ async fn load_keys_from_state(
         tokio::select! {
             _ = &mut timeout => {
                 // Timeout reached, keys not found in state
-                println!("notifications: no saved keys found in state, will generate on first use");
+                println!("notifications: no saved keys found in state, will generate on first use\r");
                 break;
             }
             Some(km) = recv_notifications.recv() => {
@@ -199,7 +199,7 @@ async fn load_keys_from_state(
                                         if let Ok(keys) = serde_json::from_slice::<VapidKeys>(&blob.bytes) {
                                             let mut state_guard = state.write().await;
                                             state_guard.vapid_keys = Some(keys);
-                                            println!("notifications: loaded existing VAPID keys from state");
+                                            println!("notifications: loaded existing VAPID keys from state\r");
                                         }
                                     }
                                 }
@@ -244,7 +244,7 @@ async fn load_keys_from_state(
         tokio::select! {
             _ = &mut timeout => {
                 // Timeout reached, no saved subscriptions
-                println!("notifications: no saved subscriptions found in state");
+                println!("notifications: no saved subscriptions found in state\r");
                 break;
             }
             Some(km) = recv_notifications.recv() => {
@@ -260,7 +260,7 @@ async fn load_keys_from_state(
                                         if let Ok(subscriptions) = serde_json::from_slice::<Vec<PushSubscription>>(&blob.bytes) {
                                             let mut state_guard = state.write().await;
                                             state_guard.subscriptions = subscriptions;
-                                            println!("notifications: loaded {} existing subscriptions from state", state_guard.subscriptions.len());
+                                            println!("notifications: loaded {} existing subscriptions from state\r", state_guard.subscriptions.len());
                                         }
                                     }
                                 }
@@ -312,7 +312,7 @@ async fn handle_request(
 
     let response = match action {
         NotificationsAction::InitializeKeys => {
-            println!("notifications: InitializeKeys action received");
+            println!("notifications: InitializeKeys action received\r");
             let keys = VapidKeys::generate()?;
 
             // Save keys to state
@@ -322,30 +322,30 @@ async fn handle_request(
             let mut state_guard = state.write().await;
             state_guard.vapid_keys = Some(keys);
 
-            println!("notifications: Keys initialized successfully");
+            println!("notifications: Keys initialized successfully\r");
             NotificationsResponse::KeysInitialized
         }
         NotificationsAction::GetPublicKey => {
             println!(
-                "notifications: GetPublicKey action received from {:?}",
+                "notifications: GetPublicKey action received from {:?}\r",
                 source
             );
             let state_guard = state.read().await;
             match &state_guard.vapid_keys {
                 Some(keys) => {
                     println!(
-                        "notifications: returning existing public key: {}",
+                        "notifications: returning existing public key: {}\r",
                         keys.public_key
                     );
                     NotificationsResponse::PublicKey(keys.public_key.clone())
                 }
                 None => {
-                    println!("notifications: no keys found, generating new ones");
+                    println!("notifications: no keys found, generating new ones\r");
                     // Try to initialize keys
                     drop(state_guard);
                     let keys = VapidKeys::generate()?;
                     println!(
-                        "notifications: generated new keys, public key: {}",
+                        "notifications: generated new keys, public key: {}\r",
                         keys.public_key
                     );
                     save_keys_to_state(our_node, send_to_state, &keys).await?;
@@ -354,7 +354,7 @@ async fn handle_request(
                     let public_key = keys.public_key.clone();
                     state_guard.vapid_keys = Some(keys);
 
-                    println!("notifications: returning new public key: {}", public_key);
+                    println!("notifications: returning new public key: {}\r", public_key);
                     NotificationsResponse::PublicKey(public_key)
                 }
             }
@@ -372,7 +372,7 @@ async fn handle_request(
                 .ok_or(NotificationsError::KeysNotInitialized)?;
 
             if state_guard.subscriptions.is_empty() {
-                println!("notifications: No subscriptions available to send notification");
+                println!("notifications: No subscriptions available to send notification\r");
                 return Ok(());
             }
 
@@ -384,7 +384,7 @@ async fn handle_request(
                 "data": data,
             });
 
-            println!("notifications: Sending notification to {} devices", state_guard.subscriptions.len());
+            println!("notifications: Sending notification to {} devices\r", state_guard.subscriptions.len());
 
             // Send to all subscriptions
             let mut send_errors = Vec::new();
@@ -472,13 +472,13 @@ async fn handle_request(
                         send_count += 1;
                     }
                     Err(e) => {
-                        println!("notifications: Failed to send to {}: {:?}", subscription.endpoint, e);
+                        println!("notifications: Failed to send to {}: {:?}\r", subscription.endpoint, e);
                         send_errors.push(format!("Failed to send to endpoint: {:?}", e));
                     }
                 }
             }
 
-            println!("notifications: Sent to {}/{} devices", send_count, state_guard.subscriptions.len());
+            println!("notifications: Sent to {}/{} devices\r", send_count, state_guard.subscriptions.len());
 
             NotificationsResponse::NotificationSent
         }
@@ -496,12 +496,12 @@ async fn handle_request(
             // Check if subscription already exists (by endpoint)
             if !state_guard.subscriptions.iter().any(|s| s.endpoint == subscription.endpoint) {
                 state_guard.subscriptions.push(subscription.clone());
-                println!("notifications: Added subscription, total: {}", state_guard.subscriptions.len());
+                println!("notifications: Added subscription, total: {}\r", state_guard.subscriptions.len());
 
                 // Save subscriptions to state
                 save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
             } else {
-                println!("notifications: Subscription already exists, updating it");
+                println!("notifications: Subscription already exists, updating it\r");
                 // Update existing subscription
                 if let Some(existing) = state_guard.subscriptions.iter_mut().find(|s| s.endpoint == subscription.endpoint) {
                     *existing = subscription;
@@ -520,7 +520,7 @@ async fn handle_request(
             state_guard.subscriptions.retain(|s| {
                 let age = now.saturating_sub(s.created_at);
                 if age > one_month_ms {
-                    println!("notifications: Removing old subscription ({}ms old): {}", age, s.endpoint);
+                    println!("notifications: Removing old subscription ({}ms old): {}\r", age, s.endpoint);
                     false
                 } else {
                     true
@@ -539,19 +539,19 @@ async fn handle_request(
             state_guard.subscriptions.retain(|s| s.endpoint != endpoint);
 
             if state_guard.subscriptions.len() < initial_len {
-                println!("notifications: Removed subscription, remaining: {}", state_guard.subscriptions.len());
+                println!("notifications: Removed subscription, remaining: {}\r", state_guard.subscriptions.len());
                 // Save updated subscriptions to state
                 save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
                 NotificationsResponse::SubscriptionRemoved
             } else {
-                println!("notifications: Subscription not found to remove");
+                println!("notifications: Subscription not found to remove\r");
                 NotificationsResponse::SubscriptionRemoved
             }
         }
         NotificationsAction::ClearSubscriptions => {
             let mut state_guard = state.write().await;
             state_guard.subscriptions.clear();
-            println!("notifications: Cleared all subscriptions");
+            println!("notifications: Cleared all subscriptions\r");
 
             // Save empty subscriptions to state
             save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
@@ -570,9 +570,9 @@ async fn handle_request(
                     .unwrap()
                     .as_millis() as u64;
                 let age_ms = now.saturating_sub(sub.created_at);
-                println!("notifications: Found subscription for endpoint, age: {}ms", age_ms);
+                println!("notifications: Found subscription for endpoint, age: {}ms\r", age_ms);
             } else {
-                println!("notifications: No subscription found for endpoint: {}", endpoint);
+                println!("notifications: No subscription found for endpoint: {}\r", endpoint);
             }
 
             NotificationsResponse::SubscriptionInfo(subscription)
@@ -582,12 +582,12 @@ async fn handle_request(
     // Send response if expected
     if let Some(target) = rsvp.or_else(|| expects_response.map(|_| source)) {
         println!(
-            "notifications: sending response {:?} to {:?}",
+            "notifications: sending response {:?} to {:?}\r",
             response, target
         );
         let response_bytes = serde_json::to_vec(&response).unwrap();
         println!(
-            "notifications: response serialized to {} bytes",
+            "notifications: response serialized to {} bytes\r",
             response_bytes.len()
         );
 
@@ -609,7 +609,7 @@ async fn handle_request(
             .send(send_to_loop)
             .await;
 
-        println!("notifications: response sent");
+        println!("notifications: response sent\r");
     }
 
     Ok(())
