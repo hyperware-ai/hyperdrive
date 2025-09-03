@@ -98,11 +98,19 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       return;
     }
 
+    let maybeSlash = '';
+
+    if (query && query[0] && query[0] !== '?' && query[0] !== '/') {
+        // autoprepend a slash for the window history when the query type is unknown
+        console.log('autoprepended / to unknown query format');
+        maybeSlash = '/'
+    }
+
     // Add to browser history for back button support
     window?.history?.pushState(
       { type: 'app', appId: app.id, previousAppId: currentAppId },
       '',
-      `#app-${app.id}${query || ''}`
+      `#app-${app.id}${maybeSlash}${query || ''}`
     );
 
     if (existingApp) {

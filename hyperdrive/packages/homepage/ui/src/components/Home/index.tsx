@@ -37,7 +37,10 @@ export default function Home() {
   // try to automatically open it
   useEffect(() => {
     if (window?.location?.hash?.startsWith('#app-')) {
-      const appNameToOpen = window.location.hash.replace('#app-', '');
+      // could be a path on the hash, or a query. delete them
+      let appNameToOpen = window.location.hash.replace('#app-', '')
+          .replace(/\?.*/, '')
+          .replace(/\/.*/, '');
       const appToOpen = apps?.find(app => app?.id === appNameToOpen);
       console.log('found window hash. attempting open', { hash: window.location.hash, appNameToOpen, appToOpen });
       if (appToOpen) {
@@ -146,7 +149,7 @@ export default function Home() {
         console.log({ url, apps });
         const urlParts = url.split('/').filter(part => part !== '' && part !== null && part !== undefined);
         const appName = urlParts[0];
-        const path = urlParts.slice(1).join('/');
+        const path = urlParts.slice(1).join('/')
         console.log({ urlParts, appName, path });
         openApp(apps.find(app => app.id.endsWith(appName)) as HomepageApp, path || undefined)
       }
