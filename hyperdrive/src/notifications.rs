@@ -408,15 +408,16 @@ async fn handle_request(
             Printout::new(
                 2,
                 NOTIFICATIONS_PROCESS_ID.clone(),
-                format!("notifications: GetPublicKey action received from {:?}", source),
+                format!(
+                    "notifications: GetPublicKey action received from {:?}",
+                    source
+                ),
             )
             .send(send_to_terminal)
             .await;
             let state_guard = state.read().await;
             match &state_guard.vapid_keys {
-                Some(keys) => {
-                    NotificationsResponse::PublicKey(keys.public_key.clone())
-                }
+                Some(keys) => NotificationsResponse::PublicKey(keys.public_key.clone()),
                 None => {
                     Printout::new(
                         2,
@@ -431,7 +432,10 @@ async fn handle_request(
                     Printout::new(
                         2,
                         NOTIFICATIONS_PROCESS_ID.clone(),
-                        format!("notifications: generated new keys, public key: {}", keys.public_key),
+                        format!(
+                            "notifications: generated new keys, public key: {}",
+                            keys.public_key
+                        ),
                     )
                     .send(send_to_terminal)
                     .await;
@@ -479,17 +483,28 @@ async fn handle_request(
             };
 
             // Add to queue
-            state_guard.notification_queue.push_back(queued_notification);
+            state_guard
+                .notification_queue
+                .push_back(queued_notification);
             Printout::new(
                 2,
                 NOTIFICATIONS_PROCESS_ID.clone(),
-                format!("notifications: Added notification to queue, queue size: {}", state_guard.notification_queue.len()),
+                format!(
+                    "notifications: Added notification to queue, queue size: {}",
+                    state_guard.notification_queue.len()
+                ),
             )
             .send(send_to_terminal)
             .await;
 
             // Check if we need to start the queue processor
-            if state_guard.queue_processor_handle.is_none() || state_guard.queue_processor_handle.as_ref().unwrap().is_finished() {
+            if state_guard.queue_processor_handle.is_none()
+                || state_guard
+                    .queue_processor_handle
+                    .as_ref()
+                    .unwrap()
+                    .is_finished()
+            {
                 Printout::new(
                     2,
                     NOTIFICATIONS_PROCESS_ID.clone(),
@@ -504,11 +519,7 @@ async fn handle_request(
 
                 // Start the queue processor
                 let handle = tokio::spawn(async move {
-                    process_notification_queue(
-                        &send_to_terminal_clone,
-                        &state_clone,
-                    )
-                    .await;
+                    process_notification_queue(&send_to_terminal_clone, &state_clone).await;
                 });
 
                 state_guard.queue_processor_handle = Some(handle);
@@ -537,7 +548,10 @@ async fn handle_request(
                 Printout::new(
                     2,
                     NOTIFICATIONS_PROCESS_ID.clone(),
-                    format!("notifications: Added subscription, total: {}", state_guard.subscriptions.len()),
+                    format!(
+                        "notifications: Added subscription, total: {}",
+                        state_guard.subscriptions.len()
+                    ),
                 )
                 .send(send_to_terminal)
                 .await;
@@ -593,7 +607,10 @@ async fn handle_request(
                 Printout::new(
                     2,
                     NOTIFICATIONS_PROCESS_ID.clone(),
-                    format!("notifications: Removing old subscription ({}ms old): {}", age, endpoint),
+                    format!(
+                        "notifications: Removing old subscription ({}ms old): {}",
+                        age, endpoint
+                    ),
                 )
                 .send(send_to_terminal)
                 .await;
@@ -615,7 +632,10 @@ async fn handle_request(
                 Printout::new(
                     2,
                     NOTIFICATIONS_PROCESS_ID.clone(),
-                    format!("notifications: Removed subscription, remaining: {}", state_guard.subscriptions.len()),
+                    format!(
+                        "notifications: Removed subscription, remaining: {}",
+                        state_guard.subscriptions.len()
+                    ),
                 )
                 .send(send_to_terminal)
                 .await;
@@ -798,11 +818,9 @@ async fn process_notification_queue(
                 .await;
 
                 // Send the notification
-                if let Err(e) = send_notification_to_all(
-                    send_to_terminal,
-                    state,
-                    notification,
-                ).await {
+                if let Err(e) =
+                    send_notification_to_all(send_to_terminal, state, notification).await
+                {
                     Printout::new(
                         0,
                         NOTIFICATIONS_PROCESS_ID.clone(),
@@ -831,7 +849,10 @@ async fn process_notification_queue(
                     Printout::new(
                         2,
                         NOTIFICATIONS_PROCESS_ID.clone(),
-                        format!("notifications: {} more notifications in queue, waiting 5 seconds", state_guard.notification_queue.len()),
+                        format!(
+                            "notifications: {} more notifications in queue, waiting 5 seconds",
+                            state_guard.notification_queue.len()
+                        ),
                     )
                     .send(send_to_terminal)
                     .await;
@@ -895,7 +916,10 @@ async fn send_notification_to_all(
     Printout::new(
         2,
         NOTIFICATIONS_PROCESS_ID.clone(),
-        format!("notifications: Sending notification to {} devices", state_guard.subscriptions.len()),
+        format!(
+            "notifications: Sending notification to {} devices",
+            state_guard.subscriptions.len()
+        ),
     )
     .send(send_to_terminal)
     .await;
@@ -931,12 +955,11 @@ async fn send_notification_to_all(
         use p256::ecdsa::SigningKey;
         use p256::pkcs8::EncodePrivateKey;
 
-        let signing_key =
-            SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
-                NotificationsError::WebPushError {
-                    error: format!("Failed to create signing key: {:?}", e),
-                }
-            })?;
+        let signing_key = SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
+            NotificationsError::WebPushError {
+                error: format!("Failed to create signing key: {:?}", e),
+            }
+        })?;
 
         let pem_content = signing_key
             .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
@@ -947,20 +970,20 @@ async fn send_notification_to_all(
 
         // Create VAPID signature from PEM
         let mut sig_builder =
-            VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
-                .map_err(|e| NotificationsError::WebPushError {
+            VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info).map_err(
+                |e| NotificationsError::WebPushError {
                     error: format!("Failed to create VAPID signature: {:?}", e),
-                })?;
+                },
+            )?;
 
         // Add required subject claim for VAPID
         sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
 
-        let sig_builder =
-            sig_builder
-                .build()
-                .map_err(|e| NotificationsError::WebPushError {
-                    error: format!("Failed to build VAPID signature: {:?}", e),
-                })?;
+        let sig_builder = sig_builder
+            .build()
+            .map_err(|e| NotificationsError::WebPushError {
+                error: format!("Failed to build VAPID signature: {:?}", e),
+            })?;
 
         // Build the web push message
         let mut message_builder = WebPushMessageBuilder::new(&subscription_info);
@@ -968,18 +991,16 @@ async fn send_notification_to_all(
         message_builder.set_payload(ContentEncoding::Aes128Gcm, payload_str.as_bytes());
         message_builder.set_vapid_signature(sig_builder);
 
-        let message =
-            message_builder
-                .build()
-                .map_err(|e| NotificationsError::WebPushError {
-                    error: format!("Failed to build message: {:?}", e),
-                })?;
+        let message = message_builder
+            .build()
+            .map_err(|e| NotificationsError::WebPushError {
+                error: format!("Failed to build message: {:?}", e),
+            })?;
 
         // Send the notification using IsahcWebPushClient
-        let client =
-            IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
-                error: format!("Failed to create web push client: {:?}", e),
-            })?;
+        let client = IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
+            error: format!("Failed to create web push client: {:?}", e),
+        })?;
 
         match client.send(message).await {
             Ok(_) => {
@@ -989,7 +1010,10 @@ async fn send_notification_to_all(
                 Printout::new(
                     0,
                     NOTIFICATIONS_PROCESS_ID.clone(),
-                    format!("notifications: Failed to send to {}: {:?}", subscription.endpoint, e),
+                    format!(
+                        "notifications: Failed to send to {}: {:?}",
+                        subscription.endpoint, e
+                    ),
                 )
                 .send(send_to_terminal)
                 .await;
@@ -1001,7 +1025,11 @@ async fn send_notification_to_all(
     Printout::new(
         2,
         NOTIFICATIONS_PROCESS_ID.clone(),
-        format!("notifications: Sent to {}/{} devices", send_count, state_guard.subscriptions.len()),
+        format!(
+            "notifications: Sent to {}/{} devices",
+            send_count,
+            state_guard.subscriptions.len()
+        ),
     )
     .send(send_to_terminal)
     .await;
