@@ -80,9 +80,22 @@ impl VapidKeys {
     }
 }
 
+use std::collections::VecDeque;
+
+#[derive(Clone)]
+pub struct QueuedNotification {
+    title: String,
+    body: String,
+    icon: Option<String>,
+    data: Option<serde_json::Value>,
+}
+
 pub struct NotificationsState {
     vapid_keys: Option<VapidKeys>,
     subscriptions: Vec<PushSubscription>,
+    last_push_timestamp: Option<tokio::time::Instant>,
+    notification_queue: VecDeque<QueuedNotification>,
+    queue_processor_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
 pub async fn notifications(
@@ -97,6 +110,9 @@ pub async fn notifications(
     let state = Arc::new(RwLock::new(NotificationsState {
         vapid_keys: None,
         subscriptions: Vec::new(),
+        last_push_timestamp: None,
+        notification_queue: VecDeque::new(),
+        queue_processor_handle: None,
     }));
 
     // Try to load existing keys from state
@@ -372,130 +388,54 @@ async fn handle_request(
             icon,
             data,
         } => {
-            let state_guard = state.read().await;
-            let keys = state_guard
-                .vapid_keys
-                .as_ref()
-                .ok_or(NotificationsError::KeysNotInitialized)?;
+            // Add notification to queue
+            let mut state_guard = state.write().await;
+
+            // Check if we have keys and subscriptions
+            if state_guard.vapid_keys.is_none() {
+                return Err(NotificationsError::KeysNotInitialized);
+            }
 
             if state_guard.subscriptions.is_empty() {
                 println!("notifications: No subscriptions available to send notification\r");
                 return Ok(());
             }
 
-            // Build the notification payload
-            let payload = serde_json::json!({
-                "title": title,
-                "body": body,
-                "icon": icon,
-                "data": data,
-            });
+            // Create queued notification
+            let queued_notification = QueuedNotification {
+                title,
+                body,
+                icon,
+                data,
+            };
 
-            println!(
-                "notifications: Sending notification to {} devices\r",
-                state_guard.subscriptions.len()
-            );
+            // Add to queue
+            state_guard.notification_queue.push_back(queued_notification);
+            println!("notifications: Added notification to queue, queue size: {}\r", state_guard.notification_queue.len());
 
-            // Send to all subscriptions
-            let mut send_errors = Vec::new();
-            let mut send_count = 0;
+            // Check if we need to start the queue processor
+            if state_guard.queue_processor_handle.is_none() || state_guard.queue_processor_handle.as_ref().unwrap().is_finished() {
+                println!("notifications: Starting queue processor\r");
 
-            for subscription in &state_guard.subscriptions {
-                // Create subscription info for web-push
-                let subscription_info = SubscriptionInfo::new(
-                    &subscription.endpoint,
-                    &subscription.keys.p256dh,
-                    &subscription.keys.auth,
-                );
+                // Clone what we need for the async task
+                let state_clone = state.clone();
+                let our_node_clone = our_node.to_string();
+                let send_to_loop_clone = send_to_loop.clone();
+                let send_to_terminal_clone = send_to_terminal.clone();
 
-                // Convert raw private key bytes to PEM format for web-push
-                let private_key_bytes = URL_SAFE_NO_PAD.decode(&keys.private_key).map_err(|e| {
-                    NotificationsError::WebPushError {
-                        error: format!("Failed to decode private key: {:?}", e),
-                    }
-                })?;
+                // Start the queue processor
+                let handle = tokio::spawn(async move {
+                    process_notification_queue(
+                        &our_node_clone,
+                        &send_to_loop_clone,
+                        &send_to_terminal_clone,
+                        &state_clone,
+                    )
+                    .await;
+                });
 
-                // Convert Vec to fixed-size array
-                let private_key_array: [u8; 32] =
-                    private_key_bytes
-                        .try_into()
-                        .map_err(|_| NotificationsError::WebPushError {
-                            error: "Invalid private key length".to_string(),
-                        })?;
-
-                // Create PEM from raw bytes using p256
-                use p256::ecdsa::SigningKey;
-                use p256::pkcs8::EncodePrivateKey;
-
-                let signing_key =
-                    SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
-                        NotificationsError::WebPushError {
-                            error: format!("Failed to create signing key: {:?}", e),
-                        }
-                    })?;
-
-                let pem_content = signing_key
-                    .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
-                    .map_err(|e| NotificationsError::WebPushError {
-                        error: format!("Failed to convert to PEM: {:?}", e),
-                    })?
-                    .to_string();
-
-                // Create VAPID signature from PEM
-                let mut sig_builder =
-                    VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
-                        .map_err(|e| NotificationsError::WebPushError {
-                            error: format!("Failed to create VAPID signature: {:?}", e),
-                        })?;
-
-                // Add required subject claim for VAPID
-                sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
-
-                let sig_builder =
-                    sig_builder
-                        .build()
-                        .map_err(|e| NotificationsError::WebPushError {
-                            error: format!("Failed to build VAPID signature: {:?}", e),
-                        })?;
-
-                // Build the web push message
-                let mut message_builder = WebPushMessageBuilder::new(&subscription_info);
-                let payload_str = payload.to_string();
-                message_builder.set_payload(ContentEncoding::Aes128Gcm, payload_str.as_bytes());
-                message_builder.set_vapid_signature(sig_builder);
-
-                let message =
-                    message_builder
-                        .build()
-                        .map_err(|e| NotificationsError::WebPushError {
-                            error: format!("Failed to build message: {:?}", e),
-                        })?;
-
-                // Send the notification using IsahcWebPushClient
-                let client =
-                    IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
-                        error: format!("Failed to create web push client: {:?}", e),
-                    })?;
-
-                match client.send(message).await {
-                    Ok(_) => {
-                        send_count += 1;
-                    }
-                    Err(e) => {
-                        println!(
-                            "notifications: Failed to send to {}: {:?}\r",
-                            subscription.endpoint, e
-                        );
-                        send_errors.push(format!("Failed to send to endpoint: {:?}", e));
-                    }
-                }
+                state_guard.queue_processor_handle = Some(handle);
             }
-
-            println!(
-                "notifications: Sent to {}/{} devices\r",
-                send_count,
-                state_guard.subscriptions.len()
-            );
 
             NotificationsResponse::NotificationSent
         }
@@ -733,6 +673,222 @@ async fn save_subscriptions_to_state(
         .unwrap()
         .send(send_to_state)
         .await;
+
+    Ok(())
+}
+
+async fn process_notification_queue(
+    our_node: &str,
+    send_to_loop: &MessageSender,
+    send_to_terminal: &PrintSender,
+    state: &Arc<RwLock<NotificationsState>>,
+) {
+    loop {
+        // Check if we should process the next notification
+        let should_process = {
+            let state_guard = state.read().await;
+
+            // Check if enough time has passed since last push
+            match state_guard.last_push_timestamp {
+                None => true, // No previous push, can send immediately
+                Some(last_timestamp) => {
+                    let elapsed = tokio::time::Instant::now().duration_since(last_timestamp);
+                    elapsed >= tokio::time::Duration::from_secs(5)
+                }
+            }
+        };
+
+        if should_process {
+            // Process one notification from the queue
+            let notification = {
+                let mut state_guard = state.write().await;
+                state_guard.notification_queue.pop_front()
+            };
+
+            if let Some(notification) = notification {
+                println!("notifications: Processing notification from queue\r");
+
+                // Send the notification
+                if let Err(e) = send_notification_to_all(
+                    our_node,
+                    send_to_loop,
+                    send_to_terminal,
+                    state,
+                    notification,
+                ).await {
+                    println!("notifications: Error sending notification: {:?}\r", e);
+                }
+
+                // Update timestamp and check if we should exit
+                let mut state_guard = state.write().await;
+                state_guard.last_push_timestamp = Some(tokio::time::Instant::now());
+
+                // Check if queue is now empty and clean up if so
+                if state_guard.notification_queue.is_empty() {
+                    println!("notifications: Queue now empty, exiting processor\r");
+                    state_guard.queue_processor_handle = None;
+                    return;
+                } else {
+                    println!("notifications: {} more notifications in queue, waiting 5 seconds\r", state_guard.notification_queue.len());
+                }
+            }
+        } else {
+            // Wait until 5 seconds have passed since last push
+            let wait_duration = {
+                let state_guard = state.read().await;
+                match state_guard.last_push_timestamp {
+                    Some(last_timestamp) => {
+                        let elapsed = tokio::time::Instant::now().duration_since(last_timestamp);
+                        if elapsed < tokio::time::Duration::from_secs(5) {
+                            tokio::time::Duration::from_secs(5) - elapsed
+                        } else {
+                            tokio::time::Duration::from_secs(0)
+                        }
+                    }
+                    None => tokio::time::Duration::from_secs(0),
+                }
+            };
+
+            if wait_duration > tokio::time::Duration::from_secs(0) {
+                println!("notifications: Waiting {} ms before next notification\r", wait_duration.as_millis());
+                tokio::time::sleep(wait_duration).await;
+            }
+        }
+    }
+}
+
+async fn send_notification_to_all(
+    our_node: &str,
+    send_to_loop: &MessageSender,
+    send_to_terminal: &PrintSender,
+    state: &Arc<RwLock<NotificationsState>>,
+    notification: QueuedNotification,
+) -> Result<(), NotificationsError> {
+    let state_guard = state.read().await;
+
+    let keys = state_guard
+        .vapid_keys
+        .as_ref()
+        .ok_or(NotificationsError::KeysNotInitialized)?;
+
+    if state_guard.subscriptions.is_empty() {
+        println!("notifications: No subscriptions available to send notification\r");
+        return Ok(());
+    }
+
+    // Build the notification payload
+    let payload = serde_json::json!({
+        "title": notification.title,
+        "body": notification.body,
+        "icon": notification.icon,
+        "data": notification.data,
+    });
+
+    println!(
+        "notifications: Sending notification to {} devices\\r",
+        state_guard.subscriptions.len()
+    );
+
+    // Send to all subscriptions
+    let mut send_errors = Vec::new();
+    let mut send_count = 0;
+
+    for subscription in &state_guard.subscriptions {
+        // Create subscription info for web-push
+        let subscription_info = SubscriptionInfo::new(
+            &subscription.endpoint,
+            &subscription.keys.p256dh,
+            &subscription.keys.auth,
+        );
+
+        // Convert raw private key bytes to PEM format for web-push
+        let private_key_bytes = URL_SAFE_NO_PAD.decode(&keys.private_key).map_err(|e| {
+            NotificationsError::WebPushError {
+                error: format!("Failed to decode private key: {:?}", e),
+            }
+        })?;
+
+        // Convert Vec to fixed-size array
+        let private_key_array: [u8; 32] =
+            private_key_bytes
+                .try_into()
+                .map_err(|_| NotificationsError::WebPushError {
+                    error: "Invalid private key length".to_string(),
+                })?;
+
+        // Create PEM from raw bytes using p256
+        use p256::ecdsa::SigningKey;
+        use p256::pkcs8::EncodePrivateKey;
+
+        let signing_key =
+            SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
+                NotificationsError::WebPushError {
+                    error: format!("Failed to create signing key: {:?}", e),
+                }
+            })?;
+
+        let pem_content = signing_key
+            .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
+            .map_err(|e| NotificationsError::WebPushError {
+                error: format!("Failed to convert to PEM: {:?}", e),
+            })?
+            .to_string();
+
+        // Create VAPID signature from PEM
+        let mut sig_builder =
+            VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
+                .map_err(|e| NotificationsError::WebPushError {
+                    error: format!("Failed to create VAPID signature: {:?}", e),
+                })?;
+
+        // Add required subject claim for VAPID
+        sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
+
+        let sig_builder =
+            sig_builder
+                .build()
+                .map_err(|e| NotificationsError::WebPushError {
+                    error: format!("Failed to build VAPID signature: {:?}", e),
+                })?;
+
+        // Build the web push message
+        let mut message_builder = WebPushMessageBuilder::new(&subscription_info);
+        let payload_str = payload.to_string();
+        message_builder.set_payload(ContentEncoding::Aes128Gcm, payload_str.as_bytes());
+        message_builder.set_vapid_signature(sig_builder);
+
+        let message =
+            message_builder
+                .build()
+                .map_err(|e| NotificationsError::WebPushError {
+                    error: format!("Failed to build message: {:?}", e),
+                })?;
+
+        // Send the notification using IsahcWebPushClient
+        let client =
+            IsahcWebPushClient::new().map_err(|e| NotificationsError::WebPushError {
+                error: format!("Failed to create web push client: {:?}", e),
+            })?;
+
+        match client.send(message).await {
+            Ok(_) => {
+                send_count += 1;
+            }
+            Err(e) => {
+                println!(
+                    "notifications: Failed to send to {}: {:?}\\r",
+                    subscription.endpoint, e
+                );
+                send_errors.push(format!("Failed to send to endpoint: {:?}", e));
+            }
+        }
+    }
+
+    println!(
+        "notifications: Sent to {}/{} devices\\r",
+        send_count,
+        state_guard.subscriptions.len()
+    );
 
     Ok(())
 }
