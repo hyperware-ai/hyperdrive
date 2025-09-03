@@ -26,6 +26,10 @@ pub enum NotificationsAction {
     },
     /// Clear all subscriptions
     ClearSubscriptions,
+    /// Get subscription info by endpoint
+    GetSubscription {
+        endpoint: String,
+    },
 }
 
 /// Push subscription information from the client
@@ -33,6 +37,8 @@ pub enum NotificationsAction {
 pub struct PushSubscription {
     pub endpoint: String,
     pub keys: SubscriptionKeys,
+    /// Timestamp when the subscription was created (milliseconds since epoch)
+    pub created_at: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -50,6 +56,7 @@ pub enum NotificationsResponse {
     SubscriptionAdded,
     SubscriptionRemoved,
     SubscriptionsCleared,
+    SubscriptionInfo(Option<PushSubscription>),
     Err(NotificationsError),
 }
 

@@ -64,57 +64,107 @@ async function initializePushNotifications(registration: ServiceWorkerRegistrati
     // Check if already subscribed
     let subscription = await registration.pushManager.getSubscription();
 
+    if (subscription) {
+      // Check subscription age and renew if needed
+      console.log('[Init Push] Checking existing subscription age');
+
+      try {
+        const response = await fetch('/api/notifications/subscription-info', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ endpoint: subscription.endpoint })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (!data.subscription || !data.subscription.created_at) {
+            console.log('[Init Push] No subscription found on server, will create new one');
+            // Unsubscribe and create new
+            await subscription!.unsubscribe();
+            subscription = null;
+          } else {
+            // Check age
+            const now = Date.now();
+            const createdAt = data.subscription.created_at;
+            const ageMs = now - createdAt;
+            const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+            const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
+
+            console.log('[Init Push] Subscription age:', Math.floor(ageMs / 1000 / 60 / 60), 'hours');
+
+            if (ageMs > oneMonthMs) {
+              console.log('[Init Push] Subscription older than 1 month, removing');
+              await subscription!.unsubscribe();
+              subscription = null;
+            } else if (ageMs > oneWeekMs) {
+              console.log('[Init Push] Subscription older than 1 week, renewing');
+              await subscription!.unsubscribe();
+              subscription = null;
+            }
+          }
+        } else {
+          console.log('[Init Push] Could not check subscription age, will create new one');
+          await subscription!.unsubscribe();
+          subscription = null;
+        }
+      } catch (error) {
+        console.error('[Init Push] Error checking subscription:', error);
+        // On error, try to create fresh subscription
+        if (subscription) {
+          await subscription.unsubscribe();
+          subscription = null;
+        }
+      }
+    }
+
     if (!subscription && permission === 'granted') {
       // Subscribe if we have permission but no subscription
       try {
-          // Convert the public key
-          const applicationServerKey = urlBase64ToUint8Array(publicKey);
+        // Convert the public key
+        const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
-
-          // Subscribe to push notifications
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
-          });
-
-        } catch (subscribeError: any) {
-          console.error('[Init Push] Subscribe error:', subscribeError);
-          console.error('[Init Push] Error name:', subscribeError?.name);
-          console.error('[Init Push] Error message:', subscribeError?.message);
-
-          if (subscribeError?.name === 'AbortError') {
-            console.error('[Init Push] Push service registration was aborted - this usually means the VAPID key is invalid or malformed');
-          }
-
-          // Return early if subscription failed
-          return;
-        }
-
-      // Send subscription to server (only if we have a subscription)
-      if (subscription) {
-        const response = await fetch('/api/notifications/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(subscription.toJSON())
+        // Subscribe to push notifications
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey
         });
 
-        if (!response.ok) {
-          console.error('Failed to save subscription on server');
+        console.log('[Init Push] Created new subscription');
+      } catch (subscribeError: any) {
+        console.error('[Init Push] Subscribe error:', subscribeError);
+        console.error('[Init Push] Error name:', subscribeError?.name);
+        console.error('[Init Push] Error message:', subscribeError?.message);
+
+        if (subscribeError?.name === 'AbortError') {
+          console.error('[Init Push] Push service registration was aborted - this usually means the VAPID key is invalid or malformed');
         }
+
+        // Return early if subscription failed
+        return;
       }
-    } else {
+    }
 
-      // Optionally update subscription on server to ensure it's current
-      if (subscription) {
-        await fetch('/api/notifications/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(subscription.toJSON())
-        });
+    // Send subscription to server (only if we have a subscription)
+    if (subscription) {
+      const subscriptionData = subscription.toJSON();
+      const response = await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...subscriptionData,
+          created_at: Date.now()
+        })
+      });
+
+      if (!response.ok) {
+        console.error('[Init Push] Failed to save subscription on server');
+      } else {
+        console.log('[Init Push] Successfully saved subscription on server');
       }
     }
   } catch (error) {
@@ -128,10 +178,14 @@ if ('serviceWorker' in navigator) {
     if (event.data && event.data.type === 'PUSH_NOTIFICATION_RECEIVED') {
       const notification = event.data.notification;
 
+      // Extract appId and appLabel from data if available
+      const appId = notification.data?.appId || notification.appId || 'system';
+      const appLabel = notification.data?.appLabel || notification.appLabel || 'System';
+
       // Add to notification store
       useNotificationStore.getState().addNotification({
-        appId: notification.appId || 'system',
-        appLabel: notification.appLabel || 'System',
+        appId,
+        appLabel,
         title: notification.title,
         body: notification.body,
         icon: notification.icon,

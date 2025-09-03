@@ -482,8 +482,16 @@ async fn handle_request(
 
             NotificationsResponse::NotificationSent
         }
-        NotificationsAction::AddSubscription { subscription } => {
+        NotificationsAction::AddSubscription { mut subscription } => {
             let mut state_guard = state.write().await;
+
+            // Set created_at timestamp if not provided (for backward compatibility)
+            if subscription.created_at == 0 {
+                subscription.created_at = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64;
+            }
 
             // Check if subscription already exists (by endpoint)
             if !state_guard.subscriptions.iter().any(|s| s.endpoint == subscription.endpoint) {
@@ -499,6 +507,28 @@ async fn handle_request(
                     *existing = subscription;
                     save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
                 }
+            }
+
+            // Clean up old subscriptions (older than 1 month)
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
+            let one_month_ms = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+            let initial_count = state_guard.subscriptions.len();
+            state_guard.subscriptions.retain(|s| {
+                let age = now.saturating_sub(s.created_at);
+                if age > one_month_ms {
+                    println!("notifications: Removing old subscription ({}ms old): {}", age, s.endpoint);
+                    false
+                } else {
+                    true
+                }
+            });
+
+            if state_guard.subscriptions.len() < initial_count {
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
             }
 
             NotificationsResponse::SubscriptionAdded
@@ -527,6 +557,25 @@ async fn handle_request(
             save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
 
             NotificationsResponse::SubscriptionsCleared
+        }
+        NotificationsAction::GetSubscription { endpoint } => {
+            let state_guard = state.read().await;
+            let subscription = state_guard.subscriptions.iter()
+                .find(|s| s.endpoint == endpoint)
+                .cloned();
+
+            if let Some(ref sub) = subscription {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64;
+                let age_ms = now.saturating_sub(sub.created_at);
+                println!("notifications: Found subscription for endpoint, age: {}ms", age_ms);
+            } else {
+                println!("notifications: No subscription found for endpoint: {}", endpoint);
+            }
+
+            NotificationsResponse::SubscriptionInfo(subscription)
         }
     };
 

@@ -19,6 +19,7 @@ type PersistedAppOrder = HashMap<String, u32>;
 struct PushSubscription {
     endpoint: String,
     keys: SubscriptionKeys,
+    created_at: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -45,6 +46,9 @@ enum NotificationsAction {
         endpoint: String,
     },
     ClearSubscriptions,
+    GetSubscription {
+        endpoint: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,6 +59,7 @@ enum NotificationsResponse {
     SubscriptionAdded,
     SubscriptionRemoved,
     SubscriptionsCleared,
+    SubscriptionInfo(Option<PushSubscription>),
     Err(String),
 }
 
@@ -280,6 +285,9 @@ fn init(our: Address) {
     http_server
         .bind_http_path("/api/notifications/unsubscribe", http_config.clone())
         .expect("failed to bind /api/notifications/unsubscribe");
+    http_server
+        .bind_http_path("/api/notifications/subscription-info", http_config.clone())
+        .expect("failed to bind /api/notifications/subscription-info");
     http_server
         .bind_http_path("/api/notifications/unsubscribe-all", http_config.clone())
         .expect("failed to bind /api/notifications/unsubscribe-all");
@@ -660,6 +668,109 @@ fn init(our: Address) {
                                                         Some("application/json"),
                                                         serde_json::to_vec(&serde_json::json!({
                                                             "error": format!("Failed to remove subscription: {}", e)
+                                                        }))
+                                                        .unwrap(),
+                                                    )),
+                                                )
+                                            }
+                                            _ => (
+                                                server::HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR),
+                                                Some(LazyLoadBlob::new(
+                                                    Some("application/json"),
+                                                    serde_json::to_vec(&serde_json::json!({
+                                                        "error": "Unexpected response from notifications service"
+                                                    }))
+                                                    .unwrap(),
+                                                )),
+                                            ),
+                                        }
+                                    }
+                                    _ => (
+                                        server::HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR),
+                                        Some(LazyLoadBlob::new(
+                                            Some("application/json"),
+                                            serde_json::to_vec(&serde_json::json!({
+                                                "error": "Failed to contact notifications server"
+                                            }))
+                                            .unwrap(),
+                                        )),
+                                    ),
+                                }
+                            }
+                            "/api/notifications/subscription-info" => {
+                                let Ok(http::Method::POST) = incoming.method() else {
+                                    return (
+                                        server::HttpResponse::new(
+                                            http::StatusCode::METHOD_NOT_ALLOWED,
+                                        ),
+                                        None,
+                                    );
+                                };
+                                let Some(body) = get_blob() else {
+                                    return (
+                                        server::HttpResponse::new(http::StatusCode::BAD_REQUEST),
+                                        None,
+                                    );
+                                };
+
+                                // Parse the endpoint from the request body
+                                let Ok(request_data) = serde_json::from_slice::<serde_json::Value>(&body.bytes) else {
+                                    return (
+                                        server::HttpResponse::new(http::StatusCode::BAD_REQUEST),
+                                        None,
+                                    );
+                                };
+
+                                let Some(endpoint) = request_data.get("endpoint").and_then(|e| e.as_str()) else {
+                                    return (
+                                        server::HttpResponse::new(http::StatusCode::BAD_REQUEST),
+                                        Some(LazyLoadBlob::new(
+                                            Some("application/json"),
+                                            serde_json::to_vec(&serde_json::json!({
+                                                "error": "Missing endpoint in request body"
+                                            }))
+                                            .unwrap(),
+                                        )),
+                                    );
+                                };
+
+                                // Get subscription info from notifications server
+                                let notifications_address = Address::new(
+                                    &our.node,
+                                    ProcessId::new(Some("notifications"), "distro", "sys"),
+                                );
+
+                                match Request::to(notifications_address)
+                                    .body(
+                                        serde_json::to_vec(&NotificationsAction::GetSubscription {
+                                            endpoint: endpoint.to_string(),
+                                        })
+                                        .unwrap(),
+                                    )
+                                    .send_and_await_response(5)
+                                {
+                                    Ok(Ok(response)) => {
+                                        match serde_json::from_slice::<NotificationsResponse>(response.body()) {
+                                            Ok(NotificationsResponse::SubscriptionInfo(sub_option)) => {
+                                                (
+                                                    server::HttpResponse::new(http::StatusCode::OK),
+                                                    Some(LazyLoadBlob::new(
+                                                        Some("application/json"),
+                                                        serde_json::to_vec(&serde_json::json!({
+                                                            "subscription": sub_option
+                                                        }))
+                                                        .unwrap(),
+                                                    )),
+                                                )
+                                            }
+                                            Ok(NotificationsResponse::Err(e)) => {
+                                                println!("homepage: notifications server error: {}", e);
+                                                (
+                                                    server::HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR),
+                                                    Some(LazyLoadBlob::new(
+                                                        Some("application/json"),
+                                                        serde_json::to_vec(&serde_json::json!({
+                                                            "error": format!("Failed to get subscription info: {}", e)
                                                         }))
                                                         .unwrap(),
                                                     )),
