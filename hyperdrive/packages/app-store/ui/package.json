@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@hyperware-ai/client-api": "^0.1.4",
+    "@hyperware-ai/hw-protocol-watcher": "^1.0.1",
     "@metamask/jazzicon": "^2.0.0",
     "@rainbow-me/rainbowkit": "^2.1.2",
     "@szhsin/react-menu": "^4.1.0",

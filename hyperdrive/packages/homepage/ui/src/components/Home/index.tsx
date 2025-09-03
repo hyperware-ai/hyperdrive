@@ -33,6 +33,19 @@ export default function Home() {
   } = useNavigationStore();
   const [loading, setLoading] = useState(true);
 
+  // if we have a hash in the URL but no open app, they probably just refreshed the page.
+  // try to automatically open it
+  useEffect(() => {
+    if (window?.location?.hash?.startsWith('#app-')) {
+      const appNameToOpen = window.location.hash.replace('#app-', '');
+      const appToOpen = apps?.find(app => app?.id === appNameToOpen);
+      console.log('found window hash. attempting open', { hash: window.location.hash, appNameToOpen, appToOpen });
+      if (appToOpen) {
+        openApp(appToOpen)
+      }
+    }
+  }, [apps, window.location]);
+
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (!isIframeMessage(event.data)) {
@@ -94,8 +107,8 @@ export default function Home() {
         allGood = false;
       }
 
-      if (![IframeMessageType.OPEN_APP, IframeMessageType.APP_LINK_CLICKED].includes(event.data.type)) {
-        console.log('expected IframeMessageType, got:', event.data.type);
+      if (!isIframeMessage(event.data)) {
+        console.log('expected IframeMessageType, got:', event.data);
         allGood = false;
       }
 
@@ -127,6 +140,15 @@ export default function Home() {
         const { url } = event.data;
         console.log({ url, apps });
         openApp(apps.find(app => app.id.endsWith('app-store:sys')) as HomepageApp, url)
+      } else if (event.data.type === IframeMessageType.HW_LINK_CLICKED) {
+        console.log({ hwLinkClicked: event });
+        const { url } = event.data;
+        console.log({ url, apps });
+        const urlParts = url.split('/').filter(part => part !== '' && part !== null && part !== undefined);
+        const appName = urlParts[0];
+        const path = urlParts.slice(1).join('/');
+        console.log({ urlParts, appName, path });
+        openApp(apps.find(app => app.id.endsWith(appName)) as HomepageApp, path || undefined)
       }
     };
     window.addEventListener('message', handleMessage);

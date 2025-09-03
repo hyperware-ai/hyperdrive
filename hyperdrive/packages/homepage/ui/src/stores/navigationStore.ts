@@ -70,7 +70,9 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
 
     // Don't open apps without a valid path
     if (!app.path || !app.process || !app.publisher) {
-      console.warn(`Cannot open app ${app.label}: No valid path`);
+      const e = `Cannot open app ${app.label}: No valid path`
+      console.warn(e);
+      alert(e);
       return;
     }
 
