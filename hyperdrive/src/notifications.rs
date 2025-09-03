@@ -15,7 +15,10 @@ use web_push::{
 
 // Import our types from lib
 use lib::core::StateAction;
-use lib::notifications::{NotificationsAction, NotificationsError, NotificationsResponse, PushSubscription, SubscriptionKeys};
+use lib::notifications::{
+    NotificationsAction, NotificationsError, NotificationsResponse, PushSubscription,
+    SubscriptionKeys,
+};
 
 /// VAPID keys for web push notifications
 #[derive(Serialize, Deserialize, Clone)]
@@ -226,8 +229,12 @@ async fn load_keys_from_state(
         .message(Message::Request(Request {
             inherit: false,
             expects_response: Some(5),
-            body: serde_json::to_vec(&StateAction::GetState(ProcessId::new(Some("notifications-subscriptions"), "distro", "sys")))
-                .unwrap(),
+            body: serde_json::to_vec(&StateAction::GetState(ProcessId::new(
+                Some("notifications-subscriptions"),
+                "distro",
+                "sys",
+            )))
+            .unwrap(),
             metadata: None,
             capabilities: vec![],
         }))
@@ -384,7 +391,10 @@ async fn handle_request(
                 "data": data,
             });
 
-            println!("notifications: Sending notification to {} devices\r", state_guard.subscriptions.len());
+            println!(
+                "notifications: Sending notification to {} devices\r",
+                state_guard.subscriptions.len()
+            );
 
             // Send to all subscriptions
             let mut send_errors = Vec::new();
@@ -417,11 +427,12 @@ async fn handle_request(
                 use p256::ecdsa::SigningKey;
                 use p256::pkcs8::EncodePrivateKey;
 
-                let signing_key = SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
-                    NotificationsError::WebPushError {
-                        error: format!("Failed to create signing key: {:?}", e),
-                    }
-                })?;
+                let signing_key =
+                    SigningKey::from_bytes(&private_key_array.into()).map_err(|e| {
+                        NotificationsError::WebPushError {
+                            error: format!("Failed to create signing key: {:?}", e),
+                        }
+                    })?;
 
                 let pem_content = signing_key
                     .to_pkcs8_pem(p256::pkcs8::LineEnding::LF)
@@ -433,20 +444,19 @@ async fn handle_request(
                 // Create VAPID signature from PEM
                 let mut sig_builder =
                     VapidSignatureBuilder::from_pem(pem_content.as_bytes(), &subscription_info)
-                        .map_err(|e| {
-                            NotificationsError::WebPushError {
-                                error: format!("Failed to create VAPID signature: {:?}", e),
-                            }
+                        .map_err(|e| NotificationsError::WebPushError {
+                            error: format!("Failed to create VAPID signature: {:?}", e),
                         })?;
 
                 // Add required subject claim for VAPID
                 sig_builder.add_claim("sub", "mailto:admin@hyperware.ai");
 
-                let sig_builder = sig_builder.build().map_err(|e| {
-                    NotificationsError::WebPushError {
-                        error: format!("Failed to build VAPID signature: {:?}", e),
-                    }
-                })?;
+                let sig_builder =
+                    sig_builder
+                        .build()
+                        .map_err(|e| NotificationsError::WebPushError {
+                            error: format!("Failed to build VAPID signature: {:?}", e),
+                        })?;
 
                 // Build the web push message
                 let mut message_builder = WebPushMessageBuilder::new(&subscription_info);
@@ -472,13 +482,20 @@ async fn handle_request(
                         send_count += 1;
                     }
                     Err(e) => {
-                        println!("notifications: Failed to send to {}: {:?}\r", subscription.endpoint, e);
+                        println!(
+                            "notifications: Failed to send to {}: {:?}\r",
+                            subscription.endpoint, e
+                        );
                         send_errors.push(format!("Failed to send to endpoint: {:?}", e));
                     }
                 }
             }
 
-            println!("notifications: Sent to {}/{} devices\r", send_count, state_guard.subscriptions.len());
+            println!(
+                "notifications: Sent to {}/{} devices\r",
+                send_count,
+                state_guard.subscriptions.len()
+            );
 
             NotificationsResponse::NotificationSent
         }
@@ -494,18 +511,35 @@ async fn handle_request(
             }
 
             // Check if subscription already exists (by endpoint)
-            if !state_guard.subscriptions.iter().any(|s| s.endpoint == subscription.endpoint) {
+            if !state_guard
+                .subscriptions
+                .iter()
+                .any(|s| s.endpoint == subscription.endpoint)
+            {
                 state_guard.subscriptions.push(subscription.clone());
-                println!("notifications: Added subscription, total: {}\r", state_guard.subscriptions.len());
+                println!(
+                    "notifications: Added subscription, total: {}\r",
+                    state_guard.subscriptions.len()
+                );
 
                 // Save subscriptions to state
-                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions)
+                    .await?;
             } else {
                 println!("notifications: Subscription already exists, updating it\r");
                 // Update existing subscription
-                if let Some(existing) = state_guard.subscriptions.iter_mut().find(|s| s.endpoint == subscription.endpoint) {
+                if let Some(existing) = state_guard
+                    .subscriptions
+                    .iter_mut()
+                    .find(|s| s.endpoint == subscription.endpoint)
+                {
                     *existing = subscription;
-                    save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+                    save_subscriptions_to_state(
+                        our_node,
+                        send_to_state,
+                        &state_guard.subscriptions,
+                    )
+                    .await?;
                 }
             }
 
@@ -520,7 +554,10 @@ async fn handle_request(
             state_guard.subscriptions.retain(|s| {
                 let age = now.saturating_sub(s.created_at);
                 if age > one_month_ms {
-                    println!("notifications: Removing old subscription ({}ms old): {}\r", age, s.endpoint);
+                    println!(
+                        "notifications: Removing old subscription ({}ms old): {}\r",
+                        age, s.endpoint
+                    );
                     false
                 } else {
                     true
@@ -528,7 +565,8 @@ async fn handle_request(
             });
 
             if state_guard.subscriptions.len() < initial_count {
-                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions)
+                    .await?;
             }
 
             NotificationsResponse::SubscriptionAdded
@@ -539,9 +577,13 @@ async fn handle_request(
             state_guard.subscriptions.retain(|s| s.endpoint != endpoint);
 
             if state_guard.subscriptions.len() < initial_len {
-                println!("notifications: Removed subscription, remaining: {}\r", state_guard.subscriptions.len());
+                println!(
+                    "notifications: Removed subscription, remaining: {}\r",
+                    state_guard.subscriptions.len()
+                );
                 // Save updated subscriptions to state
-                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions)
+                    .await?;
                 NotificationsResponse::SubscriptionRemoved
             } else {
                 println!("notifications: Subscription not found to remove\r");
@@ -554,13 +596,16 @@ async fn handle_request(
             println!("notifications: Cleared all subscriptions\r");
 
             // Save empty subscriptions to state
-            save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await?;
+            save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions)
+                .await?;
 
             NotificationsResponse::SubscriptionsCleared
         }
         NotificationsAction::GetSubscription { endpoint } => {
             let state_guard = state.read().await;
-            let subscription = state_guard.subscriptions.iter()
+            let subscription = state_guard
+                .subscriptions
+                .iter()
                 .find(|s| s.endpoint == endpoint)
                 .cloned();
 
@@ -570,9 +615,15 @@ async fn handle_request(
                     .unwrap()
                     .as_millis() as u64;
                 let age_ms = now.saturating_sub(sub.created_at);
-                println!("notifications: Found subscription for endpoint, age: {}ms\r", age_ms);
+                println!(
+                    "notifications: Found subscription for endpoint, age: {}ms\r",
+                    age_ms
+                );
             } else {
-                println!("notifications: No subscription found for endpoint: {}\r", endpoint);
+                println!(
+                    "notifications: No subscription found for endpoint: {}\r",
+                    endpoint
+                );
             }
 
             NotificationsResponse::SubscriptionInfo(subscription)
@@ -630,7 +681,7 @@ async fn save_keys_to_state(
         .target((our_node, ProcessId::new(Some("state"), "distro", "sys")))
         .message(Message::Request(Request {
             inherit: false,
-            expects_response: None,  // Don't expect a response to avoid polluting the main loop
+            expects_response: None, // Don't expect a response to avoid polluting the main loop
             body: serde_json::to_vec(&StateAction::SetState(NOTIFICATIONS_PROCESS_ID.clone()))
                 .unwrap(),
             metadata: None,
@@ -653,9 +704,10 @@ async fn save_subscriptions_to_state(
     send_to_state: &MessageSender,
     subscriptions: &[PushSubscription],
 ) -> Result<(), NotificationsError> {
-    let subscriptions_bytes = serde_json::to_vec(subscriptions).map_err(|e| NotificationsError::StateError {
-        error: format!("Failed to serialize subscriptions: {:?}", e),
-    })?;
+    let subscriptions_bytes =
+        serde_json::to_vec(subscriptions).map_err(|e| NotificationsError::StateError {
+            error: format!("Failed to serialize subscriptions: {:?}", e),
+        })?;
 
     KernelMessage::builder()
         .id(rand::random())
@@ -663,9 +715,13 @@ async fn save_subscriptions_to_state(
         .target((our_node, ProcessId::new(Some("state"), "distro", "sys")))
         .message(Message::Request(Request {
             inherit: false,
-            expects_response: None,  // Don't expect a response to avoid polluting the main loop
-            body: serde_json::to_vec(&StateAction::SetState(ProcessId::new(Some("notifications-subscriptions"), "distro", "sys")))
-                .unwrap(),
+            expects_response: None, // Don't expect a response to avoid polluting the main loop
+            body: serde_json::to_vec(&StateAction::SetState(ProcessId::new(
+                Some("notifications-subscriptions"),
+                "distro",
+                "sys",
+            )))
+            .unwrap(),
             metadata: None,
             capabilities: vec![],
         }))

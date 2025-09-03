@@ -17,19 +17,13 @@ pub enum NotificationsAction {
     /// Initialize or regenerate VAPID keys
     InitializeKeys,
     /// Add a push subscription for a device
-    AddSubscription {
-        subscription: PushSubscription,
-    },
+    AddSubscription { subscription: PushSubscription },
     /// Remove a push subscription
-    RemoveSubscription {
-        endpoint: String,
-    },
+    RemoveSubscription { endpoint: String },
     /// Clear all subscriptions
     ClearSubscriptions,
     /// Get subscription info by endpoint
-    GetSubscription {
-        endpoint: String,
-    },
+    GetSubscription { endpoint: String },
 }
 
 /// Push subscription information from the client
