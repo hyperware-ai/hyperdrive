@@ -218,10 +218,7 @@ pub async fn check_url_provider_health(provider: &mut UrlProvider) -> bool {
 
     // Try to get the latest block number as a health check
     if let Some(pubsub) = provider.pubsub.first() {
-        match tokio::time::timeout(
-            Duration::from_secs(10),
-            pubsub.get_block_number()
-        ).await {
+        match tokio::time::timeout(Duration::from_secs(10), pubsub.get_block_number()).await {
             Ok(Ok(_)) => true,
             _ => {
                 // Provider failed, clear the connection
@@ -262,10 +259,8 @@ pub fn spawn_health_check_for_url_provider(
                         provider_online = true;
                         provider.last_health_check = Some(Instant::now());
 
-                        verbose_print(
-                            &print_tx,
-                            &format!("eth: provider {} is back online", url),
-                        ).await;
+                        verbose_print(&print_tx, &format!("eth: provider {} is back online", url))
+                            .await;
                     }
                 }
             }
@@ -296,8 +291,11 @@ pub fn spawn_method_retry_for_url_provider(
             if let Some(mut aps) = providers.get_mut(&chain_id) {
                 if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
                     provider.method_failures.send_raw_tx_failed = None;
-                    verbose_print(&print_tx,
-                        &format!("eth: cleared eth_sendRawTransaction failure for {}", url)).await;
+                    verbose_print(
+                        &print_tx,
+                        &format!("eth: cleared eth_sendRawTransaction failure for {}", url),
+                    )
+                    .await;
                 }
             }
             return;
@@ -329,13 +327,16 @@ pub fn spawn_method_retry_for_url_provider(
                 continue;
             };
 
-
             // Try the previously-failing method
             let success = matches!(
                 tokio::time::timeout(
                     Duration::from_secs(10),
-                    pubsub.raw_request::<_, serde_json::Value>(std::borrow::Cow::Owned(method.clone()), &params)
-                ).await,
+                    pubsub.raw_request::<_, serde_json::Value>(
+                        std::borrow::Cow::Owned(method.clone()),
+                        &params
+                    )
+                )
+                .await,
                 Ok(Ok(_))
             );
 
@@ -344,8 +345,11 @@ pub fn spawn_method_retry_for_url_provider(
                 if let Some(mut aps) = providers.get_mut(&chain_id) {
                     if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
                         provider.method_failures.clear_method_failure(&method);
-                        verbose_print(&print_tx,
-                            &format!("eth: {} now working again for {}", method, url)).await;
+                        verbose_print(
+                            &print_tx,
+                            &format!("eth: {} now working again for {}", method, url),
+                        )
+                        .await;
                     }
                 }
                 break;
@@ -373,11 +377,20 @@ pub fn spawn_method_retry_for_node_provider(
         if method == "eth_sendRawTransaction" {
             tokio::time::sleep(Duration::from_secs(3600)).await;
             if let Some(mut aps) = providers.get_mut(&chain_id) {
-                if let Some(provider) = aps.nodes.iter_mut()
-                    .find(|p| p.hns_update.name == node_name) {
+                if let Some(provider) = aps
+                    .nodes
+                    .iter_mut()
+                    .find(|p| p.hns_update.name == node_name)
+                {
                     provider.method_failures.send_raw_tx_failed = None;
-                    verbose_print(&print_tx,
-                        &format!("eth: cleared eth_sendRawTransaction failure for node {}", node_name)).await;
+                    verbose_print(
+                        &print_tx,
+                        &format!(
+                            "eth: cleared eth_sendRawTransaction failure for node {}",
+                            node_name
+                        ),
+                    )
+                    .await;
                 }
             }
             return;
@@ -414,13 +427,12 @@ pub fn spawn_method_retry_for_node_provider(
                     params: params.clone(),
                 },
                 &send_to_loop,
-            ).await;
+            )
+            .await;
 
             // Wait for response
-            let success = match tokio::time::timeout(
-                Duration::from_secs(10),
-                receiver.recv()
-            ).await {
+            let success = match tokio::time::timeout(Duration::from_secs(10), receiver.recv()).await
+            {
                 Ok(Some(Ok(km))) => matches!(km.message, Message::Response(_)),
                 _ => false,
             };
@@ -431,14 +443,17 @@ pub fn spawn_method_retry_for_node_provider(
             if success {
                 // Clear the method failure
                 if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps.nodes.iter_mut()
+                    if let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
                         .find(|p| p.hns_update.name == node_name)
                     {
                         provider.method_failures.clear_method_failure(&method);
                         verbose_print(
                             &print_tx,
                             &format!("eth: {} now working again for node {}", method, node_name),
-                        ).await;
+                        )
+                        .await;
                     }
                 }
                 break;
@@ -491,19 +506,18 @@ pub fn spawn_health_check_for_node_provider(
                     params: serde_json::json!([]),
                 },
                 &send_to_loop,
-            ).await;
+            )
+            .await;
 
             // Wait for response with timeout
-            let provider_online = match tokio::time::timeout(
-                Duration::from_secs(10),
-                receiver.recv()
-            ).await {
-                Ok(Some(Ok(km))) => {
-                    // Check if we got a successful response
-                    matches!(km.message, Message::Response(_))
-                }
-                _ => false,
-            };
+            let provider_online =
+                match tokio::time::timeout(Duration::from_secs(10), receiver.recv()).await {
+                    Ok(Some(Ok(km))) => {
+                        // Check if we got a successful response
+                        matches!(km.message, Message::Response(_))
+                    }
+                    _ => false,
+                };
 
             // Clean up response channel
             response_channels.remove(&km_id);
@@ -511,7 +525,9 @@ pub fn spawn_health_check_for_node_provider(
             if provider_online {
                 // Mark the provider as online
                 if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps.nodes.iter_mut()
+                    if let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
                         .find(|p| p.hns_update.name == node_name)
                     {
                         provider.online = true;
@@ -521,7 +537,8 @@ pub fn spawn_health_check_for_node_provider(
                         verbose_print(
                             &print_tx,
                             &format!("eth: node provider {} is back online", node_name),
-                        ).await;
+                        )
+                        .await;
                     }
                 }
                 // Provider is back online, exit the health check loop
@@ -529,8 +546,11 @@ pub fn spawn_health_check_for_node_provider(
             } else {
                 // Provider is still offline, update last health check time
                 if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps.nodes.iter_mut()
-                        .find(|p| p.hns_update.name == node_name) {
+                    if let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
+                        .find(|p| p.hns_update.name == node_name)
+                    {
                         provider.last_health_check = Some(Instant::now());
                     }
                 }
@@ -539,10 +559,10 @@ pub fn spawn_health_check_for_node_provider(
                     &print_tx,
                     &format!(
                         "eth: health check failed for node provider {} (backoff: {} min)",
-                        node_name,
-                        backoff_mins,
+                        node_name, backoff_mins,
                     ),
-                ).await;
+                )
+                .await;
             }
         }
     });

@@ -184,7 +184,6 @@ fn parse_block_number(value: &serde_json::Value) -> Option<u64> {
     }
 }
 
-
 impl ActiveProviders {
     fn add_provider_config(&mut self, new: ProviderConfig) {
         match &new.provider {
@@ -917,11 +916,16 @@ async fn fulfill_request(
         }
 
         // Check method-specific failures
-        if url_provider.method_failures.should_skip_method(method, params) {
+        if url_provider
+            .method_failures
+            .should_skip_method(method, params)
+        {
             verbose_print(
                 print_tx,
-                &format!("eth: skipping url provider {} due to previous {} failure",
-                        url_provider.url, method),
+                &format!(
+                    "eth: skipping url provider {} due to previous {} failure",
+                    url_provider.url, method
+                ),
             )
             .await;
             continue;
@@ -950,8 +954,8 @@ async fn fulfill_request(
             Ok(value) => {
                 // Provider succeeded - clear any method failures and update pubsub if needed
                 providers.entry(chain_id.clone()).and_modify(|aps| {
-                    if let Some(provider) = aps.urls.iter_mut()
-                        .find(|p| p.url == url_provider.url) {
+                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url_provider.url)
+                    {
                         // Clear method failure since it succeeded
                         provider.method_failures.clear_method_failure(method);
 
@@ -985,7 +989,8 @@ async fn fulfill_request(
 
                 // Store RPC error responses for later if all providers fail
                 let is_rpc_error_resp = if let RpcError::ErrorResp(err) = &rpc_error {
-                    last_rpc_error = Some(serde_json::to_value(err).unwrap_or_else(|_| serde_json::Value::Null));
+                    last_rpc_error =
+                        Some(serde_json::to_value(err).unwrap_or_else(|_| serde_json::Value::Null));
                     true
                 } else {
                     false
@@ -996,8 +1001,9 @@ async fn fulfill_request(
                     // Valid RPC error response - mark the specific method as failed
                     let mut should_spawn_retry = false;
                     providers.entry(chain_id.clone()).and_modify(|aps| {
-                        let Some(provider) = aps.urls.iter_mut()
-                            .find(|p| p.url == url_provider.url) else {
+                        let Some(provider) =
+                            aps.urls.iter_mut().find(|p| p.url == url_provider.url)
+                        else {
                             return;
                         };
                         // Check if this method wasn't already marked as failed
@@ -1020,8 +1026,12 @@ async fn fulfill_request(
                         );
                         verbose_print(
                             print_tx,
-                            &format!("eth: spawned method retry for {} on {}", method, url_provider.url),
-                        ).await;
+                            &format!(
+                                "eth: spawned method retry for {} on {}",
+                                method, url_provider.url
+                            ),
+                        )
+                        .await;
                     }
                     // Continue to next provider without marking offline
                     continue;
@@ -1042,8 +1052,9 @@ async fn fulfill_request(
                     url.last_health_check = Some(Instant::now());
 
                     // Only spawn health check if not already running
-                    if url.last_health_check.is_none() ||
-                       url.last_health_check.unwrap().elapsed() > Duration::from_secs(30) {
+                    if url.last_health_check.is_none()
+                        || url.last_health_check.unwrap().elapsed() > Duration::from_secs(30)
+                    {
                         spawn_health_check = true;
                     }
 
@@ -1062,7 +1073,10 @@ async fn fulfill_request(
 
                     verbose_print(
                         print_tx,
-                        &format!("eth: spawned health check for offline provider {}", url_provider.url),
+                        &format!(
+                            "eth: spawned health check for offline provider {}",
+                            url_provider.url
+                        ),
                     )
                     .await;
                 }
@@ -1092,11 +1106,16 @@ async fn fulfill_request(
         }
 
         // Check method-specific failures
-        if node_provider.method_failures.should_skip_method(method, params) {
+        if node_provider
+            .method_failures
+            .should_skip_method(method, params)
+        {
             verbose_print(
                 print_tx,
-                &format!("eth: skipping node provider {} due to previous {} failure",
-                        node_provider.hns_update.name, method),
+                &format!(
+                    "eth: skipping node provider {} due to previous {} failure",
+                    node_provider.hns_update.name, method
+                ),
             )
             .await;
             continue;
@@ -1132,8 +1151,11 @@ async fn fulfill_request(
                 // Mark the specific method as failed
                 let mut should_spawn_retry = false;
                 providers.entry(chain_id.clone()).and_modify(|aps| {
-                    let Some(provider) = aps.nodes.iter_mut()
-                        .find(|p| p.hns_update.name == node_provider.hns_update.name) else {
+                    let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
+                        .find(|p| p.hns_update.name == node_provider.hns_update.name)
+                    else {
                         return;
                     };
                     // Check if this method wasn't already marked as failed
@@ -1163,58 +1185,69 @@ async fn fulfill_request(
                     );
                     verbose_print(
                         print_tx,
-                        &format!("eth: spawned method retry for {} on node {}",
-                                method, node_provider.hns_update.name),
-                    ).await;
+                        &format!(
+                            "eth: spawned method retry for {} on node {}",
+                            method, node_provider.hns_update.name
+                        ),
+                    )
+                    .await;
                 }
             } else {
                 // Transport/timeout error - mark node as offline and spawn health check
                 let mut spawn_health_check = false;
                 providers.entry(chain_id.clone()).and_modify(|aps| {
-                    let Some(provider) = aps.nodes.iter_mut()
-                        .find(|p| p.hns_update.name == node_provider.hns_update.name) else {
+                    let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
+                        .find(|p| p.hns_update.name == node_provider.hns_update.name)
+                    else {
                         return;
                     };
                     provider.online = false;
                     provider.usable = false;
 
                     // Only spawn health check if not recently checked
-                    if provider.last_health_check.is_none() ||
-                       provider.last_health_check.unwrap().elapsed() > Duration::from_secs(30) {
+                    if provider.last_health_check.is_none()
+                        || provider.last_health_check.unwrap().elapsed() > Duration::from_secs(30)
+                    {
                         spawn_health_check = true;
                         provider.last_health_check = Some(Instant::now());
                     }
                 });
 
-            // Spawn health check task if needed
-            if spawn_health_check {
-                use crate::eth::utils::spawn_health_check_for_node_provider;
-                spawn_health_check_for_node_provider(
-                    our.to_string(),
-                    providers.clone(),
-                    chain_id.clone(),
-                    node_provider.hns_update.name.clone(),
-                    send_to_loop.clone(),
-                    response_channels.clone(),
-                    print_tx.clone(),
-                );
+                // Spawn health check task if needed
+                if spawn_health_check {
+                    use crate::eth::utils::spawn_health_check_for_node_provider;
+                    spawn_health_check_for_node_provider(
+                        our.to_string(),
+                        providers.clone(),
+                        chain_id.clone(),
+                        node_provider.hns_update.name.clone(),
+                        send_to_loop.clone(),
+                        response_channels.clone(),
+                        print_tx.clone(),
+                    );
 
-                verbose_print(
-                    print_tx,
-                    &format!("eth: spawned health check for offline node provider {}",
-                            node_provider.hns_update.name),
-                )
-                .await;
-            }
-
+                    verbose_print(
+                        print_tx,
+                        &format!(
+                            "eth: spawned health check for offline node provider {}",
+                            node_provider.hns_update.name
+                        ),
+                    )
+                    .await;
+                }
             }
             // Continue trying other providers instead of returning the error
             continue;
         } else {
             // Success! Clear method failure and return the response
             providers.entry(chain_id.clone()).and_modify(|aps| {
-                if let Some(provider) = aps.nodes.iter_mut()
-                    .find(|p| p.hns_update.name == node_provider.hns_update.name) {
+                if let Some(provider) = aps
+                    .nodes
+                    .iter_mut()
+                    .find(|p| p.hns_update.name == node_provider.hns_update.name)
+                {
                     provider.method_failures.clear_method_failure(method);
                 }
             });
@@ -1228,7 +1261,10 @@ async fn fulfill_request(
     } else {
         verbose_print(
             print_tx,
-            &format!("eth: all providers failed for chain {}: {:?}", chain_id, all_errors),
+            &format!(
+                "eth: all providers failed for chain {}: {:?}",
+                chain_id, all_errors
+            ),
         )
         .await;
 
