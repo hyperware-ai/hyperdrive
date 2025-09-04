@@ -41,6 +41,16 @@ struct ActiveProviders {
     pub nodes: Vec<NodeProvider>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct MethodFailures {
+    /// Category 1: Simple methods that failed (retry until success)
+    pub failed_methods: HashSet<String>,
+    /// Category 2: eth_sendRawTransaction failures (clear after 60m)
+    pub send_raw_tx_failed: Option<Instant>,
+    /// Category 3: eth_getLogs max failed block range
+    pub failed_logs_range: Option<u64>,
+}
+
 #[derive(Debug, Clone)]
 struct UrlProvider {
     pub trusted: bool,
@@ -52,6 +62,8 @@ struct UrlProvider {
     pub online: bool,
     /// last time we checked if offline provider is back online
     pub last_health_check: Option<Instant>,
+    /// method-specific failures
+    pub method_failures: MethodFailures,
 }
 
 #[derive(Debug, Clone)]
@@ -68,7 +80,110 @@ struct NodeProvider {
     pub online: bool,
     /// last time we checked if offline provider is back online
     pub last_health_check: Option<Instant>,
+    /// method-specific failures
+    pub method_failures: MethodFailures,
 }
+
+impl MethodFailures {
+    /// Check if a method should be skipped for this provider
+    fn should_skip_method(&self, method: &str, params: &serde_json::Value) -> bool {
+        // Check Category 2: eth_sendRawTransaction with 60m timeout
+        if method == "eth_sendRawTransaction" {
+            if let Some(failed_at) = self.send_raw_tx_failed {
+                if failed_at.elapsed() < Duration::from_secs(3600) {
+                    return true;
+                }
+            }
+        }
+
+        // Check Category 3: eth_getLogs with block range
+        if method == "eth_getLogs" {
+            if let Some(block_range) = extract_block_range(params) {
+                if let Some(failed_range) = self.failed_logs_range {
+                    // Skip if current range is >= failed range
+                    if block_range >= failed_range {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check Category 1: Simple methods
+        self.failed_methods.contains(method)
+    }
+
+    /// Mark a method as failed
+    fn mark_method_failed(&mut self, method: &str, params: &serde_json::Value) {
+        match method {
+            "eth_sendRawTransaction" => {
+                // Category 2: Mark with timestamp
+                self.send_raw_tx_failed = Some(Instant::now());
+            }
+            "eth_getLogs" => {
+                // Category 3: Update minimum failed block range
+                if let Some(block_range) = extract_block_range(params) {
+                    // Update to the minimum of current and new failed range
+                    self.failed_logs_range = Some(match self.failed_logs_range {
+                        Some(existing) => existing.min(block_range),
+                        None => block_range,
+                    });
+                }
+            }
+            _ => {
+                // Category 1: Simple methods
+                self.failed_methods.insert(method.to_string());
+            }
+        }
+    }
+
+    /// Clear a method failure (when it succeeds)
+    fn clear_method_failure(&mut self, method: &str) {
+        match method {
+            "eth_sendRawTransaction" => {
+                self.send_raw_tx_failed = None;
+            }
+            "eth_getLogs" => {
+                // Clear the failed range when getLogs succeeds
+                self.failed_logs_range = None;
+            }
+            _ => {
+                self.failed_methods.remove(method);
+            }
+        }
+    }
+}
+
+/// Extract block range from eth_getLogs params
+fn extract_block_range(params: &serde_json::Value) -> Option<u64> {
+    if let Some(arr) = params.as_array() {
+        if let Some(obj) = arr.first().and_then(|v| v.as_object()) {
+            let from_block = parse_block_number(obj.get("fromBlock")?)?;
+            let to_block = parse_block_number(obj.get("toBlock")?)?;
+            return Some(to_block.saturating_sub(from_block));
+        }
+    }
+    None
+}
+
+/// Parse block number from various formats (hex string, number, "latest", etc.)
+fn parse_block_number(value: &serde_json::Value) -> Option<u64> {
+    match value {
+        serde_json::Value::String(s) => {
+            if s.starts_with("0x") {
+                u64::from_str_radix(&s[2..], 16).ok()
+            } else {
+                match s.as_str() {
+                    "latest" | "pending" => Some(u64::MAX),
+                    "earliest" => Some(0),
+                    _ => s.parse().ok(),
+                }
+            }
+        }
+        serde_json::Value::Number(n) => n.as_u64(),
+        _ => None,
+    }
+}
+
 
 impl ActiveProviders {
     fn add_provider_config(&mut self, new: ProviderConfig) {
@@ -86,6 +201,7 @@ impl ActiveProviders {
                     auth: auth.clone(),
                     online: true, // Default to online
                     last_health_check: None,
+                    method_failures: MethodFailures::default(),
                 };
                 self.urls.insert(0, url_provider);
             }
@@ -102,6 +218,7 @@ impl ActiveProviders {
                     hns_update: hns_update.clone(),
                     online: true, // Default to online
                     last_health_check: None,
+                    method_failures: MethodFailures::default(),
                 };
                 self.nodes.insert(0, node_provider);
             }
@@ -798,6 +915,17 @@ async fn fulfill_request(
             .await;
             continue;
         }
+
+        // Check method-specific failures
+        if url_provider.method_failures.should_skip_method(method, params) {
+            verbose_print(
+                print_tx,
+                &format!("eth: skipping url provider {} due to previous {} failure",
+                        url_provider.url, method),
+            )
+            .await;
+            continue;
+        }
         let (pubsub, newly_activated) = match url_provider.pubsub.first() {
             Some(pubsub) => (pubsub, false),
             None => {
@@ -820,16 +948,18 @@ async fn fulfill_request(
         };
         match pubsub.raw_request(method.into(), params).await {
             Ok(value) => {
-                // Provider succeeded - just update the pubsub if newly activated
-                // DO NOT change the order of providers
-                if newly_activated {
-                    providers.entry(chain_id.clone()).and_modify(|aps| {
-                        if let Some(provider) = aps.urls.iter_mut()
-                            .find(|p| p.url == url_provider.url) {
+                // Provider succeeded - clear any method failures and update pubsub if needed
+                providers.entry(chain_id.clone()).and_modify(|aps| {
+                    if let Some(provider) = aps.urls.iter_mut()
+                        .find(|p| p.url == url_provider.url) {
+                        // Clear method failure since it succeeded
+                        provider.method_failures.clear_method_failure(method);
+
+                        if newly_activated {
                             provider.pubsub.push(url_provider.pubsub.pop().unwrap());
                         }
-                    });
-                }
+                    }
+                });
 
                 let response = EthResponse::Response(value);
                 let mut request_cache = request_cache.lock().await;
@@ -854,11 +984,50 @@ async fn fulfill_request(
                 all_errors.push((url_provider.url.clone(), format!("{:?}", rpc_error)));
 
                 // Store RPC error responses for later if all providers fail
-                if let RpcError::ErrorResp(err) = &rpc_error {
+                let is_rpc_error_resp = if let RpcError::ErrorResp(err) = &rpc_error {
                     last_rpc_error = Some(serde_json::to_value(err).unwrap_or_else(|_| serde_json::Value::Null));
+                    true
+                } else {
+                    false
+                };
+
+                // Determine what to mark as failed
+                if is_rpc_error_resp {
+                    // Valid RPC error response - mark the specific method as failed
+                    let mut should_spawn_retry = false;
+                    providers.entry(chain_id.clone()).and_modify(|aps| {
+                        let Some(provider) = aps.urls.iter_mut()
+                            .find(|p| p.url == url_provider.url) else {
+                            return;
+                        };
+                        // Check if this method wasn't already marked as failed
+                        if !provider.method_failures.should_skip_method(method, params) {
+                            provider.method_failures.mark_method_failed(method, params);
+                            should_spawn_retry = true;
+                        }
+                    });
+
+                    // Spawn method retry task if this is a new failure
+                    if should_spawn_retry && method != "eth_sendRawTransaction" {
+                        use crate::eth::utils::spawn_method_retry_for_url_provider;
+                        spawn_method_retry_for_url_provider(
+                            providers.clone(),
+                            chain_id.clone(),
+                            url_provider.url.clone(),
+                            method.to_string(),
+                            params.clone(),
+                            print_tx.clone(),
+                        );
+                        verbose_print(
+                            print_tx,
+                            &format!("eth: spawned method retry for {} on {}", method, url_provider.url),
+                        ).await;
+                    }
+                    // Continue to next provider without marking offline
+                    continue;
                 }
 
-                // Mark the provider as offline and spawn health check
+                // Transport/connection error - mark the provider as offline and spawn health check
                 let mut spawn_health_check = false;
                 providers.entry(chain_id.clone()).and_modify(|aps| {
                     let Some(index) = find_index(
@@ -922,6 +1091,17 @@ async fn fulfill_request(
             continue;
         }
 
+        // Check method-specific failures
+        if node_provider.method_failures.should_skip_method(method, params) {
+            verbose_print(
+                print_tx,
+                &format!("eth: skipping node provider {} due to previous {} failure",
+                        node_provider.hns_update.name, method),
+            )
+            .await;
+            continue;
+        }
+
         verbose_print(
             print_tx,
             &format!(
@@ -945,11 +1125,56 @@ async fn fulfill_request(
             // Track the error
             all_errors.push((node_provider.hns_update.name.clone(), format!("{:?}", e)));
 
-            // Mark node as offline and spawn health check
-            let mut spawn_health_check = false;
-            providers.entry(chain_id.clone()).and_modify(|aps| {
-                if let Some(provider) = aps.nodes.iter_mut()
-                    .find(|p| p.hns_update.name == node_provider.hns_update.name) {
+            // Check if it's an RPC error (method failure) vs transport error
+            let is_rpc_error = matches!(e, EthError::RpcError(_));
+
+            if is_rpc_error {
+                // Mark the specific method as failed
+                let mut should_spawn_retry = false;
+                providers.entry(chain_id.clone()).and_modify(|aps| {
+                    let Some(provider) = aps.nodes.iter_mut()
+                        .find(|p| p.hns_update.name == node_provider.hns_update.name) else {
+                        return;
+                    };
+                    // Check if this method wasn't already marked as failed
+                    if !provider.method_failures.should_skip_method(method, params) {
+                        provider.method_failures.mark_method_failed(method, params);
+                        should_spawn_retry = true;
+                    }
+                });
+                // Store the RPC error
+                if let EthError::RpcError(err_value) = e {
+                    last_rpc_error = Some(err_value.clone());
+                }
+
+                // Spawn method retry task if this is a new failure
+                if should_spawn_retry && method != "eth_sendRawTransaction" {
+                    use crate::eth::utils::spawn_method_retry_for_node_provider;
+                    spawn_method_retry_for_node_provider(
+                        our.to_string(),
+                        providers.clone(),
+                        chain_id.clone(),
+                        node_provider.hns_update.name.clone(),
+                        method.to_string(),
+                        params.clone(),
+                        send_to_loop.clone(),
+                        response_channels.clone(),
+                        print_tx.clone(),
+                    );
+                    verbose_print(
+                        print_tx,
+                        &format!("eth: spawned method retry for {} on node {}",
+                                method, node_provider.hns_update.name),
+                    ).await;
+                }
+            } else {
+                // Transport/timeout error - mark node as offline and spawn health check
+                let mut spawn_health_check = false;
+                providers.entry(chain_id.clone()).and_modify(|aps| {
+                    let Some(provider) = aps.nodes.iter_mut()
+                        .find(|p| p.hns_update.name == node_provider.hns_update.name) else {
+                        return;
+                    };
                     provider.online = false;
                     provider.usable = false;
 
@@ -959,8 +1184,7 @@ async fn fulfill_request(
                         spawn_health_check = true;
                         provider.last_health_check = Some(Instant::now());
                     }
-                }
-            });
+                });
 
             // Spawn health check task if needed
             if spawn_health_check {
@@ -983,10 +1207,17 @@ async fn fulfill_request(
                 .await;
             }
 
+            }
             // Continue trying other providers instead of returning the error
             continue;
         } else {
-            // Success! Return the response
+            // Success! Clear method failure and return the response
+            providers.entry(chain_id.clone()).and_modify(|aps| {
+                if let Some(provider) = aps.nodes.iter_mut()
+                    .find(|p| p.hns_update.name == node_provider.hns_update.name) {
+                    provider.method_failures.clear_method_failure(method);
+                }
+            });
             return response;
         }
     }

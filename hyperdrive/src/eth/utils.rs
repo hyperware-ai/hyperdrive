@@ -244,6 +244,9 @@ pub fn spawn_health_check_for_url_provider(
     tokio::spawn(async move {
         let mut backoff_mins = 1u64;
 
+        // Double the backoff, max 60 minutes
+        backoff_mins = (backoff_mins * 2).min(60);
+
         loop {
             // Wait for the backoff period
             tokio::time::sleep(Duration::from_secs(backoff_mins * 60)).await;
@@ -253,17 +256,16 @@ pub fn spawn_health_check_for_url_provider(
 
             if let Some(mut aps) = providers.get_mut(&chain_id) {
                 if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                    provider.last_health_check = Some(Instant::now());
                     if check_url_provider_health(provider).await {
                         provider.online = true;
-                        provider.last_health_check = Some(Instant::now());
                         provider_online = true;
+                        provider.last_health_check = Some(Instant::now());
 
                         verbose_print(
                             &print_tx,
                             &format!("eth: provider {} is back online", url),
                         ).await;
-                    } else {
-                        provider.last_health_check = Some(Instant::now());
                     }
                 }
             }
@@ -272,9 +274,175 @@ pub fn spawn_health_check_for_url_provider(
                 // Provider is back online, exit the health check loop
                 break;
             }
+        }
+    });
+}
+
+/// Spawn a method-specific retry for URL provider
+pub fn spawn_method_retry_for_url_provider(
+    providers: Providers,
+    chain_id: u64,
+    url: String,
+    method: String,
+    params: serde_json::Value,
+    print_tx: PrintSender,
+) {
+    tokio::spawn(async move {
+        let mut backoff_mins = 1u64;
+
+        // For eth_sendRawTransaction, just wait 60 minutes then clear
+        if method == "eth_sendRawTransaction" {
+            tokio::time::sleep(Duration::from_secs(3600)).await;
+            if let Some(mut aps) = providers.get_mut(&chain_id) {
+                if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                    provider.method_failures.send_raw_tx_failed = None;
+                    verbose_print(&print_tx,
+                        &format!("eth: cleared eth_sendRawTransaction failure for {}", url)).await;
+                }
+            }
+            return;
+        }
+
+        // For other methods, retry with exponential backoff
+        loop {
+            tokio::time::sleep(Duration::from_secs(backoff_mins * 60)).await;
 
             // Double the backoff, max 60 minutes
             backoff_mins = (backoff_mins * 2).min(60);
+
+            // Try to activate and test the method
+            let Some(mut aps) = providers.get_mut(&chain_id) else {
+                continue;
+            };
+
+            let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) else {
+                continue;
+            };
+
+            if provider.pubsub.is_empty() {
+                let Ok(_) = activate_url_provider(provider).await else {
+                    continue;
+                };
+            }
+
+            let Some(pubsub) = provider.pubsub.first() else {
+                continue;
+            };
+
+
+            // Try the previously-failing method
+            let success = matches!(
+                tokio::time::timeout(
+                    Duration::from_secs(10),
+                    pubsub.raw_request::<_, serde_json::Value>(std::borrow::Cow::Owned(method.clone()), &params)
+                ).await,
+                Ok(Ok(_))
+            );
+
+            if success {
+                // Clear the method failure
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                        provider.method_failures.clear_method_failure(&method);
+                        verbose_print(&print_tx,
+                            &format!("eth: {} now working again for {}", method, url)).await;
+                    }
+                }
+                break;
+            }
+        }
+    });
+}
+
+/// Spawn a method-specific retry for node provider
+pub fn spawn_method_retry_for_node_provider(
+    our: String,
+    providers: Providers,
+    chain_id: u64,
+    node_name: String,
+    method: String,
+    params: serde_json::Value,
+    send_to_loop: MessageSender,
+    response_channels: ResponseChannels,
+    print_tx: PrintSender,
+) {
+    tokio::spawn(async move {
+        let mut backoff_mins = 1u64;
+
+        // For eth_sendRawTransaction, just wait 60 minutes then clear
+        if method == "eth_sendRawTransaction" {
+            tokio::time::sleep(Duration::from_secs(3600)).await;
+            if let Some(mut aps) = providers.get_mut(&chain_id) {
+                if let Some(provider) = aps.nodes.iter_mut()
+                    .find(|p| p.hns_update.name == node_name) {
+                    provider.method_failures.send_raw_tx_failed = None;
+                    verbose_print(&print_tx,
+                        &format!("eth: cleared eth_sendRawTransaction failure for node {}", node_name)).await;
+                }
+            }
+            return;
+        }
+
+        // For other methods, retry with exponential backoff
+        loop {
+            tokio::time::sleep(Duration::from_secs(backoff_mins * 60)).await;
+
+            // Double the backoff, max 60 minutes
+            backoff_mins = (backoff_mins * 2).min(60);
+
+            // Try the method via the node
+            let km_id = rand::random();
+            let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+
+            // Register our response channel
+            response_channels.insert(km_id, sender);
+
+            // Send the actual request
+            kernel_message(
+                &our,
+                km_id,
+                Address {
+                    node: node_name.clone(),
+                    process: ETH_PROCESS_ID.clone(),
+                },
+                None,
+                true,
+                Some(10),
+                EthAction::Request {
+                    chain_id: chain_id,
+                    method: method.clone(),
+                    params: params.clone(),
+                },
+                &send_to_loop,
+            ).await;
+
+            // Wait for response
+            let success = match tokio::time::timeout(
+                Duration::from_secs(10),
+                receiver.recv()
+            ).await {
+                Ok(Some(Ok(km))) => matches!(km.message, Message::Response(_)),
+                _ => false,
+            };
+
+            // Clean up response channel
+            response_channels.remove(&km_id);
+
+            if success {
+                // Clear the method failure
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.nodes.iter_mut()
+                        .find(|p| p.hns_update.name == node_name)
+                    {
+                        provider.method_failures.clear_method_failure(&method);
+                        verbose_print(
+                            &print_tx,
+                            &format!("eth: {} now working again for node {}", method, node_name),
+                        ).await;
+                    }
+                }
+                break;
+            }
         }
     });
 }
@@ -295,6 +463,9 @@ pub fn spawn_health_check_for_node_provider(
         loop {
             // Wait for the backoff period
             tokio::time::sleep(Duration::from_secs(backoff_mins * 60)).await;
+
+            // Double the backoff, max 60 minutes
+            backoff_mins = (backoff_mins * 2).min(60);
 
             // Try to send eth_blockNumber to check health
             let km_id = rand::random();
@@ -341,7 +512,8 @@ pub fn spawn_health_check_for_node_provider(
                 // Mark the provider as online
                 if let Some(mut aps) = providers.get_mut(&chain_id) {
                     if let Some(provider) = aps.nodes.iter_mut()
-                        .find(|p| p.hns_update.name == node_name) {
+                        .find(|p| p.hns_update.name == node_name)
+                    {
                         provider.online = true;
                         provider.usable = true;
                         provider.last_health_check = Some(Instant::now());
@@ -365,13 +537,13 @@ pub fn spawn_health_check_for_node_provider(
 
                 verbose_print(
                     &print_tx,
-                    &format!("eth: health check failed for node provider {} (backoff: {} min)",
-                            node_name, backoff_mins),
+                    &format!(
+                        "eth: health check failed for node provider {} (backoff: {} min)",
+                        node_name,
+                        backoff_mins,
+                    ),
                 ).await;
             }
-
-            // Double the backoff, max 60 minutes
-            backoff_mins = (backoff_mins * 2).min(60);
         }
     });
 }
