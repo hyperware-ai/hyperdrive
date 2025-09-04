@@ -115,6 +115,18 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
 
     if (existingApp) {
       set({
+        runningApps: runningApps.map(rApp => {
+            const path  = `${app.path}${query || ''}`;
+            console.log(path, rApp.id, app.id);
+            if (rApp.id === app.id) {
+                console.log('found rApp')
+                return {
+                    ...rApp,
+                    path
+                }
+            }
+            return rApp;
+        }),
         currentAppId: app.id,
         isAppDrawerOpen: false,
         isRecentAppsOpen: false
