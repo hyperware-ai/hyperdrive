@@ -1,10 +1,11 @@
-use crate::eth::{Providers, UrlProvider};
-use alloy::providers::ProviderBuilder;
+use crate::eth::{Providers, ResponseChannels, UrlProvider};
+use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::client::WsConnect;
 use anyhow::Result;
 use lib::types::core::*;
 use lib::types::eth::*;
 use serde::Serialize;
+use std::time::{Duration, Instant};
 use url::Url;
 
 pub async fn activate_url_provider(provider: &mut UrlProvider) -> Result<()> {
@@ -204,4 +205,173 @@ pub async fn set_node_unusable(
         .await;
     }
     is_replacement_successful
+}
+
+/// Check if an offline provider is back online by sending eth_blockNumber
+pub async fn check_url_provider_health(provider: &mut UrlProvider) -> bool {
+    // First try to activate the provider if not already activated
+    if provider.pubsub.is_empty() {
+        if let Err(_) = activate_url_provider(provider).await {
+            return false;
+        }
+    }
+
+    // Try to get the latest block number as a health check
+    if let Some(pubsub) = provider.pubsub.first() {
+        match tokio::time::timeout(
+            Duration::from_secs(10),
+            pubsub.get_block_number()
+        ).await {
+            Ok(Ok(_)) => true,
+            _ => {
+                // Provider failed, clear the connection
+                provider.pubsub.clear();
+                false
+            }
+        }
+    } else {
+        false
+    }
+}
+
+/// Spawn a health check task for an offline URL provider
+pub fn spawn_health_check_for_url_provider(
+    providers: Providers,
+    chain_id: u64,
+    url: String,
+    print_tx: PrintSender,
+) {
+    tokio::spawn(async move {
+        let mut backoff_mins = 1u64;
+
+        loop {
+            // Wait for the backoff period
+            tokio::time::sleep(Duration::from_secs(backoff_mins * 60)).await;
+
+            // Try to check health
+            let mut provider_online = false;
+
+            if let Some(mut aps) = providers.get_mut(&chain_id) {
+                if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                    if check_url_provider_health(provider).await {
+                        provider.online = true;
+                        provider.last_health_check = Some(Instant::now());
+                        provider_online = true;
+
+                        verbose_print(
+                            &print_tx,
+                            &format!("eth: provider {} is back online", url),
+                        ).await;
+                    } else {
+                        provider.last_health_check = Some(Instant::now());
+                    }
+                }
+            }
+
+            if provider_online {
+                // Provider is back online, exit the health check loop
+                break;
+            }
+
+            // Double the backoff, max 60 minutes
+            backoff_mins = (backoff_mins * 2).min(60);
+        }
+    });
+}
+
+/// Spawn a health check task for an offline node provider
+pub fn spawn_health_check_for_node_provider(
+    our: String,
+    providers: Providers,
+    chain_id: u64,
+    node_name: String,
+    send_to_loop: MessageSender,
+    response_channels: ResponseChannels,
+    print_tx: PrintSender,
+) {
+    tokio::spawn(async move {
+        let mut backoff_mins = 1u64;
+
+        loop {
+            // Wait for the backoff period
+            tokio::time::sleep(Duration::from_secs(backoff_mins * 60)).await;
+
+            // Try to send eth_blockNumber to check health
+            let km_id = rand::random();
+            let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+
+            // Register our response channel
+            response_channels.insert(km_id, sender);
+
+            // Send eth_blockNumber request
+            kernel_message(
+                &our,
+                km_id,
+                Address {
+                    node: node_name.clone(),
+                    process: ETH_PROCESS_ID.clone(),
+                },
+                None,
+                true,
+                Some(10),
+                EthAction::Request {
+                    chain_id: chain_id,
+                    method: "eth_blockNumber".to_string(),
+                    params: serde_json::json!([]),
+                },
+                &send_to_loop,
+            ).await;
+
+            // Wait for response with timeout
+            let provider_online = match tokio::time::timeout(
+                Duration::from_secs(10),
+                receiver.recv()
+            ).await {
+                Ok(Some(Ok(km))) => {
+                    // Check if we got a successful response
+                    matches!(km.message, Message::Response(_))
+                }
+                _ => false,
+            };
+
+            // Clean up response channel
+            response_channels.remove(&km_id);
+
+            if provider_online {
+                // Mark the provider as online
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.nodes.iter_mut()
+                        .find(|p| p.hns_update.name == node_name) {
+                        provider.online = true;
+                        provider.usable = true;
+                        provider.last_health_check = Some(Instant::now());
+
+                        verbose_print(
+                            &print_tx,
+                            &format!("eth: node provider {} is back online", node_name),
+                        ).await;
+                    }
+                }
+                // Provider is back online, exit the health check loop
+                break;
+            } else {
+                // Provider is still offline, update last health check time
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.nodes.iter_mut()
+                        .find(|p| p.hns_update.name == node_name) {
+                        provider.last_health_check = Some(Instant::now());
+                    }
+                }
+
+                verbose_print(
+                    &print_tx,
+                    &format!("eth: health check failed for node provider {} (backoff: {} min)",
+                            node_name, backoff_mins),
+                ).await;
+            }
+
+            // Double the backoff, max 60 minutes
+            backoff_mins = (backoff_mins * 2).min(60);
+        }
+    });
 }
