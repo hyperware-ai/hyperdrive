@@ -187,7 +187,7 @@ export const NotificationMenu: React.FC = () => {
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {notification.title}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 wrap-anywhere">
                           {notification.body}
                         </p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
