@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { STORE_PATH, PUBLISH_PATH, MY_APPS_PATH, APP_PAGE_PATH, DOWNLOAD_PATH } from '../constants/path';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import NotificationBay from './NotificationBay';
-import useAppsStore from '../store';
+import useAppsStore from '../store/appStoreStore';
 import classNames from 'classnames';
 import { BsLightning, BsLayers, BsCloudArrowUp } from 'react-icons/bs';
 const Header: React.FC = () => {

@@ -30,6 +30,7 @@
             "net:distro:sys",
             "sign:sign:sys",
             "sqlite:distro:sys",
+            "state:distro:sys",
             "timer:distro:sys",
             "vfs:distro:sys",
             {

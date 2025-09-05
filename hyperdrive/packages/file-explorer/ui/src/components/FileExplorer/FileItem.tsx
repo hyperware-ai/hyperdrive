@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileInfo, deleteFile, deleteDirectory } from '../../lib/api';
+import { FileInfo, delete_file, delete_directory } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ShareDialog from '../ShareDialog/ShareDialog';
@@ -22,7 +22,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   const [menuOpenedByTouch, setMenuOpenedByTouch] = useState(false);
 
   const isSelected = selectedFiles.includes(file.path);
-  const isShared = !file.isDirectory && isFileShared(file.path);
+  const isShared = !file.is_directory && isFileShared(file.path);
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
@@ -36,7 +36,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   const handleClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
       toggleFileSelection(file.path);
-    } else if (file.isDirectory) {
+    } else if (file.is_directory) {
       // Single click navigates into directories
       onNavigate(file.path);
     }
@@ -71,8 +71,8 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     // Sort files: directories first, then by name
     const sortFiles = (files: (FileInfo & { children?: FileInfo[] })[]) => {
       return [...files].sort((a, b) => {
-        if (a.isDirectory && !b.isDirectory) return -1;
-        if (!a.isDirectory && b.isDirectory) return 1;
+        if (a.is_directory && !b.is_directory) return -1;
+        if (!a.is_directory && b.is_directory) return 1;
         return a.name.localeCompare(b.name);
       });
     };
@@ -95,7 +95,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     e.stopPropagation();
 
     // If expanding and we haven't loaded children yet, load them
-    if (!isExpanded && file.isDirectory && !childrenLoaded && onLoadSubdirectory) {
+    if (!isExpanded && file.is_directory && !childrenLoaded && onLoadSubdirectory) {
       const flatChildren = await onLoadSubdirectory(file.path);
       const treeChildren = buildTreeFromFlatList(flatChildren, file.path);
       setLoadedChildren(treeChildren);
@@ -162,7 +162,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
       longPressTriggered.current = false;
     } else if (!e.defaultPrevented) {
       // Normal tap - handle as click
-      if (file.isDirectory) {
+      if (file.is_directory) {
         onNavigate(file.path);
       }
     }
@@ -183,10 +183,10 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     if (!confirm(`Delete ${file.name}?`)) return;
 
     try {
-      if (file.isDirectory) {
-        await deleteDirectory(file.path);
+      if (file.is_directory) {
+        await delete_directory(file.path);
       } else {
-        await deleteFile(file.path);
+        await delete_file(file.path);
       }
       // Call the parent's onDelete callback to refresh the list
       if (onDelete) {
@@ -199,7 +199,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
   };
 
   const getFileIcon = () => {
-    if (file.isDirectory) {
+    if (file.is_directory) {
       return isExpanded ? '📂' : '📁';
     }
     const ext = file.name.split('.').pop()?.toLowerCase();
@@ -230,7 +230,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
 
   // Determine which children to use - loaded children take precedence
   const childrenToRender = childrenLoaded ? loadedChildren : (file.children || []);
-  const hasChildren = file.isDirectory && (childrenToRender.length > 0 || !childrenLoaded);
+  const hasChildren = file.is_directory && (childrenToRender.length > 0 || !childrenLoaded);
 
   return (
     <>
@@ -244,8 +244,8 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         style={{ paddingLeft: `${depth * 20 + 10}px` }}
       >
         <span
-          className={`file-icon ${file.isDirectory && viewMode === 'list' ? 'clickable-folder' : ''}`}
-          onClick={file.isDirectory && viewMode === 'list' ? handleExpandToggle : undefined}
+          className={`file-icon ${file.is_directory && viewMode === 'list' ? 'clickable-folder' : ''}`}
+          onClick={file.is_directory && viewMode === 'list' ? handleExpandToggle : undefined}
         >
           {getFileIcon()}
         </span>
@@ -258,7 +258,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
         {viewMode === 'list' && (
           <>
             <span className="file-size">
-              {file.isDirectory ? `${file.size} items` : formatFileSize(file.size)}
+              {file.is_directory ? `${file.size} items` : formatFileSize(file.size)}
             </span>
             <span className="file-modified">
               {file.modified ? new Date(file.modified * 1000).toLocaleDateString() : '-'}

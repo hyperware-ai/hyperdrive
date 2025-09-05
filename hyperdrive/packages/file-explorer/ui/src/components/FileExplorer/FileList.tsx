@@ -65,8 +65,8 @@ const FileList: React.FC<FileListProps> = ({ files, viewMode, loading, onNavigat
   // Sort files: directories first, then by name
   const sortFiles = (files: (FileInfo & { children?: FileInfo[] })[]) => {
     return [...files].sort((a, b) => {
-      if (a.isDirectory && !b.isDirectory) return -1;
-      if (!a.isDirectory && b.isDirectory) return 1;
+      if (a.is_directory && !b.is_directory) return -1;
+      if (!a.is_directory && b.is_directory) return 1;
       return a.name.localeCompare(b.name);
     });
   };
