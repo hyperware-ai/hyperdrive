@@ -6,8 +6,6 @@ use chrono::Utc;
 use serde_json::Value;
 use uuid::Uuid;
 
-#[cfg(not(feature = "simulation-mode"))]
-use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
 use hyperprocess_macro::*;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
@@ -18,6 +16,8 @@ use hyperware_process_lib::{
     hyperapp::source,
     our, println, Address, LazyLoadBlob, ProcessId,
 };
+#[cfg(not(feature = "simulation-mode"))]
+use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
 
 mod provider;
 use provider::create_llm_provider;
@@ -44,7 +44,7 @@ use utils::{
 };
 
 mod tool_providers;
-use tool_providers::{ToolProvider, hypergrid::HypergridToolProvider};
+use tool_providers::{hypergrid::HypergridToolProvider, ToolProvider};
 
 const ICON: &str = include_str!("./icon");
 
@@ -108,7 +108,8 @@ impl SpiderState {
             let hypergrid_tools = hypergrid_provider.get_tools(self);
 
             // Register the provider for later use
-            self.tool_provider_registry.register(Box::new(hypergrid_provider));
+            self.tool_provider_registry
+                .register(Box::new(hypergrid_provider));
 
             let hypergrid_server = McpServer {
                 id: "hypergrid_default".to_string(),
@@ -117,7 +118,9 @@ impl SpiderState {
                     transport_type: "hypergrid".to_string(),
                     command: None,
                     args: None,
-                    url: Some("http://localhost:8080/operator:hypergrid:ware.hypr/shim/mcp".to_string()),
+                    url: Some(
+                        "http://localhost:8080/operator:hypergrid:ware.hypr/shim/mcp".to_string(),
+                    ),
                     hypergrid_token: None,
                     hypergrid_client_id: None,
                     hypergrid_node: None,
@@ -957,7 +960,8 @@ impl SpiderState {
 
             // Register the provider if not already registered
             if !self.tool_provider_registry.has_provider(&request.server_id) {
-                self.tool_provider_registry.register(Box::new(hypergrid_provider));
+                self.tool_provider_registry
+                    .register(Box::new(hypergrid_provider));
             }
 
             // Update the server with hypergrid tools and mark as connected

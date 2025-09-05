@@ -1,12 +1,10 @@
 use hyperprocess_macro::hyperprocess;
-use hyperware_process_lib::logging::{
-    debug, error, info, init_logging, Level,
-};
+use hyperware_process_lib::hyperapp::{add_response_header, get_path, send, SaveOptions};
+use hyperware_process_lib::logging::{debug, error, info, init_logging, Level};
 use hyperware_process_lib::our;
 use hyperware_process_lib::vfs::{
     self, create_drive, vfs_request, FileType, VfsAction, VfsResponse,
 };
-use hyperware_process_lib::hyperapp::{add_response_header, get_path, send, SaveOptions};
 use std::collections::HashMap;
 
 const ICON: &str = include_str!("./icon");
