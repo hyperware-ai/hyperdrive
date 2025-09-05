@@ -56,7 +56,7 @@ const API_KEY_DISPENSER_NODE: &str = "fake.os";
 const API_KEY_DISPENSER_PROCESS_ID: (&str, &str, &str) = (
     "anthropic-api-key-manager",
     "anthropic-api-key-manager",
-    "sys",
+    "ware.hypr",
 );
 const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
 
