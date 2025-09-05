@@ -1015,8 +1015,7 @@ async fn fulfill_request(
 
                     // Spawn method retry task if this is a new failure
                     if should_spawn_retry && method != "eth_sendRawTransaction" {
-                        use crate::eth::utils::spawn_method_retry_for_url_provider;
-                        spawn_method_retry_for_url_provider(
+                        crate::eth::utils::spawn_method_retry_for_url_provider(
                             providers.clone(),
                             chain_id.clone(),
                             url_provider.url.clone(),
