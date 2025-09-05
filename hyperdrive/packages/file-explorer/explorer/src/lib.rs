@@ -1,12 +1,12 @@
 use hyperprocess_macro::hyperprocess;
-use hyperware_app_common::hyperware_process_lib::logging::{
+use hyperware_process_lib::logging::{
     debug, error, info, init_logging, Level,
 };
-use hyperware_app_common::hyperware_process_lib::our;
-use hyperware_app_common::hyperware_process_lib::vfs::{
+use hyperware_process_lib::our;
+use hyperware_process_lib::vfs::{
     self, create_drive, vfs_request, FileType, VfsAction, VfsResponse,
 };
-use hyperware_app_common::{send, SaveOptions};
+use hyperware_process_lib::hyperapp::{add_response_header, get_path, send, SaveOptions};
 use std::collections::HashMap;
 
 const ICON: &str = include_str!("./icon");
@@ -179,6 +179,7 @@ impl FileExplorerState {
         let vfs_path = path.clone();
 
         vfs::remove_file(&vfs_path, Some(5))
+            .await
             .map_err(|e| format!("Failed to delete file: {}", e))?;
 
         Ok(true)
@@ -267,7 +268,7 @@ impl FileExplorerState {
     #[http]
     async fn serve_shared_file(&mut self) -> Result<Vec<u8>, String> {
         // Use get_path() to handle routing
-        let request_path = hyperware_app_common::get_path();
+        let request_path = get_path();
 
         // Extract the file path from the request
         if let Some(request_path_str) = request_path {
@@ -281,7 +282,7 @@ impl FileExplorerState {
                                 let filename = path.split('/').last().unwrap_or("download");
 
                                 // Set Content-Disposition header to preserve original filename
-                                hyperware_app_common::add_response_header(
+                                add_response_header(
                                     "Content-Disposition".to_string(),
                                     format!("attachment; filename=\"{}\"", filename),
                                 );
@@ -300,7 +301,7 @@ impl FileExplorerState {
                                     Some("zip") => "application/zip",
                                     _ => "application/octet-stream",
                                 };
-                                hyperware_app_common::add_response_header(
+                                add_response_header(
                                     "Content-Type".to_string(),
                                     content_type.to_string(),
                                 );
@@ -462,7 +463,7 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
                         });
                     } else {
                         // For files, try to get metadata
-                        if let Ok(meta) = vfs::metadata(&sub_full_path, Some(5)) {
+                        if let Ok(meta) = vfs::metadata(&sub_full_path, Some(5)).await {
                             all_files.push(FileInfo {
                                 name: sub_filename,
                                 path: sub_full_path,
@@ -479,6 +480,7 @@ async fn list_directory_contents(path: &str) -> Result<Vec<FileInfo>, String> {
         } else {
             // For files, get metadata
             let meta = vfs::metadata(&full_path, Some(5))
+                .await
                 .map_err(|e| format!("Failed to get metadata for '{}': {}", entry.path, e))?;
 
             all_files.push(FileInfo {

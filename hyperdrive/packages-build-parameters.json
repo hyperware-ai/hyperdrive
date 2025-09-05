@@ -5,6 +5,18 @@
     ]
   },
   "file-explorer": {
-    "is_hyperapp": true
+    "is_hyperapp": true,
+    "features": [
+        "caller-utils"
+    ]
+  },
+  "spider": {
+    "is_hyperapp": true,
+    "local_dependencies": [
+      "../dependencies/anthropic-api-key-manager"
+    ],
+    "features": [
+        "caller-utils"
+    ]
   }
 }

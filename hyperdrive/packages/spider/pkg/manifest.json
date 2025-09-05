@@ -1,0 +1,25 @@
+[
+  {
+    "process_name": "spider",
+    "process_wasm_path": "/spider.wasm",
+    "on_exit": "Restart",
+    "request_networking": true,
+    "request_capabilities": [
+      "homepage:homepage:sys",
+      "http-client:distro:sys",
+      "http-server:distro:sys",
+      "operator:hypergrid:ware.hypr",
+      "timer:distro:sys",
+      "vfs:distro:sys"
+    ],
+    "grant_capabilities": [
+      "homepage:homepage:sys",
+      "http-client:distro:sys",
+      "http-server:distro:sys",
+      "operator:hypergrid:ware.hypr",
+      "timer:distro:sys",
+      "vfs:distro:sys"
+    ],
+    "public": false
+  }
+]

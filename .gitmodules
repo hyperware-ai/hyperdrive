@@ -1,0 +1,3 @@
+[submodule "hyperdrive/dependencies/anthropic-api-key-manager"]
+	path = hyperdrive/dependencies/anthropic-api-key-manager
+	url = https://github.com/hyperware-ai/anthropic-api-key-manager
