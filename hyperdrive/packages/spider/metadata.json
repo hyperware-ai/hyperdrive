@@ -1,0 +1,20 @@
+{
+  "name": "spider",
+  "description": "The central orchestrator for the web of LLM-powered applications on Hyperware",
+  "image": "",
+  "properties": {
+    "package_name": "spider",
+    "current_version": "1.0.0",
+    "publisher": "sys",
+    "mirrors": [],
+    "code_hashes": {
+      "1.0.0": ""
+    },
+    "wit_version": 1,
+    "dependencies": [
+        "anthropic-api-key-manager:ware.hypr"
+    ]
+  },
+  "external_url": "https://hyperware.ai",
+  "animation_url": ""
+}
