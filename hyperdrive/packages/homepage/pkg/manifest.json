@@ -6,10 +6,12 @@
         "request_networking": false,
         "request_capabilities": [
             "http-server:distro:sys",
+            "notifications:distro:sys",
             "vfs:distro:sys"
         ],
         "grant_capabilities": [
-            "http-server:distro:sys"
+            "http-server:distro:sys",
+            "notifications:distro:sys"
         ],
         "public": false
     }

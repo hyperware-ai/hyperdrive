@@ -33,11 +33,16 @@ interface homepage {
         ///
         /// lazy-load-blob: none.
         get-apps,
+        /// get the current push notification subscription
+        ///
+        /// lazy-load-blob: none.
+        get-push-subscription,
     }
 
     /// The response format to get from the homepage. Serialized using serde_json.
     variant response {
         get-apps(list<app>),
+        push-subscription(option<string>),
     }
 
     record add-request {

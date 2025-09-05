@@ -5,6 +5,7 @@ mod http;
 mod kernel;
 mod kv;
 mod net;
+pub mod notifications;
 mod sqlite;
 mod state;
 mod timer;
