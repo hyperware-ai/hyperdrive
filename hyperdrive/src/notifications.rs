@@ -521,7 +521,13 @@ async fn handle_request(
 
                 // Start the queue processor
                 let handle = tokio::spawn(async move {
-                    process_notification_queue(&our_node_clone, &send_to_terminal_clone, &send_to_state_clone, &state_clone).await;
+                    process_notification_queue(
+                        &our_node_clone,
+                        &send_to_terminal_clone,
+                        &send_to_state_clone,
+                        &state_clone,
+                    )
+                    .await;
                 });
 
                 state_guard.queue_processor_handle = Some(handle);
@@ -822,8 +828,14 @@ async fn process_notification_queue(
                 .await;
 
                 // Send the notification
-                if let Err(e) =
-                    send_notification_to_all(our_node, send_to_terminal, send_to_state, state, notification).await
+                if let Err(e) = send_notification_to_all(
+                    our_node,
+                    send_to_terminal,
+                    send_to_state,
+                    state,
+                    notification,
+                )
+                .await
                 {
                     Printout::new(
                         0,
@@ -1055,7 +1067,9 @@ async fn send_notification_to_all(
         let initial_count = state_guard.subscriptions.len();
 
         for endpoint in &invalid_endpoints {
-            state_guard.subscriptions.retain(|s| &s.endpoint != endpoint);
+            state_guard
+                .subscriptions
+                .retain(|s| &s.endpoint != endpoint);
         }
 
         if state_guard.subscriptions.len() < initial_count {
@@ -1072,11 +1086,17 @@ async fn send_notification_to_all(
             .await;
 
             // Save the updated subscriptions to state
-            if let Err(e) = save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions).await {
+            if let Err(e) =
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions)
+                    .await
+            {
                 Printout::new(
                     0,
                     NOTIFICATIONS_PROCESS_ID.clone(),
-                    format!("notifications: Failed to save updated subscriptions: {:?}", e),
+                    format!(
+                        "notifications: Failed to save updated subscriptions: {:?}",
+                        e
+                    ),
                 )
                 .send(send_to_terminal)
                 .await;
@@ -1087,10 +1107,7 @@ async fn send_notification_to_all(
     Printout::new(
         2,
         NOTIFICATIONS_PROCESS_ID.clone(),
-        format!(
-            "notifications: Sent to {} devices successfully",
-            send_count
-        ),
+        format!("notifications: Sent to {} devices successfully", send_count),
     )
     .send(send_to_terminal)
     .await;
