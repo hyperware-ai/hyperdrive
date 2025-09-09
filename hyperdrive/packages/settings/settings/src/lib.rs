@@ -243,7 +243,7 @@ fn initialize(our: Address) {
     while let Err(e) = state.fetch() {
         println!("failed to fetch settings: {e}, trying again in 5s...");
         homepage::add_to_homepage(
-            "Settings",
+            "Node settings",
             Some(ICON),
             Some("/"),
             Some(&make_widget(&state)),

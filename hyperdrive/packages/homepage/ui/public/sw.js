@@ -1,4 +1,4 @@
-// Minimal service worker for PWA installability
+// Service worker for PWA installability and push notifications
 // This is an online-only PWA, so we only cache the app shell
 
 const CACHE_NAME = 'hyperdrive-v1';
@@ -38,36 +38,28 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first strategy (online-only app)
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  // Only handle same-origin, GET requests for the app shell. Let the browser
+  // handle everything else (prevents returning undefined Responses).
+  if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
+  const url = new URL(event.request.url);
+  const isAppShellRequest = urlsToCache.includes(url.pathname);
+
+  if (!isAppShellRequest) return; // don't intercept non-app-shell routes
 
   event.respondWith(
-    // Try network first
     fetch(event.request)
       .then((response) => {
-        // Clone the response before using it
         const responseToCache = response.clone();
-
-        // Update cache with fresh response for app shell files
-        if (urlsToCache.includes(new URL(event.request.url).pathname)) {
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-        }
-
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
         return response;
       })
-      .catch(() => {
-        // If network fails, try cache (only for app shell)
-        return caches.match(event.request);
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached || new Response('', { status: 504, statusText: 'Gateway Timeout' });
       })
   );
 });
@@ -77,4 +69,122 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// Push notification event handler
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    console.log('Push event but no data');
+    return;
+  }
+
+  let notificationData;
+  try {
+    notificationData = event.data.json();
+  } catch (e) {
+    console.error('Failed to parse push notification data:', e);
+    return;
+  }
+
+  const title = notificationData.title || 'New Notification';
+  const options = {
+    body: notificationData.body || '',
+    icon: notificationData.icon || '/icon-180.png',
+    badge: '/icon-180.png',
+    vibrate: [100, 50, 100],
+    data: notificationData.data || {},
+    actions: notificationData.actions || [],
+    requireInteraction: false,
+    tag: notificationData.tag || 'default',
+    renotify: true
+  };
+
+  // Send notification data to all clients
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      // Notify all windows about the new notification
+      self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'PUSH_NOTIFICATION_RECEIVED',
+            notification: {
+              title,
+              body: options.body,
+              icon: options.icon,
+              data: notificationData.data,
+              appId: notificationData.data?.appId,
+              appLabel: notificationData.data?.appLabel
+            }
+          });
+        });
+      })
+    ])
+  );
+});
+
+// Notification click event handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  // Get the notification data
+  const data = event.notification.data || {};
+
+  // Default URL is the root, but can be overridden by notification data
+  let urlToOpen = new URL('/', self.location.origin);
+
+  if (data.url) {
+    try {
+      urlToOpen = new URL(data.url, self.location.origin);
+    } catch (e) {
+      console.error('Invalid URL in notification data:', data.url);
+    }
+  }
+
+  // Handle notification action clicks
+  if (event.action) {
+    // Action-specific handling can be added here
+    if (data.actions && data.actions[event.action]) {
+      try {
+        urlToOpen = new URL(data.actions[event.action], self.location.origin);
+      } catch (e) {
+        console.error('Invalid action URL:', data.actions[event.action]);
+      }
+    }
+  }
+
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((windowClients) => {
+      // Check if there's already a window open
+      for (let client of windowClients) {
+        if (client.url === urlToOpen.href && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen.href);
+      }
+    })
+  );
+});
+
+// Handle push subscription change (e.g., when subscription expires)
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.registration.pushManager.subscribe(event.oldSubscription.options)
+      .then((subscription) => {
+        // Send new subscription to server
+        return fetch('/api/notifications/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(subscription.toJSON())
+        });
+      })
+  );
 });

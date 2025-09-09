@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileInfo, unshareFile, deleteFile, deleteDirectory } from '../../lib/api';
+import { FileInfo, unshare_file, delete_file, delete_directory } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import './ContextMenu.css';
 
@@ -15,7 +15,7 @@ interface ContextMenuProps {
 const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onShare, onDelete, openedByTouch }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { isFileShared, removeSharedLink } = useFileExplorerStore();
-  const isShared = !file.isDirectory && isFileShared(file.path);
+  const isShared = !file.is_directory && isFileShared(file.path);
 
   // Track if a new touch has started after menu opened
   const touchStartedRef = useRef(false);
@@ -84,7 +84,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onSh
 
   const handleUnshare = async () => {
     try {
-      await unshareFile(file.path);
+      await unshare_file(file.path);
       removeSharedLink(file.path);
       onClose();
     } catch (err) {
@@ -108,7 +108,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onSh
       <button onClick={() => { /* TODO */ onClose(); }}>
         📄 Rename
       </button>
-      {!file.isDirectory && (
+      {!file.is_directory && (
         isShared ? (
           <button onClick={handleUnshare}>
             🔓 Unshare

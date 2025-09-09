@@ -15,6 +15,16 @@ export const AppCard: React.FC<{
         if (!app || !app.package_id) return null;
         const navigate = useNavigate();
 
+        const handleCardClick = (e: React.MouseEvent) => {
+            // Check if the click was on a button (ActionChip with onClick)
+            const target = e.target as HTMLElement;
+            const clickedButton = target.closest('[data-action-button="true"]');
+
+            if (!clickedButton) {
+                navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}`);
+            }
+        };
+
         return (
             <div
                 className={classNames(`
@@ -25,9 +35,7 @@ export const AppCard: React.FC<{
                 cursor-pointer
                 p-2
             `, className)}
-                onClick={() => {
-                    navigate(`/app/${app.package_id.package_name}:${app.package_id.publisher_node}`);
-                }}
+                onClick={handleCardClick}
             >
                 <div className="flex grow self-stretch items-center gap-2">
                     {app.metadata?.image && <img
@@ -36,8 +44,12 @@ export const AppCard: React.FC<{
                         className="w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-white dark:bg-black"
                     />}
                     {!app.metadata?.image && <div
-                        className="w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-neon"
-                    />}
+                        className="w-1/5 min-w-1/5 md:w-1/4 md:min-w-1/4 object-cover rounded-xl aspect-square bg-iris dark:bg-neon flex items-center justify-center"
+                    >
+                        <span className="text-white dark:text-black font-bold text-2xl md:text-4xl">
+                            {app.package_id.package_name.charAt(0).toUpperCase() + (app.package_id.package_name.charAt(1) || '').toLowerCase()}
+                        </span>
+                    </div>}
                     <div className="flex flex-col grow self-stretch gap-1 border-b-1 border-black/10 dark:border-white/10 pb-2">
                         <p className="font-bold prose wrap-anywhere max-w-full overflow-hidden leading-tight line-clamp-1">
                             {app.metadata?.name || app.package_id.package_name}
