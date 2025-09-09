@@ -34,6 +34,8 @@ pub struct SpiderState {
     pub show_trial_key_notification: bool, // Flag to show trial key notification popup
     #[serde(skip)]
     pub tool_provider_registry: ToolProviderRegistry, // Registry for modular tool providers
+    #[serde(skip)]
+    pub build_container_connection: Option<BuildContainerConnection>, // Active build container connection
 }
 
 #[derive(Clone, Debug)]
@@ -562,4 +564,15 @@ pub(crate) struct OAuthTokenResponse {
 pub(crate) struct OAuthRefreshRequest {
     #[serde(rename = "refreshToken")]
     pub(crate) refresh_token: String,
+}
+
+// Build Container types
+#[derive(Clone, Debug)]
+pub(crate) struct BuildContainerConnection {
+    pub(crate) project_uuid: String,
+    pub(crate) ws_uri: String,
+    pub(crate) api_key: String,
+    pub(crate) channel_id: u32,
+    pub(crate) connected: bool,
+    pub(crate) tools: Vec<Tool>,
 }

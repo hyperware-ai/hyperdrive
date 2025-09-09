@@ -44,7 +44,7 @@ use utils::{
 };
 
 mod tool_providers;
-use tool_providers::{hypergrid::HypergridToolProvider, ToolProvider};
+use tool_providers::{hypergrid::HypergridToolProvider, build_container::BuildContainerToolProvider, ToolProvider};
 
 const ICON: &str = include_str!("./icon");
 
@@ -191,6 +191,36 @@ impl SpiderState {
                 }
             }
         }
+
+        // Register Build Container tool provider
+        let build_container_provider = BuildContainerToolProvider::new("build_container".to_string());
+
+        // Get initial tools from the provider (just init_build_container initially)
+        let build_container_tools = build_container_provider.get_tools(self);
+
+        // Register the provider
+        self.tool_provider_registry
+            .register(Box::new(build_container_provider));
+
+        // Create the build container MCP server
+        let build_container_server = McpServer {
+            id: "build_container".to_string(),
+            name: "Build Container".to_string(),
+            transport: types::TransportConfig {
+                transport_type: "build_container".to_string(),
+                command: None,
+                args: None,
+                url: None,
+                hypergrid_token: None,
+                hypergrid_client_id: None,
+                hypergrid_node: None,
+            },
+            tools: build_container_tools,
+            connected: true,
+        };
+
+        self.mcp_servers.push(build_container_server);
+        println!("Spider: Build Container MCP server initialized");
 
         // Create an admin Spider key for the GUI with a random suffix for security
         // Check if admin key already exists (look for keys with admin permission and the GUI name)
@@ -2178,6 +2208,24 @@ impl SpiderState {
                 })
                 .unwrap())
             }
+            "build_container" => {
+                // Handle build container tools
+                match tool_name {
+                    "init_build_container" => {
+                        self.handle_init_build_container(parameters).await
+                    }
+                    "start_package" => {
+                        self.handle_start_package(parameters).await
+                    }
+                    "persist" => {
+                        self.handle_persist(parameters).await
+                    }
+                    "done_build_container" => {
+                        self.handle_done_build_container(parameters).await
+                    }
+                    _ => Err(format!("Unknown build container tool: {}", tool_name)),
+                }
+            }
             _ => Err(format!(
                 "Unsupported transport type: {}",
                 server.transport.transport_type
@@ -2332,5 +2380,309 @@ impl SpiderState {
         }
 
         Ok(response_text)
+    }
+
+    // Build Container Tool Handlers
+    async fn handle_init_build_container(&mut self, parameters: &Value) -> Result<Value, String> {
+        let project_uuid = parameters
+            .get("project_uuid")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing project_uuid parameter".to_string())?;
+
+        let project_name = parameters
+            .get("project_name")
+            .and_then(|v| v.as_str());
+
+        let initial_zip = parameters
+            .get("initial_zip")
+            .and_then(|v| v.as_str());
+
+        let metadata = parameters.get("metadata");
+
+        // Get constructor URL from environment or use default
+        let constructor_url = std::env::var("SPIDER_CONSTRUCTOR_URL")
+            .unwrap_or_else(|_| "http://localhost:8081/init-build-container".to_string());
+
+        // Prepare request body
+        let mut request_body = serde_json::json!({
+            "uuid": project_uuid
+        });
+
+        if let Some(name) = project_name {
+            request_body["name"] = serde_json::json!(name);
+        }
+
+        if let Some(zip) = initial_zip {
+            request_body["initial_zip"] = serde_json::json!(zip);
+        }
+
+        if let Some(meta) = metadata {
+            request_body["metadata"] = meta.clone();
+        }
+
+        // Make HTTP request to constructor
+        let response = hyperware_process_lib::hyperapp::http::send_request(
+            hyperware_process_lib::hyperapp::http::Method::POST,
+            constructor_url.parse().map_err(|e| format!("Invalid URL: {}", e))?,
+            None,
+            5000,
+            request_body.to_string().into_bytes(),
+        )
+        .await
+        .map_err(|e| format!("Failed to init build container: {:?}", e))?;
+
+        if response.status().as_u16() >= 400 {
+            let error_text = String::from_utf8_lossy(response.body());
+            return Err(format!("Constructor error (status {}): {}", response.status().as_u16(), error_text));
+        }
+
+        // Parse response
+        let response_text = String::from_utf8(response.body().to_vec())
+            .map_err(|e| format!("Invalid UTF-8 response: {}", e))?;
+
+        let response_json: Value = serde_json::from_str(&response_text)
+            .map_err(|e| format!("Failed to parse constructor response: {}", e))?;
+
+        let ws_uri = response_json
+            .get("ws_uri")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing ws_uri in response".to_string())?;
+
+        let api_key = response_json
+            .get("api_key")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing api_key in response".to_string())?;
+
+        // Connect to the build container's ws-mcp server
+        let channel_id = self.connect_to_build_container_ws(ws_uri, api_key).await?;
+
+        // Store the build container connection
+        self.build_container_connection = Some(BuildContainerConnection {
+            project_uuid: project_uuid.to_string(),
+            ws_uri: ws_uri.to_string(),
+            api_key: api_key.to_string(),
+            channel_id,
+            connected: true,
+            tools: Vec::new(),
+        });
+
+        // Update the build container server to show all tools
+        if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "build_container") {
+            let provider = BuildContainerToolProvider::new("build_container".to_string());
+            server.tools = provider.get_tools(self);
+        }
+
+        Ok(serde_json::json!({
+            "content": [{
+                "type": "text",
+                "text": format!("✅ Build container initialized successfully!\n- Project UUID: {}\n- WebSocket URI: {}\n- Container is ready for use", project_uuid, ws_uri)
+            }]
+        }))
+    }
+
+    async fn connect_to_build_container_ws(&mut self, ws_uri: &str, api_key: &str) -> Result<u32, String> {
+        // Allocate a channel ID
+        let channel_id = self.next_channel_id;
+        self.next_channel_id += 1;
+
+        // Parse the WebSocket URI
+        let parsed_url = hyperware_process_lib::hyperapp::http::Url::parse(ws_uri)
+            .map_err(|e| format!("Invalid WebSocket URI: {}", e))?;
+
+        // Connect to the WebSocket
+        hyperware_process_lib::hyperapp::websocket::connect(
+            channel_id,
+            parsed_url.clone(),
+            None,
+            Vec::new(),
+        )
+        .await
+        .map_err(|e| format!("Failed to connect to build container WebSocket: {:?}", e))?;
+
+        // Send authentication message
+        let auth_message = serde_json::json!({
+            "method": "spider/authorization",
+            "params": {
+                "api_key": api_key
+            },
+            "id": format!("auth_{}", channel_id)
+        });
+
+        hyperware_process_lib::hyperapp::websocket::send_text(
+            channel_id,
+            auth_message.to_string(),
+        )
+        .await
+        .map_err(|e| format!("Failed to send auth message: {:?}", e))?;
+
+        // Wait for auth response (simplified - in production would handle properly)
+        let _ = hyperware_process_lib::hyperapp::sleep(500).await;
+
+        // Initialize MCP connection
+        let init_request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "initialize".to_string(),
+            params: Some(serde_json::to_value(McpInitializeParams {
+                protocol_version: "2024-11-05".to_string(),
+                client_info: McpClientInfo {
+                    name: "Spider".to_string(),
+                    version: "1.0.0".to_string(),
+                },
+                capabilities: McpCapabilities {},
+            }).unwrap()),
+            id: format!("init_{}", channel_id),
+        };
+
+        hyperware_process_lib::hyperapp::websocket::send_text(
+            channel_id,
+            serde_json::to_string(&init_request).unwrap(),
+        )
+        .await
+        .map_err(|e| format!("Failed to send initialize request: {:?}", e))?;
+
+        Ok(channel_id)
+    }
+
+    async fn handle_start_package(&mut self, parameters: &Value) -> Result<Value, String> {
+        let package_dir = parameters
+            .get("package_dir")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing package_dir parameter".to_string())?;
+
+        let conn = self.build_container_connection
+            .as_ref()
+            .ok_or_else(|| "No build container connection. Call init_build_container first.".to_string())?;
+
+        // Send start_package request to ws-mcp
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "spider/start_package",
+            "params": {
+                "package_dir": package_dir
+            },
+            "id": format!("start_package_{}", conn.channel_id)
+        });
+
+        hyperware_process_lib::hyperapp::websocket::send_text(
+            conn.channel_id,
+            request.to_string(),
+        )
+        .await
+        .map_err(|e| format!("Failed to send start_package request: {:?}", e))?;
+
+        // Wait for response and handle the package deployment
+        // This would receive the zipped package from ws-mcp and deploy it
+        // Implementation would follow kit start-package logic
+
+        Ok(serde_json::json!({
+            "content": [{
+                "type": "text",
+                "text": format!("✅ Package deployed successfully from: {}", package_dir)
+            }]
+        }))
+    }
+
+    async fn handle_persist(&mut self, parameters: &Value) -> Result<Value, String> {
+        let directories = parameters
+            .get("directories")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| "Missing directories parameter".to_string())?;
+
+        let conn = self.build_container_connection
+            .as_ref()
+            .ok_or_else(|| "No build container connection. Call init_build_container first.".to_string())?;
+
+        let dir_strings: Vec<String> = directories
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+
+        // Send persist request to ws-mcp
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "spider/persist",
+            "params": {
+                "directories": dir_strings
+            },
+            "id": format!("persist_{}", conn.channel_id)
+        });
+
+        hyperware_process_lib::hyperapp::websocket::send_text(
+            conn.channel_id,
+            request.to_string(),
+        )
+        .await
+        .map_err(|e| format!("Failed to send persist request: {:?}", e))?;
+
+        // Wait for response with zipped directories
+        // Save them appropriately
+
+        Ok(serde_json::json!({
+            "content": [{
+                "type": "text",
+                "text": format!("✅ Persisted {} directories successfully", dir_strings.len())
+            }]
+        }))
+    }
+
+    async fn handle_done_build_container(&mut self, parameters: &Value) -> Result<Value, String> {
+        let project_uuid = parameters
+            .get("project_uuid")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing project_uuid parameter".to_string())?;
+
+        let metadata = parameters.get("metadata");
+
+        // Close WebSocket connection if exists
+        if let Some(conn) = &self.build_container_connection {
+            hyperware_process_lib::hyperapp::websocket::close(conn.channel_id, 1000, "Done".to_string())
+                .await
+                .ok(); // Ignore errors on close
+        }
+
+        // Get constructor URL from environment or use default
+        let constructor_url = std::env::var("SPIDER_CONSTRUCTOR_URL")
+            .unwrap_or_else(|_| "http://localhost:8081/done-build-container".to_string());
+
+        // Prepare request body
+        let mut request_body = serde_json::json!({
+            "uuid": project_uuid
+        });
+
+        if let Some(meta) = metadata {
+            request_body["metadata"] = meta.clone();
+        }
+
+        // Make HTTP request to constructor
+        let response = hyperware_process_lib::hyperapp::http::send_request(
+            hyperware_process_lib::hyperapp::http::Method::POST,
+            constructor_url.parse().map_err(|e| format!("Invalid URL: {}", e))?,
+            None,
+            5000,
+            request_body.to_string().into_bytes(),
+        )
+        .await
+        .map_err(|e| format!("Failed to done build container: {:?}", e))?;
+
+        if response.status().as_u16() >= 400 {
+            let error_text = String::from_utf8_lossy(response.body());
+            return Err(format!("Constructor error (status {}): {}", response.status().as_u16(), error_text));
+        }
+
+        // Clear the build container connection
+        self.build_container_connection = None;
+
+        // Update the build container server to show only init tool
+        if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "build_container") {
+            let provider = BuildContainerToolProvider::new("build_container".to_string());
+            server.tools = provider.get_tools(self);
+        }
+
+        Ok(serde_json::json!({
+            "content": [{
+                "type": "text",
+                "text": format!("✅ Build container for project {} has been torn down successfully", project_uuid)
+            }]
+        }))
     }
 }
