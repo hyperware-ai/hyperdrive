@@ -44,7 +44,9 @@ use utils::{
 };
 
 mod tool_providers;
-use tool_providers::{hypergrid::HypergridToolProvider, build_container::BuildContainerToolProvider, ToolProvider};
+use tool_providers::{
+    build_container::BuildContainerToolProvider, hypergrid::HypergridToolProvider, ToolProvider,
+};
 
 const ICON: &str = include_str!("./icon");
 
@@ -193,7 +195,8 @@ impl SpiderState {
         }
 
         // Register Build Container tool provider
-        let build_container_provider = BuildContainerToolProvider::new("build_container".to_string());
+        let build_container_provider =
+            BuildContainerToolProvider::new("build_container".to_string());
 
         // Get initial tools from the provider (just init_build_container initially)
         let build_container_tools = build_container_provider.get_tools(self);
@@ -2211,18 +2214,10 @@ impl SpiderState {
             "build_container" => {
                 // Handle build container tools
                 match tool_name {
-                    "init_build_container" => {
-                        self.handle_init_build_container(parameters).await
-                    }
-                    "start_package" => {
-                        self.handle_start_package(parameters).await
-                    }
-                    "persist" => {
-                        self.handle_persist(parameters).await
-                    }
-                    "done_build_container" => {
-                        self.handle_done_build_container(parameters).await
-                    }
+                    "init_build_container" => self.handle_init_build_container(parameters).await,
+                    "start_package" => self.handle_start_package(parameters).await,
+                    "persist" => self.handle_persist(parameters).await,
+                    "done_build_container" => self.handle_done_build_container(parameters).await,
                     _ => Err(format!("Unknown build container tool: {}", tool_name)),
                 }
             }
@@ -2389,13 +2384,9 @@ impl SpiderState {
             .and_then(|v| v.as_str())
             .ok_or_else(|| "Missing project_uuid parameter".to_string())?;
 
-        let project_name = parameters
-            .get("project_name")
-            .and_then(|v| v.as_str());
+        let project_name = parameters.get("project_name").and_then(|v| v.as_str());
 
-        let initial_zip = parameters
-            .get("initial_zip")
-            .and_then(|v| v.as_str());
+        let initial_zip = parameters.get("initial_zip").and_then(|v| v.as_str());
 
         let metadata = parameters.get("metadata");
 
@@ -2423,7 +2414,9 @@ impl SpiderState {
         // Make HTTP request to constructor
         let response = hyperware_process_lib::hyperapp::http::send_request(
             hyperware_process_lib::hyperapp::http::Method::POST,
-            constructor_url.parse().map_err(|e| format!("Invalid URL: {}", e))?,
+            constructor_url
+                .parse()
+                .map_err(|e| format!("Invalid URL: {}", e))?,
             None,
             5000,
             request_body.to_string().into_bytes(),
@@ -2433,7 +2426,11 @@ impl SpiderState {
 
         if response.status().as_u16() >= 400 {
             let error_text = String::from_utf8_lossy(response.body());
-            return Err(format!("Constructor error (status {}): {}", response.status().as_u16(), error_text));
+            return Err(format!(
+                "Constructor error (status {}): {}",
+                response.status().as_u16(),
+                error_text
+            ));
         }
 
         // Parse response
@@ -2467,7 +2464,11 @@ impl SpiderState {
         });
 
         // Update the build container server to show all tools
-        if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "build_container") {
+        if let Some(server) = self
+            .mcp_servers
+            .iter_mut()
+            .find(|s| s.id == "build_container")
+        {
             let provider = BuildContainerToolProvider::new("build_container".to_string());
             server.tools = provider.get_tools(self);
         }
@@ -2480,7 +2481,11 @@ impl SpiderState {
         }))
     }
 
-    async fn connect_to_build_container_ws(&mut self, ws_uri: &str, api_key: &str) -> Result<u32, String> {
+    async fn connect_to_build_container_ws(
+        &mut self,
+        ws_uri: &str,
+        api_key: &str,
+    ) -> Result<u32, String> {
         // Allocate a channel ID
         let channel_id = self.next_channel_id;
         self.next_channel_id += 1;
@@ -2508,12 +2513,9 @@ impl SpiderState {
             "id": format!("auth_{}", channel_id)
         });
 
-        hyperware_process_lib::hyperapp::websocket::send_text(
-            channel_id,
-            auth_message.to_string(),
-        )
-        .await
-        .map_err(|e| format!("Failed to send auth message: {:?}", e))?;
+        hyperware_process_lib::hyperapp::websocket::send_text(channel_id, auth_message.to_string())
+            .await
+            .map_err(|e| format!("Failed to send auth message: {:?}", e))?;
 
         // Wait for auth response (simplified - in production would handle properly)
         let _ = hyperware_process_lib::hyperapp::sleep(500).await;
@@ -2522,14 +2524,17 @@ impl SpiderState {
         let init_request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             method: "initialize".to_string(),
-            params: Some(serde_json::to_value(McpInitializeParams {
-                protocol_version: "2024-11-05".to_string(),
-                client_info: McpClientInfo {
-                    name: "Spider".to_string(),
-                    version: "1.0.0".to_string(),
-                },
-                capabilities: McpCapabilities {},
-            }).unwrap()),
+            params: Some(
+                serde_json::to_value(McpInitializeParams {
+                    protocol_version: "2024-11-05".to_string(),
+                    client_info: McpClientInfo {
+                        name: "Spider".to_string(),
+                        version: "1.0.0".to_string(),
+                    },
+                    capabilities: McpCapabilities {},
+                })
+                .unwrap(),
+            ),
             id: format!("init_{}", channel_id),
         };
 
@@ -2549,9 +2554,9 @@ impl SpiderState {
             .and_then(|v| v.as_str())
             .ok_or_else(|| "Missing package_dir parameter".to_string())?;
 
-        let conn = self.build_container_connection
-            .as_ref()
-            .ok_or_else(|| "No build container connection. Call init_build_container first.".to_string())?;
+        let conn = self.build_container_connection.as_ref().ok_or_else(|| {
+            "No build container connection. Call init_build_container first.".to_string()
+        })?;
 
         // Send start_package request to ws-mcp
         let request = serde_json::json!({
@@ -2563,12 +2568,9 @@ impl SpiderState {
             "id": format!("start_package_{}", conn.channel_id)
         });
 
-        hyperware_process_lib::hyperapp::websocket::send_text(
-            conn.channel_id,
-            request.to_string(),
-        )
-        .await
-        .map_err(|e| format!("Failed to send start_package request: {:?}", e))?;
+        hyperware_process_lib::hyperapp::websocket::send_text(conn.channel_id, request.to_string())
+            .await
+            .map_err(|e| format!("Failed to send start_package request: {:?}", e))?;
 
         // Wait for response and handle the package deployment
         // This would receive the zipped package from ws-mcp and deploy it
@@ -2588,9 +2590,9 @@ impl SpiderState {
             .and_then(|v| v.as_array())
             .ok_or_else(|| "Missing directories parameter".to_string())?;
 
-        let conn = self.build_container_connection
-            .as_ref()
-            .ok_or_else(|| "No build container connection. Call init_build_container first.".to_string())?;
+        let conn = self.build_container_connection.as_ref().ok_or_else(|| {
+            "No build container connection. Call init_build_container first.".to_string()
+        })?;
 
         let dir_strings: Vec<String> = directories
             .iter()
@@ -2607,12 +2609,9 @@ impl SpiderState {
             "id": format!("persist_{}", conn.channel_id)
         });
 
-        hyperware_process_lib::hyperapp::websocket::send_text(
-            conn.channel_id,
-            request.to_string(),
-        )
-        .await
-        .map_err(|e| format!("Failed to send persist request: {:?}", e))?;
+        hyperware_process_lib::hyperapp::websocket::send_text(conn.channel_id, request.to_string())
+            .await
+            .map_err(|e| format!("Failed to send persist request: {:?}", e))?;
 
         // Wait for response with zipped directories
         // Save them appropriately
@@ -2635,9 +2634,13 @@ impl SpiderState {
 
         // Close WebSocket connection if exists
         if let Some(conn) = &self.build_container_connection {
-            hyperware_process_lib::hyperapp::websocket::close(conn.channel_id, 1000, "Done".to_string())
-                .await
-                .ok(); // Ignore errors on close
+            hyperware_process_lib::hyperapp::websocket::close(
+                conn.channel_id,
+                1000,
+                "Done".to_string(),
+            )
+            .await
+            .ok(); // Ignore errors on close
         }
 
         // Get constructor URL from environment or use default
@@ -2656,7 +2659,9 @@ impl SpiderState {
         // Make HTTP request to constructor
         let response = hyperware_process_lib::hyperapp::http::send_request(
             hyperware_process_lib::hyperapp::http::Method::POST,
-            constructor_url.parse().map_err(|e| format!("Invalid URL: {}", e))?,
+            constructor_url
+                .parse()
+                .map_err(|e| format!("Invalid URL: {}", e))?,
             None,
             5000,
             request_body.to_string().into_bytes(),
@@ -2666,14 +2671,22 @@ impl SpiderState {
 
         if response.status().as_u16() >= 400 {
             let error_text = String::from_utf8_lossy(response.body());
-            return Err(format!("Constructor error (status {}): {}", response.status().as_u16(), error_text));
+            return Err(format!(
+                "Constructor error (status {}): {}",
+                response.status().as_u16(),
+                error_text
+            ));
         }
 
         // Clear the build container connection
         self.build_container_connection = None;
 
         // Update the build container server to show only init tool
-        if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "build_container") {
+        if let Some(server) = self
+            .mcp_servers
+            .iter_mut()
+            .find(|s| s.id == "build_container")
+        {
             let provider = BuildContainerToolProvider::new("build_container".to_string());
             server.tools = provider.get_tools(self);
         }
