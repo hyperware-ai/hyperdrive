@@ -23,6 +23,7 @@ mod kernel;
 mod keygen;
 mod kv;
 mod net;
+mod notifications;
 #[cfg(not(feature = "simulation-mode"))]
 mod register;
 mod sol;
@@ -246,6 +247,9 @@ async fn main() {
     // fd_manager makes sure we don't overrun the `ulimit -n`: max number of file descriptors
     let (fd_manager_sender, fd_manager_receiver): (MessageSender, MessageReceiver) =
         mpsc::channel(FD_MANAGER_CHANNEL_CAPACITY);
+    // notifications handles web push notifications
+    let (notifications_sender, notifications_receiver): (MessageSender, MessageReceiver) =
+        mpsc::channel(VFS_CHANNEL_CAPACITY);
     // terminal receives prints via this channel, all other modules send prints
     let (print_sender, print_receiver): (PrintSender, PrintReceiver) =
         mpsc::channel(TERMINAL_CHANNEL_CAPACITY);
@@ -342,7 +346,7 @@ async fn main() {
         ),
         (
             ProcessId::new(Some("state"), "distro", "sys"),
-            state_sender,
+            state_sender.clone(),
             None,
             false,
         ),
@@ -361,6 +365,12 @@ async fn main() {
         (
             ProcessId::new(Some("fd-manager"), "distro", "sys"),
             fd_manager_sender,
+            None,
+            false,
+        ),
+        (
+            ProcessId::new(Some("notifications"), "distro", "sys"),
+            notifications_sender,
             None,
             false,
         ),
@@ -499,12 +509,19 @@ async fn main() {
         print_sender.clone(),
     ));
     tasks.spawn(vfs::vfs(
-        our_name_arc,
+        our_name_arc.clone(),
         kernel_message_sender.clone(),
         print_sender.clone(),
         vfs_message_receiver,
         caps_oracle_sender.clone(),
         home_directory_path.clone(),
+    ));
+    tasks.spawn(notifications::notifications(
+        our_name_arc,
+        kernel_message_sender.clone(),
+        print_sender.clone(),
+        notifications_receiver,
+        state_sender.clone(),
     ));
 
     // if a runtime task exits, try to recover it,

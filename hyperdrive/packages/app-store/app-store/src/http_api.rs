@@ -174,6 +174,83 @@ fn make_widget() -> String {
     <h3>Top Apps</h3>
     <div id="latest-apps"></div>
     <script>
+    
+class HWProtocolWatcher {
+    constructor() {
+        this.isListening = false;
+        this.handleClick = this.handleClick.bind(this);
+    }
+    start() {
+        if (this.isListening) {
+            return;
+        }
+        document.addEventListener('click', this.handleClick, true);
+        console.log('[hw-protocol-watcher] initialized');
+        this.isListening = true;
+    }
+    stop() {
+        if (!this.isListening) {
+            return;
+        }
+        document.removeEventListener('click', this.handleClick, true);
+        this.isListening = false;
+    }
+    handleClick(event) {
+        const target = event.target;
+        const anchor = target.closest('a');
+        if (!anchor || !anchor.href) {
+            return;
+        }
+        if (!anchor.href.startsWith('hw://')) {
+            return;
+        }
+        console.log('event occurred');
+        event.preventDefault();
+        event.stopPropagation();
+        // Check if we're in an iframe
+        if (window.parent === window) {
+            // Not in an iframe, do nothing
+            return;
+        }
+        // Extract the path from hw://some-app-name:some-publisher.os/optional-path/etcetc
+        const url = anchor.href.replace('hw://', '/');
+        const message = {
+            type: 'HW_LINK_CLICKED',
+            url: url
+        };
+        window.parent.postMessage(message, '*');
+    }
+}
+// Auto-start functionality
+let globalWatcher = null;
+function startWatching() {
+    if (!globalWatcher) {
+        globalWatcher = new HWProtocolWatcher();
+    }
+    globalWatcher.start();
+    return globalWatcher;
+}
+function stopWatching() {
+    if (globalWatcher) {
+        globalWatcher.stop();
+    }
+}
+// Auto-start when module is loaded (can be disabled by calling stopWatching)
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => startWatching());
+    }
+    else {
+        startWatching();
+    }
+}
+
+    
+
+
+    </script>
+
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             function fetchApps() {
                 fetch('/main:app-store:sys/apps-public', { credentials: 'include' })
@@ -196,10 +273,8 @@ fn make_widget() -> String {
                         data.forEach(app => {
                             if (app.metadata) {
                                 const a = document.createElement('a');
+                                a.href = `hw://app-store:sys/app/${app.package_id.package_name}:${app.package_id.publisher_node}`;
                                 a.className = 'app';
-                                a.href = `/main:app-store:sys/app/${app.package_id.package_name}:${app.package_id.publisher_node}`
-                                a.target = '_blank';
-                                a.rel = 'noopener noreferrer';
                                 const iconLetter = app.metadata_hash.replace('0x', '')[0].toUpperCase();
                                 a.innerHTML = `<div
                                     class="app-image"

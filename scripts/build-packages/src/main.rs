@@ -12,11 +12,13 @@ use zip::write::FileOptions;
 struct PackageBuildParameters {
     local_dependencies: Option<Vec<String>>,
     is_hyperapp: Option<bool>,
+    features: Option<Vec<String>>,
 }
 
 struct PackageBuildParametersPath {
     local_dependencies: Option<Vec<PathBuf>>,
     is_hyperapp: Option<bool>,
+    features: Option<Vec<String>>,
 }
 
 fn zip_directory(dir_path: &Path) -> anyhow::Result<Vec<u8>> {
@@ -148,6 +150,7 @@ fn main() -> anyhow::Result<()> {
                         .local_dependencies
                         .map(|bp| bp.iter().map(|f| packages_dir.join(f)).collect()),
                     is_hyperapp: val.is_hyperapp,
+                    features: val.features,
                 },
             )
         })
@@ -164,7 +167,7 @@ fn main() -> anyhow::Result<()> {
                 // don't run on, e.g., `.DS_Store`
                 return None;
             }
-            let (local_dependency_array, is_hyperapp) =
+            let (local_dependency_array, is_hyperapp, package_specific_features) =
                 if let Some(filename) = entry_path.file_name() {
                     if let Some(maybe_params) =
                         build_parameters.remove(&filename.to_string_lossy().to_string())
@@ -172,18 +175,36 @@ fn main() -> anyhow::Result<()> {
                         (
                             maybe_params.local_dependencies.unwrap_or_default(),
                             maybe_params.is_hyperapp.unwrap_or_default(),
+                            maybe_params.features.unwrap_or_default(),
                         )
                     } else {
-                        (vec![], false)
+                        (vec![], false, vec![])
                     }
                 } else {
-                    (vec![], false)
+                    (vec![], false, vec![])
                 };
+            let package_specific_features = if package_specific_features.is_empty() {
+                features.clone()
+            } else if package_specific_features.contains(&"caller-utils".to_string()) {
+                // build without caller-utils flag, which will fail but will
+                //  also create caller-utils crate (required for succeeding build)
+                let _ = build_and_zip_package(
+                    entry_path.clone(),
+                    child_pkg_path.to_str().unwrap(),
+                    skip_frontend,
+                    &features,
+                    local_dependency_array.clone(),
+                    is_hyperapp,
+                );
+                format!("{features},{}", package_specific_features.join(","))
+            } else {
+                format!("{features},{}", package_specific_features.join(","))
+            };
             Some(build_and_zip_package(
                 entry_path.clone(),
                 child_pkg_path.to_str().unwrap(),
                 skip_frontend,
-                &features,
+                &package_specific_features,
                 local_dependency_array,
                 is_hyperapp,
             ))

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileInfo, AuthScheme, shareFile } from '../../lib/api';
+import { FileInfo, AuthScheme, share_file } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import QRCode from 'qrcode';
 import './ShareDialog.css';
@@ -70,7 +70,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
   const handleShare = async () => {
     setLoading(true);
     try {
-      const link = await shareFile(file.path, authScheme);
+      const link = await share_file(file.path, authScheme);
 
       // Remove first element of origin (e.g., http://foo.bar.com -> http://bar.com)
       let origin = window.location.origin;
