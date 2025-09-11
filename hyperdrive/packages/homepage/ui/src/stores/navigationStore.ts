@@ -7,7 +7,7 @@ interface NavigationStore {
   isAppDrawerOpen: boolean;
   isRecentAppsOpen: boolean;
 
-  openApp: (app: HomepageApp) => void;
+  openApp: (app: HomepageApp, query?: string) => void;
   closeApp: (appId: string) => void;
   switchToApp: (appId: string) => void;
   toggleAppDrawer: () => void;
@@ -65,124 +65,79 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     // If already on homepage, let default browser behavior handle it
   },
 
-  openApp: async (app) => {
-    console.log('openApp called with:', app);
+  openApp: async (app: HomepageApp, query?: string) => {
+    console.log('openApp called with:', { app, query });
 
     // Don't open apps without a valid path
-    if (!app.path && !app.process && !app.publisher) {
-      console.warn(`Cannot open app ${app.label}: No valid path`);
+    if (!app.path || !app.process || !app.publisher) {
+      const e = `Cannot open app ${app.label}: No valid path`
+      console.warn(e);
+      alert(e);
       return;
     }
 
-    // Check if we need to open in a new tab (localhost with secure subdomain)
-    const currentHost = window.location.host;
-    const isLocalhost = currentHost.includes("localhost");
-
-    if (isLocalhost && app.process && app.publisher) {
-      const generateSubdomain = (process: string, publisher: string) => {
-        return `${process}-${publisher}`.toLowerCase()
-          .split('')
-          .map(c => c.match(/[a-zA-Z0-9]/) ? c : '-')
-          .join('');
-      };
-
-      const expectedSubdomain = generateSubdomain(app.package_name, app.publisher);
-      const needsSubdomain = !currentHost.startsWith(expectedSubdomain);
-
-      console.log({ expectedSubdomain, needsSubdomain, currentHost });
-
-      if (needsSubdomain) {
-        // Check if this app requires a secure subdomain by testing for redirect
-        const appUrl = app.path || `/app:${app.process}:${app.publisher}.os/`;
-
-        try {
-          // Create AbortController for 0.1 second timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 100);
-
-          // Use fetch with redirect: 'manual' to detect redirects without following them
-          const response = await fetch(appUrl, {
-            method: 'HEAD',
-            redirect: 'manual',
-            signal: controller.signal
-          });
-
-          // Clear the timeout if fetch completes
-          clearTimeout(timeoutId);
-
-          // If we get a 307 redirect, this is a secure subdomain app
-          const isSecureSubdomainApp = response.type === 'opaqueredirect';
-
-          console.log('Subdomain check:', {
-            app: app.label,
-            type: response.type,
-            isSecureSubdomainApp
-          });
-
-          if (isSecureSubdomainApp) {
-            // Open in new tab for localhost secure subdomain apps
-            const protocol = window.location.protocol;
-            const port = window.location.port ? `:${window.location.port}` : '';
-
-            // Fix: Extract just the hostname without port for localhost
-            const hostname = currentHost.split(':')[0]; // 'localhost' from 'localhost:3000'
-            const baseDomain = hostname; // For localhost, we just use 'localhost'
-
-            const subdomainUrl = `${protocol}//${expectedSubdomain}.${baseDomain}${port}${appUrl}`;
-
-            // Debug logging
-            console.log('Opening secure subdomain app in new tab:', {
-              app: app.label,
-              currentHost,
-              hostname,
-              baseDomain,
-              expectedSubdomain,
-              subdomainUrl,
-              protocol,
-              port
-            });
-
-            const newWindow = window.open(subdomainUrl, '_blank');
-            console.log('window.open result:', newWindow);
-
-            if (!newWindow) {
-              console.error('Failed to open new window - possibly blocked by popup blocker');
-            }
-
-            // Close overlays to return to homepage
-            set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
-            return;
-          }
-          // If not a secure subdomain app, continue with normal iframe behavior
-        } catch (error) {
-          console.error('Error checking for secure subdomain:', error);
-          // On error, continue with normal iframe behavior
-        }
-      }
+    // Check if we need to open in a new tab (localhost)
+    const isLocalhost = window.location.host.includes("localhost");
+    if (isLocalhost) {
+      console.log('[homepage] opening app in new tab:', { app });
+      // don't use secure subdomain for localhost
+      const path = app.path.replace(/^(https?:\/\/)(.*)localhost/, '$1localhost') + (query || '');
+      console.log({ path })
+      window.open(path, '_blank');
+      set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
+      return;
     }
+    console.log('[homepage] opening app in iframe:', { app });
 
     // Normal iframe behavior for non-localhost or same-subdomain apps
     const { runningApps, currentAppId } = get();
     const existingApp = runningApps.find(a => a.id === app.id);
 
-    // Add to browser history for back button support
-    if (typeof window !== 'undefined') {
-      window.history.pushState(
-        { type: 'app', appId: app.id, previousAppId: currentAppId },
-        '',
-        `#app-${app.id}`
-      );
+    if (existingApp && currentAppId === app.id) {
+      console.log('[homepage] app already open:', { app });
+      return;
     }
+
+    let maybeSlash = '';
+
+    if (query && query[0] && query[0] !== '?' && query[0] !== '/') {
+        // autoprepend a slash for the window history when the query type is unknown
+        console.log('autoprepended / to unknown query format');
+        maybeSlash = '/'
+    }
+
+    // Add to browser history for back button support
+    window?.history?.pushState(
+      { type: 'app', appId: app.id, previousAppId: currentAppId },
+      '',
+      `#app-${app.id}${maybeSlash}${query || ''}`
+    );
 
     if (existingApp) {
       set({
+        runningApps: runningApps.map(rApp => {
+            const path  = `${app.path}${query || ''}`;
+            console.log(path, rApp.id, app.id);
+            if (rApp.id === app.id) {
+                console.log('found rApp')
+                return {
+                    ...rApp,
+                    path
+                }
+            }
+            return rApp;
+        }),
         currentAppId: app.id,
         isAppDrawerOpen: false,
         isRecentAppsOpen: false
       });
     } else {
       set({
-        runningApps: [...runningApps, { ...app, openedAt: Date.now() }],
+        runningApps: [...runningApps, {
+          ...app,
+          path: `${app.path}${query || ''}`,
+          openedAt: Date.now()
+        }],
         currentAppId: app.id,
         isAppDrawerOpen: false,
         isRecentAppsOpen: false,

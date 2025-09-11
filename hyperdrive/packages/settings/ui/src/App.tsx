@@ -209,7 +209,7 @@ function App() {
           <HyperwareLogo className="w-10 h-10" />
           <ConnectButton />
         </div>
-        <h1 className="font-bold prose">System diagnostics and settings</h1>
+        <h1 className="font-bold prose">Node settings and system diagnostics</h1>
       </div>
       <main className=" grid gap-4 p-4  self-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <article

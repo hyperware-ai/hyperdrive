@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { FaBell, FaChevronDown, FaChevronUp, FaTrash, FaTimes } from 'react-icons/fa';
-import useAppsStore from '../store';
+import useAppsStore from '../store/appStoreStore';
 import { Notification, NotificationAction } from '../types/Apps';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
