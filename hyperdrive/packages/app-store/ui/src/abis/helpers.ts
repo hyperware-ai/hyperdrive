@@ -1,7 +1,7 @@
 import { multicallAbi, hypermapAbi, mechAbi, HYPERMAP, MULTICALL, HYPER_ACCOUNT_UPGRADABLE_IMPL } from "./";
 import { encodeFunctionData, encodePacked, stringToHex } from "viem";
 
-export function encodeMulticalls(metadataUri: string, metadataHash: string) {
+export function encodeMulticalls(metadataUri: string, metadataHash: string, tbaAddress?: `0x${string}`) {
     const metadataHashCall = encodeFunctionData({
         abi: hypermapAbi,
         functionName: 'note',
@@ -20,10 +20,21 @@ export function encodeMulticalls(metadataUri: string, metadataHash: string) {
         ]
     })
 
-    const calls = [
+    // Add initialize call if TBA address is provided
+    const initializeCall = tbaAddress ? encodeFunctionData({
+        abi: [{"inputs":[],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"}],
+        functionName: 'initialize',
+        args: []
+    }) : null;
+
+    const baseCalls = [
         { target: HYPERMAP, callData: metadataHashCall },
         { target: HYPERMAP, callData: metadataUriCall },
     ];
+
+    const calls = initializeCall && tbaAddress ?
+        [{ target: tbaAddress, callData: initializeCall }, ...baseCalls] :
+        baseCalls;
 
     const multicall = encodeFunctionData({
         abi: multicallAbi,
