@@ -15,20 +15,24 @@ version = "0.4"
 
 [dependencies.hyperprocess_macro]
 git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "ed99c19"
+rev = "66884c0"
 
 [dependencies.hyperware-anthropic-sdk]
 git = "https://github.com/hyperware-ai/hyperware-anthropic-sdk"
-rev = "363630c"
+rev = "c0cbd5e"
 
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
-rev = "753dac3"
+rev = "4beff93"
 
 [dependencies.serde]
 features = ["derive"]
 version = "1.0"
+
+[dependencies.spider_dev_caller_utils]
+optional = true
+path = "../target/spider-dev-caller-utils"
 
 [dependencies.uuid]
 features = [
@@ -38,6 +42,7 @@ features = [
 version = "1.4.1"
 
 [features]
+caller-utils = ["spider_dev_caller_utils"]
 simulation-mode = []
 
 [lib]
