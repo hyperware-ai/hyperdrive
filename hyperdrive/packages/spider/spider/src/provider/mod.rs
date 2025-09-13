@@ -3,8 +3,8 @@ use std::pin::Pin;
 
 use crate::types::{Message, Tool};
 
-mod anthropic;
-use anthropic::AnthropicProvider;
+pub mod anthropic;
+pub use anthropic::AnthropicProvider;
 
 pub(crate) trait LlmProvider {
     fn complete<'a>(
