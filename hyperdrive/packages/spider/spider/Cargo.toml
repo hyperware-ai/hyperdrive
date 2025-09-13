@@ -30,10 +30,6 @@ rev = "4beff93"
 features = ["derive"]
 version = "1.0"
 
-[dependencies.spider_dev_caller_utils]
-optional = true
-path = "../target/spider-dev-caller-utils"
-
 [dependencies.uuid]
 features = [
     "v4",
