@@ -38,7 +38,6 @@ features = [
 version = "1.4.1"
 
 [features]
-caller-utils = ["spider_dev_caller_utils"]
 simulation-mode = []
 
 [lib]
