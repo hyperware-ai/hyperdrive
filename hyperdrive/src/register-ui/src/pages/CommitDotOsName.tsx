@@ -109,6 +109,18 @@ function CommitDotOsName({
         }
         setName(toAscii(name));
         console.log("committing to .os name: ", name)
+
+        if (specifyRouters && customRouters.trim()) {
+            const routersToUse = customRouters
+                .split('\n')
+                .map(router => router.trim())
+                .filter(router => router.length > 0);
+
+            // Update the routers in your app state for the next page to use
+            setRouters(routersToUse);
+            console.log("Custom routers will be used:", routersToUse);
+        }
+
         const commit = keccak256(
             encodeAbiParameters(
                 parseAbiParameters('bytes memory, address'),
@@ -145,7 +157,7 @@ function CommitDotOsName({
             throw err;
         }
 
-    }, [name, direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
+    }, [name, specifyRouters, customRouters, direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
 
     useEffect(() => {
         if (txConfirmed) {
@@ -216,7 +228,11 @@ function CommitDotOsName({
 
                                 <div className="flex flex-col gap-1">
                                     <button
-                                        disabled={nameValidities.length !== 0 || isPending || isConfirming}
+                                        disabled={nameValidities.length !== 0 ||
+                                            isPending ||
+                                            isConfirming ||
+                                            (specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0)
+                                        }
                                         type="submit"
                                         className="button"
                                     >

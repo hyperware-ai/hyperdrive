@@ -4,6 +4,7 @@ import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 
 import DirectNodeCheckbox from "../components/DirectCheckbox";
+import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
 
 import { useAccount, useWaitForTransactionReceipt, useSendTransaction } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
@@ -41,6 +42,27 @@ function MintCustom({
     const addRecentTransaction = useAddRecentTransaction();
 
     const [triggerNameCheck, setTriggerNameCheck] = useState<boolean>(false)
+    const [specifyRouters, setSpecifyRouters] = useState(false)
+    const [customRouters, setCustomRouters] = useState('')
+
+    // Modified setDirect function to handle mutual exclusivity
+    const handleSetDirect = (value: boolean) => {
+        setDirect(value);
+        if (value) {
+            setSpecifyRouters(false);
+            setCustomRouters(''); // Clear custom routers when switching to direct
+        }
+    };
+
+    // Modified setSpecifyRouters function to handle mutual exclusivity
+    const handleSetSpecifyRouters = (value: boolean) => {
+        setSpecifyRouters(value);
+        if (value) {
+            setDirect(false);
+        } else {
+            setCustomRouters(''); // Clear custom routers when unchecking
+        }
+    };
 
     useEffect(() => {
         document.title = "Mint"
@@ -65,6 +87,19 @@ function MintCustom({
             return
         }
 
+        // Process custom routers if specified
+        let routersToUse: string[] = [];
+        if (specifyRouters && customRouters.trim()) {
+            routersToUse = customRouters
+                .split('\n')
+                .map(router => router.trim())
+                .filter(router => router.length > 0);
+
+            // Update the routers in your app state
+            setRouters(routersToUse);
+            console.log("Custom routers:", routersToUse);
+        }
+
         const initCall = await generateNetworkingKeys({
             direct,
             our_address: address,
@@ -73,8 +108,9 @@ function MintCustom({
             setIpAddress,
             setWsPort,
             setTcpPort,
-            setRouters,
+            setRouters: routersToUse.length > 0 ? () => setRouters(routersToUse) : setRouters,
             reset: false,
+            customRouters: routersToUse.length > 0 ? routersToUse : undefined,
         });
 
         setHnsName(formData.get('full-hns-name') as string)
@@ -107,7 +143,7 @@ function MintCustom({
         } catch (error) {
             console.error('Failed to send transaction:', error)
         }
-    }, [direct, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
+    }, [direct, specifyRouters, customRouters, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
 
     useEffect(() => {
         if (isConfirmed) {
@@ -132,17 +168,55 @@ function MintCustom({
                                 <input type="text" name="name" placeholder="Enter hypermap name" />
                                 <input type="text" name="full-hns-name" placeholder="Enter full HNS name" />
                                 <input type="text" name="tba" placeholder="Enter TBA to mint under" />
-                                <details>
+                                <details className="advanced-options">
                                     <summary>Advanced Options</summary>
-                                    <DirectNodeCheckbox {...{ direct, setDirect }} />
+                                    <div className="flex flex-col gap-3">
+                                        <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
+                                        <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
+                                        {specifyRouters && (
+                                            <div className="flex flex-col gap-2 ml-6">
+                                                <label htmlFor="custom-routers" className="text-sm font-medium">
+                                                    Router Names: <span className="text-red-500">*</span>
+                                                </label>
+                                                <textarea
+                                                    id="custom-routers-mint"
+                                                    value={customRouters}
+                                                    onChange={(e) => setCustomRouters(e.target.value)}
+                                                    placeholder="Enter router names, one per line&#10;e.g.:&#10;router1.os&#10;router2.os&#10;myrouter.os"
+                                                    className={`input resize-vertical min-h-[80px] ${
+                                                        specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
+                                                            ? 'border-red-500 focus:border-red-500'
+                                                            : ''
+                                                    }`}
+                                                    rows={4}
+                                                />
+                                                <span className={`text-xs ${
+                                                    customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
+                                                        ? 'text-red-500'
+                                                        : 'text-gray-500'
+                                                }`}>
+                                                    {customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
+                                                        ? 'At least one router name is required'
+                                                        : 'Enter one router name per line. These routers will be used for your indirect node.'
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </details>
                                 <div className="flex flex-col gap-1">
                                     <button
                                         type="submit"
                                         className="button"
-                                        disabled={isPending || isConfirming || !hnsName}>
+                                        disabled={
+                                            isPending ||
+                                            isConfirming ||
+                                            !hnsName ||
+                                            (specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0)
+                                        }>
                                         Mint custom name
                                     </button>
+
                                     <BackButton mode="wide" />
                                 </div>
                             </>

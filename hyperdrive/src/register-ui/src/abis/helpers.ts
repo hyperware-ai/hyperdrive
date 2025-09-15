@@ -19,6 +19,7 @@ export const generateNetworkingKeys = async ({
     setTcpPort,
     setRouters,
     reset,
+    customRouters,
 }: {
     direct: boolean,
     label: string,
@@ -29,6 +30,7 @@ export const generateNetworkingKeys = async ({
     setTcpPort: (tcpPort: number) => void;
     setRouters: (routers: string[]) => void;
     reset: boolean;
+    customRouters?: string[];
 }) => {
     const {
         networking_key,
@@ -45,13 +47,16 @@ export const generateNetworkingKeys = async ({
 
     const ipAddress = ipToBytes(ip_address);
 
+    const routersToUse = customRouters && customRouters.length > 0 ? customRouters : allowed_routers;
+
     setNetworkingKey(networking_key);
     // setIpAddress(ipAddress);
     setWsPort(ws_port || 0);
     setTcpPort(tcp_port || 0);
-    setRouters(allowed_routers);
+    setRouters(routersToUse);
 
     console.log("networking_key: ", networking_key);
+    console.log("routers being used: ", routersToUse);
 
     const netkeycall = encodeFunctionData({
         abi: hypermapAbi,
@@ -92,7 +97,7 @@ export const generateNetworkingKeys = async ({
             ]
         });
 
-    const encodedRouters = encodeRouters(allowed_routers);
+    const encodedRouters = encodeRouters(routersToUse);
 
     const router_call =
         encodeFunctionData({

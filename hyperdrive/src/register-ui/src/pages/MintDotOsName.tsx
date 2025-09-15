@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
@@ -12,14 +13,15 @@ import { base } from 'viem/chains'
 interface RegisterOsNameProps extends PageProps { }
 
 function MintDotOsName({
-  direct,
-  hnsName,
-  setNetworkingKey,
-  setIpAddress,
-  setWsPort,
-  setTcpPort,
-  setRouters,
-}: RegisterOsNameProps) {
+                         direct,
+                         hnsName,
+                         setNetworkingKey,
+                         setIpAddress,
+                         setWsPort,
+                         setTcpPort,
+                         setRouters,
+                         routers, // Add this prop to access current routers from app state
+                       }: RegisterOsNameProps) {
   let { address } = useAccount();
   let navigate = useNavigate();
   let { openConnectModal } = useConnectModal();
@@ -32,9 +34,9 @@ function MintDotOsName({
     }
   });
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    });
+      useWaitForTransactionReceipt({
+        hash,
+      });
   const addRecentTransaction = useAddRecentTransaction();
 
   const [hasMinted, setHasMinted] = useState(false);
@@ -60,6 +62,9 @@ function MintDotOsName({
 
     setHasMinted(true);
 
+    // Use the routers from app state if they exist (custom routers from previous page)
+    const customRoutersToUse = routers && routers.length > 0 ? routers : undefined;
+
     const initCall = await generateNetworkingKeys({
       direct,
       our_address: address,
@@ -70,6 +75,7 @@ function MintDotOsName({
       setTcpPort,
       setRouters,
       reset: false,
+      customRouters: customRoutersToUse, // Pass the custom routers
     });
 
     // strip .os suffix
@@ -108,7 +114,7 @@ function MintDotOsName({
       }
       throw err;
     }
-  }, [direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted])
+  }, [direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted, routers])
 
   useEffect(() => {
     if (address && !isPending && !isConfirming) {
@@ -123,22 +129,22 @@ function MintDotOsName({
   }, [isConfirmed, address, navigate]);
 
   return (
-    <div className="container fade-in">
-      <div className="section">
-        <div className="form">
-          {isPending || isConfirming ? (
-            <Loader msg={isConfirming ? 'Minting name...' : 'Please confirm the transaction in your wallet'} />
-          ) : (
-            <Loader msg="Preparing to mint..." />
-          )}
-          {isError && (
-            <p className="text-red-500 wrap-anywhere mt-2">
-              Error: {error?.message || 'There was an error minting your name, please try again.'}
-            </p>
-          )}
+      <div className="container fade-in">
+        <div className="section">
+          <div className="form">
+            {isPending || isConfirming ? (
+                <Loader msg={isConfirming ? 'Minting name...' : 'Please confirm the transaction in your wallet'} />
+            ) : (
+                <Loader msg="Preparing to mint..." />
+            )}
+            {isError && (
+                <p className="text-red-500 wrap-anywhere mt-2">
+                  Error: {error?.message || 'There was an error minting your name, please try again.'}
+                </p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
