@@ -162,14 +162,24 @@ function CommitDotOsName({
     useEffect(() => {
         if (txConfirmed) {
             console.log("confirmed commit to .os name: ", name)
+            console.log("Custom routers at navigation time:", customRouters)
             console.log("waiting 16 seconds to make commit valid...")
             setTimeout(() => {
                 setIsConfirmed(true);
                 setHnsName(`${name}.os`);
-                navigate("/mint-os-name");
+
+                if (specifyRouters && customRouters.trim()) {
+                    const routersToUse = customRouters
+                        .split('\n')
+                        .map(router => router.trim())
+                        .filter(router => router.length > 0);
+                    setRouters(routersToUse);
+                    console.log("Re-setting routers before navigation:", routersToUse);
+                }
+                    navigate("/mint-os-name");
             }, 16000)
         }
-    }, [txConfirmed, address, name, setHnsName, navigate]);
+    }, [txConfirmed, address, name, setHnsName, navigate, specifyRouters, customRouters, setRouters]);
 
     return (
         <div className="container fade-in">

@@ -26,6 +26,17 @@ function MintDotOsName({
   let navigate = useNavigate();
   let { openConnectModal } = useConnectModal();
 
+  // Add debugging for props received
+  useEffect(() => {
+    console.log("=== MintDotOsName Props Debug ===");
+    console.log("direct:", direct);
+    console.log("hnsName:", hnsName);
+    console.log("routers from props:", routers);
+    console.log("routers type:", typeof routers);
+    console.log("routers length:", routers?.length);
+    console.log("================================");
+  }, [direct, hnsName, routers]);
+
   const { data: hash, writeContract, isPending, isError, error } = useWriteContract({
     mutation: {
       onSuccess: (data) => {
@@ -60,6 +71,12 @@ function MintDotOsName({
       return
     }
 
+    console.log("=== MintDotOsName handleMint Debug ===");
+    console.log("routers from props:", routers);
+    console.log("direct:", direct);
+    console.log("address:", address);
+    console.log("hnsName:", hnsName);
+
     setHasMinted(true);
 
     // Use the routers from app state if they exist (custom routers from previous page)
@@ -77,6 +94,9 @@ function MintDotOsName({
       reset: false,
       customRouters: customRoutersToUse, // Pass the custom routers
     });
+
+    console.log("Generated initCall:", initCall);
+    console.log("=====================================");
 
     // strip .os suffix
     const name = hnsName.replace(/\.os$/, '');
