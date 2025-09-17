@@ -49,13 +49,6 @@ export const generateNetworkingKeys = async ({
 
     const routersToUse = customRouters && customRouters.length > 0 ? customRouters : allowed_routers;
 
-    console.log("=== DEBUG NETWORKING KEYS ===");
-    console.log("direct:", direct);
-    console.log("customRouters:", customRouters);
-    console.log("allowed_routers from API:", allowed_routers);
-    console.log("routersToUse:", routersToUse);
-    console.log("reset:", reset);
-
     setNetworkingKey(networking_key);
     // setIpAddress(ipAddress);
     setWsPort(ws_port || 0);
@@ -106,9 +99,6 @@ export const generateNetworkingKeys = async ({
 
     const encodedRouters = encodeRouters(routersToUse);
 
-    console.log("encodedRouters:", encodedRouters);
-    console.log("encodedRouters length:", encodedRouters.length);
-
     const router_call =
         encodeFunctionData({
             abi: hypermapAbi,
@@ -131,16 +121,11 @@ export const generateNetworkingKeys = async ({
         { target: HYPERMAP, callData: router_call },
     ];
 
-    console.log("calls:", calls);
-    console.log("router_call data:", router_call);
-
     const multicalls = encodeFunctionData({
         abi: multicallAbi,
         functionName: 'aggregate',
         args: [calls]
     });
-
-    console.log("multicalls:", multicalls);
 
     if (reset) return multicalls;
 
@@ -154,9 +139,6 @@ export const generateNetworkingKeys = async ({
             1
         ]
     });
-
-    console.log("final initCall:", initCall);
-    console.log("===========================");
 
     return initCall;
 

@@ -182,7 +182,7 @@ function MintCustom({
                                                     id="custom-routers-mint"
                                                     value={customRouters}
                                                     onChange={(e) => setCustomRouters(e.target.value)}
-                                                    placeholder="Enter router names, one per line&#10;e.g.:&#10;router1.os&#10;router2.os&#10;myrouter.os"
+                                                    placeholder="Enter one router name per line, e.g.:&#10;router-node-1.hypr&#10;other-router.hypr&#10;myrouter.os"
                                                     className={`input resize-vertical min-h-[80px] ${
                                                         specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
                                                             ? 'border-red-500 focus:border-red-500'

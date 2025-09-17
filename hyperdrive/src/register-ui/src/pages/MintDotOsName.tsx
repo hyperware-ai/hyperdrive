@@ -20,7 +20,7 @@ function MintDotOsName({
                          setWsPort,
                          setTcpPort,
                          setRouters,
-                         routers, // Add this prop to access current routers from app state
+                         routers,
                        }: RegisterOsNameProps) {
   let { address } = useAccount();
   let navigate = useNavigate();
@@ -71,12 +71,6 @@ function MintDotOsName({
       return
     }
 
-    console.log("=== MintDotOsName handleMint Debug ===");
-    console.log("routers from props:", routers);
-    console.log("direct:", direct);
-    console.log("address:", address);
-    console.log("hnsName:", hnsName);
-
     setHasMinted(true);
 
     // Use the routers from app state if they exist (custom routers from previous page)
@@ -94,9 +88,6 @@ function MintDotOsName({
       reset: false,
       customRouters: customRoutersToUse, // Pass the custom routers
     });
-
-    console.log("Generated initCall:", initCall);
-    console.log("=====================================");
 
     // strip .os suffix
     const name = hnsName.replace(/\.os$/, '');

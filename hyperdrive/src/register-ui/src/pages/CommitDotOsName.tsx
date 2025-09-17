@@ -118,7 +118,6 @@ function CommitDotOsName({
 
             // Update the routers in your app state for the next page to use
             setRouters(routersToUse);
-            console.log("Custom routers will be used:", routersToUse);
         }
 
         const commit = keccak256(
@@ -162,7 +161,6 @@ function CommitDotOsName({
     useEffect(() => {
         if (txConfirmed) {
             console.log("confirmed commit to .os name: ", name)
-            console.log("Custom routers at navigation time:", customRouters)
             console.log("waiting 16 seconds to make commit valid...")
             setTimeout(() => {
                 setIsConfirmed(true);
@@ -174,7 +172,6 @@ function CommitDotOsName({
                         .map(router => router.trim())
                         .filter(router => router.length > 0);
                     setRouters(routersToUse);
-                    console.log("Re-setting routers before navigation:", routersToUse);
                 }
                     navigate("/mint-os-name");
             }, 16000)
@@ -215,7 +212,7 @@ function CommitDotOsName({
                                                     id="custom-routers"
                                                     value={customRouters}
                                                     onChange={(e) => setCustomRouters(e.target.value)}
-                                                    placeholder="Enter router names, one per line&#10;e.g.:&#10;router1.os&#10;router2.os&#10;myrouter.os"
+                                                    placeholder="Enter one router name per line, e.g.:&#10;router-node-1.hypr&#10;other-router.hypr&#10;myrouter.os"
                                                     className={`input resize-vertical min-h-[80px] ${
                                                         specifyRouters && !isCustomRoutersValid()
                                                             ? 'border-red-500 focus:border-red-500'
