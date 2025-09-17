@@ -348,8 +348,14 @@ async fn handle_boot(
     if info.direct {
         our.both_to_direct();
     } else {
-        our.both_to_routers();
+        // Set custom routers if provided
+        if let Some(custom_routers) = info.custom_routers {
+            our.routing = NodeRouting::Routers(custom_routers);
+        } else {
+            our.both_to_routers(); // Use defaults
+        }
     }
+
     let jwt_seed = SystemRandom::new();
     let mut jwt_secret = [0u8, 32];
     ring::rand::SecureRandom::fill(&jwt_seed, &mut jwt_secret).unwrap();
