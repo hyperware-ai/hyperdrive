@@ -28,13 +28,6 @@ function MintDotOsName({
 
   // Add debugging for props received
   useEffect(() => {
-    console.log("=== MintDotOsName Props Debug ===");
-    console.log("direct:", direct);
-    console.log("hnsName:", hnsName);
-    console.log("routers from props:", routers);
-    console.log("routers type:", typeof routers);
-    console.log("routers length:", routers?.length);
-    console.log("================================");
   }, [direct, hnsName, routers]);
 
   const { data: hash, writeContract, isPending, isError, error } = useWriteContract({
