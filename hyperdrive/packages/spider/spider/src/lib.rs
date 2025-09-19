@@ -146,6 +146,9 @@ impl SpiderState {
             }
         }
 
+        // wait an additional 2s to allow hns to get ready
+        std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+
         add_to_homepage("Spider", Some(ICON), Some("/"), None);
 
         self.default_llm_provider = "anthropic".to_string();
