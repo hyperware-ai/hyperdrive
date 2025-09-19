@@ -14,10 +14,10 @@ use hyperware_process_lib::{
         server::{send_ws_push, WsMessageType},
     },
     hyperapp::source,
-    our, println, Address, LazyLoadBlob, ProcessId,
+    our, println, Address, LazyLoadBlob, ProcessId, Request,
 };
 #[cfg(not(feature = "simulation-mode"))]
-use spider_dev_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
+use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
 
 mod provider;
 use provider::create_llm_provider;
@@ -88,6 +88,71 @@ const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
 impl SpiderState {
     #[init]
     async fn initialize(&mut self) {
+        // Wait for hypermap-cacher to be ready
+        let cacher_address = Address::new("our", ("hypermap-cacher", "hypermap-cacher", "sys"));
+        let mut attempt = 1;
+        const RETRY_DELAY_S: u64 = 2;
+        const TIMEOUT_S: u64 = 15;
+
+        println!("Spider: Waiting for hypermap-cacher to be ready...");
+
+        loop {
+            // Create GetStatus request JSON
+            let cacher_request = r#""GetStatus""#;
+
+            match Request::to(cacher_address.clone())
+                .body(cacher_request.as_bytes().to_vec())
+                .send_and_await_response(TIMEOUT_S)
+            {
+                Ok(Ok(response)) => {
+                    // Try to parse the response as JSON
+                    if let Ok(response_str) = String::from_utf8(response.body().to_vec()) {
+                        // Check if it's IsStarting response
+                        if response_str.contains("IsStarting")
+                            || response_str.contains(r#""IsStarting""#)
+                        {
+                            println!(
+                                "Spider: hypermap-cacher is still starting (attempt {}). Retrying in {}s...",
+                                attempt, RETRY_DELAY_S
+                            );
+                            std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+                            attempt += 1;
+                            continue;
+                        }
+                        // Check if it's GetStatus response
+                        if response_str.contains("GetStatus")
+                            || response_str.contains("last_cached_block")
+                        {
+                            println!("Spider: hypermap-cacher is ready!");
+                            break;
+                        }
+                    }
+                    // If we get here, we got some response we don't understand, but cacher is at least responding
+                    println!("Spider: hypermap-cacher responded, proceeding with initialization");
+                    break;
+                }
+                Ok(Err(e)) => {
+                    println!(
+                        "Spider: Error response from hypermap-cacher (attempt {}): {:?}",
+                        attempt, e
+                    );
+                    std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+                    attempt += 1;
+                }
+                Err(e) => {
+                    println!(
+                        "Spider: Failed to contact hypermap-cacher (attempt {}): {:?}",
+                        attempt, e
+                    );
+                    std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+                    attempt += 1;
+                }
+            }
+        }
+
+        // wait an additional 2s to allow hns to get ready
+        std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+
         add_to_homepage("Spider", Some(ICON), Some("/"), None);
 
         self.default_llm_provider = "anthropic".to_string();
