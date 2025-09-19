@@ -108,7 +108,9 @@ impl SpiderState {
                     // Try to parse the response as JSON
                     if let Ok(response_str) = String::from_utf8(response.body().to_vec()) {
                         // Check if it's IsStarting response
-                        if response_str.contains("IsStarting") || response_str.contains(r#""IsStarting""#) {
+                        if response_str.contains("IsStarting")
+                            || response_str.contains(r#""IsStarting""#)
+                        {
                             println!(
                                 "Spider: hypermap-cacher is still starting (attempt {}). Retrying in {}s...",
                                 attempt, RETRY_DELAY_S
@@ -118,7 +120,9 @@ impl SpiderState {
                             continue;
                         }
                         // Check if it's GetStatus response
-                        if response_str.contains("GetStatus") || response_str.contains("last_cached_block") {
+                        if response_str.contains("GetStatus")
+                            || response_str.contains("last_cached_block")
+                        {
                             println!("Spider: hypermap-cacher is ready!");
                             break;
                         }
