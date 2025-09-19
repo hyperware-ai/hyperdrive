@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useSpiderStore } from '../store/spider';
 
 export default function Settings() {
-  const { config, isLoading, error, updateConfig } = useSpiderStore();
+  const { config, isLoading, error, updateConfig, loadMcpServers } = useSpiderStore();
   const [provider, setProvider] = useState(config.defaultLlmProvider);
   const [model, setModel] = useState('');
   const [maxTokens, setMaxTokens] = useState(config.maxTokens);
   const [temperature, setTemperature] = useState(config.temperature);
+  const [buildContainerWsUri, setBuildContainerWsUri] = useState(config.buildContainerWsUri || '');
+  const [buildContainerApiKey, setBuildContainerApiKey] = useState(config.buildContainerApiKey || '');
+  const [showSelfHosting, setShowSelfHosting] = useState(false);
 
   // Model options based on provider
   const modelOptions = {
@@ -33,6 +36,8 @@ export default function Settings() {
     setProvider(config.defaultLlmProvider);
     setMaxTokens(config.maxTokens);
     setTemperature(config.temperature);
+    setBuildContainerWsUri(config.buildContainerWsUri || '');
+    setBuildContainerApiKey(config.buildContainerApiKey || '');
   }, [config]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +46,11 @@ export default function Settings() {
       defaultLlmProvider: provider,
       maxTokens: maxTokens,
       temperature: temperature,
+      buildContainerWsUri: buildContainerWsUri,
+      buildContainerApiKey: buildContainerApiKey,
     });
+    // Reload MCP servers to refresh tools list
+    await loadMcpServers();
   };
 
   return (
@@ -73,7 +82,7 @@ export default function Settings() {
               <option value="google">Google</option>
             </select>
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="model">Model</label>
             <select
@@ -90,7 +99,7 @@ export default function Settings() {
             </select>
           </div>
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="max-tokens">Max Tokens</label>
           <input
@@ -102,7 +111,7 @@ export default function Settings() {
             max="100000"
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="temperature">Temperature</label>
           <input
@@ -115,7 +124,65 @@ export default function Settings() {
             step="0.1"
           />
         </div>
-        
+
+        <div className="form-group">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowSelfHosting(!showSelfHosting)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem'
+            }}
+          >
+            <span style={{
+              transform: showSelfHosting ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s',
+              display: 'inline-block'
+            }}>▶</span>
+            Self Hosting?
+          </button>
+
+          {showSelfHosting && (
+            <div style={{
+              padding: '1rem',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '0.5rem',
+              marginTop: '0.5rem'
+            }}>
+              <div className="form-group">
+                <label htmlFor="build-container-ws-uri">Build Container WebSocket URI</label>
+                <input
+                  id="build-container-ws-uri"
+                  type="text"
+                  value={buildContainerWsUri}
+                  onChange={(e) => setBuildContainerWsUri(e.target.value)}
+                  placeholder="ws://localhost:8091"
+                />
+                <small className="form-help-text">
+                  WebSocket URI for your self-hosted build container
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="build-container-api-key">Build Container API Key</label>
+                <input
+                  id="build-container-api-key"
+                  type="password"
+                  value={buildContainerApiKey}
+                  onChange={(e) => setBuildContainerApiKey(e.target.value)}
+                  placeholder="Enter API key"
+                />
+                <small className="form-help-text">
+                  API key for authenticating with your self-hosted build container
+                </small>
+              </div>
+            </div>
+          )}
+        </div>
+
         <button type="submit" className="btn btn-primary" disabled={isLoading}>
           {isLoading ? 'Saving...' : 'Save Settings'}
         </button>

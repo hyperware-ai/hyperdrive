@@ -545,20 +545,18 @@ async fn bootstrap(
                         params: "\"messaging\"".into(),
                     },
                     serde_json::Value::Object(map) => {
-                        if let Some(process_name) = map.get("process") {
-                            if let Some(params) = map.get("params") {
-                                Capability {
-                                    issuer: Address {
-                                        node: our_name.to_string(),
-                                        process: process_name.as_str().unwrap().parse().unwrap(),
-                                    },
-                                    params: params.to_string(),
-                                }
-                            } else {
-                                continue;
-                            }
-                        } else {
+                        let Some(process_name) = map.get("process") else {
                             continue;
+                        };
+                        let Some(params) = map.get("params") else {
+                            continue;
+                        };
+                        Capability {
+                            issuer: Address {
+                                node: our_name.to_string(),
+                                process: process_name.as_str().unwrap().parse().unwrap(),
+                            },
+                            params: params.to_string(),
                         }
                     }
                     _ => {

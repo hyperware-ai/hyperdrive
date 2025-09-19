@@ -7,6 +7,14 @@ use serde_json::Value;
 
 use crate::tool_providers::ToolProviderRegistry;
 
+fn default_empty_string() -> String {
+    String::new()
+}
+
+fn default_project_mapping() -> HashMap<String, Vec<String>> {
+    HashMap::new()
+}
+
 #[derive(Default, Serialize, Deserialize)]
 pub struct SpiderState {
     pub api_keys: Vec<(String, ApiKey)>,
@@ -16,6 +24,12 @@ pub struct SpiderState {
     pub default_llm_provider: String,
     pub max_tokens: u32,
     pub temperature: f32,
+    #[serde(default = "default_empty_string")]
+    pub build_container_ws_uri: String,
+    #[serde(default = "default_empty_string")]
+    pub build_container_api_key: String,
+    #[serde(default = "default_project_mapping")]
+    pub project_name_to_uuids: HashMap<String, Vec<String>>, // project name -> list of UUIDs
     #[serde(skip)]
     pub ws_connections: HashMap<u32, WsConnection>, // channel_id -> connection info
     #[serde(skip)]
@@ -300,6 +314,10 @@ pub(crate) struct UpdateConfigRequest {
     #[serde(rename = "maxTokens")]
     pub(crate) max_tokens: Option<u32>,
     pub(crate) temperature: Option<f32>,
+    #[serde(rename = "buildContainerWsUri")]
+    pub(crate) build_container_ws_uri: Option<String>,
+    #[serde(rename = "buildContainerApiKey")]
+    pub(crate) build_container_api_key: Option<String>,
     #[serde(rename = "authKey")]
     pub(crate) auth_key: String,
 }
@@ -334,6 +352,10 @@ pub(crate) struct ConfigResponse {
     #[serde(rename = "maxTokens")]
     pub(crate) max_tokens: u32,
     pub(crate) temperature: f32,
+    #[serde(rename = "buildContainerWsUri")]
+    pub(crate) build_container_ws_uri: String,
+    #[serde(rename = "buildContainerApiKey")]
+    pub(crate) build_container_api_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -562,4 +584,89 @@ pub(crate) struct OAuthTokenResponse {
 pub(crate) struct OAuthRefreshRequest {
     #[serde(rename = "refreshToken")]
     pub(crate) refresh_token: String,
+}
+
+// Tool response types
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ToolResponseContent {
+    pub(crate) content: Vec<ToolResponseContentItem>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ToolResponseContentItem {
+    #[serde(rename = "type")]
+    pub(crate) content_type: String,
+    pub(crate) text: String,
+}
+
+// Error response types
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ErrorResponse {
+    pub(crate) error: Value,
+}
+
+// OAuth request types
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct OAuthCodeExchangeRequest {
+    pub(crate) code: String,
+    pub(crate) state: String,
+    pub(crate) grant_type: String,
+    pub(crate) client_id: String,
+    pub(crate) redirect_uri: String,
+    pub(crate) code_verifier: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct OAuthRefreshTokenRequest {
+    pub(crate) grant_type: String,
+    pub(crate) refresh_token: String,
+    pub(crate) client_id: String,
+}
+
+// Build container request/response types
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct BuildContainerRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) metadata: Option<Value>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct SpiderAuthRequest {
+    pub(crate) jsonrpc: String,
+    pub(crate) method: String,
+    pub(crate) params: SpiderAuthParams,
+    pub(crate) id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct SpiderAuthParams {
+    pub(crate) api_key: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct LoadProjectParams {
+    pub(crate) project_uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) initial_zip: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct StartPackageParams {
+    pub(crate) package_dir: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct PersistParams {
+    pub(crate) directories: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct InitializeParams {
+    #[serde(rename = "protocolVersion")]
+    pub(crate) protocol_version: String,
+    #[serde(rename = "clientInfo")]
+    pub(crate) client_info: McpClientInfo,
+    pub(crate) capabilities: McpCapabilities,
 }

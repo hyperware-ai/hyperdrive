@@ -10,9 +10,17 @@ const BASE_URL = import.meta.env.BASE_URL;
 if (window.our) window.our.process = BASE_URL?.replace("/", "");
 
 function App() {
+  const getBasename = () => {
+    const path = window.location.pathname;
+    if (path.startsWith('/main:app-store:sys/public')) {
+      return '/main:app-store:sys/public';
+    }
+    return '/';
+  };
+
   return (
     <div className="bg-white dark:bg-stone grow self-stretch min-h-screen px-4 pb-32 md:pb-0 md:px-0 overflow-y-auto">
-      <Router basename={BASE_URL}>
+      <Router basename={getBasename()}>
         <NavBar />
         <Routes>
           <Route path={STORE_PATH} element={<Home />} />

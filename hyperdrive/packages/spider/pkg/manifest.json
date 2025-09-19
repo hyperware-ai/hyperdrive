@@ -8,6 +8,7 @@
       "homepage:homepage:sys",
       "http-client:distro:sys",
       "http-server:distro:sys",
+      "hypermap-cacher:hypermap-cacher:sys",
       "operator:hypergrid:ware.hypr",
       "timer:distro:sys",
       "vfs:distro:sys"
@@ -16,6 +17,7 @@
       "homepage:homepage:sys",
       "http-client:distro:sys",
       "http-server:distro:sys",
+      "hypermap-cacher:hypermap-cacher:sys",
       "operator:hypergrid:ware.hypr",
       "timer:distro:sys",
       "vfs:distro:sys"
