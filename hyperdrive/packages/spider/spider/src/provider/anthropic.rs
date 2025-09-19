@@ -5,21 +5,85 @@ use chrono::Utc;
 use serde_json::Value;
 
 use hyperware_anthropic_sdk::{
-    AnthropicClient, Content, CreateMessageRequest, Message as SdkMessage, ResponseContentBlock,
-    Role, Tool as SdkTool, ToolChoice,
+    AnthropicClient, CacheControl, Content, ContentBlock, CreateMessageRequest,
+    Message as SdkMessage, ResponseContentBlock, Role, SystemPromptBlock, Tool as SdkTool,
+    ToolChoice,
 };
+
+use hyperware_process_lib::println;
 
 use crate::provider::LlmProvider;
 use crate::types::{Message, Tool, ToolCall, ToolResult};
 
-pub(crate) struct AnthropicProvider {
+pub struct AnthropicProvider {
     api_key: String,
     is_oauth: bool,
 }
 
 impl AnthropicProvider {
-    pub(crate) fn new(api_key: String, is_oauth: bool) -> Self {
+    pub fn new(api_key: String, is_oauth: bool) -> Self {
         Self { api_key, is_oauth }
+    }
+
+    /// Check if the tool loop is actually done by asking Sonnet 4
+    pub async fn check_tool_loop_completion(&self, agent_message: &str) -> String {
+        // Create a specific prompt to check if the agent is done
+        let prompt = format!(
+            r#"The following is a response from an LLM agent to serve a user request, possibly after a tool loop. Respond with `done` (and nothing else) if this message seems to imply the agent is finished replying; `continue` (and nothing else) if it seems to imply the agent is not yet done with serving the request; error and one-sentence explanation else. If the agent is asking for input from the user, you must reply `done`.
+"""
+{}
+""""#,
+            agent_message
+        );
+
+        // Create a message to send to Sonnet 4
+        let check_message = Message {
+            role: "user".to_string(),
+            content: prompt,
+            tool_calls_json: None,
+            tool_results_json: None,
+            timestamp: Utc::now().timestamp() as u64,
+        };
+
+        // Use Sonnet 4 specifically for this check
+        match self
+            .complete_with_retry(
+                &[check_message],
+                &[],
+                Some("claude-sonnet-4-20250514"),
+                100,
+                0.0,
+            )
+            .await
+        {
+            Ok(response) => {
+                let response_text = response.content.trim().to_lowercase();
+
+                // Parse the response
+                if response_text == "done" {
+                    "done".to_string()
+                } else if response_text == "continue" {
+                    "continue".to_string()
+                } else if response_text.starts_with("error") {
+                    println!(
+                        "[DEBUG] Tool loop completion check error: {}",
+                        response_text
+                    );
+                    "done".to_string() // Behave like done on error
+                } else {
+                    // Failed to parse - behave like done but log error
+                    println!(
+                        "[DEBUG] Failed to parse tool loop completion check response: {}",
+                        response_text
+                    );
+                    "done".to_string()
+                }
+            }
+            Err(e) => {
+                println!("[DEBUG] Error checking tool loop completion: {}", e);
+                "done".to_string() // Default to done on error
+            }
+        }
     }
 }
 
@@ -48,9 +112,11 @@ impl AnthropicProvider {
     // Transform MCP JSON Schema to Anthropic-compatible format
     fn transform_mcp_to_anthropic_schema(&self, mcp_schema: &Value) -> Value {
         // Start with basic structure
-        let mut anthropic_schema = serde_json::json!({
-            "type": "object"
-        });
+        let mut anthropic_schema = Value::Object(serde_json::Map::new());
+        anthropic_schema
+            .as_object_mut()
+            .unwrap()
+            .insert("type".to_string(), Value::String("object".to_string()));
 
         if let Some(t) = mcp_schema.get("type") {
             anthropic_schema["type"] = t.clone();
@@ -242,16 +308,20 @@ impl AnthropicProvider {
             AnthropicClient::new(&self.api_key)
         };
 
-        // Convert our Message format to SDK Message format
+        // Convert our Message format to SDK Message format with caching on the final message
         let mut sdk_messages = Vec::new();
+        let messages_count = messages.len();
 
-        for msg in messages {
+        for (index, msg) in messages.iter().enumerate() {
             let role = match msg.role.as_str() {
                 "user" => Role::User,
                 "assistant" => Role::Assistant,
                 "tool" => Role::User, // Tool results are sent as user messages in Claude API
                 _ => Role::User,
             };
+
+            // Check if this is the final message
+            let is_final_message = index == messages_count - 1;
 
             // Handle different message types
             let content = if let Some(tool_results_json) = &msg.tool_results_json {
@@ -267,76 +337,98 @@ impl AnthropicProvider {
                         result.tool_call_id, result.result
                     ));
                 }
-                Content::Text(result_text)
+
+                // Add cache control to final message
+                if is_final_message {
+                    Content::Blocks(vec![ContentBlock::Text {
+                        text: result_text,
+                        cache_control: Some(CacheControl::ephemeral()),
+                    }])
+                } else {
+                    Content::Text(result_text)
+                }
             } else if let Some(_tool_calls_json) = &msg.tool_calls_json {
-                // For now, include tool calls as text in the message
-                // The SDK will handle tool use blocks separately
-                Content::Text(format!("{}\n[Tool calls pending]", msg.content))
+                // Add cache control to final message
+                if is_final_message {
+                    Content::Blocks(vec![ContentBlock::Text {
+                        text: msg.content.clone(),
+                        cache_control: Some(CacheControl::ephemeral()),
+                    }])
+                } else {
+                    Content::Text(msg.content.clone())
+                }
             } else {
-                Content::Text(msg.content.clone())
+                // Add cache control to final message
+                if is_final_message {
+                    Content::Blocks(vec![ContentBlock::Text {
+                        text: msg.content.clone(),
+                        cache_control: Some(CacheControl::ephemeral()),
+                    }])
+                } else {
+                    Content::Text(msg.content.clone())
+                }
             };
 
             sdk_messages.push(SdkMessage { role, content });
         }
 
-        // Convert our Tool format to SDK Tool format
-        let sdk_tools: Vec<SdkTool> = tools
-            .iter()
-            .map(|tool| {
-                // Parse the MCP schema from either inputSchema or parameters
-                let mcp_schema = if let Some(ref input_schema_json) = tool.input_schema_json {
-                    serde_json::from_str::<Value>(input_schema_json)
-                        .unwrap_or_else(|_| serde_json::json!({}))
-                } else {
-                    serde_json::from_str::<Value>(&tool.parameters)
-                        .unwrap_or_else(|_| serde_json::json!({}))
-                };
+        // Convert our Tool format to SDK Tool format with caching on the last tool
+        let mut sdk_tools: Vec<SdkTool> = Vec::new();
+        let tools_count = tools.len();
 
-                // Transform MCP schema to Anthropic-compatible format
-                let anthropic_schema = self.transform_mcp_to_anthropic_schema(&mcp_schema);
+        for (index, tool) in tools.iter().enumerate() {
+            // Parse the MCP schema from either inputSchema or parameters
+            let mcp_schema = if let Some(ref input_schema_json) = tool.input_schema_json {
+                serde_json::from_str::<Value>(input_schema_json)
+                    .unwrap_or_else(|_| Value::Object(serde_json::Map::new()))
+            } else {
+                serde_json::from_str::<Value>(&tool.parameters)
+                    .unwrap_or_else(|_| Value::Object(serde_json::Map::new()))
+            };
 
-                // Debug: Log the transformed schema
-                println!(
-                    "Spider: Tool {} transformed schema: {}",
-                    tool.name,
-                    serde_json::to_string_pretty(&anthropic_schema)
-                        .unwrap_or_else(|_| "error".to_string())
-                );
+            // Transform MCP schema to Anthropic-compatible format
+            let anthropic_schema = self.transform_mcp_to_anthropic_schema(&mcp_schema);
 
-                // Extract required fields from the transformed schema
-                let required = anthropic_schema
-                    .get("required")
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(String::from))
-                            .collect()
-                    })
-                    .unwrap_or_else(Vec::new);
+            // Extract required fields from the transformed schema
+            let required = anthropic_schema
+                .get("required")
+                .and_then(|r| r.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_else(Vec::new);
 
-                SdkTool::new(
-                    tool.name.clone(),
-                    tool.description.clone(),
-                    anthropic_schema["properties"].clone(),
-                    required,
-                    None,
-                    //anthropic_schema.get("type").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                )
-            })
-            .collect();
+            let mut sdk_tool = SdkTool::new(
+                tool.name.clone(),
+                tool.description.clone(),
+                anthropic_schema["properties"].clone(),
+                required,
+                None,
+                //anthropic_schema.get("type").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            );
+
+            // Add cache control to the last tool to cache all tool definitions
+            if index == tools_count - 1 && tools_count > 0 {
+                sdk_tool = sdk_tool.with_cache_control(CacheControl::ephemeral());
+            }
+
+            sdk_tools.push(sdk_tool);
+        }
 
         // Create the request with the specified model or default
         let model_id = model.unwrap_or("claude-sonnet-4-20250514");
         let mut request = CreateMessageRequest::new(model_id, sdk_messages, max_tokens)
             .with_temperature(temperature);
 
-        // Add system prompt for OAuth tokens
+        // Add system prompt for OAuth tokens with caching
         if self.is_oauth {
-            request =
-                request.with_system("You are Claude Code, Anthropic's official CLI for Claude.");
+            request = request.with_system_blocks(vec![SystemPromptBlock::text(
+                "You are Claude Code, Anthropic's official CLI for Claude.",
+            )
+            .with_cache_control(CacheControl::ephemeral())]);
         }
-
-        println!("Tools: {sdk_tools:?}");
 
         // Add tools if any
         if !sdk_tools.is_empty() {
@@ -348,16 +440,21 @@ impl AnthropicProvider {
         }
 
         // Send the message using the SDK
-        let response = client
-            .send_message(request)
-            .await
-            .map_err(|e| format!("Failed to send message via SDK: {:?}", e))?;
+        println!("[DEBUG] Sending request to Anthropic API");
+        //println!("[DEBUG] Request: {:?}", request);
+        let response = client.send_message(request).await.map_err(|e| {
+            println!("[DEBUG] ERROR: Failed to send message via SDK: {:?}", e);
+            format!("Failed to send message via SDK: {:?}", e)
+        })?;
+
+        println!("[DEBUG] Received response from Anthropic API");
+        println!("[DEBUG] Raw SDK response: {:?}", response);
 
         // Convert SDK response back to our Message format
         let mut content_text = String::new();
         let mut tool_calls: Vec<ToolCall> = Vec::new();
 
-        for block in &response.content {
+        for block in response.content.iter() {
             match block {
                 ResponseContentBlock::Text { text, .. } => {
                     if !content_text.is_empty() {
@@ -376,9 +473,16 @@ impl AnthropicProvider {
             }
         }
 
-        Ok(Message {
+        // Replace empty content with "." to avoid Anthropic API issues
+        let final_content = if content_text.is_empty() {
+            ".".to_string()
+        } else {
+            content_text.clone()
+        };
+
+        let final_message = Message {
             role: "assistant".to_string(),
-            content: content_text,
+            content: final_content,
             tool_calls_json: if tool_calls.is_empty() {
                 None
             } else {
@@ -386,6 +490,8 @@ impl AnthropicProvider {
             },
             tool_results_json: None,
             timestamp: Utc::now().timestamp() as u64,
-        })
+        };
+
+        Ok(final_message)
     }
 }

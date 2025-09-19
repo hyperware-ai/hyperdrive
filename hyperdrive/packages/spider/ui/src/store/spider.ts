@@ -66,6 +66,8 @@ interface SpiderConfig {
   defaultLlmProvider: string;
   maxTokens: number;
   temperature: number;
+  buildContainerWsUri: string;
+  buildContainerApiKey: string;
 }
 
 interface SpiderStore {
@@ -163,6 +165,8 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
     defaultLlmProvider: 'anthropic',
     maxTokens: 4096,
     temperature: 0.7,
+    buildContainerWsUri: '',
+    buildContainerApiKey: '',
   },
   isLoading: false,
   error: null,

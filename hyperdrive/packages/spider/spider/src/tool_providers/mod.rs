@@ -1,19 +1,67 @@
+pub mod build_container;
 pub mod hypergrid;
 
 use crate::types::{SpiderState, Tool};
 use serde_json::Value;
+
+pub enum ToolExecutionCommand {
+    // Build container commands
+    InitBuildContainer {
+        metadata: Option<Value>,
+    },
+    LoadProject {
+        project_uuid: Option<String>,
+        name: String, // Now required
+        initial_zip: Option<String>,
+        channel_id: Option<u32>,
+    },
+    StartPackage {
+        channel_id: u32,
+        package_dir: String,
+    },
+    Persist {
+        channel_id: u32,
+        directories: Vec<String>,
+    },
+    DoneBuildContainer {
+        metadata: Option<Value>,
+        channel_id: Option<u32>,
+    },
+    GetProjects,
+    // Hypergrid commands
+    HypergridAuthorize {
+        server_id: String,
+        url: String,
+        token: String,
+        client_id: String,
+        node: String,
+        name: Option<String>,
+    },
+    HypergridSearch {
+        server_id: String,
+        query: String,
+    },
+    HypergridCall {
+        server_id: String,
+        provider_id: String,
+        provider_name: String,
+        call_args: Vec<(String, String)>,
+    },
+    // Direct result (for synchronous operations)
+    DirectResult(Result<Value, String>),
+}
 
 pub trait ToolProvider: Send + Sync {
     fn get_tools(&self, state: &SpiderState) -> Vec<Tool>;
 
     fn should_include_tool(&self, tool_name: &str, state: &SpiderState) -> bool;
 
-    fn execute_tool(
+    fn prepare_execution(
         &self,
         tool_name: &str,
         parameters: &Value,
-        state: &mut SpiderState,
-    ) -> Result<Value, String>;
+        state: &SpiderState,
+    ) -> Result<ToolExecutionCommand, String>;
 
     fn get_provider_id(&self) -> &str;
 }
@@ -52,9 +100,13 @@ impl ToolProviderRegistry {
         tools
     }
 
-    pub fn find_provider_for_tool(&self, tool_name: &str) -> Option<&dyn ToolProvider> {
+    pub fn find_provider_for_tool(
+        &self,
+        tool_name: &str,
+        state: &SpiderState,
+    ) -> Option<&dyn ToolProvider> {
         for provider in &self.providers {
-            let tools = provider.get_tools(&SpiderState::default());
+            let tools = provider.get_tools(state);
             if tools.iter().any(|t| t.name == tool_name) {
                 return Some(provider.as_ref());
             }
