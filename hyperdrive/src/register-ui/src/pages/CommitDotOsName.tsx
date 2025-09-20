@@ -6,6 +6,7 @@ import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 
 import DirectNodeCheckbox from "../components/DirectCheckbox";
+import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
 import { Tooltip } from "../components/Tooltip";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
@@ -17,15 +18,15 @@ import BackButton from "../components/BackButton";
 interface RegisterOsNameProps extends PageProps { }
 
 function CommitDotOsName({
-    direct,
-    setDirect,
-    setHnsName,
-    setNetworkingKey,
-    setIpAddress,
-    setWsPort,
-    setTcpPort,
-    setRouters,
-}: RegisterOsNameProps) {
+                             direct,
+                             setDirect,
+                             setHnsName,
+                             setNetworkingKey,
+                             setIpAddress,
+                             setWsPort,
+                             setTcpPort,
+                             setRouters,
+                         }: RegisterOsNameProps) {
     let { address } = useAccount();
     let navigate = useNavigate();
     let { openConnectModal } = useConnectModal();
@@ -47,6 +48,43 @@ function CommitDotOsName({
     const [nameValidities, setNameValidities] = useState<string[]>([])
     const [triggerNameCheck, setTriggerNameCheck] = useState<boolean>(false)
     const [isConfirmed, setIsConfirmed] = useState(false)
+    const [specifyRouters, setSpecifyRouters] = useState(false)
+    const [customRouters, setCustomRouters] = useState('')
+
+    // Modified setDirect function to handle mutual exclusivity
+    const handleSetDirect = (value: boolean) => {
+        setDirect(value);
+        if (value) {
+            setSpecifyRouters(false);
+            setCustomRouters(''); // Clear custom routers when switching to direct
+        }
+    };
+
+    // Modified setSpecifyRouters function to handle mutual exclusivity
+    const handleSetSpecifyRouters = (value: boolean) => {
+        setSpecifyRouters(value);
+        if (value) {
+            setDirect(false);
+        } else {
+            setCustomRouters(''); // Clear custom routers when unchecking
+        }
+    };
+
+    // Add a validation function for custom routers
+    const getValidCustomRouters = () => {
+        if (!specifyRouters) return [];
+        return customRouters
+            .split('\n')
+            .map(router => router.trim())
+            .filter(router => router.length > 0);
+    };
+
+    const isCustomRoutersValid = () => {
+        if (!specifyRouters) return true; // Not required if checkbox is unchecked
+        return getValidCustomRouters().length > 0;
+    };
+
+
 
     useEffect(() => {
         document.title = "Register"
@@ -71,6 +109,17 @@ function CommitDotOsName({
         }
         setName(toAscii(name));
         console.log("committing to .os name: ", name)
+
+        if (specifyRouters && customRouters.trim()) {
+            const routersToUse = customRouters
+                .split('\n')
+                .map(router => router.trim())
+                .filter(router => router.length > 0);
+
+            // Update the routers in your app state for the next page to use
+            setRouters(routersToUse);
+        }
+
         const commit = keccak256(
             encodeAbiParameters(
                 parseAbiParameters('bytes memory, address'),
@@ -107,7 +156,7 @@ function CommitDotOsName({
             throw err;
         }
 
-    }, [name, direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
+    }, [name, specifyRouters, customRouters, direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
 
     useEffect(() => {
         if (txConfirmed) {
@@ -116,10 +165,18 @@ function CommitDotOsName({
             setTimeout(() => {
                 setIsConfirmed(true);
                 setHnsName(`${name}.os`);
-                navigate("/mint-os-name");
+
+                if (specifyRouters && customRouters.trim()) {
+                    const routersToUse = customRouters
+                        .split('\n')
+                        .map(router => router.trim())
+                        .filter(router => router.length > 0);
+                    setRouters(routersToUse);
+                }
+                    navigate("/mint-os-name");
             }, 16000)
         }
-    }, [txConfirmed, address, name, setHnsName, navigate]);
+    }, [txConfirmed, address, name, setHnsName, navigate, specifyRouters, customRouters, setRouters]);
 
     return (
         <div className="container fade-in">
@@ -143,11 +200,46 @@ function CommitDotOsName({
                                 <EnterHnsName {...enterOsNameProps} />
                                 <details className="advanced-options">
                                     <summary>Advanced Options</summary>
-                                    <DirectNodeCheckbox {...{ direct, setDirect }} />
+                                    <div className="flex flex-col gap-3">
+                                        <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
+                                        <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
+                                        {specifyRouters && (
+                                            <div className="flex flex-col gap-2 ml-6">
+                                                <label htmlFor="custom-routers" className="text-sm font-medium">
+                                                    Router Names: <span className="text-red-500">*</span>
+                                                </label>
+                                                <textarea
+                                                    id="custom-routers"
+                                                    value={customRouters}
+                                                    onChange={(e) => setCustomRouters(e.target.value)}
+                                                    placeholder="Enter one router name per line, e.g.:&#10;router-node-1.hypr&#10;other-router.hypr&#10;myrouter.os"
+                                                    className={`input resize-vertical min-h-[80px] ${
+                                                        specifyRouters && !isCustomRoutersValid()
+                                                            ? 'border-red-500 focus:border-red-500'
+                                                            : ''
+                                                    }`}
+                                                    rows={4}
+                                                />
+                                                <span className={`text-xs ${
+                                                    !isCustomRoutersValid() ? 'text-red-500' : 'text-gray-500'
+                                                }`}>
+                                                    {!isCustomRoutersValid()
+                                                        ? 'At least one router name is required'
+                                                        : 'Enter one router name per line. These routers will be used for your indirect node.'
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </details>
+
                                 <div className="flex flex-col gap-1">
                                     <button
-                                        disabled={nameValidities.length !== 0 || isPending || isConfirming}
+                                        disabled={nameValidities.length !== 0 ||
+                                            isPending ||
+                                            isConfirming ||
+                                            (specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0)
+                                        }
                                         type="submit"
                                         className="button"
                                     >

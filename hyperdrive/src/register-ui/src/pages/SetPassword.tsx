@@ -14,6 +14,7 @@ type SetPasswordProps = {
   setPw: React.Dispatch<React.SetStateAction<string>>;
   nodeChainId: string;
   closeConnect: () => void;
+  routers?: string[];
 };
 
 function SetPassword({
@@ -22,6 +23,7 @@ function SetPassword({
   pw,
   reset,
   setPw,
+  routers,
 }: SetPasswordProps) {
   const [pw2, setPw2] = useState("");
   const [error, setError] = useState("");
@@ -114,6 +116,7 @@ function SetPassword({
                 timestamp,
                 signature,
                 chain_id: chainId,
+                custom_routers: routers && routers.length > 0 ? routers : null,
               }),
             });
             const base64String = await result.json();
