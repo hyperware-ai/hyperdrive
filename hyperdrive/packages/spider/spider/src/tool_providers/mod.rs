@@ -1,5 +1,6 @@
 pub mod build_container;
 pub mod hypergrid;
+pub mod hyperware;
 
 use crate::types::{SpiderState, Tool};
 use serde_json::Value;
@@ -46,6 +47,19 @@ pub enum ToolExecutionCommand {
         provider_id: String,
         provider_name: String,
         call_args: Vec<(String, String)>,
+    },
+    // Hyperware commands
+    HyperwareSearchApis {
+        query: String,
+    },
+    HyperwareGetApi {
+        package_id: String,
+    },
+    HyperwareCallApi {
+        package_id: String,
+        method: String,
+        args: String,
+        timeout: u64,
     },
     // Direct result (for synchronous operations)
     DirectResult(Result<Value, String>),

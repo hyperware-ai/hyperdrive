@@ -48,6 +48,7 @@ mod tool_providers;
 use tool_providers::{
     build_container::{BuildContainerExt, BuildContainerToolProvider},
     hypergrid::{HypergridExt, HypergridToolProvider},
+    hyperware::HyperwareToolProvider,
     ToolProvider,
 };
 
@@ -228,6 +229,11 @@ impl SpiderState {
         // Always register the provider (even if server exists)
         self.tool_provider_registry
             .register(Box::new(hypergrid_provider));
+
+        // Register Hyperware tool provider
+        let hyperware_provider = HyperwareToolProvider::new();
+        self.tool_provider_registry
+            .register(Box::new(hyperware_provider));
 
         // Check if hypergrid server exists
         let has_hypergrid = self
@@ -3029,6 +3035,18 @@ impl SpiderState {
                 self.execute_hypergrid_call_impl(server_id, provider_id, provider_name, call_args)
                     .await
             }
+            ToolExecutionCommand::HyperwareSearchApis { query } => {
+                tool_providers::hyperware::search_apis(&query).await
+            }
+            ToolExecutionCommand::HyperwareGetApi { package_id } => {
+                tool_providers::hyperware::get_api(&package_id).await
+            }
+            ToolExecutionCommand::HyperwareCallApi {
+                package_id,
+                method,
+                args,
+                timeout,
+            } => tool_providers::hyperware::call_api(&package_id, &method, &args, timeout).await,
             ToolExecutionCommand::DirectResult(result) => result,
         }
     }
