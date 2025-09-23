@@ -268,11 +268,7 @@ impl SpiderState {
             let hyperware_provider = HyperwareToolProvider::new();
             let fresh_tools = hyperware_provider.get_tools(self);
             // Update the existing server's tools
-            if let Some(server) = self
-                .mcp_servers
-                .iter_mut()
-                .find(|s| s.id == "hyperware")
-            {
+            if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "hyperware") {
                 server.tools = fresh_tools;
                 println!(
                     "Spider: Hyperware tools refreshed with {} tools",

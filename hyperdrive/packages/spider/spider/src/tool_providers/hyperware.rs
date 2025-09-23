@@ -231,8 +231,17 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
             if iface_name == "standard" || iface_name == "lib" {
                 for (type_name, type_id) in &iface.types {
                     // Only include certain standard types that are commonly used
-                    if matches!(type_name.as_str(), "address" | "process-id" | "package-id" |
-                               "node-id" | "capability" | "request" | "response" | "message") {
+                    if matches!(
+                        type_name.as_str(),
+                        "address"
+                            | "process-id"
+                            | "package-id"
+                            | "node-id"
+                            | "capability"
+                            | "request"
+                            | "response"
+                            | "message"
+                    ) {
                         let rust_type_name = to_upper_camel_case(type_name);
                         if seen_types.insert(rust_type_name.clone()) {
                             let type_def = &resolve.types[*type_id];
@@ -257,7 +266,9 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
                 let type_name_camel = to_upper_camel_case(type_name);
 
                 // Skip types ending with SignatureHttp or SignatureRemote
-                if type_name_camel.ends_with("SignatureHttp") || type_name_camel.ends_with("SignatureRemote") {
+                if type_name_camel.ends_with("SignatureHttp")
+                    || type_name_camel.ends_with("SignatureRemote")
+                {
                     continue;
                 }
 
@@ -280,22 +291,27 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
 
                 if seen_types.insert(format!("{}::{}", process_name, func_name_formatted)) {
                     let docs = extract_docs(&func.docs);
-                    let params_schema = func.params.iter().map(|(param_name, param_type)| {
-                        json!({
-                            "name": to_snake_case(param_name),
-                            "type": type_ref_to_json(&param_type, &resolve)
+                    let params_schema = func
+                        .params
+                        .iter()
+                        .map(|(param_name, param_type)| {
+                            json!({
+                                "name": to_snake_case(param_name),
+                                "type": type_ref_to_json(&param_type, &resolve)
+                            })
                         })
-                    }).collect::<Vec<_>>();
+                        .collect::<Vec<_>>();
 
                     let returns_schema = match &func.results {
-                        wit_parser::Results::Named(named) => {
-                            named.iter().map(|(name, type_ref)| {
+                        wit_parser::Results::Named(named) => named
+                            .iter()
+                            .map(|(name, type_ref)| {
                                 json!({
                                     "name": to_snake_case(name),
                                     "type": type_ref_to_json(&type_ref, &resolve)
                                 })
-                            }).collect::<Vec<_>>()
-                        }
+                            })
+                            .collect::<Vec<_>>(),
                         wit_parser::Results::Anon(type_ref) => {
                             vec![json!({"type": type_ref_to_json(&type_ref, &resolve)})]
                         }
@@ -392,7 +408,10 @@ async fn get_package_documentation(package_id: &str) -> Result<String, String> {
             // Note: wit-parser Package doesn't have a docs field directly
             // Package docs would typically be in a README or main interface
             // For now, return formatted package info
-            return Ok(format!("Package: {} - Provides API interfaces and types", pkg_name.name));
+            return Ok(format!(
+                "Package: {} - Provides API interfaces and types",
+                pkg_name.name
+            ));
         }
     }
 
@@ -428,12 +447,16 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
 
     match &type_def.kind {
         TypeDefKind::Record(record) => {
-            let fields = record.fields.iter().map(|field| {
-                (
-                    to_snake_case(&field.name),
-                    type_ref_to_json(&field.ty, resolve)
-                )
-            }).collect::<serde_json::Map<String, Value>>();
+            let fields = record
+                .fields
+                .iter()
+                .map(|field| {
+                    (
+                        to_snake_case(&field.name),
+                        type_ref_to_json(&field.ty, resolve),
+                    )
+                })
+                .collect::<serde_json::Map<String, Value>>();
 
             json!({
                 "type": "object",
@@ -441,16 +464,20 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
             })
         }
         TypeDefKind::Variant(variant) => {
-            let cases = variant.cases.iter().map(|case| {
-                let case_schema = match &case.ty {
-                    Some(ty) => type_ref_to_json(ty, resolve),
-                    None => json!("null")
-                };
-                json!({
-                    "name": case.name,
-                    "type": case_schema
+            let cases = variant
+                .cases
+                .iter()
+                .map(|case| {
+                    let case_schema = match &case.ty {
+                        Some(ty) => type_ref_to_json(ty, resolve),
+                        None => json!("null"),
+                    };
+                    json!({
+                        "name": case.name,
+                        "type": case_schema
+                    })
                 })
-            }).collect::<Vec<_>>();
+                .collect::<Vec<_>>();
 
             json!({
                 "type": "variant",
@@ -458,7 +485,11 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
             })
         }
         TypeDefKind::Enum(enum_def) => {
-            let cases = enum_def.cases.iter().map(|case| &case.name).collect::<Vec<_>>();
+            let cases = enum_def
+                .cases
+                .iter()
+                .map(|case| &case.name)
+                .collect::<Vec<_>>();
             json!({
                 "type": "enum",
                 "values": cases
@@ -471,7 +502,11 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
             })
         }
         TypeDefKind::Tuple(tuple) => {
-            let types = tuple.types.iter().map(|ty| type_ref_to_json(ty, resolve)).collect::<Vec<_>>();
+            let types = tuple
+                .types
+                .iter()
+                .map(|ty| type_ref_to_json(ty, resolve))
+                .collect::<Vec<_>>();
             json!({
                 "type": "tuple",
                 "items": types
@@ -491,14 +526,18 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
             })
         }
         TypeDefKind::Flags(flags) => {
-            let flag_names = flags.flags.iter().map(|flag| &flag.name).collect::<Vec<_>>();
+            let flag_names = flags
+                .flags
+                .iter()
+                .map(|flag| &flag.name)
+                .collect::<Vec<_>>();
             json!({
                 "type": "flags",
                 "flags": flag_names
             })
         }
         TypeDefKind::Type(ty) => type_ref_to_json(ty, resolve),
-        _ => json!("unknown")
+        _ => json!("unknown"),
     }
 }
 
