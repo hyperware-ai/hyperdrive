@@ -56,7 +56,7 @@ pub enum ToolExecutionCommand {
         package_id: String,
     },
     HyperwareCallApi {
-        package_id: String,
+        process_id: String,
         method: String,
         args: String,
         timeout: u64,

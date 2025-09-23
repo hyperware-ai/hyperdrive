@@ -7,4 +7,4 @@ edition = "2021"
 anyhow = "1.0"
 serde_json = "1.0"
 wit-parser = { version = "0.220.0", features = ["serde"] }
-zip = { version = "2.2", default-features = false }
+zip = { version = "2.2", default-features = false, features = ["deflate"] }

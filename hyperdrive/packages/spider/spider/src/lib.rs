@@ -235,6 +235,52 @@ impl SpiderState {
         self.tool_provider_registry
             .register(Box::new(hyperware_provider));
 
+        // Check if hyperware server exists
+        let has_hyperware = self
+            .mcp_servers
+            .iter()
+            .any(|s| s.transport.transport_type == "hyperware");
+        if !has_hyperware {
+            // Create new hyperware server
+            let hyperware_provider = HyperwareToolProvider::new();
+            let hyperware_tools = hyperware_provider.get_tools(self);
+            let hyperware_server = McpServer {
+                id: "hyperware".to_string(),
+                name: "Hyperware".to_string(),
+                transport: types::TransportConfig {
+                    transport_type: "hyperware".to_string(),
+                    command: None,
+                    args: None,
+                    url: None,
+                    hypergrid_token: None,
+                    hypergrid_client_id: None,
+                    hypergrid_node: None,
+                },
+                tools: hyperware_tools,
+                connected: true, // Always mark as connected
+            };
+            self.mcp_servers.push(hyperware_server);
+            println!("Spider: Hyperware MCP server initialized");
+        } else {
+            // Server exists, refresh its tools from the provider
+            println!("Spider: Refreshing Hyperware tools on startup");
+            // Get fresh tools from provider
+            let hyperware_provider = HyperwareToolProvider::new();
+            let fresh_tools = hyperware_provider.get_tools(self);
+            // Update the existing server's tools
+            if let Some(server) = self
+                .mcp_servers
+                .iter_mut()
+                .find(|s| s.id == "hyperware")
+            {
+                server.tools = fresh_tools;
+                println!(
+                    "Spider: Hyperware tools refreshed with {} tools",
+                    server.tools.len()
+                );
+            }
+        }
+
         // Check if hypergrid server exists
         let has_hypergrid = self
             .mcp_servers
@@ -2688,6 +2734,18 @@ impl SpiderState {
                     Err(format!("Unknown build container tool: {}", tool_name))
                 }
             }
+            "hyperware" => {
+                // Native hyperware tools are handled by the tool provider
+                if let Some(provider) = self
+                    .tool_provider_registry
+                    .find_provider_for_tool(tool_name, self)
+                {
+                    let command = provider.prepare_execution(tool_name, parameters, self)?;
+                    self.execute_tool_command(command, conversation_id).await
+                } else {
+                    Err(format!("Unknown hyperware tool: {}", tool_name))
+                }
+            }
             "stdio" | "websocket" => {
                 // Find the WebSocket connection for this server
                 let channel_id = self
@@ -3042,11 +3100,11 @@ impl SpiderState {
                 tool_providers::hyperware::get_api(&package_id).await
             }
             ToolExecutionCommand::HyperwareCallApi {
-                package_id,
+                process_id,
                 method,
                 args,
                 timeout,
-            } => tool_providers::hyperware::call_api(&package_id, &method, &args, timeout).await,
+            } => tool_providers::hyperware::call_api(&process_id, &method, &args, timeout).await,
             ToolExecutionCommand::DirectResult(result) => result,
         }
     }
