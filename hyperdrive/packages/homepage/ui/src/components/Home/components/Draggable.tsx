@@ -64,16 +64,16 @@ export const Draggable: React.FC<DraggableProps> = ({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
+      try {e.preventDefault();} catch {}
       const touch = e.touches[0];
       handleMove(touch.clientX, touch.clientY);
     };
     const handleMouseUp = (e: MouseEvent) => {
-      e.preventDefault();
+      try {e.preventDefault();} catch {}
       handleEnd();
     };
     const handleTouchEnd = (e: TouchEvent) => {
-      e.preventDefault();
+      try {e.preventDefault();} catch {}
       handleEnd();
     };
 
