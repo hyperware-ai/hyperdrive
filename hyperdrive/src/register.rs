@@ -1,5 +1,6 @@
 use crate::{keygen, sol::*};
 use crate::{HYPERMAP_ADDRESS, MULTICALL_ADDRESS};
+use crate::eth_config_utils::add_provider_to_config;
 use alloy::providers::{Provider, ProviderBuilder, RootProvider};
 use alloy::pubsub::PubSubFrontend;
 use alloy::rpc::client::WsConnect;
@@ -354,6 +355,12 @@ async fn handle_boot(
         } else {
             our.both_to_routers(); // Use defaults
         }
+    }
+
+    if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
+        println!("Custom Base L2 access providers specified: {:?}\r", custom_base_l2_providers);
+    } else {
+        println!("No custom Base L2 access providers specified\r");
     }
 
     let jwt_seed = SystemRandom::new();

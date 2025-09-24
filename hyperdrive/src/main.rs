@@ -1,3 +1,4 @@
+use crate::eth_config_utils::add_provider_to_config;
 use anyhow::Result;
 use clap::{arg, value_parser, Command};
 use lib::types::core::{
@@ -15,6 +16,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 mod eth;
+mod eth_config_utils;
 #[cfg(feature = "simulation-mode")]
 mod fakenet;
 pub mod fd_manager;
@@ -397,7 +399,29 @@ async fn main() {
     .await
     .expect("state load failed!");
 
+    // Create the nested directory structure before spawning tasks
+    let vfs_dir = home_directory_path.join("vfs");
+    let hypermap_cacher_dir = vfs_dir.join("hypermap-cacher:sys");
+    let initfiles_dir = hypermap_cacher_dir.join("initfiles");
+
+    // Create all directories at once (creates parent directories if they don't exist)
+    if let Err(e) = tokio::fs::create_dir_all(&initfiles_dir).await {
+        eprintln!("Failed to create directory structure {}: {}", initfiles_dir.display(), e);
+        // You might want to handle this error based on your needs
+    } else {
+        println!("✓ Created directory structure: {}", initfiles_dir.display());
+    }
+
+    // Create the data.txt file with test content
+    let data_file_path = initfiles_dir.join("data.txt");
+    if let Err(e) = tokio::fs::write(&data_file_path, "TESTDATA").await {
+        eprintln!("Failed to create data.txt file: {}", e);
+    } else {
+        println!("✓ Created test file: {}", data_file_path.display());
+    }
+
     let mut tasks = tokio::task::JoinSet::<Result<()>>::new();
+    println!("spawning the kernel task\r");
     tasks.spawn(kernel::kernel(
         our.clone(),
         networking_keypair_arc.clone(),
@@ -429,6 +453,7 @@ async fn main() {
             })
             .collect(),
     ));
+    println!("spawning the net task\r");
     tasks.spawn(net::networking(
         our.clone(),
         our_ip.to_string(),
@@ -498,6 +523,7 @@ async fn main() {
         timer_service_receiver,
         print_sender.clone(),
     ));
+    println!("spawning the eth task\r");
     tasks.spawn(eth::provider(
         our.name.clone(),
         home_directory_path.clone(),
@@ -1015,45 +1041,6 @@ async fn login_with_password(
         .unwrap();
 
     (our, disk_keyfile, k)
-}
-
-/// Add a provider config with deduplication logic (same as runtime system)
-fn add_provider_to_config(
-    eth_provider_config: &mut lib::eth::SavedConfigs,
-    new_provider: lib::eth::ProviderConfig,
-) {
-    match &new_provider.provider {
-        lib::eth::NodeOrRpcUrl::RpcUrl { url, .. } => {
-            // Remove any existing provider with this URL
-            eth_provider_config.0.retain(|config| {
-                if let lib::eth::NodeOrRpcUrl::RpcUrl {
-                    url: existing_url, ..
-                } = &config.provider
-                {
-                    existing_url != url
-                } else {
-                    true
-                }
-            });
-        }
-        lib::eth::NodeOrRpcUrl::Node { hns_update, .. } => {
-            // Remove any existing provider with this node name
-            eth_provider_config.0.retain(|config| {
-                if let lib::eth::NodeOrRpcUrl::Node {
-                    hns_update: existing_update,
-                    ..
-                } = &config.provider
-                {
-                    existing_update.name != hns_update.name
-                } else {
-                    true
-                }
-            });
-        }
-    }
-
-    // Insert the new provider at the front (position 0)
-    eth_provider_config.0.insert(0, new_provider);
 }
 
 fn make_remote_link(url: &str, text: &str) -> String {

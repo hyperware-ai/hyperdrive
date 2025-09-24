@@ -51,6 +51,8 @@ pub struct BootInfo {
     pub timestamp: u64,
     pub chain_id: u64,
     pub custom_routers: Option<Vec<String>>,
+    pub custom_cache_sources: Option<Vec<String>>,
+    pub custom_base_l2_access_providers: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
