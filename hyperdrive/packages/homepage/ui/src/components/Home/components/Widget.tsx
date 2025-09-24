@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import type { HomepageApp } from '../../../types/app.types';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import { Draggable } from './Draggable';
@@ -48,7 +48,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
     }
   };
 
-  const size = settings.size || calculateSize();
+  const size = useMemo(() => settings.size || calculateSize(), [settings.size]);
 
   // Calculate responsive position based on index
   const calculatePosition = () => {
@@ -67,7 +67,7 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
     }
   };
 
-  const position = settings.position || calculatePosition();
+  const position = useMemo(() => settings.position || calculatePosition(), [settings.position]);
 
   // Widgets can either have widget HTML content or be loaded from their app URL
   const isHtmlWidget = app.widget && app.widget !== 'true' && app.widget.includes('<');
@@ -132,10 +132,13 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
     >
       <button
         onClick={(e) => {
-          try {
-            e.stopPropagation();
-          } catch { }
-
+          if (isMobile && e.touches?.length > 0) return;
+          try { e.stopPropagation(); } catch { }
+          toggleWidget(app.id);
+        }}
+        onTouchEnd={(e) => {
+          if (!isMobile || e.touches?.length === 0) return;
+          try { e.stopPropagation(); } catch { }
           toggleWidget(app.id);
         }}
         className="clear thin w-3 h-3 !p-0 absolute top-3 right-3 z-30"
