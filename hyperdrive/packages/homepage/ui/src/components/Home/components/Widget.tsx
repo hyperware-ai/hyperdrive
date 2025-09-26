@@ -132,11 +132,11 @@ export const Widget: React.FC<WidgetProps> = ({ app, index, totalWidgets, childr
     >
       <button
         onClick={(e) => {
-          if (isMobile && e.touches?.length > 0) return;
+          if (isMobile) return;
           toggleWidget(app.id);
         }}
         onTouchEnd={(e) => {
-          if (!isMobile || e.touches?.length === 0) return;
+          if (!isMobile) return;
           toggleWidget(app.id);
         }}
         className="clear thin w-3 h-3 !p-0 absolute top-3 right-3 z-30"
