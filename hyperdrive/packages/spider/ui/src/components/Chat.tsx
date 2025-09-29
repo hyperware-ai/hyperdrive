@@ -20,11 +20,50 @@ function ToolCallModal({ toolCall, toolResult, onClose }: {
   onClose: () => void;
 }) {
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      // Could add a toast notification here
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-    });
+    // Check if clipboard API is available
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        // Could add a toast notification here
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        // Fallback to legacy method
+        fallbackCopyToClipboard(text);
+      });
+    } else {
+      // Use fallback method
+      fallbackCopyToClipboard(text);
+    }
+  };
+
+  const fallbackCopyToClipboard = (text: string) => {
+    // Create a temporary textarea element
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.top = '0';
+    textarea.style.left = '0';
+    textarea.style.width = '2em';
+    textarea.style.height = '2em';
+    textarea.style.padding = '0';
+    textarea.style.border = 'none';
+    textarea.style.outline = 'none';
+    textarea.style.boxShadow = 'none';
+    textarea.style.background = 'transparent';
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      const successful = document.execCommand('copy');
+      if (!successful) {
+        console.error('Fallback copy failed');
+      }
+    } catch (err) {
+      console.error('Fallback copy error:', err);
+    }
+
+    document.body.removeChild(textarea);
   };
 
   return (
@@ -38,7 +77,7 @@ function ToolCallModal({ toolCall, toolResult, onClose }: {
           <div className="modal-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h4>Tool Call</h4>
-              <button 
+              <button
                 className="btn-icon copy-btn"
                 onClick={() => copyToClipboard(JSON.stringify(toolCall, null, 2))}
                 title="Copy to clipboard"
@@ -57,7 +96,7 @@ function ToolCallModal({ toolCall, toolResult, onClose }: {
             <div className="modal-section">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4>Tool Result</h4>
-                <button 
+                <button
                   className="btn-icon copy-btn"
                   onClick={() => copyToClipboard(JSON.stringify(toolResult, null, 2))}
                   title="Copy to clipboard"
@@ -157,12 +196,12 @@ export default function Chat() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    
+
     // Cancel WebSocket request if using WebSocket
     if (useWebSocket && wsConnected) {
       webSocketService.sendCancel();
     }
-    
+
     // Update store state
     if (cancelRequest) {
       cancelRequest();
@@ -179,7 +218,7 @@ export default function Chat() {
         <h2>Chat</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {useWebSocket && (
-            <span 
+            <span
               className={`ws-status ${wsConnected ? 'ws-connected' : 'ws-disconnected'}`}
               title={wsConnected ? 'WebSocket connected - messages update in real-time' : 'WebSocket disconnected - using HTTP'}
             >
