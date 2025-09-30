@@ -65,6 +65,8 @@ pub struct ImportKeyfileInfo {
 pub struct LoginInfo {
     pub password_hash: String,
     pub subdomain: Option<String>,
+    pub custom_cache_sources: Option<Vec<String>>,
+    pub custom_base_l2_access_providers: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

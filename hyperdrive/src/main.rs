@@ -286,7 +286,7 @@ async fn main() {
     #[cfg(not(feature = "simulation-mode"))]
     println!("Login or register at {link}\r");
     #[cfg(not(feature = "simulation-mode"))]
-    let (our, encoded_keyfile, decoded_keyfile) = match password {
+    let (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector) = match password {
         None => {
             serve_register_fe(
                 &home_directory_path,
@@ -311,6 +311,35 @@ async fn main() {
             .await
         }
     };
+
+    is_eth_provider_config_updated = false;
+
+    if !base_l2_access_source_vector.is_empty() {
+        // Process in reverse order so the first entry in the vector becomes highest priority
+        for (_reverse_index, url) in base_l2_access_source_vector.into_iter().rev().enumerate() {
+            let new_provider = lib::eth::ProviderConfig {
+                chain_id: CHAIN_ID,
+                trusted: true,
+                provider: lib::eth::NodeOrRpcUrl::RpcUrl {
+                    url,
+                    auth: None,
+                },
+            };
+
+            add_provider_to_config(&mut eth_provider_config, new_provider);
+        }
+        is_eth_provider_config_updated = true;
+    }
+
+    if is_eth_provider_config_updated {
+        // save the new provider config
+        tokio::fs::write(
+            home_directory_path.join(".eth_providers"),
+            serde_json::to_string(&eth_provider_config).unwrap(),
+        )
+            .await
+            .expect("failed to save new eth provider config!");
+    }
 
     // the boolean flag determines whether the runtime module is *public* or not,
     // where public means that any process can always message it.
@@ -414,10 +443,36 @@ async fn main() {
 
     // Create the data.txt file with test content
     let data_file_path = initfiles_dir.join("data.txt");
-    if let Err(e) = tokio::fs::write(&data_file_path, "TESTDATA").await {
-        eprintln!("Failed to create data.txt file: {}", e);
+
+    // Write cache_source_vector to data.txt as JSON
+    let cache_json = serde_json::to_string_pretty(&cache_source_vector)
+        .expect("Failed to serialize cache_source_vector to JSON");
+    let cache_json_clone = cache_json.clone();
+
+    if let Err(e) = tokio::fs::write(&data_file_path, cache_json).await {
+        eprintln!("Warning: Failed to write cache data to file: {}", e);
     } else {
         println!("✓ Created test file: {}", data_file_path.display());
+    }
+
+    // Create the second directory structure for hns-indexer:sys
+    let hns_indexer_dir = vfs_dir.join("hns-indexer:sys");
+    let hns_initfiles_dir = hns_indexer_dir.join("initfiles");
+
+    // Create all directories at once for the second location
+    if let Err(e) = tokio::fs::create_dir_all(&hns_initfiles_dir).await {
+        eprintln!("Failed to create directory structure {}: {}", hns_initfiles_dir.display(), e);
+    } else {
+        println!("✓ Created directory structure: {}", hns_initfiles_dir.display());
+    }
+
+    // Create the data.txt file in the second location
+    let hns_data_file_path = hns_initfiles_dir.join("data.txt");
+
+    if let Err(e) = tokio::fs::write(&hns_data_file_path, cache_json_clone).await {
+        eprintln!("Warning: Failed to write cache data to second file: {}", e);
+    } else {
+        println!("✓ Created test file: {}", hns_data_file_path.display());
     }
 
     let mut tasks = tokio::task::JoinSet::<Result<()>>::new();
@@ -901,15 +956,15 @@ async fn serve_register_fe(
     http_server_port: u16,
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
-) -> (Identity, Vec<u8>, Keyfile) {
+) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
     let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<bool>();
 
     let disk_keyfile: Option<Vec<u8>> = tokio::fs::read(home_directory_path.join(".keys"))
         .await
         .ok();
 
-    let (tx, mut rx) = mpsc::channel::<(Identity, Keyfile, Vec<u8>)>(1);
-    let (our, decoded_keyfile, encoded_keyfile) = tokio::select! {
+    let (tx, mut rx) = mpsc::channel::<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>(1);
+    let (our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector) = tokio::select! {
         _ = register::register(
                 tx,
                 kill_rx,
@@ -922,8 +977,8 @@ async fn serve_register_fe(
                 detached) => {
             panic!("registration failed")
         }
-        Some((our, decoded_keyfile, encoded_keyfile)) = rx.recv() => {
-            (our, decoded_keyfile, encoded_keyfile)
+        Some((our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector)) = rx.recv() => {
+            (our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector)
         }
     };
 
@@ -936,7 +991,7 @@ async fn serve_register_fe(
     drop(ws_networking.0);
     drop(tcp_networking.0);
 
-    (our, encoded_keyfile, decoded_keyfile)
+    (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector)
 }
 
 #[cfg(not(feature = "simulation-mode"))]
@@ -947,7 +1002,7 @@ async fn login_with_password(
     tcp_networking: (Option<tokio::net::TcpListener>, bool),
     eth_provider_config: lib::eth::SavedConfigs,
     password: &str,
-) -> (Identity, Vec<u8>, Keyfile) {
+) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
     use argon2::Argon2;
     use ring::signature::KeyPair;
 
@@ -1040,7 +1095,10 @@ async fn login_with_password(
         .await
         .unwrap();
 
-    (our, disk_keyfile, k)
+    let cache_source_vector: Vec<String> = Vec::new();
+    let base_l2_access_source_vector: Vec<String> = Vec::new();
+
+    (our, disk_keyfile, k, cache_source_vector, base_l2_access_source_vector)
 }
 
 fn make_remote_link(url: &str, text: &str) -> String {

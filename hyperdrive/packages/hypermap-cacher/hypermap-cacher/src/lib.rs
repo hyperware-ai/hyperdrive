@@ -558,6 +558,46 @@ impl State {
 
     // Try to bootstrap from other hypermap-cacher nodes
     fn try_bootstrap_from_nodes(&mut self) -> anyhow::Result<()> {
+        // Create alternate drive for initfiles and read the test data
+        let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None).unwrap();
+
+        // Try to read the data.txt file from the initfiles drive
+        match vfs::open_file(&format!("{}/data.txt", alt_drive_path), false, None) {
+            Ok(file) => {
+                match file.read() {
+                    Ok(contents) => {
+                        let content_str = String::from_utf8_lossy(&contents);
+                        info!("Contents of data.txt: {}", content_str);
+
+                        // Parse the JSON to get the vector of node names
+                        match serde_json::from_str::<Vec<String>>(&content_str) {
+                            Ok(custom_cache_nodes) => {
+                                if !custom_cache_nodes.is_empty() {
+                                    info!("Loading custom cache source nodes: {:?}", custom_cache_nodes);
+                                    // Clear existing nodes and add custom ones
+                                    self.nodes.clear();
+                                    for node_name in custom_cache_nodes {
+                                        self.nodes.push(node_name.clone());
+                                    }
+                                } else {
+                                    info!("Custom cache nodes list is empty, keeping existing node configuration");
+                                }
+                            }
+                            Err(e) => {
+                                info!("Failed to parse data.txt as JSON: {}, keeping existing node configuration", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        info!("Failed to read data.txt: {}, keeping existing node configuration", e);
+                    }
+                }
+            }
+            Err(e) => {
+                info!("Failed to open data.txt: {}, keeping existing node configuration", e);
+            }
+        }
+
         if self.nodes.is_empty() {
             info!("No nodes configured for bootstrap, will fallback to RPC");
             return Err(anyhow::anyhow!("No nodes configured for bootstrap"));
