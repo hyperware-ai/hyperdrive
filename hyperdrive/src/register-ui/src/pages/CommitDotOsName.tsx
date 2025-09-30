@@ -199,7 +199,7 @@ function CommitDotOsName({
                                 </p>
                                 <EnterHnsName {...enterOsNameProps} />
                                 <details className="advanced-options">
-                                    <summary>Advanced Options</summary>
+                                    <summary>Network Options</summary>
                                     <div className="flex flex-col gap-3">
                                         <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
                                         <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />

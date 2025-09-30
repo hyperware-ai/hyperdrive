@@ -169,7 +169,7 @@ function ResetHnsName({
                   Nodes use an onchain username in order to identify themselves to other nodes in the network.
                 </p>
                 <details className="advanced-options">
-                  <summary>Advanced Options</summary>
+                  <summary>Network Options</summary>
                   <div className="flex flex-col gap-3">
                     <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
                     <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
