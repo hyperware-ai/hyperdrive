@@ -573,7 +573,10 @@ impl State {
                         match serde_json::from_str::<Vec<String>>(&content_str) {
                             Ok(custom_cache_nodes) => {
                                 if !custom_cache_nodes.is_empty() {
-                                    info!("Loading custom cache source nodes: {:?}", custom_cache_nodes);
+                                    info!(
+                                        "Loading custom cache source nodes: {:?}",
+                                        custom_cache_nodes
+                                    );
                                     // Clear existing nodes and add custom ones
                                     self.nodes.clear();
                                     for node_name in custom_cache_nodes {
@@ -589,12 +592,18 @@ impl State {
                         }
                     }
                     Err(e) => {
-                        info!("Failed to read data.txt: {}, keeping existing node configuration", e);
+                        info!(
+                            "Failed to read data.txt: {}, keeping existing node configuration",
+                            e
+                        );
                     }
                 }
             }
             Err(e) => {
-                info!("Failed to open data.txt: {}, keeping existing node configuration", e);
+                info!(
+                    "Failed to open data.txt: {}, keeping existing node configuration",
+                    e
+                );
             }
         }
 
@@ -1388,17 +1397,15 @@ fn init(our: Address) {
 
     // Try to read the data.txt file from the initfiles drive
     match vfs::open_file(&format!("{}/data.txt", alt_drive_path), false, None) {
-        Ok(file) => {
-            match file.read() {
-                Ok(contents) => {
-                    let content_str = String::from_utf8_lossy(&contents);
-                    info!("Contents of data.txt: {}", content_str);
-                }
-                Err(e) => {
-                    info!("Failed to read data.txt: {}", e);
-                }
+        Ok(file) => match file.read() {
+            Ok(contents) => {
+                let content_str = String::from_utf8_lossy(&contents);
+                info!("Contents of data.txt: {}", content_str);
             }
-        }
+            Err(e) => {
+                info!("Failed to read data.txt: {}", e);
+            }
+        },
         Err(e) => {
             info!("Failed to open data.txt: {}", e);
         }

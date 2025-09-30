@@ -335,7 +335,6 @@ async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Rep
     Ok(warp::reply::json(our_temp_id.as_ref()))
 }
 
-
 async fn handle_boot(
     info: BootInfo,
     sender: Arc<RegistrationSender>,
@@ -359,24 +358,33 @@ async fn handle_boot(
     }
 
     let cache_source_vector = if let Some(custom_cache_sources) = &info.custom_cache_sources {
-        println!("Custom cache sources specified: {:?}\r", custom_cache_sources);
+        println!(
+            "Custom cache sources specified: {:?}\r",
+            custom_cache_sources
+        );
         custom_cache_sources.clone()
     } else {
         println!("No custom cache sources specified\r");
         Vec::new()
     };
 
-    let base_l2_access_source_vector = if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
-        println!("Custom Base L2 access providers specified: {:?}\r", custom_base_l2_providers);
-        custom_base_l2_providers.clone()
-    } else {
-        println!("No custom Base L2 access providers specified\r");
-        Vec::new()
-    };
-
+    let base_l2_access_source_vector =
+        if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
+            println!(
+                "Custom Base L2 access providers specified: {:?}\r",
+                custom_base_l2_providers
+            );
+            custom_base_l2_providers.clone()
+        } else {
+            println!("No custom Base L2 access providers specified\r");
+            Vec::new()
+        };
 
     if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
-        println!("Custom Base L2 access providers specified: {:?}\r", custom_base_l2_providers);
+        println!(
+            "Custom Base L2 access providers specified: {:?}\r",
+            custom_base_l2_providers
+        );
     } else {
         println!("No custom Base L2 access providers specified\r");
     }
@@ -396,14 +404,14 @@ async fn handle_boot(
             warp::reply::json(&"Timestamp is outdated."),
             StatusCode::UNAUTHORIZED,
         )
-            .into_response());
+        .into_response());
     }
     let Ok(password_hash) = FixedBytes::<32>::from_str(&info.password_hash) else {
         return Ok(warp::reply::with_status(
             warp::reply::json(&"Invalid password hash"),
             StatusCode::UNAUTHORIZED,
         )
-            .into_response());
+        .into_response());
     };
 
     let namehash = FixedBytes::<32>::from_slice(&keygen::namehash(&our.name));
@@ -425,7 +433,7 @@ async fn handle_boot(
                         warp::reply::json(&"Failed to decode hypermap entry from return bytes"),
                         StatusCode::INTERNAL_SERVER_ERROR,
                     )
-                        .into_response());
+                    .into_response());
                 };
                 let owner = node_info.owner;
 
@@ -468,7 +476,7 @@ async fn handle_boot(
                     networking_keypair: signature::Ed25519KeyPair::from_pkcs8(
                         networking_keypair.as_ref(),
                     )
-                        .unwrap(),
+                    .unwrap(),
                     jwt_secret_bytes: jwt_secret.to_vec(),
                     file_key: keygen::generate_file_key(),
                 };
@@ -482,7 +490,15 @@ async fn handle_boot(
                     &decoded_keyfile.file_key,
                 );
 
-                return success_response(sender, our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector).await;
+                return success_response(
+                    sender,
+                    our,
+                    decoded_keyfile,
+                    encoded_keyfile,
+                    cache_source_vector,
+                    base_l2_access_source_vector,
+                )
+                .await;
             }
             Err(_) => {
                 attempts += 1;
@@ -495,7 +511,7 @@ async fn handle_boot(
         warp::reply::json(&"Recovered address does not match owner"),
         StatusCode::UNAUTHORIZED,
     )
-        .into_response());
+    .into_response());
 }
 
 async fn handle_import_keyfile(
@@ -562,7 +578,15 @@ async fn handle_import_keyfile(
         )
         .into_response());
     }
-    success_response(sender, our, decoded_keyfile, encoded_keyfile, Vec::new(), Vec::new()).await
+    success_response(
+        sender,
+        our,
+        decoded_keyfile,
+        encoded_keyfile,
+        Vec::new(),
+        Vec::new(),
+    )
+    .await
 }
 
 async fn handle_login(
@@ -579,7 +603,7 @@ async fn handle_login(
             warp::reply::json(&"Keyfile not present"),
             StatusCode::NOT_FOUND,
         )
-            .into_response());
+        .into_response());
     }
     let encoded_keyfile = encoded_keyfile.unwrap();
 
@@ -609,26 +633,33 @@ async fn handle_login(
                     warp::reply::json(&"Incorrect password!"),
                     StatusCode::UNAUTHORIZED,
                 )
-                    .into_response())
+                .into_response())
             }
         };
 
     // Process cache sources and Base L2 access providers just like handle_boot
     let cache_source_vector = if let Some(custom_cache_sources) = &info.custom_cache_sources {
-        println!("Custom cache sources specified: {:?}\r", custom_cache_sources);
+        println!(
+            "Custom cache sources specified: {:?}\r",
+            custom_cache_sources
+        );
         custom_cache_sources.clone()
     } else {
         println!("No custom cache sources specified\r");
         Vec::new()
     };
 
-    let base_l2_access_source_vector = if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
-        println!("Custom Base L2 access providers specified: {:?}\r", custom_base_l2_providers);
-        custom_base_l2_providers.clone()
-    } else {
-        println!("No custom Base L2 access providers specified\r");
-        Vec::new()
-    };
+    let base_l2_access_source_vector =
+        if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
+            println!(
+                "Custom Base L2 access providers specified: {:?}\r",
+                custom_base_l2_providers
+            );
+            custom_base_l2_providers.clone()
+        } else {
+            println!("No custom Base L2 access providers specified\r");
+            Vec::new()
+        };
 
     if let Err(e) =
         assign_routing(&mut our, provider, ws_networking_port, tcp_networking_port).await
@@ -637,9 +668,17 @@ async fn handle_login(
             warp::reply::json(&e.to_string()),
             StatusCode::INTERNAL_SERVER_ERROR,
         )
-            .into_response());
+        .into_response());
     }
-    success_response(sender, our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector).await
+    success_response(
+        sender,
+        our,
+        decoded_keyfile,
+        encoded_keyfile,
+        cache_source_vector,
+        base_l2_access_source_vector,
+    )
+    .await
 }
 
 pub async fn assign_routing(
@@ -776,7 +815,13 @@ async fn success_response(
     };
 
     sender
-        .send((our.clone(), decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector))
+        .send((
+            our.clone(),
+            decoded_keyfile,
+            encoded_keyfile,
+            cache_source_vector,
+            base_l2_access_source_vector,
+        ))
         .await
         .unwrap();
 

@@ -286,31 +286,32 @@ async fn main() {
     #[cfg(not(feature = "simulation-mode"))]
     println!("Login or register at {link}\r");
     #[cfg(not(feature = "simulation-mode"))]
-    let (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector) = match password {
-        None => {
-            serve_register_fe(
-                &home_directory_path,
-                our_ip.to_string(),
-                (ws_tcp_handle, ws_flag_used),
-                (tcp_tcp_handle, tcp_flag_used),
-                http_server_port,
-                eth_provider_config.clone(),
-                detached,
-            )
-            .await
-        }
-        Some(password) => {
-            login_with_password(
-                &home_directory_path,
-                our_ip.to_string(),
-                (ws_tcp_handle, ws_flag_used),
-                (tcp_tcp_handle, tcp_flag_used),
-                eth_provider_config.clone(),
-                password,
-            )
-            .await
-        }
-    };
+    let (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector) =
+        match password {
+            None => {
+                serve_register_fe(
+                    &home_directory_path,
+                    our_ip.to_string(),
+                    (ws_tcp_handle, ws_flag_used),
+                    (tcp_tcp_handle, tcp_flag_used),
+                    http_server_port,
+                    eth_provider_config.clone(),
+                    detached,
+                )
+                .await
+            }
+            Some(password) => {
+                login_with_password(
+                    &home_directory_path,
+                    our_ip.to_string(),
+                    (ws_tcp_handle, ws_flag_used),
+                    (tcp_tcp_handle, tcp_flag_used),
+                    eth_provider_config.clone(),
+                    password,
+                )
+                .await
+            }
+        };
 
     is_eth_provider_config_updated = false;
 
@@ -320,10 +321,7 @@ async fn main() {
             let new_provider = lib::eth::ProviderConfig {
                 chain_id: CHAIN_ID,
                 trusted: true,
-                provider: lib::eth::NodeOrRpcUrl::RpcUrl {
-                    url,
-                    auth: None,
-                },
+                provider: lib::eth::NodeOrRpcUrl::RpcUrl { url, auth: None },
             };
 
             add_provider_to_config(&mut eth_provider_config, new_provider);
@@ -337,8 +335,8 @@ async fn main() {
             home_directory_path.join(".eth_providers"),
             serde_json::to_string(&eth_provider_config).unwrap(),
         )
-            .await
-            .expect("failed to save new eth provider config!");
+        .await
+        .expect("failed to save new eth provider config!");
     }
 
     // the boolean flag determines whether the runtime module is *public* or not,
@@ -435,7 +433,11 @@ async fn main() {
 
     // Create all directories at once (creates parent directories if they don't exist)
     if let Err(e) = tokio::fs::create_dir_all(&initfiles_dir).await {
-        eprintln!("Failed to create directory structure {}: {}", initfiles_dir.display(), e);
+        eprintln!(
+            "Failed to create directory structure {}: {}",
+            initfiles_dir.display(),
+            e
+        );
         // You might want to handle this error based on your needs
     } else {
         println!("✓ Created directory structure: {}", initfiles_dir.display());
@@ -461,9 +463,16 @@ async fn main() {
 
     // Create all directories at once for the second location
     if let Err(e) = tokio::fs::create_dir_all(&hns_initfiles_dir).await {
-        eprintln!("Failed to create directory structure {}: {}", hns_initfiles_dir.display(), e);
+        eprintln!(
+            "Failed to create directory structure {}: {}",
+            hns_initfiles_dir.display(),
+            e
+        );
     } else {
-        println!("✓ Created directory structure: {}", hns_initfiles_dir.display());
+        println!(
+            "✓ Created directory structure: {}",
+            hns_initfiles_dir.display()
+        );
     }
 
     // Create the data.txt file in the second location
@@ -991,7 +1000,13 @@ async fn serve_register_fe(
     drop(ws_networking.0);
     drop(tcp_networking.0);
 
-    (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector)
+    (
+        our,
+        encoded_keyfile,
+        decoded_keyfile,
+        cache_source_vector,
+        base_l2_access_source_vector,
+    )
 }
 
 #[cfg(not(feature = "simulation-mode"))]
@@ -1098,7 +1113,13 @@ async fn login_with_password(
     let cache_source_vector: Vec<String> = Vec::new();
     let base_l2_access_source_vector: Vec<String> = Vec::new();
 
-    (our, disk_keyfile, k, cache_source_vector, base_l2_access_source_vector)
+    (
+        our,
+        disk_keyfile,
+        k,
+        cache_source_vector,
+        base_l2_access_source_vector,
+    )
 }
 
 fn make_remote_link(url: &str, text: &str) -> String {

@@ -7,15 +7,15 @@ use alloy_sol_types::SolEvent;
 use hyperware::process::standard::clear_state;
 use hyperware_process_lib::logging::{debug, error, info, init_logging, warn, Level};
 use hyperware_process_lib::{
-    await_message, call_init, eth, get_state, hypermap, net, our, set_state, timer, vfs, Address, Capability,
-    Message, Request, Response,
+    await_message, call_init, eth, get_state, hypermap, net, our, set_state, timer, vfs, Address,
+    Capability, Message, Request, Response,
 };
+use std::sync::{Mutex, OnceLock};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     str::FromStr,
 };
-use std::sync::{Mutex, OnceLock};
 
 wit_bindgen::generate!({
     path: "../target/wit",

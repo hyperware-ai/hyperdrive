@@ -1,4 +1,4 @@
-use lib::eth::{SavedConfigs, ProviderConfig};
+use lib::eth::{ProviderConfig, SavedConfigs};
 
 pub fn add_provider_to_config(
     eth_provider_config: &mut SavedConfigs,
