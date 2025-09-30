@@ -312,8 +312,7 @@ fn estimate_optimized_gas(context: &OperationContext) -> Result<GasLimits, Opera
 
     // Get estimates from bundler
     let gas_estimates =
-        bundler::estimate_user_operation_gas(estimation_request, context.entry_point.to_string())
-            .unwrap_or_default();
+        bundler::estimate_user_operation_gas(estimation_request, context.entry_point.to_string())?;
 
     // Detect operation type and apply smart optimization
     let operation_type = detect_operation_type(&context.call_data);
