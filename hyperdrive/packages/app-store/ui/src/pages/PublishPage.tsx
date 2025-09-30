@@ -232,7 +232,7 @@ export default function PublishPage() {
 
         // When creating a new package, predict the TBA address that will be created
         const predictedTBA = !isUpdate ? predictTBAAddress(currentTBA || HYPERMAP, packageName, publicClient?.chain?.id || 8453) : undefined;
-        const multicall = encodeMulticalls(metadataUrl, metadata, predictedTBA);
+        const multicall = encodeMulticalls(metadataUrl, metadata, predictedTBA?.predictedAddress);
         const args = isUpdate ? multicall : encodeIntoMintCall(multicall, address, packageName);
 
         writeContract({

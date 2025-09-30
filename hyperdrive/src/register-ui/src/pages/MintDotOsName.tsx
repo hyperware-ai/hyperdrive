@@ -5,10 +5,10 @@ import { PageProps } from "../lib/types";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
-import { generateNetworkingKeys, HYPER_ACCOUNT_IMPL, DOTOS, tbaMintAbi } from "../abis";
+import { HYPER_ACCOUNT_IMPL, DOTOS, tbaMintAbi } from "../abis";
+import { generateNetworkingKeys } from "../abis/helpers";
 import { createPublicClient, encodePacked, http, stringToHex, BaseError, ContractFunctionRevertedError } from "viem";
 import { base } from 'viem/chains'
-import { predictTBAAddress } from "../utils/predictTBA";
 
 interface RegisterOsNameProps extends PageProps { }
 
@@ -64,10 +64,8 @@ function MintDotOsName({
     // strip .os suffix
     const name = hnsName.replace(/\.os$/, '');
 
-    // Predict the TBA address that will be created
-    const predictedTBA = predictTBAAddress(DOTOS, name, base.id);
-
     const initCall = await generateNetworkingKeys({
+      upgradable: false,
       direct,
       our_address: address,
       label: hnsName,
@@ -76,8 +74,7 @@ function MintDotOsName({
       setWsPort,
       setTcpPort,
       setRouters,
-      reset: false,
-      tbaAddress: predictedTBA,
+      reset: false
     });
 
     const publicClient = createPublicClient({

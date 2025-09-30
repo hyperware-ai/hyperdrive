@@ -2,7 +2,7 @@
 import { NetworkingInfo } from "../lib/types";
 import { hyperhash } from "../utils/hyperhash";
 import { ipToBytes, portToBytes } from "../utils/hns_encoding";
-import { multicallAbi, hypermapAbi, mechAbi, HYPERMAP, MULTICALL } from "./";
+import { multicallAbi, hypermapAbi, mechAbi, HYPERMAP, MULTICALL } from ".";
 import { encodeFunctionData, encodePacked, stringToHex, bytesToHex } from "viem";
 
 // Function to encode router names into keccak256 hashes
@@ -13,6 +13,7 @@ const encodeRouters = (routers: string[]): `0x${string}` => {
 };
 
 export const generateNetworkingKeys = async ({
+    upgradable,
     direct,
     setNetworkingKey,
     setWsPort,
@@ -21,6 +22,7 @@ export const generateNetworkingKeys = async ({
     reset,
     tbaAddress,
 }: {
+    upgradable: boolean,
     direct: boolean,
     label: string,
     our_address: `0x${string}`,
@@ -109,8 +111,8 @@ export const generateNetworkingKeys = async ({
         });
 
     // Add initialize call if TBA address is provided
-    const initializeCall = tbaAddress ? encodeFunctionData({
-        abi: [{"inputs":[],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"}],
+    const initializeCall = upgradable && tbaAddress ? encodeFunctionData({
+        abi: [{ "inputs": [], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function" }],
         functionName: 'initialize',
         args: []
     }) : null;
@@ -125,7 +127,7 @@ export const generateNetworkingKeys = async ({
         { target: HYPERMAP, callData: router_call },
     ];
 
-    const calls = initializeCall && tbaAddress ?
+    const calls = upgradable && initializeCall && tbaAddress ?
         [{ target: tbaAddress, callData: initializeCall }, ...baseCalls] :
         baseCalls;
 

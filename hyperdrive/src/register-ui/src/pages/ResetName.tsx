@@ -7,7 +7,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
-import { MULTICALL, generateNetworkingKeys, mechAbi } from "../abis";
+import { MULTICALL, mechAbi } from "../abis";
+import { generateNetworkingKeys } from "../abis/helpers";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import EnterHnsName from "../components/EnterHnsName";
 
@@ -78,6 +79,7 @@ function ResetHnsName({
 
       try {
         const data = await generateNetworkingKeys({
+          upgradable: false,
           direct,
           label: name,
           our_address: address,

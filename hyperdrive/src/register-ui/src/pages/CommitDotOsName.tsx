@@ -4,10 +4,7 @@ import { toAscii } from "idna-uts46-hx";
 import EnterHnsName from "../components/EnterHnsName";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
-
 import DirectNodeCheckbox from "../components/DirectCheckbox";
-import { Tooltip } from "../components/Tooltip";
-
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
 import { dotOsAbi, DOTOS } from "../abis";
