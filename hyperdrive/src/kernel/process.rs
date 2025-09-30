@@ -127,17 +127,27 @@ async fn make_component_v1(
     home_directory_path: PathBuf,
     process_state: ProcessState,
 ) -> anyhow::Result<(ProcessV1, Store<ProcessWasiV1>, MemoryOutputPipe)> {
-    let component =
-        Component::new(&engine, wasm_bytes.to_vec()).expect("make_component: couldn't read file");
+    let our_process_id = process_state.metadata.our.process.clone();
+    let send_to_terminal = process_state.send_to_terminal.clone();
+
+    let component = match Component::new(&engine, wasm_bytes.to_vec()) {
+        Ok(c) => c,
+        Err(e) => {
+            t::Printout::new(
+                0,
+                t::KERNEL_PROCESS_ID.clone(),
+                format!("kernel: process {our_process_id} invalid wasm file: {e:?}"),
+            )
+            .send(&send_to_terminal)
+            .await;
+            return Err(e);
+        }
+    };
 
     let mut linker = Linker::new(&engine);
     ProcessV1::add_to_linker(&mut linker, |state: &mut ProcessWasiV1| state).unwrap();
     let (table, wasi, wasi_stderr) = make_table_and_wasi(home_directory_path, &process_state).await;
     wasmtime_wasi::p2::add_to_linker_async(&mut linker).unwrap();
-
-    let our_process_id = process_state.metadata.our.process.clone();
-    let send_to_terminal = process_state.send_to_terminal.clone();
-
     let mut store = Store::new(
         &engine,
         ProcessWasiV1 {
