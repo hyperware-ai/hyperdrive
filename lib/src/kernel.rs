@@ -178,6 +178,14 @@ pub struct UnencryptedIdentity {
     pub allowed_routers: Vec<NodeId>,
 }
 
+#[derive(serde::Serialize)]
+pub struct InfoResponse {
+    pub name: String,
+    pub allowed_routers: Vec<String>,
+    pub initial_cache_sources: Vec<String>,
+    pub initial_base_l2_providers: Vec<String>,
+}
+
 //
 // kernel types that runtime modules use
 //

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, FormEvent, useCallback } from "react";
 import Loader from "../components/Loader";
 import { downloadKeyfile } from "../utils/download-keyfile";
-import { Tooltip } from "../components/Tooltip";
 import { useSignTypedData, useAccount, useChainId } from 'wagmi'
 import { HYPERMAP } from "../abis";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
 import SpecifyCacheSourcesCheckbox from "../components/SpecifyCacheSourcesCheckbox";
 import SpecifyBaseL2AccessProvidersCheckbox from "../components/SpecifyBaseL2AccessProvidersCheckbox";
+import { InfoResponse } from "../lib/types";
 
 type SetPasswordProps = {
   direct: boolean;
@@ -44,6 +44,32 @@ function SetPassword({
   useEffect(() => {
     document.title = "Set Password";
   }, []);
+
+  // Fetch default values from /info endpoint
+  useEffect(() => {
+    (async () => {
+      try {
+        const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
+            res.json()
+        )) as InfoResponse;
+
+        // Prepopulate the fields with default values
+        if (infoData.initial_cache_sources && infoData.initial_cache_sources.length > 0) {
+          setCustomCacheSources(infoData.initial_cache_sources.join('\n'));
+          setSpecifyCacheSources(true); // Auto-check the checkbox
+        }
+
+        if (infoData.initial_base_l2_providers && infoData.initial_base_l2_providers.length > 0) {
+          setCustomBaseL2AccessProviders(infoData.initial_base_l2_providers.join('\n'));
+          setSpecifyBaseL2AccessProviders(true); // Auto-check the checkbox
+        }
+      } catch (error) {
+        console.error('Failed to fetch default configuration:', error);
+        // Continue without defaults if fetch fails
+      }
+    })();
+  }, []);
+
 
   useEffect(() => {
     setError("");

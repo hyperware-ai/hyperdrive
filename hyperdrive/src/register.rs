@@ -10,7 +10,7 @@ use alloy_primitives::{Address as EthAddress, Bytes, FixedBytes, U256};
 use alloy_sol_types::{eip712_domain, SolCall, SolStruct};
 use base64::{engine::general_purpose::STANDARD as base64_standard, Engine};
 use lib::types::core::{
-    BootInfo, Identity, ImportKeyfileInfo, Keyfile, LoginInfo, NodeRouting, UnencryptedIdentity,
+    BootInfo, Identity, ImportKeyfileInfo, Keyfile, LoginInfo, NodeRouting, InfoResponse,
 };
 use ring::{rand::SystemRandom, signature, signature::KeyPair};
 use std::{
@@ -42,6 +42,8 @@ pub async fn register(
     keyfile: Option<Vec<u8>>,
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
+    initial_cache_sources: Option<Vec<String>>,        // <- Add this
+    initial_base_l2_providers: Option<Vec<String>>,
 ) {
     // Networking info is generated and passed to the UI, but not used until confirmed
     let (public_key, serialized_networking_keypair) = keygen::generate_networking_key();
@@ -117,7 +119,7 @@ pub async fn register(
         .or(warp::path("set-password"))
         .or(warp::path("custom-register"))
         .and(warp::get())
-        .map(move |_| warp::reply::html(include_str!("register-ui/build/index.html")));
+        .map(move |_| warp::reply::html(include_str!("register-ui/build/index.html").to_string()));
     #[cfg(target_os = "windows")]
     let react_app = warp::path::end()
         .or(warp::path("login"))
@@ -129,21 +131,26 @@ pub async fn register(
         .or(warp::path("set-password"))
         .or(warp::path("custom-register"))
         .and(warp::get())
-        .map(move |_| warp::reply::html(include_str!("register-ui\\build\\index.html")));
+        .map(move |_| warp::reply::html(include_str!("register-ui\\build\\index.html").to_string()));
 
     let boot_provider = provider.clone();
     let login_provider = provider.clone();
     let import_provider = provider.clone();
 
+    let initial_cache_sources_arc = Arc::new(initial_cache_sources.clone());
+    let initial_base_l2_providers_arc = Arc::new(initial_base_l2_providers.clone());
+
     let api = warp::path("info")
         .and(
             warp::get()
                 .and(keyfile.clone())
+                .and(warp::any().map(move || initial_cache_sources_arc.clone()))
+                .and(warp::any().map(move || initial_base_l2_providers_arc.clone()))
                 .and_then(get_unencrypted_info),
         )
         .or(warp::path("current-chain")
             .and(warp::get())
-            .map(move || warp::reply::json(&"0xa")))
+            .map(move || warp::reply::json(&"0xa".to_string())))
         .or(warp::path("our").and(warp::get()).and(keyfile.clone()).map(
             move |keyfile: Option<Vec<u8>>| {
                 if let Some(keyfile) = keyfile {
@@ -299,36 +306,45 @@ pub async fn connect_to_provider_from_config(
     );
 }
 
-async fn get_unencrypted_info(keyfile: Option<Vec<u8>>) -> Result<impl Reply, Rejection> {
+async fn get_unencrypted_info(
+    keyfile: Option<Vec<u8>>,
+    initial_cache_sources: Arc<Option<Vec<String>>>,
+    initial_base_l2_providers: Arc<Option<Vec<String>>>,
+) -> Result<impl Reply, Rejection> {
     let (name, allowed_routers) = {
         match keyfile {
             Some(encoded_keyfile) => match keygen::get_username_and_routers(&encoded_keyfile) {
                 Ok(k) => k,
                 Err(_) => {
                     return Ok(warp::reply::with_status(
-                        warp::reply::json(&"keyfile deserialization went wrong"),
+                        warp::reply::json(&"keyfile deserialization went wrong".to_string()),
                         StatusCode::UNAUTHORIZED,
                     )
-                    .into_response())
+                        .into_response())
                 }
             },
             None => {
                 return Ok(warp::reply::with_status(
-                    warp::reply::json(&"Keyfile not present"),
+                    warp::reply::json(&"Keyfile not present".to_string()),
                     StatusCode::NOT_FOUND,
                 )
-                .into_response())
+                    .into_response())
             }
         }
     };
+
+    let response = InfoResponse {
+        name,
+        allowed_routers,
+        initial_cache_sources: initial_cache_sources.as_ref().clone().unwrap_or_default(),
+        initial_base_l2_providers: initial_base_l2_providers.as_ref().clone().unwrap_or_default(),
+    };
+
     return Ok(warp::reply::with_status(
-        warp::reply::json(&UnencryptedIdentity {
-            name,
-            allowed_routers,
-        }),
+        warp::reply::json(&response),
         StatusCode::OK,
     )
-    .into_response());
+        .into_response());
 }
 
 async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Reply, Rejection> {
@@ -401,14 +417,14 @@ async fn handle_boot(
 
     if info.timestamp < now + 120 {
         return Ok(warp::reply::with_status(
-            warp::reply::json(&"Timestamp is outdated."),
+            warp::reply::json(&"Timestamp is outdated.".to_string()),
             StatusCode::UNAUTHORIZED,
         )
         .into_response());
     }
     let Ok(password_hash) = FixedBytes::<32>::from_str(&info.password_hash) else {
         return Ok(warp::reply::with_status(
-            warp::reply::json(&"Invalid password hash"),
+            warp::reply::json(&"Invalid password hash".to_string()),
             StatusCode::UNAUTHORIZED,
         )
         .into_response());
@@ -430,7 +446,7 @@ async fn handle_boot(
             Ok(get) => {
                 let Ok(node_info) = getCall::abi_decode_returns(&get, false) else {
                     return Ok(warp::reply::with_status(
-                        warp::reply::json(&"Failed to decode hypermap entry from return bytes"),
+                        warp::reply::json(&"Failed to decode hypermap entry from return bytes".to_string()),
                         StatusCode::INTERNAL_SERVER_ERROR,
                     )
                     .into_response());
@@ -508,7 +524,7 @@ async fn handle_boot(
     }
 
     return Ok(warp::reply::with_status(
-        warp::reply::json(&"Recovered address does not match owner"),
+        warp::reply::json(&"Recovered address does not match owner".to_string()),
         StatusCode::UNAUTHORIZED,
     )
     .into_response());
@@ -528,7 +544,7 @@ async fn handle_import_keyfile(
         Ok(k) => k,
         Err(_) => {
             return Ok(warp::reply::with_status(
-                warp::reply::json(&"Keyfile not valid base64"),
+                warp::reply::json(&"Keyfile not valid base64".to_string()),
                 StatusCode::BAD_REQUEST,
             )
             .into_response())
@@ -600,7 +616,7 @@ async fn handle_login(
 ) -> Result<impl Reply, Rejection> {
     if encoded_keyfile.is_none() {
         return Ok(warp::reply::with_status(
-            warp::reply::json(&"Keyfile not present"),
+            warp::reply::json(&"Keyfile not present".to_string()),
             StatusCode::NOT_FOUND,
         )
         .into_response());
@@ -630,7 +646,7 @@ async fn handle_login(
             }
             Err(_) => {
                 return Ok(warp::reply::with_status(
-                    warp::reply::json(&"Incorrect password!"),
+                    warp::reply::json(&"Incorrect password!".to_string()),
                     StatusCode::UNAUTHORIZED,
                 )
                 .into_response())
@@ -807,7 +823,7 @@ async fn success_response(
         Some(token) => token,
         None => {
             return Ok(warp::reply::with_status(
-                warp::reply::json(&"Failed to generate JWT"),
+                warp::reply::json(&"Failed to generate JWT".to_string()),
                 StatusCode::SERVICE_UNAVAILABLE,
             )
             .into_response())
@@ -844,7 +860,7 @@ async fn success_response(
         }
         Err(_) => {
             return Ok(warp::reply::with_status(
-                warp::reply::json(&"Failed to generate Auth JWT"),
+                warp::reply::json(&"Failed to generate Auth JWT".to_string()),
                 StatusCode::INTERNAL_SERVER_ERROR,
             )
             .into_response())

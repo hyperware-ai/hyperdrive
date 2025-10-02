@@ -43,3 +43,10 @@ export type UnencryptedIdentity = {
   name: string,
   allowed_routers: string[]
 }
+
+export type InfoResponse = {
+  name: string;
+  allowed_routers: string[];
+  initial_cache_sources: string[];
+  initial_base_l2_providers: string[];
+}

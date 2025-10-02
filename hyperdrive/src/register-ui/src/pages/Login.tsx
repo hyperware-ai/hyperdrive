@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { PageProps, UnencryptedIdentity } from "../lib/types";
+import { PageProps, InfoResponse } from "../lib/types";
 import Loader from "../components/Loader";
 import { useNavigate } from "react-router-dom";
 import { redirectToHomepage } from "../utils/redirect-to-homepage";
@@ -10,13 +10,13 @@ import SpecifyBaseL2AccessProvidersCheckbox from "../components/SpecifyBaseL2Acc
 interface LoginProps extends PageProps { }
 
 function Login({
-  pw,
-  setPw,
-  routers,
-  setRouters,
-  hnsName,
-  setHnsName,
-}: LoginProps) {
+                 pw,
+                 setPw,
+                 routers,
+                 setRouters,
+                 hnsName,
+                 setHnsName,
+               }: LoginProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,95 +38,109 @@ function Login({
     (async () => {
       try {
         const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
-          res.json()
-        )) as UnencryptedIdentity;
+            res.json()
+        )) as InfoResponse;
         setRouters(infoData.allowed_routers);
         setHnsName(infoData.name);
-      } catch { }
+
+        // Prepopulate the fields with default values from the server
+        if (infoData.initial_cache_sources && infoData.initial_cache_sources.length > 0) {
+          setCustomCacheSources(infoData.initial_cache_sources.join('\n'));
+          setSpecifyCacheSources(true); // Auto-check the checkbox
+        }
+
+        if (infoData.initial_base_l2_providers && infoData.initial_base_l2_providers.length > 0) {
+          setCustomBaseL2AccessProviders(infoData.initial_base_l2_providers.join('\n'));
+          setSpecifyBaseL2AccessProviders(true); // Auto-check the checkbox
+        }
+      } catch (error) {
+        console.error('Failed to fetch node info:', error);
+        // Continue without defaults if fetch fails
+      }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogin = useCallback(
-    async (e?: FormEvent) => {
-      e?.preventDefault();
-      e?.stopPropagation();
+      async (e?: FormEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
 
-      setLoading("Logging in...");
-      try {
-        // Process custom cache sources if specified
-        let cacheSourcesToUse: string[] | undefined = undefined;
-        if (specifyCacheSources && customCacheSources.trim()) {
-          cacheSourcesToUse = customCacheSources
-              .split('\n')
-              .map(source => source.trim())
-              .filter(source => source.length > 0);
-
-          console.log("Custom cache sources:", cacheSourcesToUse);
-        }
-
-        // Process custom Base L2 access providers if specified
-        let baseL2AccessProvidersToUse: string[] | undefined = undefined;
-        if (specifyBaseL2AccessProviders && customBaseL2AccessProviders.trim()) {
-          baseL2AccessProvidersToUse = customBaseL2AccessProviders
-              .split('\n')
-              .map(provider => provider.trim())
-              .filter(provider => provider.length > 0);
-
-          console.log("Custom Base L2 access providers:", baseL2AccessProvidersToUse);
-        }
-
-        let result;
-
+        setLoading("Logging in...");
         try {
-          // Try argon2 hash first
+          // Process custom cache sources if specified
+          let cacheSourcesToUse: string[] | undefined = undefined;
+          if (specifyCacheSources && customCacheSources.trim()) {
+            cacheSourcesToUse = customCacheSources
+                .split('\n')
+                .map(source => source.trim())
+                .filter(source => source.length > 0);
 
-          // salt is either node name (if node name is longer than 8 characters)
-          //  or node name repeated enough times to be longer than 8 characters
-          const minSaltL = 8;
-          const nodeL = hnsName.length;
-          const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
-          console.log(salt);
-
-          //@ts-ignore
-          const h = await argon2.hash({
-            pass: pw,
-            salt: salt,
-            hashLen: 32,
-            time: 2,
-            mem: 19456,
-            //@ts-ignore
-            type: argon2.ArgonType.Argon2id
-          });
-
-          const hashed_password_hex = `0x${h.hashHex}`;
-
-          result = await fetch("/login", {
-            method: "POST",
-            credentials: 'include',
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password_hash: hashed_password_hex,
-              custom_cache_sources: cacheSourcesToUse && cacheSourcesToUse.length > 0 ? cacheSourcesToUse : null,
-              custom_base_l2_access_providers: baseL2AccessProvidersToUse && baseL2AccessProvidersToUse.length > 0 ? baseL2AccessProvidersToUse : null,
-            }),
-
-          });
-
-          if (result.status < 399) {
-            redirectToHomepage();
-            return;
+            console.log("Custom cache sources:", cacheSourcesToUse);
           }
-        } catch (argonErr) {
-          console.log("This node was instantiated before the switch to argon2");
+
+          // Process custom Base L2 access providers if specified
+          let baseL2AccessProvidersToUse: string[] | undefined = undefined;
+          if (specifyBaseL2AccessProviders && customBaseL2AccessProviders.trim()) {
+            baseL2AccessProvidersToUse = customBaseL2AccessProviders
+                .split('\n')
+                .map(provider => provider.trim())
+                .filter(provider => provider.length > 0);
+
+            console.log("Custom Base L2 access providers:", baseL2AccessProvidersToUse);
+          }
+
+          let result;
+
+          try {
+            // Try argon2 hash first
+
+            // salt is either node name (if node name is longer than 8 characters)
+            //  or node name repeated enough times to be longer than 8 characters
+            const minSaltL = 8;
+            const nodeL = hnsName.length;
+            const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
+            console.log(salt);
+
+            //@ts-ignore
+            const h = await argon2.hash({
+              pass: pw,
+              salt: salt,
+              hashLen: 32,
+              time: 2,
+              mem: 19456,
+              //@ts-ignore
+              type: argon2.ArgonType.Argon2id
+            });
+
+            const hashed_password_hex = `0x${h.hashHex}`;
+
+            result = await fetch("/login", {
+              method: "POST",
+              credentials: 'include',
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password_hash: hashed_password_hex,
+                custom_cache_sources: cacheSourcesToUse && cacheSourcesToUse.length > 0 ? cacheSourcesToUse : null,
+                custom_base_l2_access_providers: baseL2AccessProvidersToUse && baseL2AccessProvidersToUse.length > 0 ? baseL2AccessProvidersToUse : null,
+              }),
+
+            });
+
+            if (result.status < 399) {
+              redirectToHomepage();
+              return;
+            }
+          } catch (argonErr) {
+            console.log("This node was instantiated before the switch to argon2");
+          }
+
+          throw new Error(result ? await result.text() : "Login failed");
+
+        } catch (err) {
+          setKeyErrs([String(err)]);
+          setLoading("");
         }
-
-        throw new Error(result ? await result.text() : "Login failed");
-
-      } catch (err) {
-        setKeyErrs([String(err)]);
-        setLoading("");
-      }
-    },
-    [pw, hnsName, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, customBaseL2AccessProviders]
+      },
+      [pw, hnsName, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, customBaseL2AccessProviders]
   );
 
   const isDirect = Boolean(routers?.length === 0);
@@ -136,11 +150,11 @@ function Login({
       <Loader msg={loading} className="text-black dark:text-white" />
     </div>}
     <form
-      id="registerui--login-form"
-      className={classNames("flex flex-col gap-2 items-stretch", {
-        'invisible': loading
-      })}
-      onSubmit={handleLogin}
+        id="registerui--login-form"
+        className={classNames("flex flex-col gap-2 items-stretch", {
+          'invisible': loading
+        })}
+        onSubmit={handleLogin}
     >
 
       <div className="form-group">
@@ -149,15 +163,15 @@ function Login({
           <div className="text-xs opacity-50">Login - {isDirect ? "direct" : "indirect"} node</div>
         </div>
         <input
-          type="password"
-          id="password"
-          required
-          minLength={6}
-          name="password"
-          placeholder="Password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          autoFocus
+            type="password"
+            id="password"
+            required
+            minLength={6}
+            name="password"
+            placeholder="Password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            autoFocus
         />
       </div>
 
@@ -236,11 +250,11 @@ function Login({
       </details>
 
       {keyErrs.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {keyErrs.map((x, i) => (
-            <div key={i} className="text-red-500 wrap-anywhere mt-2">{x}</div>
-          ))}
-        </div>
+          <div className="flex flex-col gap-2">
+            {keyErrs.map((x, i) => (
+                <div key={i} className="text-red-500 wrap-anywhere mt-2">{x}</div>
+            ))}
+          </div>
       )}
 
       <button
@@ -252,8 +266,8 @@ function Login({
       >Log in</button>
 
       <button
-        className="clear "
-        onClick={() => navigate('/reset')}
+          className="clear "
+          onClick={() => navigate('/reset')}
       >
         Reset Password & Networking Info
       </button>

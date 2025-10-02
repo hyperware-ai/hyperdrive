@@ -13,10 +13,13 @@ use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 mod eth;
 mod eth_config_utils;
+mod options_config_utils;
+use options_config_utils::*;
+
 #[cfg(feature = "simulation-mode")]
 mod fakenet;
 pub mod fd_manager;
@@ -90,6 +93,8 @@ async fn main() {
     let rpc_config = matches.get_one::<String>("rpc-config").map(|p| {
         std::fs::canonicalize(&p).expect(&format!("specified rpc-config path {p} not found"))
     });
+
+    crate::options_config_utils::initialize_home_directory(home_directory_path.to_path_buf());
 
     // Prevent using both --rpc and --rpc-config flags simultaneously
     if rpc.is_some() && rpc_config.is_some() {
@@ -285,11 +290,22 @@ async fn main() {
     println!("Serving Hyperdrive at {link}\r");
     #[cfg(not(feature = "simulation-mode"))]
     println!("Login or register at {link}\r");
+
+    println!("DEBUG: Looking for keyfile in home directory: {}\r", home_directory_path.display());
+    let keyfile_path = home_directory_path.join(".keyfile");
+    println!("DEBUG: Expected keyfile path: {}\r", keyfile_path.display());
+    if keyfile_path.exists() {
+        println!("DEBUG: Keyfile exists at expected location\r");
+    } else {
+        println!("DEBUG: Keyfile NOT found at expected location\r");
+    }
+
     #[cfg(not(feature = "simulation-mode"))]
     let (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector) =
         match password {
             None => {
-                serve_register_fe(
+                println!("DEBUG: Starting registration/login flow (no password provided)\r");
+                let result = serve_register_fe(
                     &home_directory_path,
                     our_ip.to_string(),
                     (ws_tcp_handle, ws_flag_used),
@@ -298,10 +314,13 @@ async fn main() {
                     eth_provider_config.clone(),
                     detached,
                 )
-                .await
+                .await;
+                println!("DEBUG: Registration/login flow completed\r");
+                result
             }
             Some(password) => {
-                login_with_password(
+                println!("DEBUG: Starting Command line login flow (password provided)\r");
+                let result = login_with_password(
                     &home_directory_path,
                     our_ip.to_string(),
                     (ws_tcp_handle, ws_flag_used),
@@ -309,11 +328,37 @@ async fn main() {
                     eth_provider_config.clone(),
                     password,
                 )
-                .await
+                .await;
+                println!("DEBUG: Command line login flow completed\r");
+                result
             }
         };
 
+    // Add debug output after login/registration
+    println!("DEBUG: After login/registration - checking keyfile again\r");
+    if keyfile_path.exists() {
+        println!("DEBUG: Keyfile NOW exists at expected location\r");
+        if let Ok(keyfile_content) = std::fs::read(&keyfile_path) {
+            println!("DEBUG: Keyfile size: {} bytes\r", keyfile_content.len());
+        }
+    } else {
+        println!("DEBUG: Keyfile STILL does not exist at expected location\r");
+
+        // Check if there are other files that might be the keyfile
+        if let Ok(entries) = std::fs::read_dir(&home_directory_path) {
+            println!("DEBUG: Files in home directory:\r");
+            for entry in entries.flatten() {
+                if let Ok(file_name) = entry.file_name().into_string() {
+                    println!("DEBUG: - {}\r", file_name);
+                }
+            }
+        }
+    }
+
     is_eth_provider_config_updated = false;
+
+    let cache_source_vector_for_config = cache_source_vector.clone();
+    let base_l2_access_source_vector_for_config = base_l2_access_source_vector.clone();
 
     if !base_l2_access_source_vector.is_empty() {
         // Process in reverse order so the first entry in the vector becomes highest priority
@@ -337,6 +382,18 @@ async fn main() {
         )
         .await
         .expect("failed to save new eth provider config!");
+    }
+
+    // Save the cache sources and Base L2 providers configuration
+    if !cache_source_vector_for_config.is_empty() || !base_l2_access_source_vector_for_config.is_empty() {
+        let options_config = OptionsConfig {
+            cache_sources: cache_source_vector_for_config,
+            base_l2_providers: base_l2_access_source_vector_for_config,
+        };
+
+        save_options_config(&options_config)
+            .await
+            .expect("failed to save options config!");
     }
 
     // the boolean flag determines whether the runtime module is *public* or not,
@@ -966,47 +1023,52 @@ async fn serve_register_fe(
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
 ) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
-    let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<bool>();
+    // Load options config from file
+    let options_config = load_options_config().await;
 
-    let disk_keyfile: Option<Vec<u8>> = tokio::fs::read(home_directory_path.join(".keys"))
-        .await
-        .ok();
+    let (tx, mut rx): (
+        mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>,
+        mpsc::Receiver<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>
+    ) = mpsc::channel(32);
+    let (kill_tx, kill_rx) = oneshot::channel::<bool>();
 
-    let (tx, mut rx) = mpsc::channel::<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>(1);
-    let (our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector) = tokio::select! {
-        _ = register::register(
-                tx,
-                kill_rx,
-                our_ip,
-                (ws_networking.0.as_ref(), ws_networking.1),
-                (tcp_networking.0.as_ref(), tcp_networking.1),
-                http_server_port,
-                disk_keyfile,
-                eth_provider_config,
-                detached) => {
-            panic!("registration failed")
-        }
-        Some((our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector)) = rx.recv() => {
-            (our, decoded_keyfile, encoded_keyfile, cache_source_vector, base_l2_access_source_vector)
-        }
-    };
+    let keyfile_path = home_directory_path.join(".keys");
+    let keyfile: Option<Vec<u8>> = tokio::fs::read(&keyfile_path).await.ok();
 
-    tokio::fs::write(home_directory_path.join(".keys"), &encoded_keyfile)
-        .await
-        .unwrap();
+    tokio::spawn(async move {
+        register::register(
+            tx,
+            kill_rx,
+            our_ip,
+            (ws_networking.0.as_ref(), ws_networking.1),
+            (tcp_networking.0.as_ref(), tcp_networking.1),
+            http_server_port,
+            keyfile,
+            eth_provider_config,
+            detached,
+            Some(options_config.cache_sources),        // Pass from config
+            Some(options_config.base_l2_providers),    // Pass from config
+        )
+            .await;
+    });
 
+    let (our, decoded_keyfile, encoded_keyfile, cache_sources, base_l2_providers) = rx.recv().await.unwrap();
     let _ = kill_tx.send(true);
 
-    drop(ws_networking.0);
-    drop(tcp_networking.0);
+    // Save the keyfile to disk
+    tokio::fs::write(home_directory_path.join(".keys"), &encoded_keyfile)
+        .await
+        .expect("failed to write keyfile");
 
-    (
-        our,
-        encoded_keyfile,
-        decoded_keyfile,
-        cache_source_vector,
-        base_l2_access_source_vector,
-    )
+    // Save the options config with the received cache sources and base L2 providers
+    if let Err(e) = update_options_config(
+        cache_sources.clone(),
+        base_l2_providers.clone(),
+    ).await {
+        eprintln!("Failed to save options config: {}", e);
+    }
+
+    (our, encoded_keyfile, decoded_keyfile, cache_sources, base_l2_providers)
 }
 
 #[cfg(not(feature = "simulation-mode"))]
