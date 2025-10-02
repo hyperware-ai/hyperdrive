@@ -291,7 +291,10 @@ async fn main() {
     #[cfg(not(feature = "simulation-mode"))]
     println!("Login or register at {link}\r");
 
-    println!("DEBUG: Looking for keyfile in home directory: {}\r", home_directory_path.display());
+    println!(
+        "DEBUG: Looking for keyfile in home directory: {}\r",
+        home_directory_path.display()
+    );
     let keyfile_path = home_directory_path.join(".keyfile");
     println!("DEBUG: Expected keyfile path: {}\r", keyfile_path.display());
     if keyfile_path.exists() {
@@ -385,7 +388,9 @@ async fn main() {
     }
 
     // Save the cache sources and Base L2 providers configuration
-    if !cache_source_vector_for_config.is_empty() || !base_l2_access_source_vector_for_config.is_empty() {
+    if !cache_source_vector_for_config.is_empty()
+        || !base_l2_access_source_vector_for_config.is_empty()
+    {
         let options_config = OptionsConfig {
             cache_sources: cache_source_vector_for_config,
             base_l2_providers: base_l2_access_source_vector_for_config,
@@ -1028,7 +1033,7 @@ async fn serve_register_fe(
 
     let (tx, mut rx): (
         mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>,
-        mpsc::Receiver<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>
+        mpsc::Receiver<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>,
     ) = mpsc::channel(32);
     let (kill_tx, kill_rx) = oneshot::channel::<bool>();
 
@@ -1046,13 +1051,14 @@ async fn serve_register_fe(
             keyfile,
             eth_provider_config,
             detached,
-            Some(options_config.cache_sources),        // Pass from config
-            Some(options_config.base_l2_providers),    // Pass from config
+            Some(options_config.cache_sources), // Pass from config
+            Some(options_config.base_l2_providers), // Pass from config
         )
-            .await;
+        .await;
     });
 
-    let (our, decoded_keyfile, encoded_keyfile, cache_sources, base_l2_providers) = rx.recv().await.unwrap();
+    let (our, decoded_keyfile, encoded_keyfile, cache_sources, base_l2_providers) =
+        rx.recv().await.unwrap();
     let _ = kill_tx.send(true);
 
     // Save the keyfile to disk
@@ -1061,14 +1067,17 @@ async fn serve_register_fe(
         .expect("failed to write keyfile");
 
     // Save the options config with the received cache sources and base L2 providers
-    if let Err(e) = update_options_config(
-        cache_sources.clone(),
-        base_l2_providers.clone(),
-    ).await {
+    if let Err(e) = update_options_config(cache_sources.clone(), base_l2_providers.clone()).await {
         eprintln!("Failed to save options config: {}", e);
     }
 
-    (our, encoded_keyfile, decoded_keyfile, cache_sources, base_l2_providers)
+    (
+        our,
+        encoded_keyfile,
+        decoded_keyfile,
+        cache_sources,
+        base_l2_providers,
+    )
 }
 
 #[cfg(not(feature = "simulation-mode"))]

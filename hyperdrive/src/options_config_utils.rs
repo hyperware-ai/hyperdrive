@@ -34,7 +34,10 @@ static HOME_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 /// Initialize the home directory path explicitly (must be called before first use of config functions)
 pub fn initialize_home_directory(home_directory_path: PathBuf) {
-    std::env::set_var("HYPERDRIVE_HOME", home_directory_path.to_string_lossy().to_string());
+    std::env::set_var(
+        "HYPERDRIVE_HOME",
+        home_directory_path.to_string_lossy().to_string(),
+    );
 }
 
 /// Get the configured home directory path
@@ -48,15 +51,13 @@ pub async fn load_options_config() -> OptionsConfig {
     let config_path = HOME_DIR.join(OPTIONS_CONFIG_FILE);
 
     match tokio::fs::read_to_string(&config_path).await {
-        Ok(contents) => {
-            match serde_json::from_str::<OptionsConfig>(&contents) {
-                Ok(config) => config,
-                Err(e) => {
-                    eprintln!("Warning: Failed to parse options config: {}", e);
-                    OptionsConfig::default()
-                }
+        Ok(contents) => match serde_json::from_str::<OptionsConfig>(&contents) {
+            Ok(config) => config,
+            Err(e) => {
+                eprintln!("Warning: Failed to parse options config: {}", e);
+                OptionsConfig::default()
             }
-        }
+        },
         Err(_) => {
             // File doesn't exist, return defaults
             OptionsConfig::default()

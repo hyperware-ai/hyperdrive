@@ -10,7 +10,7 @@ use alloy_primitives::{Address as EthAddress, Bytes, FixedBytes, U256};
 use alloy_sol_types::{eip712_domain, SolCall, SolStruct};
 use base64::{engine::general_purpose::STANDARD as base64_standard, Engine};
 use lib::types::core::{
-    BootInfo, Identity, ImportKeyfileInfo, Keyfile, LoginInfo, NodeRouting, InfoResponse,
+    BootInfo, Identity, ImportKeyfileInfo, InfoResponse, Keyfile, LoginInfo, NodeRouting,
 };
 use ring::{rand::SystemRandom, signature, signature::KeyPair};
 use std::{
@@ -42,7 +42,7 @@ pub async fn register(
     keyfile: Option<Vec<u8>>,
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
-    initial_cache_sources: Option<Vec<String>>,        // <- Add this
+    initial_cache_sources: Option<Vec<String>>, // <- Add this
     initial_base_l2_providers: Option<Vec<String>>,
 ) {
     // Networking info is generated and passed to the UI, but not used until confirmed
@@ -131,7 +131,9 @@ pub async fn register(
         .or(warp::path("set-password"))
         .or(warp::path("custom-register"))
         .and(warp::get())
-        .map(move |_| warp::reply::html(include_str!("register-ui\\build\\index.html").to_string()));
+        .map(move |_| {
+            warp::reply::html(include_str!("register-ui\\build\\index.html").to_string())
+        });
 
     let boot_provider = provider.clone();
     let login_provider = provider.clone();
@@ -320,7 +322,7 @@ async fn get_unencrypted_info(
                         warp::reply::json(&"keyfile deserialization went wrong".to_string()),
                         StatusCode::UNAUTHORIZED,
                     )
-                        .into_response())
+                    .into_response())
                 }
             },
             None => {
@@ -328,7 +330,7 @@ async fn get_unencrypted_info(
                     warp::reply::json(&"Keyfile not present".to_string()),
                     StatusCode::NOT_FOUND,
                 )
-                    .into_response())
+                .into_response())
             }
         }
     };
@@ -337,14 +339,15 @@ async fn get_unencrypted_info(
         name,
         allowed_routers,
         initial_cache_sources: initial_cache_sources.as_ref().clone().unwrap_or_default(),
-        initial_base_l2_providers: initial_base_l2_providers.as_ref().clone().unwrap_or_default(),
+        initial_base_l2_providers: initial_base_l2_providers
+            .as_ref()
+            .clone()
+            .unwrap_or_default(),
     };
 
-    return Ok(warp::reply::with_status(
-        warp::reply::json(&response),
-        StatusCode::OK,
-    )
-        .into_response());
+    return Ok(
+        warp::reply::with_status(warp::reply::json(&response), StatusCode::OK).into_response(),
+    );
 }
 
 async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Reply, Rejection> {
@@ -446,7 +449,9 @@ async fn handle_boot(
             Ok(get) => {
                 let Ok(node_info) = getCall::abi_decode_returns(&get, false) else {
                     return Ok(warp::reply::with_status(
-                        warp::reply::json(&"Failed to decode hypermap entry from return bytes".to_string()),
+                        warp::reply::json(
+                            &"Failed to decode hypermap entry from return bytes".to_string(),
+                        ),
                         StatusCode::INTERNAL_SERVER_ERROR,
                     )
                     .into_response());
