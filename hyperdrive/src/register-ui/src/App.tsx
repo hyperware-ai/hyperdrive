@@ -4,6 +4,7 @@ import { Navigate, BrowserRouter as Router, Route, Routes, useParams } from 'rea
 import CommitDotOsName from "./pages/CommitDotOsName";
 import MintDotOsName from "./pages/MintDotOsName";
 import MintCustom from "./pages/MintCustom";
+import UpgradeCustom from "./pages/UpgradeCustom";
 import SetPassword from "./pages/SetPassword";
 import Login from './pages/Login'
 import ResetName from './pages/ResetName'
@@ -24,6 +25,8 @@ function App() {
   const [reset, setReset] = useState<boolean>(false);
   const [direct, setDirect] = useState<boolean>(false);
   const [hnsName, setHnsName] = useState<string>('');
+  const [tbaAddress, setTbaAddress] = useState<string>('');
+  const [implAddress, setImplAddress] = useState<string>('');
   const [networkingKey, setNetworkingKey] = useState<string>('');
   const [ipAddress, setIpAddress] = useState<number>(0);
   const [ws_port, setWsPort] = useState<number>(0);
@@ -94,6 +97,10 @@ function App() {
     tcp_port, setTcpPort,
     routers, setRouters,
     nodeChainId,
+    tbaAddress,
+    setTbaAddress,
+    implAddress,
+    setImplAddress
   }
 
   return (
@@ -136,6 +143,12 @@ function App() {
                 <>
                   <ProgressBar hnsName={hnsName} />
                   <MintCustom {...props} />
+                </>
+              } />
+
+              <Route path="/custom-upgrade" element={
+                <>
+                  <UpgradeCustom {...props} />
                 </>
               } />
             </Routes>

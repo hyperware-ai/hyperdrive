@@ -31,3 +31,7 @@ export const dotOsAbi = parseAbi([
 export const tbaMintAbi = parseAbi([
     "function mint(address who, bytes calldata name, bytes calldata initialization, address implementation) external returns (address)"
 ]);
+
+export const tbaUpgradeAbi = parseAbi([
+    "function upgradeToAndCall(address newImpl, bytes calldata data) external"
+]);
