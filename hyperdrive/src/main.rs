@@ -17,8 +17,8 @@ use tokio::sync::{mpsc, oneshot};
 
 mod eth;
 mod eth_config_utils;
-mod options_config_utils;
-use options_config_utils::*;
+//mod options_config_utils;
+//use options_config_utils::*;
 
 #[cfg(feature = "simulation-mode")]
 mod fakenet;
@@ -94,7 +94,7 @@ async fn main() {
         std::fs::canonicalize(&p).expect(&format!("specified rpc-config path {p} not found"))
     });
 
-    crate::options_config_utils::initialize_home_directory(home_directory_path.to_path_buf());
+    //crate::options_config_utils::initialize_home_directory(home_directory_path.to_path_buf());
 
     // Prevent using both --rpc and --rpc-config flags simultaneously
     if rpc.is_some() && rpc_config.is_some() {
@@ -360,8 +360,8 @@ async fn main() {
 
     is_eth_provider_config_updated = false;
 
-    let cache_source_vector_for_config = cache_source_vector.clone();
-    let base_l2_access_source_vector_for_config = base_l2_access_source_vector.clone();
+    //let cache_source_vector_for_config = cache_source_vector.clone();
+    //let base_l2_access_source_vector_for_config = base_l2_access_source_vector.clone();
 
     if !base_l2_access_source_vector.is_empty() {
         // Process in reverse order so the first entry in the vector becomes highest priority
@@ -1069,7 +1069,7 @@ async fn serve_register_fe(
     detached: bool,
 ) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
     // Load options config to get cache sources
-    let options_config = load_options_config().await;
+    //let options_config = load_options_config().await;
 
     // Read cache sources from data.txt file instead of options_config
     let cache_sources_from_file = {
@@ -1097,10 +1097,7 @@ async fn serve_register_fe(
     };
 
     // Convert RpcUrl providers to serializable format for the registration UI
-    let initial_base_l2_providers = if !options_config.base_l2_providers.is_empty() {
-        // Use providers from options config if available
-        options_config.base_l2_providers
-    } else {
+    let initial_base_l2_providers = {
         // Extract from eth_provider_config and serialize to JSON strings
         let rpc_providers =
             eth_config_utils::extract_rpc_url_providers_for_default_chain(&eth_provider_config);
