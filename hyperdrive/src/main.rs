@@ -1242,8 +1242,6 @@ fn make_remote_link(url: &str, text: &str) -> String {
     format!("\x1B]8;;{}\x1B\\{}\x1B]8;;\x1B\\", url, text)
 }
 
-// ... existing code ...
-
 /// Serialize RpcUrl providers to JSON strings for the UI
 /// Each provider is serialized as a JSON object containing url and auth
 pub fn serialize_rpc_providers_for_ui(providers: Vec<lib::eth::NodeOrRpcUrl>) -> Vec<String> {

@@ -10,6 +10,15 @@ import { RpcProviderEditor, RpcProviderData } from "../components/RpcProviderEdi
 
 interface LoginProps extends PageProps { }
 
+// Regex for valid cache source names (domain format)
+const CACHE_SOURCE_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
+
+// Validate that URL is a secure WebSocket URL
+const validateWebSocketUrl = (url: string): boolean => {
+  if (!url.trim()) return false;
+  return url.startsWith('wss://');
+};
+
 function Login({
                  pw,
                  setPw,
@@ -27,6 +36,7 @@ function Login({
   // Advanced options state - cache sources and Base L2 access providers
   const [specifyCacheSources, setSpecifyCacheSources] = useState(false);
   const [customCacheSources, setCustomCacheSources] = useState('');
+  const [cacheSourceValidationErrors, setCacheSourceValidationErrors] = useState<string[]>([]);
   const [specifyBaseL2AccessProviders, setSpecifyBaseL2AccessProviders] = useState(false);
   const [rpcProviders, setRpcProviders] = useState<RpcProviderData[]>([]);
 
@@ -87,6 +97,60 @@ function Login({
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Modified setSpecifyCacheSources function to handle clearing
+  const handleSetSpecifyCacheSources = (value: boolean) => {
+    setSpecifyCacheSources(value);
+    if (!value) {
+      setCustomCacheSources('');
+      setCacheSourceValidationErrors([]);
+    }
+  };
+
+  // Validate custom cache sources against the regex
+  const validateCacheSources = (sourcesText: string): string[] => {
+    if (!sourcesText.trim()) return [];
+
+    const sources = sourcesText
+        .split('\n')
+        .map(source => source.trim())
+        .filter(source => source.length > 0);
+
+    const errors: string[] = [];
+    sources.forEach((source, index) => {
+      if (!CACHE_SOURCE_REGEX.test(source)) {
+        errors.push(`Line ${index + 1}: "${source}" is not a valid cache source name`);
+      }
+    });
+
+    return errors;
+  };
+
+  // Handle custom cache sources change with validation
+  const handleCustomCacheSourcesChange = (value: string) => {
+    setCustomCacheSources(value);
+    if (specifyCacheSources && value.trim()) {
+      const errors = validateCacheSources(value);
+      setCacheSourceValidationErrors(errors);
+    } else {
+      setCacheSourceValidationErrors([]);
+    }
+  };
+
+  // Add a validation function for custom cache sources
+  const getValidCustomCacheSources = () => {
+    if (!specifyCacheSources) return [];
+    return customCacheSources
+        .split('\n')
+        .map(source => source.trim())
+        .filter(source => source.length > 0 && CACHE_SOURCE_REGEX.test(source));
+  };
+
+  const isCustomCacheSourcesValid = () => {
+    if (!specifyCacheSources) return true; // Not required if checkbox is unchecked
+    const validSources = getValidCustomCacheSources();
+    return validSources.length > 0 && cacheSourceValidationErrors.length === 0;
+  };
+
   const handleLogin = useCallback(
       async (e?: FormEvent) => {
         e?.preventDefault();
@@ -97,11 +161,7 @@ function Login({
           // Process custom cache sources if specified
           let cacheSourcesToUse: string[] | undefined = undefined;
           if (specifyCacheSources && customCacheSources.trim()) {
-            cacheSourcesToUse = customCacheSources
-                .split('\n')
-                .map(source => source.trim())
-                .filter(source => source.length > 0);
-
+            cacheSourcesToUse = getValidCustomCacheSources();
             console.log("Custom cache sources:", cacheSourcesToUse);
           }
 
@@ -109,12 +169,10 @@ function Login({
           let baseL2AccessProvidersToUse: string[] | undefined = undefined;
           if (specifyBaseL2AccessProviders && rpcProviders.length > 0) {
             baseL2AccessProvidersToUse = rpcProviders.map(provider => {
-              let authObj = null;
-              if (provider.auth) {
-                authObj = {
-                  [provider.auth.type]: provider.auth.value
-                };
-              }
+              const authObj: Record<string, string> | null = provider.auth ? {
+                [provider.auth.type]: provider.auth.value
+              } : null;
+
               return JSON.stringify({
                 url: provider.url,
                 auth: authObj
@@ -179,11 +237,8 @@ function Login({
   // Validation for the submit button
   const hasInvalidRpcProviders = specifyBaseL2AccessProviders && (
       rpcProviders.length === 0 ||
-      rpcProviders.some(p => !p.url.trim() || (p.auth && !p.auth.value.trim()))
+      rpcProviders.some(p => !p.url.trim() || !validateWebSocketUrl(p.url) || (p.auth && !p.auth.value.trim()))
   );
-
-  const hasInvalidCacheSources = specifyCacheSources &&
-      customCacheSources.split('\n').map(c => c.trim()).filter(c => c.length > 0).length === 0;
 
   return <div className="relative flex flex-col gap-2 items-stretch self-stretch">
     {loading && <div className="absolute top-0 left-0 w-full h-full flex place-content-center place-items-center">
@@ -221,7 +276,7 @@ function Login({
         <div className="flex flex-col gap-3">
           <SpecifyCacheSourcesCheckbox
               specifyCacheSources={specifyCacheSources}
-              setSpecifyCacheSources={setSpecifyCacheSources}
+              setSpecifyCacheSources={handleSetSpecifyCacheSources}
           />
           {specifyCacheSources && (
               <div className="flex flex-col gap-2 ml-6">
@@ -231,17 +286,32 @@ function Login({
                 <textarea
                     id="custom-cache-sources-login"
                     value={customCacheSources}
-                    onChange={(e) => setCustomCacheSources(e.target.value)}
+                    onChange={(e) => handleCustomCacheSourcesChange(e.target.value)}
                     placeholder="Enter one cache source name per line, e.g.:&#10;cache-node-1.hypr&#10;other-cache.hypr&#10;mycache.os"
-                    className={`input resize-vertical min-h-[80px] ${hasInvalidCacheSources ? 'border-red-500 focus:border-red-500' : ''}`}
+                    className={`input resize-vertical min-h-[80px] ${
+                        specifyCacheSources && !isCustomCacheSourcesValid()
+                            ? 'border-red-500 focus:border-red-500'
+                            : ''
+                    }`}
                     rows={4}
                 />
-                <span className={`text-xs ${hasInvalidCacheSources ? 'text-red-500' : 'text-gray-500'}`}>
-                    {hasInvalidCacheSources
-                        ? 'At least one cache source name is required'
-                        : 'Enter one cache source name per line. These nodes will serve as cache sources for hypermap data.'
-                    }
-                  </span>
+                {cacheSourceValidationErrors.length > 0 ? (
+                    <div className="text-xs text-red-500">
+                      {cacheSourceValidationErrors.map((error, idx) => (
+                          <div key={idx}>{error}</div>
+                      ))}
+                      <div className="mt-1">Cache source names must contain only lowercase letters, numbers, hyphens (not at start/end), and dots.</div>
+                    </div>
+                ) : (
+                    <span className={`text-xs ${
+                        !isCustomCacheSourcesValid() ? 'text-red-500' : 'text-gray-500'
+                    }`}>
+                      {!isCustomCacheSourcesValid()
+                          ? 'At least one valid cache source name is required'
+                          : 'Enter one cache source name per line. These nodes will serve as cache sources for hypermap data.'
+                      }
+                    </span>
+                )}
               </div>
           )}
 
@@ -256,6 +326,11 @@ function Login({
                     onChange={setRpcProviders}
                     label="Base L2 RPC Providers"
                 />
+                {hasInvalidRpcProviders && (
+                    <div className="text-xs text-red-500 mt-2">
+                      All RPC provider URLs must be secure WebSocket URLs starting with wss://
+                    </div>
+                )}
               </div>
           )}
         </div>
@@ -271,7 +346,7 @@ function Login({
 
       <button
           type="submit"
-          disabled={hasInvalidCacheSources || hasInvalidRpcProviders}
+          disabled={specifyCacheSources && !isCustomCacheSourcesValid() || hasInvalidRpcProviders}
       >Log in</button>
 
       <button

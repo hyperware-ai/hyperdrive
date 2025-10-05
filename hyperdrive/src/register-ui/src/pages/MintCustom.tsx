@@ -13,17 +13,20 @@ import { encodePacked, encodeFunctionData, stringToHex } from "viem";
 import BackButton from "../components/BackButton";
 interface MintCustomNameProps extends PageProps { }
 
+// Regex for valid router names (domain format)
+const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
+
 function MintCustom({
-    direct,
-    setDirect,
-    hnsName,
-    setHnsName,
-    setNetworkingKey,
-    setIpAddress,
-    setWsPort,
-    setTcpPort,
-    setRouters,
-}: MintCustomNameProps) {
+                        direct,
+                        setDirect,
+                        hnsName,
+                        setHnsName,
+                        setNetworkingKey,
+                        setIpAddress,
+                        setWsPort,
+                        setTcpPort,
+                        setRouters,
+                    }: MintCustomNameProps) {
     let { address } = useAccount();
     let navigate = useNavigate();
     let { openConnectModal } = useConnectModal();
@@ -44,6 +47,7 @@ function MintCustom({
     const [triggerNameCheck, setTriggerNameCheck] = useState<boolean>(false)
     const [specifyRouters, setSpecifyRouters] = useState(false)
     const [customRouters, setCustomRouters] = useState('')
+    const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
 
     // Modified setDirect function to handle mutual exclusivity
     const handleSetDirect = (value: boolean) => {
@@ -51,6 +55,7 @@ function MintCustom({
         if (value) {
             setSpecifyRouters(false);
             setCustomRouters(''); // Clear custom routers when switching to direct
+            setRouterValidationErrors([]);
         }
     };
 
@@ -61,7 +66,53 @@ function MintCustom({
             setDirect(false);
         } else {
             setCustomRouters(''); // Clear custom routers when unchecking
+            setRouterValidationErrors([]);
         }
+    };
+
+    // Validate custom routers against the regex
+    const validateRouters = (routersText: string): string[] => {
+        if (!routersText.trim()) return [];
+
+        const routers = routersText
+            .split('\n')
+            .map(router => router.trim())
+            .filter(router => router.length > 0);
+
+        const errors: string[] = [];
+        routers.forEach((router, index) => {
+            if (!ROUTER_NAME_REGEX.test(router)) {
+                errors.push(`Line ${index + 1}: "${router}" is not a valid router name`);
+            }
+        });
+
+        return errors;
+    };
+
+    // Handle custom routers change with validation
+    const handleCustomRoutersChange = (value: string) => {
+        setCustomRouters(value);
+        if (specifyRouters && value.trim()) {
+            const errors = validateRouters(value);
+            setRouterValidationErrors(errors);
+        } else {
+            setRouterValidationErrors([]);
+        }
+    };
+
+    // Add a validation function for custom routers
+    const getValidCustomRouters = () => {
+        if (!specifyRouters) return [];
+        return customRouters
+            .split('\n')
+            .map(router => router.trim())
+            .filter(router => router.length > 0 && ROUTER_NAME_REGEX.test(router));
+    };
+
+    const isCustomRoutersValid = () => {
+        if (!specifyRouters) return true; // Not required if checkbox is unchecked
+        const validRouters = getValidCustomRouters();
+        return validRouters.length > 0 && routerValidationErrors.length === 0;
     };
 
     useEffect(() => {
@@ -90,10 +141,7 @@ function MintCustom({
         // Process custom routers if specified
         let routersToUse: string[] = [];
         if (specifyRouters && customRouters.trim()) {
-            routersToUse = customRouters
-                .split('\n')
-                .map(router => router.trim())
-                .filter(router => router.length > 0);
+            routersToUse = getValidCustomRouters();
 
             // Update the routers in your app state
             setRouters(routersToUse);
@@ -181,25 +229,32 @@ function MintCustom({
                                                 <textarea
                                                     id="custom-routers-mint"
                                                     value={customRouters}
-                                                    onChange={(e) => setCustomRouters(e.target.value)}
+                                                    onChange={(e) => handleCustomRoutersChange(e.target.value)}
                                                     placeholder="Enter one router name per line, e.g.:&#10;router-node-1.hypr&#10;other-router.hypr&#10;myrouter.os"
                                                     className={`input resize-vertical min-h-[80px] ${
-                                                        specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
+                                                        specifyRouters && !isCustomRoutersValid()
                                                             ? 'border-red-500 focus:border-red-500'
                                                             : ''
                                                     }`}
                                                     rows={4}
                                                 />
-                                                <span className={`text-xs ${
-                                                    customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
-                                                        ? 'text-red-500'
-                                                        : 'text-gray-500'
-                                                }`}>
-                                                    {customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0
-                                                        ? 'At least one router name is required'
-                                                        : 'Enter one router name per line. These routers will be used for your indirect node.'
-                                                    }
-                                                </span>
+                                                {routerValidationErrors.length > 0 ? (
+                                                    <div className="text-xs text-red-500">
+                                                        {routerValidationErrors.map((error, idx) => (
+                                                            <div key={idx}>{error}</div>
+                                                        ))}
+                                                        <div className="mt-1">Router names must contain only lowercase letters, numbers, hyphens (not at start/end), and dots.</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className={`text-xs ${
+                                                        !isCustomRoutersValid() ? 'text-red-500' : 'text-gray-500'
+                                                    }`}>
+                                                        {!isCustomRoutersValid()
+                                                            ? 'At least one valid router name is required'
+                                                            : 'Enter one router name per line. These routers will be used for your indirect node.'
+                                                        }
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -212,7 +267,7 @@ function MintCustom({
                                             isPending ||
                                             isConfirming ||
                                             !hnsName ||
-                                            (specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0)
+                                            (specifyRouters && !isCustomRoutersValid())
                                         }>
                                         Mint custom name
                                     </button>

@@ -7,7 +7,6 @@ import { PageProps } from "../lib/types";
 
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
-import { Tooltip } from "../components/Tooltip";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
@@ -16,6 +15,9 @@ import { createPublicClient, http, stringToHex, encodeAbiParameters, parseAbiPar
 import { base } from 'viem/chains'
 import BackButton from "../components/BackButton";
 interface RegisterOsNameProps extends PageProps { }
+
+// Regex for valid router names (domain format)
+const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
 
 function CommitDotOsName({
                              direct,
@@ -50,6 +52,7 @@ function CommitDotOsName({
     const [isConfirmed, setIsConfirmed] = useState(false)
     const [specifyRouters, setSpecifyRouters] = useState(false)
     const [customRouters, setCustomRouters] = useState('')
+    const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
 
     // Modified setDirect function to handle mutual exclusivity
     const handleSetDirect = (value: boolean) => {
@@ -57,6 +60,7 @@ function CommitDotOsName({
         if (value) {
             setSpecifyRouters(false);
             setCustomRouters(''); // Clear custom routers when switching to direct
+            setRouterValidationErrors([]);
         }
     };
 
@@ -67,6 +71,37 @@ function CommitDotOsName({
             setDirect(false);
         } else {
             setCustomRouters(''); // Clear custom routers when unchecking
+            setRouterValidationErrors([]);
+        }
+    };
+
+    // Validate custom routers against the regex
+    const validateRouters = (routersText: string): string[] => {
+        if (!routersText.trim()) return [];
+
+        const routers = routersText
+            .split('\n')
+            .map(router => router.trim())
+            .filter(router => router.length > 0);
+
+        const errors: string[] = [];
+        routers.forEach((router, index) => {
+            if (!ROUTER_NAME_REGEX.test(router)) {
+                errors.push(`Line ${index + 1}: "${router}" is not a valid router name`);
+            }
+        });
+
+        return errors;
+    };
+
+    // Handle custom routers change with validation
+    const handleCustomRoutersChange = (value: string) => {
+        setCustomRouters(value);
+        if (specifyRouters && value.trim()) {
+            const errors = validateRouters(value);
+            setRouterValidationErrors(errors);
+        } else {
+            setRouterValidationErrors([]);
         }
     };
 
@@ -76,15 +111,14 @@ function CommitDotOsName({
         return customRouters
             .split('\n')
             .map(router => router.trim())
-            .filter(router => router.length > 0);
+            .filter(router => router.length > 0 && ROUTER_NAME_REGEX.test(router));
     };
 
     const isCustomRoutersValid = () => {
         if (!specifyRouters) return true; // Not required if checkbox is unchecked
-        return getValidCustomRouters().length > 0;
+        const validRouters = getValidCustomRouters();
+        return validRouters.length > 0 && routerValidationErrors.length === 0;
     };
-
-
 
     useEffect(() => {
         document.title = "Register"
@@ -111,10 +145,7 @@ function CommitDotOsName({
         console.log("committing to .os name: ", name)
 
         if (specifyRouters && customRouters.trim()) {
-            const routersToUse = customRouters
-                .split('\n')
-                .map(router => router.trim())
-                .filter(router => router.length > 0);
+            const routersToUse = getValidCustomRouters();
 
             // Update the routers in your app state for the next page to use
             setRouters(routersToUse);
@@ -167,13 +198,10 @@ function CommitDotOsName({
                 setHnsName(`${name}.os`);
 
                 if (specifyRouters && customRouters.trim()) {
-                    const routersToUse = customRouters
-                        .split('\n')
-                        .map(router => router.trim())
-                        .filter(router => router.length > 0);
+                    const routersToUse = getValidCustomRouters();
                     setRouters(routersToUse);
                 }
-                    navigate("/mint-os-name");
+                navigate("/mint-os-name");
             }, 16000)
         }
     }, [txConfirmed, address, name, setHnsName, navigate, specifyRouters, customRouters, setRouters]);
@@ -211,7 +239,7 @@ function CommitDotOsName({
                                                 <textarea
                                                     id="custom-routers"
                                                     value={customRouters}
-                                                    onChange={(e) => setCustomRouters(e.target.value)}
+                                                    onChange={(e) => handleCustomRoutersChange(e.target.value)}
                                                     placeholder="Enter one router name per line, e.g.:&#10;router-node-1.hypr&#10;other-router.hypr&#10;myrouter.os"
                                                     className={`input resize-vertical min-h-[80px] ${
                                                         specifyRouters && !isCustomRoutersValid()
@@ -220,14 +248,23 @@ function CommitDotOsName({
                                                     }`}
                                                     rows={4}
                                                 />
-                                                <span className={`text-xs ${
-                                                    !isCustomRoutersValid() ? 'text-red-500' : 'text-gray-500'
-                                                }`}>
-                                                    {!isCustomRoutersValid()
-                                                        ? 'At least one router name is required'
-                                                        : 'Enter one router name per line. These routers will be used for your indirect node.'
-                                                    }
-                                                </span>
+                                                {routerValidationErrors.length > 0 ? (
+                                                    <div className="text-xs text-red-500">
+                                                        {routerValidationErrors.map((error, idx) => (
+                                                            <div key={idx}>{error}</div>
+                                                        ))}
+                                                        <div className="mt-1">Router names must contain only lowercase letters, numbers, hyphens (not at start/end), and dots.</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className={`text-xs ${
+                                                        !isCustomRoutersValid() ? 'text-red-500' : 'text-gray-500'
+                                                    }`}>
+                                                        {!isCustomRoutersValid()
+                                                            ? 'At least one valid router name is required'
+                                                            : 'Enter one router name per line. These routers will be used for your indirect node.'
+                                                        }
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -238,7 +275,7 @@ function CommitDotOsName({
                                         disabled={nameValidities.length !== 0 ||
                                             isPending ||
                                             isConfirming ||
-                                            (specifyRouters && customRouters.split('\n').map(r => r.trim()).filter(r => r.length > 0).length === 0)
+                                            (specifyRouters && !isCustomRoutersValid())
                                         }
                                         type="submit"
                                         className="button"
