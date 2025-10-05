@@ -561,13 +561,13 @@ impl State {
         // Create alternate drive for initfiles and read the test data
         let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None).unwrap();
 
-        // Try to read the data.txt file from the initfiles drive
-        match vfs::open_file(&format!("{}/data.txt", alt_drive_path), false, None) {
+        // Try to read the cache_sources file from the initfiles drive
+        match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
             Ok(file) => {
                 match file.read() {
                     Ok(contents) => {
                         let content_str = String::from_utf8_lossy(&contents);
-                        info!("Contents of data.txt: {}", content_str);
+                        info!("Contents of cache_sources: {}", content_str);
 
                         // Parse the JSON to get the vector of node names
                         match serde_json::from_str::<Vec<String>>(&content_str) {
@@ -587,13 +587,13 @@ impl State {
                                 }
                             }
                             Err(e) => {
-                                info!("Failed to parse data.txt as JSON: {}, keeping existing node configuration", e);
+                                info!("Failed to parse cache_sources as JSON: {}, keeping existing node configuration", e);
                             }
                         }
                     }
                     Err(e) => {
                         info!(
-                            "Failed to read data.txt: {}, keeping existing node configuration",
+                            "Failed to read cache_sources: {}, keeping existing node configuration",
                             e
                         );
                     }
@@ -601,7 +601,7 @@ impl State {
             }
             Err(e) => {
                 info!(
-                    "Failed to open data.txt: {}, keeping existing node configuration",
+                    "Failed to open cache_sources: {}, keeping existing node configuration",
                     e
                 );
             }
@@ -742,14 +742,14 @@ impl State {
         Err(anyhow::anyhow!("Failed to bootstrap from any node"))
     }
 
-    // Helper function to write nodes to data.txt file
+    // Helper function to write nodes to cache_sources file
     fn write_nodes_to_file(&self) -> anyhow::Result<()> {
         info!("Beginning of subroutine");
         let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None)?;
         info!("drive path defined");
         let nodes_json = serde_json::to_string(&self.nodes)?;
         info!("nodes_json defined");
-        let file_path = format!("{}/data.txt", alt_drive_path);
+        let file_path = format!("{}/cache_sources", alt_drive_path);
         info!("file_path defined");
 
         // Open file in write mode which should truncate, but to be safe we'll write exact bytes
@@ -765,7 +765,7 @@ impl State {
         // This ensures any old content beyond this point is truncated
         file.set_len(bytes.len() as u64)?;
 
-        info!("Updated data.txt with {} nodes", self.nodes.len());
+        info!("Updated cache_sources with {} nodes", self.nodes.len());
         Ok(())
     }
 
@@ -1267,7 +1267,7 @@ fn handle_request(
             state.save();
             info!("Nodes have been saved to state");
             if let Err(e) = state.write_nodes_to_file() {
-                error!("Failed to write nodes to data.txt: {:?}", e);
+                error!("Failed to write nodes to cache_sources: {:?}", e);
             }
             info!("If statement complete");
             info!("Nodes updated to: {:?}", state.nodes);
@@ -1297,7 +1297,7 @@ fn handle_request(
                 state.nodes = nodes;
                 state.save();
                 if let Err(e) = state.write_nodes_to_file() {
-                    error!("Failed to write nodes to data.txt: {:?}", e);
+                    error!("Failed to write nodes to cache_sources: {:?}", e);
                 }
                 info!(
                     "Hypermap-cacher reset complete. New nodes: {:?}",
@@ -1429,19 +1429,19 @@ fn init(our: Address) {
     // Create alternate drive for initfiles and read the test data
     let alt_drive_path = vfs::create_drive(our.package_id(), "initfiles", None).unwrap();
 
-    // Try to read the data.txt file from the initfiles drive
-    match vfs::open_file(&format!("{}/data.txt", alt_drive_path), false, None) {
+    // Try to read the cache_sources file from the initfiles drive
+    match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
         Ok(file) => match file.read() {
             Ok(contents) => {
                 let content_str = String::from_utf8_lossy(&contents);
-                info!("Contents of data.txt: {}", content_str);
+                info!("Contents of cache_sources: {}", content_str);
             }
             Err(e) => {
-                info!("Failed to read data.txt: {}", e);
+                info!("Failed to read cache_sources: {}", e);
             }
         },
         Err(e) => {
-            info!("Failed to open data.txt: {}", e);
+            info!("Failed to open cache_sources: {}", e);
         }
     }
 

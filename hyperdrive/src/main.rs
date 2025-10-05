@@ -17,8 +17,6 @@ use tokio::sync::{mpsc, oneshot};
 
 mod eth;
 mod eth_config_utils;
-//mod options_config_utils;
-//use options_config_utils::*;
 
 #[cfg(feature = "simulation-mode")]
 mod fakenet;
@@ -93,8 +91,6 @@ async fn main() {
     let rpc_config = matches.get_one::<String>("rpc-config").map(|p| {
         std::fs::canonicalize(&p).expect(&format!("specified rpc-config path {p} not found"))
     });
-
-    //crate::options_config_utils::initialize_home_directory(home_directory_path.to_path_buf());
 
     // Prevent using both --rpc and --rpc-config flags simultaneously
     if rpc.is_some() && rpc_config.is_some() {
@@ -424,22 +420,6 @@ async fn main() {
         .expect("failed to save new eth provider config!");
     }
 
-    /* TODO CLEANUP
-    // Save the cache sources and Base L2 providers configuration
-    if !cache_source_vector_for_config.is_empty()
-        || !base_l2_access_source_vector_for_config.is_empty()
-    {
-        let options_config = OptionsConfig {
-            cache_sources: cache_source_vector_for_config,
-            base_l2_providers: base_l2_access_source_vector_for_config,
-        };
-
-        save_options_config(&options_config)
-            .await
-            .expect("failed to save options config!");
-    }
-    */
-
     // the boolean flag determines whether the runtime module is *public* or not,
     // where public means that any process can always message it.
     #[allow(unused_mut)]
@@ -544,10 +524,10 @@ async fn main() {
         println!("✓ Created directory structure: {}", initfiles_dir.display());
     }
 
-    // Create the data.txt file with test content
-    let data_file_path = initfiles_dir.join("data.txt");
+    // Create the cache_sources file with test content
+    let data_file_path = initfiles_dir.join("cache_sources");
 
-    // Write cache_source_vector to data.txt as JSON
+    // Write cache_source_vector to cache_sources as JSON
     let cache_json = serde_json::to_string_pretty(&cache_source_vector)
         .expect("Failed to serialize cache_source_vector to JSON");
     let cache_json_clone = cache_json.clone();
@@ -576,8 +556,8 @@ async fn main() {
         );
     }
 
-    // Create the data.txt file in the second location
-    let hns_data_file_path = hns_initfiles_dir.join("data.txt");
+    // Create the cache_sources file in the second location
+    let hns_data_file_path = hns_initfiles_dir.join("cache_sources");
 
     if let Err(e) = tokio::fs::write(&hns_data_file_path, cache_json_clone).await {
         eprintln!("Warning: Failed to write cache data to second file: {}", e);
@@ -1068,29 +1048,26 @@ async fn serve_register_fe(
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
 ) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
-    // Load options config to get cache sources
-    //let options_config = load_options_config().await;
 
-    // Read cache sources from data.txt file instead of options_config
     let cache_sources_from_file = {
         let vfs_dir = home_directory_path.join("vfs");
         let hypermap_cacher_dir = vfs_dir.join("hypermap-cacher:sys");
         let initfiles_dir = hypermap_cacher_dir.join("initfiles");
-        let data_file_path = initfiles_dir.join("data.txt");
+        let data_file_path = initfiles_dir.join("cache_sources");
 
         match tokio::fs::read_to_string(&data_file_path).await {
             Ok(contents) => match serde_json::from_str::<Vec<String>>(&contents) {
                 Ok(cache_sources) if !cache_sources.is_empty() => {
-                    println!("Loaded cache sources from data.txt: {:?}\r", cache_sources);
+                    println!("Loaded cache sources from cache_sources: {:?}\r", cache_sources);
                     Some(cache_sources)
                 }
                 _ => {
-                    println!("Failed to parse data.txt or empty, using default empty list\r");
+                    println!("Failed to parse cache_sources or empty, using default empty list\r");
                     Some(Vec::new())
                 }
             },
             Err(_) => {
-                println!("data.txt not found, using default empty list\r");
+                println!("cache_sources not found, using default empty list\r");
                 Some(Vec::new())
             }
         }

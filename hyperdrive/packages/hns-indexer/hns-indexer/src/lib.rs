@@ -716,12 +716,12 @@ fn get_nodes() -> Vec<String> {
         // Try to read from initfiles drive
         match vfs::create_drive(our().package_id(), "initfiles", None) {
             Ok(alt_drive_path) => {
-                match vfs::open_file(&format!("{}/data.txt", alt_drive_path), false, None) {
+                match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
                     Ok(file) => {
                         match file.read() {
                             Ok(contents) => {
                                 let content_str = String::from_utf8_lossy(&contents);
-                                info!("Contents of data.txt: {}", content_str);
+                                info!("Contents of cache_sources: {}", content_str);
 
                                 // Parse the JSON to get the vector of node names
                                 match serde_json::from_str::<Vec<String>>(&content_str) {
@@ -734,17 +734,17 @@ fn get_nodes() -> Vec<String> {
                                         }
                                     }
                                     Err(e) => {
-                                        info!("Failed to parse data.txt as JSON: {}, using defaults", e);
+                                        info!("Failed to parse cache_sources as JSON: {}, using defaults", e);
                                     }
                                 }
                             }
                             Err(e) => {
-                                info!("Failed to read data.txt: {}, using defaults", e);
+                                info!("Failed to read cache_sources: {}, using defaults", e);
                             }
                         }
                     }
                     Err(e) => {
-                        info!("Failed to open data.txt: {}, using defaults", e);
+                        info!("Failed to open cache_sources: {}, using defaults", e);
                     }
                 }
             }
