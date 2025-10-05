@@ -50,3 +50,12 @@ export type InfoResponse = {
   initial_cache_sources: string[];
   initial_base_l2_providers: string[];
 }
+
+export interface RpcProviderConfig {
+  url: string;
+  auth: {
+    Basic?: string;
+    Bearer?: string;
+    Raw?: string;
+  } | null;
+}

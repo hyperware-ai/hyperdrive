@@ -42,7 +42,7 @@ pub async fn register(
     keyfile: Option<Vec<u8>>,
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
-    initial_cache_sources: Option<Vec<String>>, // <- Add this
+    initial_cache_sources: Option<Vec<String>>,
     initial_base_l2_providers: Option<Vec<String>>,
 ) {
     // Networking info is generated and passed to the UI, but not used until confirmed

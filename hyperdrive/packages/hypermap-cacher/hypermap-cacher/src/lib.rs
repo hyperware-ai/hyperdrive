@@ -742,6 +742,33 @@ impl State {
         Err(anyhow::anyhow!("Failed to bootstrap from any node"))
     }
 
+    // Helper function to write nodes to data.txt file
+    fn write_nodes_to_file(&self) -> anyhow::Result<()> {
+        info!("Beginning of subroutine");
+        let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None)?;
+        info!("drive path defined");
+        let nodes_json = serde_json::to_string(&self.nodes)?;
+        info!("nodes_json defined");
+        let file_path = format!("{}/data.txt", alt_drive_path);
+        info!("file_path defined");
+
+        // Open file in write mode which should truncate, but to be safe we'll write exact bytes
+        let mut file = vfs::open_file(&file_path, true, None)?;
+
+        // Get the bytes to write
+        let bytes = nodes_json.as_bytes();
+
+        // Write all bytes
+        file.write_all(bytes)?;
+
+        // Explicitly set the file length to the exact size of what we wrote
+        // This ensures any old content beyond this point is truncated
+        file.set_len(bytes.len() as u64)?;
+
+        info!("Updated data.txt with {} nodes", self.nodes.len());
+        Ok(())
+    }
+
     // Process received log caches and write them to VFS
     fn process_received_log_caches(
         &mut self,
@@ -1238,6 +1265,11 @@ fn handle_request(
             }
             state.nodes = new_nodes;
             state.save();
+            info!("Nodes have been saved to state");
+            if let Err(e) = state.write_nodes_to_file() {
+                error!("Failed to write nodes to data.txt: {:?}", e);
+            }
+            info!("If statement complete");
             info!("Nodes updated to: {:?}", state.nodes);
             CacherResponse::SetNodes(Ok("Nodes updated successfully".to_string()))
         }
@@ -1264,7 +1296,9 @@ fn handle_request(
                 *state = State::new(&state.drive_path);
                 state.nodes = nodes;
                 state.save();
-
+                if let Err(e) = state.write_nodes_to_file() {
+                    error!("Failed to write nodes to data.txt: {:?}", e);
+                }
                 info!(
                     "Hypermap-cacher reset complete. New nodes: {:?}",
                     state.nodes

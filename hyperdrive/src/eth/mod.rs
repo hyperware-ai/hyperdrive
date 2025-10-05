@@ -1460,13 +1460,24 @@ async fn handle_eth_config_action(
         };
     }
     if save_providers {
+        let saved_configs = providers_to_saved_configs(&state.providers);
+
         if let Ok(()) = tokio::fs::write(
             state.home_directory_path.join(".eth_providers"),
-            serde_json::to_string(&providers_to_saved_configs(&state.providers)).unwrap(),
+            serde_json::to_string(&saved_configs).unwrap(),
         )
-        .await
+            .await
         {
             verbose_print(&state.print_tx, "eth: saved new provider settings").await;
+
+            /* TODO CLEANUP
+            // Also update the base L2 providers in options config
+            if let Err(e) = crate::options_config_utils::update_base_l2_providers_from_saved_configs(&saved_configs).await {
+                verbose_print(&state.print_tx, &format!("eth: failed to update base L2 providers in options config: {}", e)).await;
+            } else {
+                verbose_print(&state.print_tx, "eth: updated base L2 providers in options config").await;
+            }
+            */
         };
     }
     if provider_not_found {

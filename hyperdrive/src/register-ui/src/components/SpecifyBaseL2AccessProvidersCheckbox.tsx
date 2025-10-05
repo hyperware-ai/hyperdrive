@@ -17,7 +17,7 @@ export default function SpecifyBaseL2AccessProvidersCheckbox({ specifyBaseL2Acce
                 {specifyBaseL2AccessProviders ? <FaSquareCheck /> : <FaRegSquare />}
             </button>
             <div className="flex flex-col gap-1 min-w-0 wrap-anywhere">
-                <span className="text-sm">Specify Base L2 access providers.</span>
+                <span className="text-sm">Add Base L2 access providers.</span>
                 <span className="text-xs">If you are unsure, leave unchecked.</span>
             </div>
             <BaseL2AccessProviderTooltip />

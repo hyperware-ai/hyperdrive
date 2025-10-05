@@ -365,14 +365,45 @@ async fn main() {
 
     if !base_l2_access_source_vector.is_empty() {
         // Process in reverse order so the first entry in the vector becomes highest priority
-        for (_reverse_index, url) in base_l2_access_source_vector.into_iter().rev().enumerate() {
-            let new_provider = lib::eth::ProviderConfig {
-                chain_id: CHAIN_ID,
-                trusted: true,
-                provider: lib::eth::NodeOrRpcUrl::RpcUrl { url, auth: None },
-            };
+        for (_reverse_index, provider_str) in base_l2_access_source_vector.into_iter().rev().enumerate() {
+            // Parse the JSON string to extract url and auth fields
+            match serde_json::from_str::<serde_json::Value>(&provider_str) {
+                Ok(provider_json) => {
+                    let url = match provider_json.get("url").and_then(|v| v.as_str()) {
+                        Some(u) => u.to_string(),
+                        None => {
+                            eprintln!("Skipping provider entry with missing or invalid 'url' field");
+                            continue;
+                        }
+                    };
 
-            add_provider_to_config(&mut eth_provider_config, new_provider);
+                    // Extract auth field - convert null to None
+                    let auth = match provider_json.get("auth") {
+                        Some(auth_value) if !auth_value.is_null() => {
+                            // Try to deserialize the auth object into Authorization
+                            match serde_json::from_value::<lib::eth::Authorization>(auth_value.clone()) {
+                                Ok(auth_obj) => Some(auth_obj),
+                                Err(e) => {
+                                    eprintln!("Failed to parse auth field for {}: {:?}", url, e);
+                                    None
+                                }
+                            }
+                        }
+                        _ => None, // null or missing -> None
+                    };
+
+                    let new_provider = lib::eth::ProviderConfig {
+                        chain_id: CHAIN_ID,
+                        trusted: true,
+                        provider: lib::eth::NodeOrRpcUrl::RpcUrl { url, auth },
+                    };
+
+                    add_provider_to_config(&mut eth_provider_config, new_provider);
+                }
+                Err(e) => {
+                    eprintln!("Failed to parse provider JSON '{}': {:?}", provider_str, e);
+                }
+            }
         }
         is_eth_provider_config_updated = true;
     }
@@ -387,6 +418,7 @@ async fn main() {
         .expect("failed to save new eth provider config!");
     }
 
+    /* TODO CLEANUP
     // Save the cache sources and Base L2 providers configuration
     if !cache_source_vector_for_config.is_empty()
         || !base_l2_access_source_vector_for_config.is_empty()
@@ -400,6 +432,7 @@ async fn main() {
             .await
             .expect("failed to save options config!");
     }
+    */
 
     // the boolean flag determines whether the runtime module is *public* or not,
     // where public means that any process can always message it.
@@ -1018,6 +1051,8 @@ async fn find_public_ip() -> std::net::Ipv4Addr {
 /// username, networking key, and routing info.
 /// if any do not match, we should prompt user to create a "transaction"
 /// that updates their PKI info on-chain.
+
+
 #[cfg(not(feature = "simulation-mode"))]
 async fn serve_register_fe(
     home_directory_path: &Path,
@@ -1028,8 +1063,45 @@ async fn serve_register_fe(
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
 ) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
-    // Load options config from file
+    // Load options config to get cache sources
     let options_config = load_options_config().await;
+
+    // Read cache sources from data.txt file instead of options_config
+    let cache_sources_from_file = {
+        let vfs_dir = home_directory_path.join("vfs");
+        let hypermap_cacher_dir = vfs_dir.join("hypermap-cacher:sys");
+        let initfiles_dir = hypermap_cacher_dir.join("initfiles");
+        let data_file_path = initfiles_dir.join("data.txt");
+
+        match tokio::fs::read_to_string(&data_file_path).await {
+            Ok(contents) => {
+                match serde_json::from_str::<Vec<String>>(&contents) {
+                    Ok(cache_sources) if !cache_sources.is_empty() => {
+                        println!("Loaded cache sources from data.txt: {:?}\r", cache_sources);
+                        Some(cache_sources)
+                    }
+                    _ => {
+                        println!("Failed to parse data.txt or empty, using default empty list\r");
+                        Some(Vec::new())
+                    }
+                }
+            }
+            Err(_) => {
+                println!("data.txt not found, using default empty list\r");
+                Some(Vec::new())
+            }
+        }
+    };
+
+    // Convert RpcUrl providers to serializable format for the registration UI
+    let initial_base_l2_providers = if !options_config.base_l2_providers.is_empty() {
+        // Use providers from options config if available
+        options_config.base_l2_providers
+    } else {
+        // Extract from eth_provider_config and serialize to JSON strings
+        let rpc_providers = eth_config_utils::extract_rpc_url_providers_for_default_chain(&eth_provider_config);
+        serialize_rpc_providers_for_ui(rpc_providers)
+    };
 
     let (tx, mut rx): (
         mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>,
@@ -1051,10 +1123,10 @@ async fn serve_register_fe(
             keyfile,
             eth_provider_config,
             detached,
-            Some(options_config.cache_sources), // Pass from config
-            Some(options_config.base_l2_providers), // Pass from config
+            cache_sources_from_file, // Pass cache sources from config
+            Some(initial_base_l2_providers), // Pass providers - now properly unwrapped
         )
-        .await;
+            .await;
     });
 
     let (our, decoded_keyfile, encoded_keyfile, cache_sources, base_l2_providers) =
@@ -1065,11 +1137,6 @@ async fn serve_register_fe(
     tokio::fs::write(home_directory_path.join(".keys"), &encoded_keyfile)
         .await
         .expect("failed to write keyfile");
-
-    // Save the options config with the received cache sources and base L2 providers
-    if let Err(e) = update_options_config(cache_sources.clone(), base_l2_providers.clone()).await {
-        eprintln!("Failed to save options config: {}", e);
-    }
 
     (
         our,
@@ -1195,4 +1262,51 @@ async fn login_with_password(
 
 fn make_remote_link(url: &str, text: &str) -> String {
     format!("\x1B]8;;{}\x1B\\{}\x1B]8;;\x1B\\", url, text)
+}
+
+// ... existing code ...
+
+/// Serialize RpcUrl providers to JSON strings for the UI
+/// Each provider is serialized as a JSON object containing url and auth
+pub fn serialize_rpc_providers_for_ui(providers: Vec<lib::eth::NodeOrRpcUrl>) -> Vec<String> {
+    providers
+        .into_iter()
+        .filter_map(|provider| {
+            match provider {
+                lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
+                    // Create a serializable object with url and auth
+                    let provider_obj = serde_json::json!({
+                        "url": url,
+                        "auth": auth
+                    });
+                    // Serialize to string
+                    serde_json::to_string(&provider_obj).ok()
+                }
+                lib::eth::NodeOrRpcUrl::Node { .. } => None,
+            }
+        })
+        .collect()
+}
+
+/// Deserialize RpcUrl provider strings from the UI back to NodeOrRpcUrl objects
+pub fn deserialize_rpc_providers_from_ui(provider_strings: Vec<String>) -> Vec<lib::eth::NodeOrRpcUrl> {
+    provider_strings
+        .into_iter()
+        .filter_map(|provider_str| {
+            // Try to parse as JSON object first
+            if let Ok(provider_obj) = serde_json::from_str::<serde_json::Value>(&provider_str) {
+                if let (Some(url), auth) = (
+                    provider_obj.get("url").and_then(|v| v.as_str()).map(String::from),
+                    provider_obj.get("auth").and_then(|v| serde_json::from_value(v.clone()).ok())
+                ) {
+                    return Some(lib::eth::NodeOrRpcUrl::RpcUrl { url, auth });
+                }
+            }
+            // Fall back to treating it as a plain URL string (for backward compatibility)
+            Some(lib::eth::NodeOrRpcUrl::RpcUrl {
+                url: provider_str,
+                auth: None
+            })
+        })
+        .collect()
 }

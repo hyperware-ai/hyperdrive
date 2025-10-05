@@ -6,6 +6,7 @@ import { redirectToHomepage } from "../utils/redirect-to-homepage";
 import classNames from "classnames";
 import SpecifyCacheSourcesCheckbox from "../components/SpecifyCacheSourcesCheckbox";
 import SpecifyBaseL2AccessProvidersCheckbox from "../components/SpecifyBaseL2AccessProvidersCheckbox";
+import { RpcProviderEditor, RpcProviderData } from "../components/RpcProviderEditor";
 
 interface LoginProps extends PageProps { }
 
@@ -27,7 +28,7 @@ function Login({
   const [specifyCacheSources, setSpecifyCacheSources] = useState(false);
   const [customCacheSources, setCustomCacheSources] = useState('');
   const [specifyBaseL2AccessProviders, setSpecifyBaseL2AccessProviders] = useState(false);
-  const [customBaseL2AccessProviders, setCustomBaseL2AccessProviders] = useState('');
+  const [rpcProviders, setRpcProviders] = useState<RpcProviderData[]>([]);
 
   const [keyErrs, setKeyErrs] = useState<string[]>([]);
   const [loading, setLoading] = useState<string>("");
@@ -43,19 +44,45 @@ function Login({
         setRouters(infoData.allowed_routers);
         setHnsName(infoData.name);
 
-        // Prepopulate the fields with default values from the server
+        // Prepopulate cache sources
         if (infoData.initial_cache_sources && infoData.initial_cache_sources.length > 0) {
           setCustomCacheSources(infoData.initial_cache_sources.join('\n'));
-          setSpecifyCacheSources(true); // Auto-check the checkbox
+          setSpecifyCacheSources(true);
         }
 
+        // Parse and prepopulate Base L2 providers
         if (infoData.initial_base_l2_providers && infoData.initial_base_l2_providers.length > 0) {
-          setCustomBaseL2AccessProviders(infoData.initial_base_l2_providers.join('\n'));
-          setSpecifyBaseL2AccessProviders(true); // Auto-check the checkbox
+          const parsedProviders: RpcProviderData[] = infoData.initial_base_l2_providers.map(providerStr => {
+            try {
+              const parsed = JSON.parse(providerStr);
+              // Convert from backend format to frontend format
+              let authData = null;
+              if (parsed.auth) {
+                if (parsed.auth.Basic) {
+                  authData = { type: 'Basic' as const, value: parsed.auth.Basic };
+                } else if (parsed.auth.Bearer) {
+                  authData = { type: 'Bearer' as const, value: parsed.auth.Bearer };
+                } else if (parsed.auth.Raw) {
+                  authData = { type: 'Raw' as const, value: parsed.auth.Raw };
+                }
+              }
+              return {
+                url: parsed.url,
+                auth: authData
+              };
+            } catch {
+              // If parsing fails, treat as plain URL string
+              return {
+                url: providerStr,
+                auth: null
+              };
+            }
+          });
+          setRpcProviders(parsedProviders);
+          setSpecifyBaseL2AccessProviders(true);
         }
       } catch (error) {
         console.error('Failed to fetch node info:', error);
-        // Continue without defaults if fetch fails
       }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -78,13 +105,21 @@ function Login({
             console.log("Custom cache sources:", cacheSourcesToUse);
           }
 
-          // Process custom Base L2 access providers if specified
+          // Process RPC providers - convert to JSON strings
           let baseL2AccessProvidersToUse: string[] | undefined = undefined;
-          if (specifyBaseL2AccessProviders && customBaseL2AccessProviders.trim()) {
-            baseL2AccessProvidersToUse = customBaseL2AccessProviders
-                .split('\n')
-                .map(provider => provider.trim())
-                .filter(provider => provider.length > 0);
+          if (specifyBaseL2AccessProviders && rpcProviders.length > 0) {
+            baseL2AccessProvidersToUse = rpcProviders.map(provider => {
+              let authObj = null;
+              if (provider.auth) {
+                authObj = {
+                  [provider.auth.type]: provider.auth.value
+                };
+              }
+              return JSON.stringify({
+                url: provider.url,
+                auth: authObj
+              });
+            });
 
             console.log("Custom Base L2 access providers:", baseL2AccessProvidersToUse);
           }
@@ -93,13 +128,9 @@ function Login({
 
           try {
             // Try argon2 hash first
-
-            // salt is either node name (if node name is longer than 8 characters)
-            //  or node name repeated enough times to be longer than 8 characters
             const minSaltL = 8;
             const nodeL = hnsName.length;
             const salt = nodeL >= minSaltL ? hnsName : hnsName.repeat(1 + Math.floor(minSaltL / nodeL));
-            console.log(salt);
 
             //@ts-ignore
             const h = await argon2.hash({
@@ -118,11 +149,11 @@ function Login({
               method: "POST",
               credentials: 'include',
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ password_hash: hashed_password_hex,
+              body: JSON.stringify({
+                password_hash: hashed_password_hex,
                 custom_cache_sources: cacheSourcesToUse && cacheSourcesToUse.length > 0 ? cacheSourcesToUse : null,
                 custom_base_l2_access_providers: baseL2AccessProvidersToUse && baseL2AccessProvidersToUse.length > 0 ? baseL2AccessProvidersToUse : null,
               }),
-
             });
 
             if (result.status < 399) {
@@ -140,10 +171,19 @@ function Login({
           setLoading("");
         }
       },
-      [pw, hnsName, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, customBaseL2AccessProviders]
+      [pw, hnsName, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, rpcProviders]
   );
 
   const isDirect = Boolean(routers?.length === 0);
+
+  // Validation for the submit button
+  const hasInvalidRpcProviders = specifyBaseL2AccessProviders && (
+      rpcProviders.length === 0 ||
+      rpcProviders.some(p => !p.url.trim() || (p.auth && !p.auth.value.trim()))
+  );
+
+  const hasInvalidCacheSources = specifyCacheSources &&
+      customCacheSources.split('\n').map(c => c.trim()).filter(c => c.length > 0).length === 0;
 
   return <div className="relative flex flex-col gap-2 items-stretch self-stretch">
     {loading && <div className="absolute top-0 left-0 w-full h-full flex place-content-center place-items-center">
@@ -193,19 +233,11 @@ function Login({
                     value={customCacheSources}
                     onChange={(e) => setCustomCacheSources(e.target.value)}
                     placeholder="Enter one cache source name per line, e.g.:&#10;cache-node-1.hypr&#10;other-cache.hypr&#10;mycache.os"
-                    className={`input resize-vertical min-h-[80px] ${
-                        specifyCacheSources && customCacheSources.split('\n').map(c => c.trim()).filter(c => c.length > 0).length === 0
-                            ? 'border-red-500 focus:border-red-500'
-                            : ''
-                    }`}
+                    className={`input resize-vertical min-h-[80px] ${hasInvalidCacheSources ? 'border-red-500 focus:border-red-500' : ''}`}
                     rows={4}
                 />
-                <span className={`text-xs ${
-                    customCacheSources.split('\n').map(c => c.trim()).filter(c => c.length > 0).length === 0
-                        ? 'text-red-500'
-                        : 'text-gray-500'
-                }`}>
-                    {customCacheSources.split('\n').map(c => c.trim()).filter(c => c.length > 0).length === 0
+                <span className={`text-xs ${hasInvalidCacheSources ? 'text-red-500' : 'text-gray-500'}`}>
+                    {hasInvalidCacheSources
                         ? 'At least one cache source name is required'
                         : 'Enter one cache source name per line. These nodes will serve as cache sources for hypermap data.'
                     }
@@ -218,32 +250,12 @@ function Login({
               setSpecifyBaseL2AccessProviders={setSpecifyBaseL2AccessProviders}
           />
           {specifyBaseL2AccessProviders && (
-              <div className="flex flex-col gap-2 ml-6">
-                <label htmlFor="custom-base-l2-providers" className="text-sm font-medium">
-                  Base L2 Access Provider Names: <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                    id="custom-base-l2-providers-login"
-                    value={customBaseL2AccessProviders}
-                    onChange={(e) => setCustomBaseL2AccessProviders(e.target.value)}
-                    placeholder="Enter one provider or URL per line, e.g.:&#10;base-provider-1.hypr&#10;wss://base-mainnet.infura.io/v3/your-key&#10;myprovider.os&#10;wss://rpc.example.com"
-                    className={`input resize-vertical min-h-[80px] ${
-                        specifyBaseL2AccessProviders && customBaseL2AccessProviders.split('\n').map(p => p.trim()).filter(p => p.length > 0).length === 0
-                            ? 'border-red-500 focus:border-red-500'
-                            : ''
-                    }`}
-                    rows={4}
+              <div className="ml-6">
+                <RpcProviderEditor
+                    providers={rpcProviders}
+                    onChange={setRpcProviders}
+                    label="Base L2 RPC Providers"
                 />
-                <span className={`text-xs ${
-                    customBaseL2AccessProviders.split('\n').map(p => p.trim()).filter(p => p.length > 0).length === 0
-                        ? 'text-red-500'
-                        : 'text-gray-500'
-                }`}>
-                    {customBaseL2AccessProviders.split('\n').map(p => p.trim()).filter(p => p.length > 0).length === 0
-                        ? 'At least one Base L2 access provider name is required'
-                        : 'Enter one provider name per line. These nodes will provide access to Base Layer 2 blockchain data.'
-                    }
-                  </span>
               </div>
           )}
         </div>
@@ -259,14 +271,12 @@ function Login({
 
       <button
           type="submit"
-          disabled={
-              (specifyCacheSources && customCacheSources.split('\n').map(c => c.trim()).filter(c => c.length > 0).length === 0) ||
-              (specifyBaseL2AccessProviders && customBaseL2AccessProviders.split('\n').map(p => p.trim()).filter(p => p.length > 0).length === 0)
-          }
+          disabled={hasInvalidCacheSources || hasInvalidRpcProviders}
       >Log in</button>
 
       <button
           className="clear "
+          type="button"
           onClick={() => navigate('/reset')}
       >
         Reset Password & Networking Info

@@ -37,3 +37,33 @@ pub fn add_provider_to_config(
     // Insert the new provider at the front (position 0)
     eth_provider_config.0.insert(0, new_provider);
 }
+
+/// Extract unauthenticated RPC URLs from SavedConfigs
+/// Similar to update_base_l2_providers_from_saved_configs but just returns the Vec
+pub fn extract_rpc_url_providers_for_default_chain(saved_configs: &lib::eth::SavedConfigs) -> Vec<lib::eth::NodeOrRpcUrl> {
+    saved_configs.0
+        .iter()
+        .filter_map(|provider_config| {
+            // Only include providers for the default chain (8453 for mainnet, 31337 for simulation)
+            #[cfg(not(feature = "simulation-mode"))]
+            let target_chain_id = crate::CHAIN_ID; // 8453
+            #[cfg(feature = "simulation-mode")]
+            let target_chain_id = crate::CHAIN_ID; // 31337
+
+            if provider_config.chain_id != target_chain_id {
+                return None;
+            }
+
+            match &provider_config.provider {
+                lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
+                    // Return the full RpcUrl enum variant with both url and auth
+                    Some(lib::eth::NodeOrRpcUrl::RpcUrl {
+                        url: url.clone(),
+                        auth: auth.clone(),
+                    })
+                }
+                lib::eth::NodeOrRpcUrl::Node { .. } => None, // Skip node providers
+            }
+        })
+        .collect()
+}
