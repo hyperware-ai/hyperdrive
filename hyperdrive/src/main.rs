@@ -365,14 +365,18 @@ async fn main() {
 
     if !base_l2_access_source_vector.is_empty() {
         // Process in reverse order so the first entry in the vector becomes highest priority
-        for (_reverse_index, provider_str) in base_l2_access_source_vector.into_iter().rev().enumerate() {
+        for (_reverse_index, provider_str) in
+            base_l2_access_source_vector.into_iter().rev().enumerate()
+        {
             // Parse the JSON string to extract url and auth fields
             match serde_json::from_str::<serde_json::Value>(&provider_str) {
                 Ok(provider_json) => {
                     let url = match provider_json.get("url").and_then(|v| v.as_str()) {
                         Some(u) => u.to_string(),
                         None => {
-                            eprintln!("Skipping provider entry with missing or invalid 'url' field");
+                            eprintln!(
+                                "Skipping provider entry with missing or invalid 'url' field"
+                            );
                             continue;
                         }
                     };
@@ -381,7 +385,9 @@ async fn main() {
                     let auth = match provider_json.get("auth") {
                         Some(auth_value) if !auth_value.is_null() => {
                             // Try to deserialize the auth object into Authorization
-                            match serde_json::from_value::<lib::eth::Authorization>(auth_value.clone()) {
+                            match serde_json::from_value::<lib::eth::Authorization>(
+                                auth_value.clone(),
+                            ) {
                                 Ok(auth_obj) => Some(auth_obj),
                                 Err(e) => {
                                     eprintln!("Failed to parse auth field for {}: {:?}", url, e);
@@ -1052,7 +1058,6 @@ async fn find_public_ip() -> std::net::Ipv4Addr {
 /// if any do not match, we should prompt user to create a "transaction"
 /// that updates their PKI info on-chain.
 
-
 #[cfg(not(feature = "simulation-mode"))]
 async fn serve_register_fe(
     home_directory_path: &Path,
@@ -1074,18 +1079,16 @@ async fn serve_register_fe(
         let data_file_path = initfiles_dir.join("data.txt");
 
         match tokio::fs::read_to_string(&data_file_path).await {
-            Ok(contents) => {
-                match serde_json::from_str::<Vec<String>>(&contents) {
-                    Ok(cache_sources) if !cache_sources.is_empty() => {
-                        println!("Loaded cache sources from data.txt: {:?}\r", cache_sources);
-                        Some(cache_sources)
-                    }
-                    _ => {
-                        println!("Failed to parse data.txt or empty, using default empty list\r");
-                        Some(Vec::new())
-                    }
+            Ok(contents) => match serde_json::from_str::<Vec<String>>(&contents) {
+                Ok(cache_sources) if !cache_sources.is_empty() => {
+                    println!("Loaded cache sources from data.txt: {:?}\r", cache_sources);
+                    Some(cache_sources)
                 }
-            }
+                _ => {
+                    println!("Failed to parse data.txt or empty, using default empty list\r");
+                    Some(Vec::new())
+                }
+            },
             Err(_) => {
                 println!("data.txt not found, using default empty list\r");
                 Some(Vec::new())
@@ -1099,7 +1102,8 @@ async fn serve_register_fe(
         options_config.base_l2_providers
     } else {
         // Extract from eth_provider_config and serialize to JSON strings
-        let rpc_providers = eth_config_utils::extract_rpc_url_providers_for_default_chain(&eth_provider_config);
+        let rpc_providers =
+            eth_config_utils::extract_rpc_url_providers_for_default_chain(&eth_provider_config);
         serialize_rpc_providers_for_ui(rpc_providers)
     };
 
@@ -1123,10 +1127,10 @@ async fn serve_register_fe(
             keyfile,
             eth_provider_config,
             detached,
-            cache_sources_from_file, // Pass cache sources from config
+            cache_sources_from_file,         // Pass cache sources from config
             Some(initial_base_l2_providers), // Pass providers - now properly unwrapped
         )
-            .await;
+        .await;
     });
 
     let (our, decoded_keyfile, encoded_keyfile, cache_sources, base_l2_providers) =
@@ -1289,15 +1293,22 @@ pub fn serialize_rpc_providers_for_ui(providers: Vec<lib::eth::NodeOrRpcUrl>) ->
 }
 
 /// Deserialize RpcUrl provider strings from the UI back to NodeOrRpcUrl objects
-pub fn deserialize_rpc_providers_from_ui(provider_strings: Vec<String>) -> Vec<lib::eth::NodeOrRpcUrl> {
+pub fn deserialize_rpc_providers_from_ui(
+    provider_strings: Vec<String>,
+) -> Vec<lib::eth::NodeOrRpcUrl> {
     provider_strings
         .into_iter()
         .filter_map(|provider_str| {
             // Try to parse as JSON object first
             if let Ok(provider_obj) = serde_json::from_str::<serde_json::Value>(&provider_str) {
                 if let (Some(url), auth) = (
-                    provider_obj.get("url").and_then(|v| v.as_str()).map(String::from),
-                    provider_obj.get("auth").and_then(|v| serde_json::from_value(v.clone()).ok())
+                    provider_obj
+                        .get("url")
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
+                    provider_obj
+                        .get("auth")
+                        .and_then(|v| serde_json::from_value(v.clone()).ok()),
                 ) {
                     return Some(lib::eth::NodeOrRpcUrl::RpcUrl { url, auth });
                 }
@@ -1305,7 +1316,7 @@ pub fn deserialize_rpc_providers_from_ui(provider_strings: Vec<String>) -> Vec<l
             // Fall back to treating it as a plain URL string (for backward compatibility)
             Some(lib::eth::NodeOrRpcUrl::RpcUrl {
                 url: provider_str,
-                auth: None
+                auth: None,
             })
         })
         .collect()

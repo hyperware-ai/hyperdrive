@@ -1466,7 +1466,7 @@ async fn handle_eth_config_action(
             state.home_directory_path.join(".eth_providers"),
             serde_json::to_string(&saved_configs).unwrap(),
         )
-            .await
+        .await
         {
             verbose_print(&state.print_tx, "eth: saved new provider settings").await;
 

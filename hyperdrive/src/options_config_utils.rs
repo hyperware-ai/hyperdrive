@@ -1,10 +1,9 @@
-
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
 // Import the types we need from the eth module
-use lib::eth::{SavedConfigs, ProviderConfig, NodeOrRpcUrl};
+use lib::eth::{NodeOrRpcUrl, ProviderConfig, SavedConfigs};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionsConfig {
@@ -38,7 +37,10 @@ static HOME_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 /// Initialize the home directory path explicitly (must be called before first use of config functions)
 pub fn initialize_home_directory(home_directory_path: PathBuf) {
-    std::env::set_var("HYPERDRIVE_HOME", home_directory_path.to_string_lossy().to_string());
+    std::env::set_var(
+        "HYPERDRIVE_HOME",
+        home_directory_path.to_string_lossy().to_string(),
+    );
 }
 
 /// Get the configured home directory path
@@ -52,15 +54,13 @@ pub async fn load_options_config() -> OptionsConfig {
     let config_path = HOME_DIR.join(OPTIONS_CONFIG_FILE);
 
     match tokio::fs::read_to_string(&config_path).await {
-        Ok(contents) => {
-            match serde_json::from_str::<OptionsConfig>(&contents) {
-                Ok(config) => config,
-                Err(e) => {
-                    eprintln!("Warning: Failed to parse options config: {}", e);
-                    OptionsConfig::default()
-                }
+        Ok(contents) => match serde_json::from_str::<OptionsConfig>(&contents) {
+            Ok(config) => config,
+            Err(e) => {
+                eprintln!("Warning: Failed to parse options config: {}", e);
+                OptionsConfig::default()
             }
-        }
+        },
         Err(_) => {
             // File doesn't exist, return defaults
             OptionsConfig::default()
@@ -99,7 +99,9 @@ pub async fn update_options_config(
 
 /// Update only the base L2 providers, keeping existing cache sources unchanged.
 /// This loads the current config, updates only the base_l2_providers field, and saves it back.
-pub async fn update_base_l2_providers(new_base_l2_providers: Vec<String>) -> Result<(), std::io::Error> {
+pub async fn update_base_l2_providers(
+    new_base_l2_providers: Vec<String>,
+) -> Result<(), std::io::Error> {
     let mut config = load_options_config().await;
     config.base_l2_providers = new_base_l2_providers;
 
@@ -112,11 +114,14 @@ pub async fn update_base_l2_providers(new_base_l2_providers: Vec<String>) -> Res
 /// This filters the SavedConfigs to find RpcUrl providers that have no auth (None),
 /// extracts their URLs, and saves them as the new base L2 providers.
 /// Keeps existing cache sources unchanged.
-pub async fn update_base_l2_providers_from_saved_configs(saved_configs: &SavedConfigs) -> Result<(), std::io::Error> {
+pub async fn update_base_l2_providers_from_saved_configs(
+    saved_configs: &SavedConfigs,
+) -> Result<(), std::io::Error> {
     let mut config = load_options_config().await;
 
     // Extract URLs from RpcUrl providers that have no authentication
-    let unauthenticated_urls: Vec<String> = saved_configs.0
+    let unauthenticated_urls: Vec<String> = saved_configs
+        .0
         .iter()
         .filter_map(|provider_config| {
             match &provider_config.provider {
@@ -136,7 +141,10 @@ pub async fn update_base_l2_providers_from_saved_configs(saved_configs: &SavedCo
     config.base_l2_providers = unauthenticated_urls;
 
     save_options_config(&config).await?;
-    println!("Base L2 providers updated from SavedConfigs (unauthenticated RPC URLs only) in {}", OPTIONS_CONFIG_FILE);
+    println!(
+        "Base L2 providers updated from SavedConfigs (unauthenticated RPC URLs only) in {}",
+        OPTIONS_CONFIG_FILE
+    );
     Ok(())
 }
 
