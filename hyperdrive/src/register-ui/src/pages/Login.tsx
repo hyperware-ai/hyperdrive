@@ -1,3 +1,4 @@
+
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageProps, InfoResponse } from "../lib/types";
 import Loader from "../components/Loader";
@@ -40,6 +41,10 @@ function Login({
   const [specifyBaseL2AccessProviders, setSpecifyBaseL2AccessProviders] = useState(false);
   const [rpcProviders, setRpcProviders] = useState<RpcProviderData[]>([]);
 
+  // Track initial states after data is loaded
+  const [initialCacheSourcesChecked, setInitialCacheSourcesChecked] = useState(false);
+  const [initialBaseL2ProvidersChecked, setInitialBaseL2ProvidersChecked] = useState(false);
+
   const [keyErrs, setKeyErrs] = useState<string[]>([]);
   const [loading, setLoading] = useState<string>("");
 
@@ -51,13 +56,19 @@ function Login({
         const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
             res.json()
         )) as InfoResponse;
-        setRouters(infoData.allowed_routers);
-        setHnsName(infoData.name);
+
+        if (infoData.allowed_routers) {
+          setRouters(infoData.allowed_routers);
+        }
+        if (infoData.name) {
+          setHnsName(infoData.name);
+        }
 
         // Prepopulate cache sources
         if (infoData.initial_cache_sources && infoData.initial_cache_sources.length > 0) {
           setCustomCacheSources(infoData.initial_cache_sources.join('\n'));
           setSpecifyCacheSources(true);
+          setInitialCacheSourcesChecked(true);  // Track initial state
         }
 
         // Parse and prepopulate Base L2 providers
@@ -90,6 +101,7 @@ function Login({
           });
           setRpcProviders(parsedProviders);
           setSpecifyBaseL2AccessProviders(true);
+          setInitialBaseL2ProvidersChecked(true);  // Track initial state
         }
       } catch (error) {
         console.error('Failed to fetch node info:', error);
@@ -169,13 +181,18 @@ function Login({
           let baseL2AccessProvidersToUse: string[] | undefined = undefined;
           if (specifyBaseL2AccessProviders && rpcProviders.length > 0) {
             baseL2AccessProvidersToUse = rpcProviders.map(provider => {
-              const authObj: Record<string, string> | null = provider.auth ? {
-                [provider.auth.type]: provider.auth.value
-              } : null;
-
+              if (provider.auth) {
+                const authObj: Record<string, string> = {
+                  [provider.auth.type]: provider.auth.value
+                };
+                return JSON.stringify({
+                  url: provider.url,
+                  auth: authObj
+                });
+              }
               return JSON.stringify({
                 url: provider.url,
-                auth: authObj
+                auth: null
               });
             });
 
@@ -229,7 +246,7 @@ function Login({
           setLoading("");
         }
       },
-      [pw, hnsName, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, rpcProviders]
+      [pw, hnsName, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, rpcProviders, getValidCustomCacheSources]
   );
 
   const isDirect = Boolean(routers?.length === 0);
@@ -277,6 +294,7 @@ function Login({
           <SpecifyCacheSourcesCheckbox
               specifyCacheSources={specifyCacheSources}
               setSpecifyCacheSources={handleSetSpecifyCacheSources}
+              initiallyChecked={initialCacheSourcesChecked}
           />
           {specifyCacheSources && (
               <div className="flex flex-col gap-2 ml-6">
@@ -318,6 +336,7 @@ function Login({
           <SpecifyBaseL2AccessProvidersCheckbox
               specifyBaseL2AccessProviders={specifyBaseL2AccessProviders}
               setSpecifyBaseL2AccessProviders={setSpecifyBaseL2AccessProviders}
+              initiallyChecked={initialBaseL2ProvidersChecked}
           />
           {specifyBaseL2AccessProviders && (
               <div className="ml-6">

@@ -287,23 +287,10 @@ async fn main() {
     #[cfg(not(feature = "simulation-mode"))]
     println!("Login or register at {link}\r");
 
-    println!(
-        "DEBUG: Looking for keyfile in home directory: {}\r",
-        home_directory_path.display()
-    );
-    let keyfile_path = home_directory_path.join(".keyfile");
-    println!("DEBUG: Expected keyfile path: {}\r", keyfile_path.display());
-    if keyfile_path.exists() {
-        println!("DEBUG: Keyfile exists at expected location\r");
-    } else {
-        println!("DEBUG: Keyfile NOT found at expected location\r");
-    }
-
     #[cfg(not(feature = "simulation-mode"))]
     let (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector) =
         match password {
             None => {
-                println!("DEBUG: Starting registration/login flow (no password provided)\r");
                 let result = serve_register_fe(
                     &home_directory_path,
                     our_ip.to_string(),
@@ -314,11 +301,9 @@ async fn main() {
                     detached,
                 )
                 .await;
-                println!("DEBUG: Registration/login flow completed\r");
                 result
             }
             Some(password) => {
-                println!("DEBUG: Starting Command line login flow (password provided)\r");
                 let result = login_with_password(
                     &home_directory_path,
                     our_ip.to_string(),
@@ -328,31 +313,9 @@ async fn main() {
                     password,
                 )
                 .await;
-                println!("DEBUG: Command line login flow completed\r");
                 result
             }
         };
-
-    // Add debug output after login/registration
-    println!("DEBUG: After login/registration - checking keyfile again\r");
-    if keyfile_path.exists() {
-        println!("DEBUG: Keyfile NOW exists at expected location\r");
-        if let Ok(keyfile_content) = std::fs::read(&keyfile_path) {
-            println!("DEBUG: Keyfile size: {} bytes\r", keyfile_content.len());
-        }
-    } else {
-        println!("DEBUG: Keyfile STILL does not exist at expected location\r");
-
-        // Check if there are other files that might be the keyfile
-        if let Ok(entries) = std::fs::read_dir(&home_directory_path) {
-            println!("DEBUG: Files in home directory:\r");
-            for entry in entries.flatten() {
-                if let Ok(file_name) = entry.file_name().into_string() {
-                    println!("DEBUG: - {}\r", file_name);
-                }
-            }
-        }
-    }
 
     is_eth_provider_config_updated = false;
 
@@ -1058,7 +1021,7 @@ async fn serve_register_fe(
             Ok(contents) => match serde_json::from_str::<Vec<String>>(&contents) {
                 Ok(cache_sources) if !cache_sources.is_empty() => {
                     println!(
-                        "Loaded cache sources from cache_sources: {:?}\r",
+                        "Loaded cache sources: {:?}\r",
                         cache_sources
                     );
                     Some(cache_sources)

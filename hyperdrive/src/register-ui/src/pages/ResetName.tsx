@@ -58,6 +58,10 @@ function ResetHnsName({
     const [customRouters, setCustomRouters] = useState('')
     const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
 
+    // Track initial states for checkbox help text
+    const [initiallyDirect, setInitiallyDirect] = useState<boolean | undefined>(undefined);
+    const [initiallySpecifyRouters, setInitiallySpecifyRouters] = useState<boolean | undefined>(undefined);
+
     // Modified setDirect function to handle mutual exclusivity
     const handleSetDirect = (value: boolean) => {
         setDirect(value);
@@ -134,12 +138,24 @@ function ResetHnsName({
                     res.json()
                 )) as UnencryptedIdentity;
 
+                // Determine if node has specified routers (indirect node)
+                const hasRouters = infoData.allowed_routers && infoData.allowed_routers.length > 0;
+
+                // If allowed_routers is empty, the node is direct; if it has routers, it's indirect
+                const isDirect = !hasRouters;
+
+                // Set initial states for checkbox help text
+                setInitiallyDirect(isDirect);
+                setInitiallySpecifyRouters(hasRouters);
+
+                // Set the current state to match the node's current configuration
+                setDirect(isDirect);
+
                 // Prepopulate customRouters if this is an indirect node with existing routers
-                if (infoData.allowed_routers && infoData.allowed_routers.length > 0) {
+                if (hasRouters) {
                     const routersText = infoData.allowed_routers.join('\n');
                     setCustomRouters(routersText);
                     setSpecifyRouters(true); // Auto-enable the checkbox
-                    setDirect(false); // Ensure direct is false for indirect nodes
                 }
             } catch (error) {
                 console.log("Could not fetch node info:", error);
@@ -238,8 +254,16 @@ function ResetHnsName({
                                 <details className="advanced-options">
                                     <summary>Network Options</summary>
                                     <div className="flex flex-col gap-3">
-                                        <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
-                                        <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
+                                        <DirectNodeCheckbox
+                                            direct={direct}
+                                            setDirect={handleSetDirect}
+                                            initiallyChecked={initiallyDirect}
+                                        />
+                                        <SpecifyRoutersCheckbox
+                                            specifyRouters={specifyRouters}
+                                            setSpecifyRouters={handleSetSpecifyRouters}
+                                            initiallyChecked={initiallySpecifyRouters}
+                                        />
                                         {specifyRouters && (
                                             <div className="flex flex-col gap-2 ml-6">
                                                 <label htmlFor="custom-routers" className="text-sm font-medium">

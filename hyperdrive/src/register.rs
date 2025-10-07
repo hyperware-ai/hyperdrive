@@ -313,26 +313,18 @@ async fn get_unencrypted_info(
     initial_cache_sources: Arc<Option<Vec<String>>>,
     initial_base_l2_providers: Arc<Option<Vec<String>>>,
 ) -> Result<impl Reply, Rejection> {
-    let (name, allowed_routers) = {
-        match keyfile {
-            Some(encoded_keyfile) => match keygen::get_username_and_routers(&encoded_keyfile) {
-                Ok(k) => k,
-                Err(_) => {
-                    return Ok(warp::reply::with_status(
-                        warp::reply::json(&"keyfile deserialization went wrong".to_string()),
-                        StatusCode::UNAUTHORIZED,
-                    )
-                    .into_response())
-                }
-            },
-            None => {
+    let (name, allowed_routers, status_code) = match keyfile {
+        Some(encoded_keyfile) => match keygen::get_username_and_routers(&encoded_keyfile) {
+            Ok(k) => (Some(k.0), Some(k.1), StatusCode::OK),
+            Err(_) => {
                 return Ok(warp::reply::with_status(
-                    warp::reply::json(&"Keyfile not present".to_string()),
-                    StatusCode::NOT_FOUND,
+                    warp::reply::json(&"keyfile deserialization went wrong".to_string()),
+                    StatusCode::UNAUTHORIZED,
                 )
-                .into_response())
+                    .into_response())
             }
-        }
+        },
+        None => (None, None, StatusCode::NOT_FOUND),
     };
 
     let response = InfoResponse {
@@ -346,7 +338,7 @@ async fn get_unencrypted_info(
     };
 
     return Ok(
-        warp::reply::with_status(warp::reply::json(&response), StatusCode::OK).into_response(),
+        warp::reply::with_status(warp::reply::json(&response), status_code).into_response(),
     );
 }
 

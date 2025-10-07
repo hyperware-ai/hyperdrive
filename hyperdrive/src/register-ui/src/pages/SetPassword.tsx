@@ -48,6 +48,10 @@ function SetPassword({
   const [specifyBaseL2AccessProviders, setSpecifyBaseL2AccessProviders] = useState(false);
   const [rpcProviders, setRpcProviders] = useState<RpcProviderData[]>([]);
 
+  // Track initial states after data is loaded
+  const [initialCacheSourcesChecked, setInitialCacheSourcesChecked] = useState(false);
+  const [initialBaseL2ProvidersChecked, setInitialBaseL2ProvidersChecked] = useState(false);
+
   const { signTypedDataAsync } = useSignTypedData();
   const { address } = useAccount();
   const chainId = useChainId();
@@ -68,6 +72,7 @@ function SetPassword({
         if (infoData.initial_cache_sources && infoData.initial_cache_sources.length > 0) {
           setCustomCacheSources(infoData.initial_cache_sources.join('\n'));
           setSpecifyCacheSources(true);
+          setInitialCacheSourcesChecked(true);
         }
 
         // Parse and prepopulate Base L2 providers
@@ -100,6 +105,7 @@ function SetPassword({
           });
           setRpcProviders(parsedProviders);
           setSpecifyBaseL2AccessProviders(true);
+          setInitialBaseL2ProvidersChecked(true);
         }
       } catch (error) {
         console.error('Failed to fetch default configuration:', error);
@@ -337,6 +343,7 @@ function SetPassword({
                   <SpecifyCacheSourcesCheckbox
                       specifyCacheSources={specifyCacheSources}
                       setSpecifyCacheSources={handleSetSpecifyCacheSources}
+                      initiallyChecked={initialCacheSourcesChecked}
                   />
                   {specifyCacheSources && (
                       <div className="flex flex-col gap-2 ml-6">
@@ -378,6 +385,7 @@ function SetPassword({
                   <SpecifyBaseL2AccessProvidersCheckbox
                       specifyBaseL2AccessProviders={specifyBaseL2AccessProviders}
                       setSpecifyBaseL2AccessProviders={setSpecifyBaseL2AccessProviders}
+                      initiallyChecked={initialBaseL2ProvidersChecked}
                   />
                   {specifyBaseL2AccessProviders && (
                       <div className="ml-6">

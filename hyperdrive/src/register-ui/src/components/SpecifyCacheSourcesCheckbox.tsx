@@ -1,12 +1,17 @@
 import { CacheSourceTooltip } from "./CacheSourceTooltip";
 import { FaSquareCheck, FaRegSquare } from "react-icons/fa6";
 
-interface SpecifyCacheSourcesProps {
+interface SpecifyCacheSourcesCheckboxProps {
     specifyCacheSources: boolean;
     setSpecifyCacheSources: (specifyCacheSources: boolean) => void;
+    initiallyChecked?: boolean;
 }
 
-export default function SpecifyCacheSourcesCheckbox({ specifyCacheSources, setSpecifyCacheSources }: SpecifyCacheSourcesProps) {
+export default function SpecifyCacheSourcesCheckbox({
+                                                        specifyCacheSources,
+                                                        setSpecifyCacheSources,
+                                                        initiallyChecked = false
+                                                    }: SpecifyCacheSourcesCheckboxProps) {
     return (
         <div className="flex gap-2 items-center">
             <button className="icon" onClick={(e) => {
@@ -16,9 +21,11 @@ export default function SpecifyCacheSourcesCheckbox({ specifyCacheSources, setSp
             }}>
                 {specifyCacheSources ? <FaSquareCheck /> : <FaRegSquare />}
             </button>
-            <div className="flex flex-col gap-1 min-w-0 wrap-anywhere">
-                <span className="text-sm">Specify cache sources for hypermap data.</span>
-                <span className="text-xs">If you are unsure, leave unchecked.</span>
+            <div className="flex flex-col gap-1 flex-1 min-w-0 wrap-anywhere">
+                <span className="text-sm">Specify cache sources.</span>
+                <span className="text-xs">
+                    If you are unsure, leave {initiallyChecked ? 'checked' : 'unchecked'}.
+                </span>
             </div>
             <CacheSourceTooltip />
         </div>
