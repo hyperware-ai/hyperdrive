@@ -4,7 +4,10 @@ use lib::{types::core as t, v1::ProcessV1};
 use std::{
     collections::{HashMap, VecDeque},
     path::PathBuf,
-    sync::{Arc, Mutex as StdMutex, atomic::{AtomicUsize, Ordering}},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex as StdMutex,
+    },
 };
 use tokio::{fs, sync::Mutex, task::JoinHandle};
 use wasmtime::{
@@ -13,8 +16,8 @@ use wasmtime::{
 };
 use wasmtime_wasi::{
     p2::{
-        pipe::MemoryOutputPipe,IoView, StdoutStream, StreamResult, WasiCtx,
-        WasiCtxBuilder, WasiView,
+        pipe::MemoryOutputPipe, IoView, StdoutStream, StreamResult, WasiCtx, WasiCtxBuilder,
+        WasiView,
     },
     DirPerms, FilePerms,
 };
