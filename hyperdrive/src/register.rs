@@ -321,7 +321,7 @@ async fn get_unencrypted_info(
                     warp::reply::json(&"keyfile deserialization went wrong".to_string()),
                     StatusCode::UNAUTHORIZED,
                 )
-                    .into_response())
+                .into_response())
             }
         },
         None => (None, None, StatusCode::NOT_FOUND),
@@ -337,9 +337,7 @@ async fn get_unencrypted_info(
             .unwrap_or_default(),
     };
 
-    return Ok(
-        warp::reply::with_status(warp::reply::json(&response), status_code).into_response(),
-    );
+    return Ok(warp::reply::with_status(warp::reply::json(&response), status_code).into_response());
 }
 
 async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Reply, Rejection> {

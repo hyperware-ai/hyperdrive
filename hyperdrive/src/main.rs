@@ -1006,19 +1006,12 @@ async fn serve_register_fe(
         match tokio::fs::read_to_string(&data_file_path).await {
             Ok(contents) => match serde_json::from_str::<Vec<String>>(&contents) {
                 Ok(cache_sources) if !cache_sources.is_empty() => {
-                    println!(
-                        "Loaded cache sources: {:?}\r",
-                        cache_sources
-                    );
+                    println!("Loaded cache sources: {:?}\r", cache_sources);
                     Some(cache_sources)
                 }
-                _ => {
-                    Some(Vec::new())
-                }
+                _ => Some(Vec::new()),
             },
-            Err(_) => {
-                Some(Vec::new())
-            }
+            Err(_) => Some(Vec::new()),
         }
     };
 
