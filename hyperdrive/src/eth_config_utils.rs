@@ -39,7 +39,6 @@ pub fn add_provider_to_config(
 }
 
 /// Extract unauthenticated RPC URLs from SavedConfigs
-/// Similar to update_base_l2_providers_from_saved_configs but just returns the Vec
 pub fn extract_rpc_url_providers_for_default_chain(
     saved_configs: &lib::eth::SavedConfigs,
 ) -> Vec<lib::eth::NodeOrRpcUrl> {

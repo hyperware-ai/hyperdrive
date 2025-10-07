@@ -1265,12 +1265,10 @@ fn handle_request(
             }
             state.nodes = new_nodes;
             state.save();
-            info!("Nodes have been saved to state");
             if let Err(e) = state.write_nodes_to_file() {
                 error!("Failed to write nodes to cache_sources: {:?}", e);
             }
-            info!("If statement complete");
-            info!("Nodes updated to: {:?}", state.nodes);
+]            info!("Nodes updated to: {:?}", state.nodes);
             CacherResponse::SetNodes(Ok("Nodes updated successfully".to_string()))
         }
         CacherRequest::Reset(custom_nodes) => {

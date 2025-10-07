@@ -319,9 +319,6 @@ async fn main() {
 
     is_eth_provider_config_updated = false;
 
-    //let cache_source_vector_for_config = cache_source_vector.clone();
-    //let base_l2_access_source_vector_for_config = base_l2_access_source_vector.clone();
-
     if !base_l2_access_source_vector.is_empty() {
         // Process in reverse order so the first entry in the vector becomes highest priority
         for (_reverse_index, provider_str) in
