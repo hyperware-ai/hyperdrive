@@ -117,13 +117,9 @@ function SetPassword({
     setError("");
   }, [pw, pw2]);
 
-  // Modified setSpecifyCacheSources function to handle clearing
+  // Modified setSpecifyCacheSources function - no longer clears cache sources
   const handleSetSpecifyCacheSources = (value: boolean) => {
     setSpecifyCacheSources(value);
-    if (!value) {
-      setCustomCacheSources('');
-      setCacheSourceValidationErrors([]);
-    }
   };
 
   // Validate custom cache sources against the regex
@@ -183,7 +179,7 @@ function SetPassword({
         setTimeout(async () => {
           setLoading(true);
 
-          // Process custom cache sources if specified
+          // Process custom cache sources only if checkbox is checked
           let cacheSourcesToUse: string[] | undefined = undefined;
           if (specifyCacheSources && customCacheSources.trim()) {
             cacheSourcesToUse = getValidCustomCacheSources();

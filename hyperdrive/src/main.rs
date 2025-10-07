@@ -483,8 +483,6 @@ async fn main() {
             e
         );
         // You might want to handle this error based on your needs
-    } else {
-        println!("✓ Created directory structure: {}", initfiles_dir.display());
     }
 
     // Create the cache_sources file with test content
@@ -497,8 +495,6 @@ async fn main() {
 
     if let Err(e) = tokio::fs::write(&data_file_path, cache_json).await {
         eprintln!("Warning: Failed to write cache data to file: {}", e);
-    } else {
-        println!("✓ Created test file: {}", data_file_path.display());
     }
 
     // Create the second directory structure for hns-indexer:sys
@@ -512,11 +508,6 @@ async fn main() {
             hns_initfiles_dir.display(),
             e
         );
-    } else {
-        println!(
-            "✓ Created directory structure: {}",
-            hns_initfiles_dir.display()
-        );
     }
 
     // Create the cache_sources file in the second location
@@ -524,12 +515,9 @@ async fn main() {
 
     if let Err(e) = tokio::fs::write(&hns_data_file_path, cache_json_clone).await {
         eprintln!("Warning: Failed to write cache data to second file: {}", e);
-    } else {
-        println!("✓ Created test file: {}", hns_data_file_path.display());
     }
 
     let mut tasks = tokio::task::JoinSet::<Result<()>>::new();
-    println!("spawning the kernel task\r");
     tasks.spawn(kernel::kernel(
         our.clone(),
         networking_keypair_arc.clone(),
@@ -561,7 +549,6 @@ async fn main() {
             })
             .collect(),
     ));
-    println!("spawning the net task\r");
     tasks.spawn(net::networking(
         our.clone(),
         our_ip.to_string(),
@@ -631,7 +618,6 @@ async fn main() {
         timer_service_receiver,
         print_sender.clone(),
     ));
-    println!("spawning the eth task\r");
     tasks.spawn(eth::provider(
         our.name.clone(),
         home_directory_path.clone(),
@@ -1027,12 +1013,10 @@ async fn serve_register_fe(
                     Some(cache_sources)
                 }
                 _ => {
-                    println!("Failed to parse cache_sources or empty, using default empty list\r");
                     Some(Vec::new())
                 }
             },
             Err(_) => {
-                println!("cache_sources not found, using default empty list\r");
                 Some(Vec::new())
             }
         }

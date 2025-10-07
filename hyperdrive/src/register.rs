@@ -391,15 +391,6 @@ async fn handle_boot(
             Vec::new()
         };
 
-    if let Some(custom_base_l2_providers) = &info.custom_base_l2_access_providers {
-        println!(
-            "Custom Base L2 access providers specified: {:?}\r",
-            custom_base_l2_providers
-        );
-    } else {
-        println!("No custom Base L2 access providers specified\r");
-    }
-
     let jwt_seed = SystemRandom::new();
     let mut jwt_secret = [0u8, 32];
     ring::rand::SecureRandom::fill(&jwt_seed, &mut jwt_secret).unwrap();

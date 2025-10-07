@@ -109,13 +109,9 @@ function Login({
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Modified setSpecifyCacheSources function to handle clearing
+  // Modified setSpecifyCacheSources function - no longer clears cache sources
   const handleSetSpecifyCacheSources = (value: boolean) => {
     setSpecifyCacheSources(value);
-    if (!value) {
-      setCustomCacheSources('');
-      setCacheSourceValidationErrors([]);
-    }
   };
 
   // Validate custom cache sources against the regex
@@ -170,7 +166,7 @@ function Login({
 
         setLoading("Logging in...");
         try {
-          // Process custom cache sources if specified
+          // Process custom cache sources only if checkbox is checked
           let cacheSourcesToUse: string[] | undefined = undefined;
           if (specifyCacheSources && customCacheSources.trim()) {
             cacheSourcesToUse = getValidCustomCacheSources();
