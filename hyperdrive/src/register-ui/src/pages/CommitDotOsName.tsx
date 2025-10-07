@@ -54,24 +54,19 @@ function CommitDotOsName({
     const [customRouters, setCustomRouters] = useState('')
     const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
 
-    // Modified setDirect function to handle mutual exclusivity
+    // Modified setDirect function - no longer clears custom routers
     const handleSetDirect = (value: boolean) => {
         setDirect(value);
         if (value) {
             setSpecifyRouters(false);
-            setCustomRouters(''); // Clear custom routers when switching to direct
-            setRouterValidationErrors([]);
         }
     };
 
-    // Modified setSpecifyRouters function to handle mutual exclusivity
+    // Modified setSpecifyRouters function - no longer clears custom routers
     const handleSetSpecifyRouters = (value: boolean) => {
         setSpecifyRouters(value);
         if (value) {
             setDirect(false);
-        } else {
-            setCustomRouters(''); // Clear custom routers when unchecking
-            setRouterValidationErrors([]);
         }
     };
 
@@ -144,11 +139,13 @@ function CommitDotOsName({
         setName(toAscii(name));
         console.log("committing to .os name: ", name)
 
+        // Process custom routers only if the checkbox is checked
         if (specifyRouters && customRouters.trim()) {
             const routersToUse = getValidCustomRouters();
-
-            // Update the routers in your app state for the next page to use
             setRouters(routersToUse);
+        } else {
+            // Clear routers in app state if not specifying custom routers
+            setRouters([]);
         }
 
         const commit = keccak256(
@@ -269,29 +266,28 @@ function CommitDotOsName({
                                         )}
                                     </div>
                                 </details>
+                                <p className="text-sm text-gray-500">
+                                    By registering a name, you agree to the terms of service at <a href="https://hyperwareware.xyz/tos">hyperwareware.xyz/tos</a>.
+                                </p>
+                                <button
+                                    type="submit"
+                                    className="button"
+                                    disabled={
+                                        isPending ||
+                                        isConfirming ||
+                                        nameValidities.length !== 0 ||
+                                        (specifyRouters && !isCustomRoutersValid())
+                                    }
+                                >
+                                    Pre-commit
+                                </button>
 
-                                <div className="flex flex-col gap-1">
-                                    <button
-                                        disabled={nameValidities.length !== 0 ||
-                                            isPending ||
-                                            isConfirming ||
-                                            (specifyRouters && !isCustomRoutersValid())
-                                        }
-                                        type="submit"
-                                        className="button"
-                                    >
-                                        Register name
-                                    </button>
-                                    <Link to="/reset" className="button clear">
-                                        Already have a node?
-                                    </Link>
-                                    <BackButton mode="wide" />
-                                </div>
+                                <BackButton mode="wide" />
                             </>
                         )}
                         {isError && (
                             <p className="text-red-500 wrap-anywhere mt-2">
-                                Error: {error?.message || 'There was an error registering your name, please try again.'}
+                                Error: {error?.message || "An error occurred, please try again."}
                             </p>
                         )}
                     </form>

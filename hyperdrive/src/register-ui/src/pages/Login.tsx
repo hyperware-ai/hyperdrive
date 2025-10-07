@@ -345,11 +345,6 @@ function Login({
                     onChange={setRpcProviders}
                     label="Base L2 RPC Providers"
                 />
-                {hasInvalidRpcProviders && (
-                    <div className="text-xs text-red-500 mt-2">
-                      All RPC provider URLs must be secure WebSocket URLs starting with wss://
-                    </div>
-                )}
               </div>
           )}
         </div>

@@ -62,24 +62,19 @@ function ResetHnsName({
     const [initiallyDirect, setInitiallyDirect] = useState<boolean | undefined>(undefined);
     const [initiallySpecifyRouters, setInitiallySpecifyRouters] = useState<boolean | undefined>(undefined);
 
-    // Modified setDirect function to handle mutual exclusivity
+    // Modified setDirect function - no longer clears custom routers
     const handleSetDirect = (value: boolean) => {
         setDirect(value);
         if (value) {
             setSpecifyRouters(false);
-            setCustomRouters(''); // Clear custom routers when switching to direct
-            setRouterValidationErrors([]);
         }
     };
 
-    // Modified setSpecifyRouters function to handle mutual exclusivity
+    // Modified setSpecifyRouters function - no longer clears custom routers
     const handleSetSpecifyRouters = (value: boolean) => {
         setSpecifyRouters(value);
         if (value) {
             setDirect(false);
-        } else {
-            setCustomRouters(''); // Clear custom routers when unchecking
-            setRouterValidationErrors([]);
         }
     };
 
@@ -183,14 +178,16 @@ function ResetHnsName({
             }
 
             setHnsName(name);
-            // Process custom routers if specified
+
+            // Process custom routers only if the checkbox is checked
             let routersToUse: string[] = [];
             if (specifyRouters && customRouters.trim()) {
                 routersToUse = getValidCustomRouters();
-
-                // Update the routers in your app state
                 setRouters(routersToUse);
                 console.log("Custom routers:", routersToUse);
+            } else {
+                // Clear routers in app state if not specifying custom routers
+                setRouters([]);
             }
 
             try {

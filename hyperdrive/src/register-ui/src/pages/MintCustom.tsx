@@ -49,24 +49,19 @@ function MintCustom({
     const [customRouters, setCustomRouters] = useState('')
     const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
 
-    // Modified setDirect function to handle mutual exclusivity
+    // Modified setDirect function - no longer clears custom routers
     const handleSetDirect = (value: boolean) => {
         setDirect(value);
         if (value) {
             setSpecifyRouters(false);
-            setCustomRouters(''); // Clear custom routers when switching to direct
-            setRouterValidationErrors([]);
         }
     };
 
-    // Modified setSpecifyRouters function to handle mutual exclusivity
+    // Modified setSpecifyRouters function - no longer clears custom routers
     const handleSetSpecifyRouters = (value: boolean) => {
         setSpecifyRouters(value);
         if (value) {
             setDirect(false);
-        } else {
-            setCustomRouters(''); // Clear custom routers when unchecking
-            setRouterValidationErrors([]);
         }
     };
 
@@ -138,14 +133,15 @@ function MintCustom({
             return
         }
 
-        // Process custom routers if specified
+        // Process custom routers only if the checkbox is checked
         let routersToUse: string[] = [];
         if (specifyRouters && customRouters.trim()) {
             routersToUse = getValidCustomRouters();
-
-            // Update the routers in your app state
             setRouters(routersToUse);
             console.log("Custom routers:", routersToUse);
+        } else {
+            // Clear routers in app state if not specifying custom routers
+            setRouters([]);
         }
 
         const initCall = await generateNetworkingKeys({
@@ -259,26 +255,24 @@ function MintCustom({
                                         )}
                                     </div>
                                 </details>
-                                <div className="flex flex-col gap-1">
-                                    <button
-                                        type="submit"
-                                        className="button"
-                                        disabled={
-                                            isPending ||
-                                            isConfirming ||
-                                            !hnsName ||
-                                            (specifyRouters && !isCustomRoutersValid())
-                                        }>
-                                        Mint custom name
-                                    </button>
+                                <button
+                                    type="submit"
+                                    className="button"
+                                    disabled={
+                                        isPending ||
+                                        isConfirming ||
+                                        (specifyRouters && !isCustomRoutersValid())
+                                    }
+                                >
+                                    Mint Custom Name
+                                </button>
 
-                                    <BackButton mode="wide" />
-                                </div>
+                                <BackButton mode="wide" />
                             </>
                         )}
                         {isError && (
                             <p className="text-red-500 wrap-anywhere mt-2">
-                                Error: {error?.message || 'There was an error minting your name, please try again.'}
+                                Error: {error?.message || "An error occurred, please try again."}
                             </p>
                         )}
                     </form>
