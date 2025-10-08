@@ -1,3 +1,4 @@
+use crate::eth_config_utils::add_provider_to_config;
 use anyhow::Result;
 use clap::{arg, value_parser, Command};
 use lib::types::core::{
@@ -12,9 +13,11 @@ use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 mod eth;
+mod eth_config_utils;
+
 #[cfg(feature = "simulation-mode")]
 mod fakenet;
 pub mod fd_manager;
@@ -283,32 +286,99 @@ async fn main() {
     println!("Serving Hyperdrive at {link}\r");
     #[cfg(not(feature = "simulation-mode"))]
     println!("Login or register at {link}\r");
+
     #[cfg(not(feature = "simulation-mode"))]
-    let (our, encoded_keyfile, decoded_keyfile) = match password {
-        None => {
-            serve_register_fe(
-                &home_directory_path,
-                our_ip.to_string(),
-                (ws_tcp_handle, ws_flag_used),
-                (tcp_tcp_handle, tcp_flag_used),
-                http_server_port,
-                eth_provider_config.clone(),
-                detached,
-            )
-            .await
+    let (our, encoded_keyfile, decoded_keyfile, cache_source_vector, base_l2_access_source_vector) =
+        match password {
+            None => {
+                let result = serve_register_fe(
+                    &home_directory_path,
+                    our_ip.to_string(),
+                    (ws_tcp_handle, ws_flag_used),
+                    (tcp_tcp_handle, tcp_flag_used),
+                    http_server_port,
+                    eth_provider_config.clone(),
+                    detached,
+                )
+                .await;
+                result
+            }
+            Some(password) => {
+                let result = login_with_password(
+                    &home_directory_path,
+                    our_ip.to_string(),
+                    (ws_tcp_handle, ws_flag_used),
+                    (tcp_tcp_handle, tcp_flag_used),
+                    eth_provider_config.clone(),
+                    password,
+                )
+                .await;
+                result
+            }
+        };
+
+    is_eth_provider_config_updated = false;
+
+    if !base_l2_access_source_vector.is_empty() {
+        // Process in reverse order so the first entry in the vector becomes highest priority
+        for (_reverse_index, provider_str) in
+            base_l2_access_source_vector.into_iter().rev().enumerate()
+        {
+            // Parse the JSON string to extract url and auth fields
+            match serde_json::from_str::<serde_json::Value>(&provider_str) {
+                Ok(provider_json) => {
+                    let url = match provider_json.get("url").and_then(|v| v.as_str()) {
+                        Some(u) => u.to_string(),
+                        None => {
+                            eprintln!(
+                                "Skipping provider entry with missing or invalid 'url' field"
+                            );
+                            continue;
+                        }
+                    };
+
+                    // Extract auth field - convert null to None
+                    let auth = match provider_json.get("auth") {
+                        Some(auth_value) if !auth_value.is_null() => {
+                            // Try to deserialize the auth object into Authorization
+                            match serde_json::from_value::<lib::eth::Authorization>(
+                                auth_value.clone(),
+                            ) {
+                                Ok(auth_obj) => Some(auth_obj),
+                                Err(e) => {
+                                    eprintln!("Failed to parse auth field for {}: {:?}", url, e);
+                                    None
+                                }
+                            }
+                        }
+                        _ => None, // null or missing -> None
+                    };
+
+                    let new_provider = lib::eth::ProviderConfig {
+                        chain_id: CHAIN_ID,
+                        trusted: true,
+                        provider: lib::eth::NodeOrRpcUrl::RpcUrl { url, auth },
+                    };
+
+                    add_provider_to_config(&mut eth_provider_config, new_provider);
+                }
+                Err(e) => {
+                    eprintln!("Failed to parse provider JSON '{}': {:?}", provider_str, e);
+                }
+            }
         }
-        Some(password) => {
-            login_with_password(
-                &home_directory_path,
-                our_ip.to_string(),
-                (ws_tcp_handle, ws_flag_used),
-                (tcp_tcp_handle, tcp_flag_used),
-                eth_provider_config.clone(),
-                password,
-            )
-            .await
-        }
-    };
+        is_eth_provider_config_updated = true;
+    }
+
+    if is_eth_provider_config_updated {
+        // save the new provider config
+        tokio::fs::write(
+            home_directory_path.join(".eth_providers"),
+            serde_json::to_string(&eth_provider_config).unwrap(),
+        )
+        .await
+        .expect("failed to save new eth provider config!");
+    }
 
     // the boolean flag determines whether the runtime module is *public* or not,
     // where public means that any process can always message it.
@@ -396,6 +466,53 @@ async fn main() {
     )
     .await
     .expect("state load failed!");
+
+    // Create the nested directory structure before spawning tasks
+    let vfs_dir = home_directory_path.join("vfs");
+    let hypermap_cacher_dir = vfs_dir.join("hypermap-cacher:sys");
+    let initfiles_dir = hypermap_cacher_dir.join("initfiles");
+
+    // Create all directories at once (creates parent directories if they don't exist)
+    if let Err(e) = tokio::fs::create_dir_all(&initfiles_dir).await {
+        eprintln!(
+            "Failed to create directory structure {}: {}",
+            initfiles_dir.display(),
+            e
+        );
+        // You might want to handle this error based on your needs
+    }
+
+    // Create the cache_sources file with test content
+    let data_file_path = initfiles_dir.join("cache_sources");
+
+    // Write cache_source_vector to cache_sources as JSON
+    let cache_json = serde_json::to_string_pretty(&cache_source_vector)
+        .expect("Failed to serialize cache_source_vector to JSON");
+    let cache_json_clone = cache_json.clone();
+
+    if let Err(e) = tokio::fs::write(&data_file_path, cache_json).await {
+        eprintln!("Warning: Failed to write cache data to file: {}", e);
+    }
+
+    // Create the second directory structure for hns-indexer:sys
+    let hns_indexer_dir = vfs_dir.join("hns-indexer:sys");
+    let hns_initfiles_dir = hns_indexer_dir.join("initfiles");
+
+    // Create all directories at once for the second location
+    if let Err(e) = tokio::fs::create_dir_all(&hns_initfiles_dir).await {
+        eprintln!(
+            "Failed to create directory structure {}: {}",
+            hns_initfiles_dir.display(),
+            e
+        );
+    }
+
+    // Create the cache_sources file in the second location
+    let hns_data_file_path = hns_initfiles_dir.join("cache_sources");
+
+    if let Err(e) = tokio::fs::write(&hns_data_file_path, cache_json_clone).await {
+        eprintln!("Warning: Failed to write cache data to second file: {}", e);
+    }
 
     let mut tasks = tokio::task::JoinSet::<Result<()>>::new();
     tasks.spawn(kernel::kernel(
@@ -866,6 +983,7 @@ async fn find_public_ip() -> std::net::Ipv4Addr {
 /// username, networking key, and routing info.
 /// if any do not match, we should prompt user to create a "transaction"
 /// that updates their PKI info on-chain.
+
 #[cfg(not(feature = "simulation-mode"))]
 async fn serve_register_fe(
     home_directory_path: &Path,
@@ -875,42 +993,75 @@ async fn serve_register_fe(
     http_server_port: u16,
     eth_provider_config: lib::eth::SavedConfigs,
     detached: bool,
-) -> (Identity, Vec<u8>, Keyfile) {
-    let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<bool>();
+) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
+    let cache_sources_from_file = {
+        let vfs_dir = home_directory_path.join("vfs");
+        let hypermap_cacher_dir = vfs_dir.join("hypermap-cacher:sys");
+        let initfiles_dir = hypermap_cacher_dir.join("initfiles");
+        let data_file_path = initfiles_dir.join("cache_sources");
 
-    let disk_keyfile: Option<Vec<u8>> = tokio::fs::read(home_directory_path.join(".keys"))
-        .await
-        .ok();
-
-    let (tx, mut rx) = mpsc::channel::<(Identity, Keyfile, Vec<u8>)>(1);
-    let (our, decoded_keyfile, encoded_keyfile) = tokio::select! {
-        _ = register::register(
-                tx,
-                kill_rx,
-                our_ip,
-                (ws_networking.0.as_ref(), ws_networking.1),
-                (tcp_networking.0.as_ref(), tcp_networking.1),
-                http_server_port,
-                disk_keyfile,
-                eth_provider_config,
-                detached) => {
-            panic!("registration failed")
-        }
-        Some((our, decoded_keyfile, encoded_keyfile)) = rx.recv() => {
-            (our, decoded_keyfile, encoded_keyfile)
+        match tokio::fs::read_to_string(&data_file_path).await {
+            Ok(contents) => match serde_json::from_str::<Vec<String>>(&contents) {
+                Ok(cache_sources) if !cache_sources.is_empty() => {
+                    println!("Loaded cache sources: {:?}\r", cache_sources);
+                    Some(cache_sources)
+                }
+                _ => Some(Vec::new()),
+            },
+            Err(_) => Some(Vec::new()),
         }
     };
 
-    tokio::fs::write(home_directory_path.join(".keys"), &encoded_keyfile)
-        .await
-        .unwrap();
+    // Convert RpcUrl providers to serializable format for the registration UI
+    let initial_base_l2_providers = {
+        // Extract from eth_provider_config and serialize to JSON strings
+        let rpc_providers =
+            eth_config_utils::extract_rpc_url_providers_for_default_chain(&eth_provider_config);
+        serialize_rpc_providers_for_ui(rpc_providers)
+    };
 
+    let (tx, mut rx): (
+        mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>,
+        mpsc::Receiver<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>,
+    ) = mpsc::channel(32);
+    let (kill_tx, kill_rx) = oneshot::channel::<bool>();
+
+    let keyfile_path = home_directory_path.join(".keys");
+    let keyfile: Option<Vec<u8>> = tokio::fs::read(&keyfile_path).await.ok();
+
+    tokio::spawn(async move {
+        register::register(
+            tx,
+            kill_rx,
+            our_ip,
+            (ws_networking.0.as_ref(), ws_networking.1),
+            (tcp_networking.0.as_ref(), tcp_networking.1),
+            http_server_port,
+            keyfile,
+            eth_provider_config,
+            detached,
+            cache_sources_from_file,         // Pass cache sources from config
+            Some(initial_base_l2_providers), // Pass providers - now properly unwrapped
+        )
+        .await;
+    });
+
+    let (our, decoded_keyfile, encoded_keyfile, cache_sources, base_l2_providers) =
+        rx.recv().await.unwrap();
     let _ = kill_tx.send(true);
 
-    drop(ws_networking.0);
-    drop(tcp_networking.0);
+    // Save the keyfile to disk
+    tokio::fs::write(home_directory_path.join(".keys"), &encoded_keyfile)
+        .await
+        .expect("failed to write keyfile");
 
-    (our, encoded_keyfile, decoded_keyfile)
+    (
+        our,
+        encoded_keyfile,
+        decoded_keyfile,
+        cache_sources,
+        base_l2_providers,
+    )
 }
 
 #[cfg(not(feature = "simulation-mode"))]
@@ -921,7 +1072,7 @@ async fn login_with_password(
     tcp_networking: (Option<tokio::net::TcpListener>, bool),
     eth_provider_config: lib::eth::SavedConfigs,
     password: &str,
-) -> (Identity, Vec<u8>, Keyfile) {
+) -> (Identity, Vec<u8>, Keyfile, Vec<String>, Vec<String>) {
     use argon2::Argon2;
     use ring::signature::KeyPair;
 
@@ -1014,48 +1165,70 @@ async fn login_with_password(
         .await
         .unwrap();
 
-    (our, disk_keyfile, k)
-}
+    let cache_source_vector: Vec<String> = Vec::new();
+    let base_l2_access_source_vector: Vec<String> = Vec::new();
 
-/// Add a provider config with deduplication logic (same as runtime system)
-fn add_provider_to_config(
-    eth_provider_config: &mut lib::eth::SavedConfigs,
-    new_provider: lib::eth::ProviderConfig,
-) {
-    match &new_provider.provider {
-        lib::eth::NodeOrRpcUrl::RpcUrl { url, .. } => {
-            // Remove any existing provider with this URL
-            eth_provider_config.0.retain(|config| {
-                if let lib::eth::NodeOrRpcUrl::RpcUrl {
-                    url: existing_url, ..
-                } = &config.provider
-                {
-                    existing_url != url
-                } else {
-                    true
-                }
-            });
-        }
-        lib::eth::NodeOrRpcUrl::Node { hns_update, .. } => {
-            // Remove any existing provider with this node name
-            eth_provider_config.0.retain(|config| {
-                if let lib::eth::NodeOrRpcUrl::Node {
-                    hns_update: existing_update,
-                    ..
-                } = &config.provider
-                {
-                    existing_update.name != hns_update.name
-                } else {
-                    true
-                }
-            });
-        }
-    }
-
-    // Insert the new provider at the front (position 0)
-    eth_provider_config.0.insert(0, new_provider);
+    (
+        our,
+        disk_keyfile,
+        k,
+        cache_source_vector,
+        base_l2_access_source_vector,
+    )
 }
 
 fn make_remote_link(url: &str, text: &str) -> String {
     format!("\x1B]8;;{}\x1B\\{}\x1B]8;;\x1B\\", url, text)
+}
+
+/// Serialize RpcUrl providers to JSON strings for the UI
+/// Each provider is serialized as a JSON object containing url and auth
+pub fn serialize_rpc_providers_for_ui(providers: Vec<lib::eth::NodeOrRpcUrl>) -> Vec<String> {
+    providers
+        .into_iter()
+        .filter_map(|provider| {
+            match provider {
+                lib::eth::NodeOrRpcUrl::RpcUrl { url, auth } => {
+                    // Create a serializable object with url and auth
+                    let provider_obj = serde_json::json!({
+                        "url": url,
+                        "auth": auth
+                    });
+                    // Serialize to string
+                    serde_json::to_string(&provider_obj).ok()
+                }
+                lib::eth::NodeOrRpcUrl::Node { .. } => None,
+            }
+        })
+        .collect()
+}
+
+/// Deserialize RpcUrl provider strings from the UI back to NodeOrRpcUrl objects
+pub fn deserialize_rpc_providers_from_ui(
+    provider_strings: Vec<String>,
+) -> Vec<lib::eth::NodeOrRpcUrl> {
+    provider_strings
+        .into_iter()
+        .filter_map(|provider_str| {
+            // Try to parse as JSON object first
+            if let Ok(provider_obj) = serde_json::from_str::<serde_json::Value>(&provider_str) {
+                if let (Some(url), auth) = (
+                    provider_obj
+                        .get("url")
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
+                    provider_obj
+                        .get("auth")
+                        .and_then(|v| serde_json::from_value(v.clone()).ok()),
+                ) {
+                    return Some(lib::eth::NodeOrRpcUrl::RpcUrl { url, auth });
+                }
+            }
+            // Fall back to treating it as a plain URL string (for backward compatibility)
+            Some(lib::eth::NodeOrRpcUrl::RpcUrl {
+                url: provider_str,
+                auth: None,
+            })
+        })
+        .collect()
 }
