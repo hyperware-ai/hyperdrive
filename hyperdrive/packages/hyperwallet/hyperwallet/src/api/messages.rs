@@ -102,6 +102,9 @@ pub fn execute_message(
         HyperwalletRequest::SendToken(req) => {
             core::transactions::send_token(req, session_id, source, state)
         }
+        HyperwalletRequest::CallContract(req) => {
+            core::transactions::call_contract(req, session_id, source, state)
+        }
 
         // Account Abstraction (integrations/erc4337_operations.rs)
         HyperwalletRequest::BuildAndSignUserOperationForPayment(req) => {

@@ -7,6 +7,10 @@ serde_urlencoded = "0.7"
 tracing = "0.1.37"
 wit-bindgen = "0.42.1"
 
+[dependencies.file_explorer_caller_utils]
+optional = true
+path = "../target/file-explorer-caller-utils"
+
 [dependencies.hyperprocess_macro]
 git = "https://github.com/hyperware-ai/hyperprocess-macro"
 rev = "66884c0"
@@ -19,6 +23,9 @@ rev = "4beff93"
 [dependencies.serde]
 features = ["derive"]
 version = "1.0"
+
+[features]
+caller-utils = ["file_explorer_caller_utils"]
 
 [lib]
 crate-type = ["cdylib"]

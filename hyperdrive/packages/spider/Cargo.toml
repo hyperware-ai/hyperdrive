@@ -6,5 +6,6 @@ panic = "abort"
 [workspace]
 members = [
     "spider",
+    "target/spider-caller-util?",
 ]
 resolver = "2"

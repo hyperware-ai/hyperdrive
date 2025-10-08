@@ -61,6 +61,21 @@ pub enum ToolExecutionCommand {
         args: String,
         timeout: u64,
     },
+    HypergridParseCurl {
+        server_id: String,
+        curl_command: String,
+        suggested_parameters: Option<Vec<String>>,
+    },
+    HypergridRegister {
+        server_id: String,
+        provider_name: String,
+        provider_id: String,
+        description: String,
+        instructions: String,
+        registered_provider_wallet: String,
+        price: f64,
+        endpoint: Value,
+    },
     // Direct result (for synchronous operations)
     DirectResult(Result<Value, String>),
 }

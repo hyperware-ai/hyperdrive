@@ -564,6 +564,18 @@ pub(crate) enum HypergridMessageType {
         provider_name: String,
         arguments: Vec<(String, String)>,
     },
+    RegisterProvider {
+        #[serde(rename = "providerName")]
+        provider_name: String,
+        #[serde(rename = "providerId")]
+        provider_id: String,
+        description: String,
+        instructions: String,
+        #[serde(rename = "registeredProviderWallet")]
+        registered_provider_wallet: String,
+        price: f64,
+        endpoint: serde_json::Value,
+    },
 }
 
 // OAuth types

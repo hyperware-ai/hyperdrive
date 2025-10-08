@@ -16,7 +16,7 @@ use hyperware_process_lib::{
     hyperapp::source,
     our, println, Address, LazyLoadBlob, ProcessId, Request,
 };
-#[cfg(not(feature = "simulation-mode"))]
+#[cfg(all(not(feature = "simulation-mode"), feature = "anthropic-key-dispenser"))]
 use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
 
 mod provider;
@@ -229,53 +229,6 @@ impl SpiderState {
         // Always register the provider (even if server exists)
         self.tool_provider_registry
             .register(Box::new(hypergrid_provider));
-
-        // Register Hyperware tool provider
-        let hyperware_provider = HyperwareToolProvider::new();
-        self.tool_provider_registry
-            .register(Box::new(hyperware_provider));
-
-        // Check if hyperware server exists
-        let has_hyperware = self
-            .mcp_servers
-            .iter()
-            .any(|s| s.transport.transport_type == "hyperware");
-        if !has_hyperware {
-            // Create new hyperware server
-            let hyperware_provider = HyperwareToolProvider::new();
-            let hyperware_tools = hyperware_provider.get_tools(self);
-            let hyperware_server = McpServer {
-                id: "hyperware".to_string(),
-                name: "Hyperware".to_string(),
-                transport: types::TransportConfig {
-                    transport_type: "hyperware".to_string(),
-                    command: None,
-                    args: None,
-                    url: None,
-                    hypergrid_token: None,
-                    hypergrid_client_id: None,
-                    hypergrid_node: None,
-                },
-                tools: hyperware_tools,
-                connected: true, // Always mark as connected
-            };
-            self.mcp_servers.push(hyperware_server);
-            println!("Spider: Hyperware MCP server initialized");
-        } else {
-            // Server exists, refresh its tools from the provider
-            println!("Spider: Refreshing Hyperware tools on startup");
-            // Get fresh tools from provider
-            let hyperware_provider = HyperwareToolProvider::new();
-            let fresh_tools = hyperware_provider.get_tools(self);
-            // Update the existing server's tools
-            if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "hyperware") {
-                server.tools = fresh_tools;
-                println!(
-                    "Spider: Hyperware tools refreshed with {} tools",
-                    server.tools.len()
-                );
-            }
-        }
 
         // Check if hypergrid server exists
         let has_hypergrid = self
@@ -3088,6 +3041,74 @@ impl SpiderState {
             } => {
                 self.execute_hypergrid_call_impl(server_id, provider_id, provider_name, call_args)
                     .await
+            }
+            ToolExecutionCommand::HypergridParseCurl {
+                server_id,
+                curl_command,
+                suggested_parameters,
+            } => {
+                self.execute_hypergrid_parse_curl_impl(
+                    server_id,
+                    curl_command,
+                    suggested_parameters,
+                )
+                .await
+            }
+            ToolExecutionCommand::HypergridRegister {
+                server_id,
+                provider_name,
+                provider_id,
+                description,
+                instructions,
+                registered_provider_wallet,
+                price,
+                endpoint,
+            } => {
+                self.execute_hypergrid_register_impl(
+                    server_id,
+                    provider_name,
+                    provider_id,
+                    description,
+                    instructions,
+                    registered_provider_wallet,
+                    price,
+                    endpoint,
+                )
+                .await
+            }
+            ToolExecutionCommand::HypergridParseCurl {
+                server_id,
+                curl_command,
+                suggested_parameters,
+            } => {
+                self.execute_hypergrid_parse_curl_impl(
+                    server_id,
+                    curl_command,
+                    suggested_parameters,
+                )
+                .await
+            }
+            ToolExecutionCommand::HypergridRegister {
+                server_id,
+                provider_name,
+                provider_id,
+                description,
+                instructions,
+                registered_provider_wallet,
+                price,
+                endpoint,
+            } => {
+                self.execute_hypergrid_register_impl(
+                    server_id,
+                    provider_name,
+                    provider_id,
+                    description,
+                    instructions,
+                    registered_provider_wallet,
+                    price,
+                    endpoint,
+                )
+                .await
             }
             ToolExecutionCommand::HyperwareSearchApis { query } => {
                 tool_providers::hyperware::search_apis(&query).await

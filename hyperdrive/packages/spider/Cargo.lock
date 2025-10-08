@@ -593,6 +593,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
+name = "arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "ark-ff"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1131,6 +1140,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive_arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "derive_more"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,9 +1347,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.1.2"
+version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a3d7db9596fecd151c5f638c0ee5d5bd487b6e0ea232e5dc96d5250f6f94b1d"
+checksum = "dc5a4e564e38c699f2880d3fda590bedc2e69f3f84cd48b457bd892ce61d0aa9"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -1685,9 +1705,9 @@ dependencies = [
 [[package]]
 name = "hyperprocess_macro"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=ed99c19#ed99c19c1e4f511786b2c827fb909ba3d3950238"
+source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=66884c0#66884c0a22b845d1db632f0fb8985a7e5bdad3fb"
 dependencies = [
- "hyperware_process_lib 2.0.1",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=b9f1ead)",
  "proc-macro2",
  "quote",
  "syn 2.0.106",
@@ -1696,9 +1716,9 @@ dependencies = [
 [[package]]
 name = "hyperware-anthropic-sdk"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperware-anthropic-sdk?rev=363630c#363630c261c4cc8673b92a1f2e835bab8263c866"
+source = "git+https://github.com/hyperware-ai/hyperware-anthropic-sdk?rev=c0cbd5e#c0cbd5ee2ec75d7976b79497faa320dc1945e31a"
 dependencies = [
- "hyperware_process_lib 2.2.0",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=4beff93)",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -1707,9 +1727,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperware-parse-wit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde_json",
+ "wit-parser 0.220.1",
+ "zip",
+]
+
+[[package]]
 name = "hyperware_process_lib"
-version = "2.0.1"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=c27a881#c27a881e764920636ac025112533a714d622793c"
+version = "2.2.0"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=4beff93#4beff9389598978d2f97e4cd6d1d0f74a7acac0f"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1739,7 +1769,7 @@ dependencies = [
 [[package]]
 name = "hyperware_process_lib"
 version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=753dac3#753dac3d58cbf924264b47d7c0b845e2fcc03e32"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=b9f1ead#b9f1ead63356bfd4b60b337a380fef1be81d81c6"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -2143,6 +2173,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
+ "simd-adler32",
 ]
 
 [[package]]
@@ -3091,6 +3122,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "simd-adler32"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
+
+[[package]]
 name = "slab"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3134,7 +3171,8 @@ dependencies = [
  "http",
  "hyperprocess_macro",
  "hyperware-anthropic-sdk",
- "hyperware_process_lib 2.2.0",
+ "hyperware-parse-wit",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=4beff93)",
  "process_macros",
  "rmp-serde",
  "serde",
@@ -3144,6 +3182,7 @@ dependencies = [
  "url",
  "uuid",
  "wit-bindgen 0.42.1",
+ "wit-parser 0.220.1",
 ]
 
 [[package]]
@@ -3153,7 +3192,7 @@ dependencies = [
  "anyhow",
  "futures",
  "futures-util",
- "hyperware_process_lib 2.2.0",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=4beff93)",
  "once_cell",
  "process_macros",
  "serde",
@@ -3835,6 +3874,17 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
+version = "0.220.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d07b6a3b550fefa1a914b6d54fc175dd11c3392da11eee604e6ffc759805d25"
+dependencies = [
+ "bitflags",
+ "indexmap",
+ "semver 1.0.26",
+]
+
+[[package]]
+name = "wasmparser"
 version = "0.227.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f51cad774fb3c9461ab9bccc9c62dfb7388397b5deda31bf40e8108ccd678b2"
@@ -4293,6 +4343,24 @@ dependencies = [
 
 [[package]]
 name = "wit-parser"
+version = "0.220.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae2a7999ed18efe59be8de2db9cb2b7f84d88b27818c79353dfc53131840fe1a"
+dependencies = [
+ "anyhow",
+ "id-arena",
+ "indexmap",
+ "log",
+ "semver 1.0.26",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "unicode-xid",
+ "wasmparser 0.220.1",
+]
+
+[[package]]
+name = "wit-parser"
 version = "0.227.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddf445ed5157046e4baf56f9138c124a0824d4d1657e7204d71886ad8ce2fc11"
@@ -4458,4 +4526,33 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
+]
+
+[[package]]
+name = "zip"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+dependencies = [
+ "arbitrary",
+ "crc32fast",
+ "crossbeam-utils",
+ "displaydoc",
+ "flate2",
+ "indexmap",
+ "memchr",
+ "thiserror 2.0.15",
+ "zopfli",
+]
+
+[[package]]
+name = "zopfli"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edfc5ee405f504cd4984ecc6f14d02d55cfda60fa4b689434ef4102aae150cd7"
+dependencies = [
+ "bumpalo",
+ "crc32fast",
+ "log",
+ "simd-adler32",
 ]

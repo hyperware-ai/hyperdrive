@@ -7,12 +7,14 @@
 /// - Transaction signing utilities
 use crate::config::DEFAULT_CHAIN_ID;
 use crate::state::{HyperwalletState, KeyStorage, Wallet};
-use alloy_primitives::U256;
+use alloy_primitives::{hex, U256};
 use hyperware_process_lib::eth::Provider;
+use hyperware_process_lib::hyperware::process::hyperwallet::{
+    CallContractRequest, CallContractResponse,
+};
 use hyperware_process_lib::hyperwallet_client::types::{
-    HyperwalletResponse,
-    HyperwalletResponseData, OperationError, SendEthRequest, SendEthResponse, SendTokenRequest,
-    SendTokenResponse,
+    HyperwalletResponse, HyperwalletResponseData, OperationError, SendEthRequest, SendEthResponse,
+    SendTokenRequest, SendTokenResponse,
 };
 use hyperware_process_lib::logging::info;
 use hyperware_process_lib::signer::{LocalSigner, Signer};
@@ -64,6 +66,198 @@ pub fn sign_hash(
         Err(e) => Err(HyperwalletResponse::error(OperationError::internal_error(
             &format!("Failed to sign hash: {}", e),
         ))),
+    }
+}
+
+pub fn call_contract(
+    request: CallContractRequest,
+    session_id: &str,
+    address: &Address,
+    state: &mut HyperwalletState,
+) -> HyperwalletResponse {
+    let data = &request;
+    let chain_id = DEFAULT_CHAIN_ID;
+
+    // Get the first unlocked wallet from the session (operator model)
+    // This ensures we use the same wallet as other operations like payments
+    let wallet_id = match state.validate_session(&session_id.to_string()) {
+        Some(session_data) => {
+            match session_data.unlocked_wallets.iter().next() {
+                Some(addr) => addr.clone(),
+                None => {
+                    // Fallback: use first available wallet for the process
+                    match state.list_wallets(address).into_iter().next() {
+                        Some(w) => w.address.clone(),
+                        None => {
+                            return HyperwalletResponse::error(OperationError::invalid_params(
+                                "No wallet available for this process",
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        None => {
+            return HyperwalletResponse::error(OperationError::invalid_params(
+                "Invalid or expired session",
+            ));
+        }
+    };
+
+    let wallet = match state.get_wallet(address, &wallet_id) {
+        Some(w) => w,
+        None => {
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Wallet {} not found",
+                wallet_id
+            )));
+        }
+    };
+
+    if wallet.chain_id != chain_id {
+        return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+            "Wallet is configured for chain {}, but request is for chain {}",
+            wallet.chain_id, chain_id
+        )));
+    }
+
+    let wallet_address = wallet.address.clone();
+
+    let signer = match &wallet.key_storage {
+        crate::state::KeyStorage::Decrypted(signer) => signer.clone(),
+        crate::state::KeyStorage::Encrypted(_encrypted_data) => {
+            return HyperwalletResponse::error(OperationError::invalid_params(
+                "Encrypted wallet operations not yet supported - unlock wallet first",
+            ));
+        }
+    };
+
+    let provider = Provider::new(chain_id, 60000);
+
+    let value_str = data.value.as_deref().unwrap_or("0");
+    let value = match EthAmount::from_string(value_str) {
+        Ok(amt) => amt,
+        Err(e) => {
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Invalid amount format: {}",
+                e
+            )));
+        }
+    };
+
+    let call_data = match hex::decode(data.data.trim_start_matches("0x")) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return HyperwalletResponse::error(OperationError::invalid_params(
+                "Invalid call data hex",
+            ));
+        }
+    };
+
+    let to_address = match data.to.parse() {
+        Ok(addr) => addr,
+        Err(_) => {
+            return HyperwalletResponse::error(OperationError::invalid_params(
+                "Invalid contract address",
+            ));
+        }
+    };
+
+    // Build and send transaction (inlined logic from wallet::prepare_and_send_tx)
+    use hyperware_process_lib::signer::TransactionData;
+    
+    let nonce = match provider.get_transaction_count(signer.address(), None) {
+        Ok(n) => n.to::<u64>(),
+        Err(e) => {
+            return HyperwalletResponse::error(OperationError::invalid_params(&format!(
+                "Failed to get nonce: {:?}",
+                e
+            )));
+        }
+    };
+    
+    let (gas_price, priority_fee) = match calculate_gas_params(&provider, chain_id) {
+        Ok(params) => params,
+        Err(e) => {
+            return HyperwalletResponse::error(OperationError::internal_error(&format!(
+                "Failed to calculate gas: {:?}",
+                e
+            )));
+        }
+    };
+    
+    let tx_data = TransactionData {
+        to: to_address,
+        value: value.as_wei(),
+        data: Some(call_data),
+        nonce,
+        gas_limit: 200_000,
+        gas_price,
+        max_priority_fee: Some(priority_fee),
+        chain_id,
+    };
+    
+    let signed_tx = match signer.sign_transaction(&tx_data) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            return HyperwalletResponse::error(OperationError::internal_error(&format!(
+                "Failed to sign transaction: {}",
+                e
+            )));
+        }
+    };
+    
+    let tx_hash = match provider.send_raw_transaction(signed_tx.into()) {
+        Ok(hash) => hash,
+        Err(e) => {
+            return HyperwalletResponse::error(OperationError::internal_error(&format!(
+                "Failed to send transaction: {:?}",
+                e
+            )));
+        }
+    };
+    
+    info!("Contract call transaction: 0x{:x}", tx_hash);
+    HyperwalletResponse::success(HyperwalletResponseData::CallContract(CallContractResponse {
+        tx_hash: format!("0x{:x}", tx_hash),
+        from_address: wallet_address,
+        to_address: data.to.clone(),
+        amount: data.value.clone(),
+        chain_id,
+    }))
+}
+
+// Helper from wallet.rs for gas calculation
+fn calculate_gas_params(provider: &Provider, chain_id: u64) -> Result<(u128, u128), String> {
+    use hyperware_process_lib::eth::BlockNumberOrTag;
+    
+    match chain_id {
+        8453 => {
+            // Base
+            let latest_block = provider
+                .get_block_by_number(BlockNumberOrTag::Latest, false)
+                .map_err(|e| format!("Failed to get block: {:?}", e))?
+                .ok_or_else(|| "No latest block".to_string())?;
+
+            let base_fee = latest_block
+                .header
+                .inner
+                .base_fee_per_gas
+                .ok_or_else(|| "No base fee in block".to_string())?
+                as u128;
+
+            let max_fee = base_fee + (base_fee / 3);
+            let priority_fee = std::cmp::max(100_000u128, base_fee / 10);
+
+            Ok((max_fee, priority_fee))
+        }
+        _ => {
+            let base_fee = provider.get_gas_price()
+                .map_err(|e| format!("Failed to get gas price: {:?}", e))?
+                .to::<u128>();
+            let adjusted_fee = (base_fee * 130) / 100;
+            Ok((adjusted_fee, adjusted_fee / 10))
+        }
     }
 }
 
