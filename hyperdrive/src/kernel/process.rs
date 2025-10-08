@@ -537,10 +537,6 @@ impl RotatingOutputPipe {
 
         all_data.freeze()
     }
-
-    pub fn try_into_bytes(self) -> Option<Bytes> {
-        Some(self.contents())
-    }
 }
 
 impl StdoutStream for RotatingOutputPipe {
