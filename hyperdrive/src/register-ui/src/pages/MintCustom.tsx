@@ -213,7 +213,7 @@ function MintCustom({
                                 <input type="text" name="full-hns-name" placeholder="Enter full HNS name" />
                                 <input type="text" name="tba" placeholder="Enter TBA to mint under" />
                                 <details className="advanced-options">
-                                    <summary>Network Options</summary>
+                                    <summary>Advanced Network Options</summary>
                                     <div className="flex flex-col gap-3">
                                         <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
                                         <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />

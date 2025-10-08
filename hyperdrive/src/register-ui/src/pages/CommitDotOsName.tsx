@@ -224,7 +224,7 @@ function CommitDotOsName({
                                 </p>
                                 <EnterHnsName {...enterOsNameProps} />
                                 <details className="advanced-options">
-                                    <summary>Network Options</summary>
+                                    <summary>Advanced Network Options</summary>
                                     <div className="flex flex-col gap-3">
                                         <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
                                         <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
@@ -266,9 +266,6 @@ function CommitDotOsName({
                                         )}
                                     </div>
                                 </details>
-                                <p className="text-sm text-gray-500">
-                                    By registering a name, you agree to the terms of service at <a href="https://hyperwareware.xyz/tos">hyperwareware.xyz/tos</a>.
-                                </p>
                                 <button
                                     type="submit"
                                     className="button"

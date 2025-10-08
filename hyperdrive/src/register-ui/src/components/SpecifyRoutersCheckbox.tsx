@@ -34,7 +34,7 @@ export default function SpecifyRoutersCheckbox({
                 {specifyRouters ? <FaSquareCheck /> : <FaRegSquare />}
             </button>
             <div className="flex flex-col gap-1 min-w-0 wrap-anywhere">
-                <span className="text-sm">Specify routers to register as an indirect node.</span>
+                <span className="text-sm">Register as indirect node with non-default routers.</span>
                 <span className="text-xs">{getHelpText()}</span>
             </div>
             <RouterTooltip />
