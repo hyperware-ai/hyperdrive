@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toAscii } from "idna-uts46-hx";
 import EnterHnsName from "../components/EnterHnsName";
 import Loader from "../components/Loader";

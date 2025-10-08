@@ -10,13 +10,16 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
-use crate::hyperware::process::hypermap_cacher::{
-    CacherRequest, CacherResponse, CacherStatus, GetLogsByRangeOkResponse, GetLogsByRangeRequest,
-    LogsMetadata as WitLogsMetadata, Manifest as WitManifest, ManifestItem as WitManifestItem,
+use crate::hyperware::process::binding_cacher::{
+    BindingCacherRequest as CacherRequest, BindingCacherResponse as CacherResponse,
+    BindingCacherStatus as CacherStatus,
+    BindingGetLogsByRangeOkResponse as GetLogsByRangeOkResponse,
+    BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
+    BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
 
 use hyperware_process_lib::{
-    await_message, call_init, eth, get_state, http, hypermap,
+    await_message, bindings, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
     net::{NetAction, NetResponse},
     our, set_state, sign, timer, vfs, Address, ProcessId, Request, Response,
@@ -90,10 +93,10 @@ struct ManifestInternal {
     protocol_version: String,
 }
 
-// The main state structure for the Hypermap Cacher process.
+// The main state structure for the Hypermap Binding Cacher process.
 #[derive(Serialize, Deserialize, Debug)]
 struct State {
-    hypermap_address: eth::Address,
+    hypermap_binding_address: eth::Address,
     manifest: ManifestInternal,
     last_cached_block: u64,
     chain_id: String,
@@ -120,9 +123,9 @@ fn is_local_request(our: &Address, source: &Address) -> bool {
 
 impl State {
     fn new(drive_path: &str) -> Self {
-        let chain_id = hypermap::HYPERMAP_CHAIN_ID.to_string();
-        let hypermap_address = eth::Address::from_str(hypermap::HYPERMAP_ADDRESS)
-            .expect("Failed to parse HYPERMAP_ADDRESS");
+        let chain_id = bindings::BINDINGS_CHAIN_ID.to_string();
+        let hypermap_binding_address = eth::Address::from_str(bindings::BINDINGS_ADDRESS)
+            .expect("Failed to parse BINDINGS_ADDRESS");
 
         let manifest_filename = format!(
             "manifest-chain{}-protocol{}.json",
@@ -136,9 +139,9 @@ impl State {
         };
 
         State {
-            hypermap_address,
+            hypermap_binding_address,
             manifest: initial_manifest,
-            last_cached_block: hypermap::HYPERMAP_FIRST_BLOCK,
+            last_cached_block: bindings::BINDINGS_FIRST_BLOCK,
             chain_id,
             protocol_version: PROTOCOL_VERSION.to_string(),
             cache_interval_s: DEFAULT_CACHE_INTERVAL_S,
@@ -280,7 +283,7 @@ impl State {
         }
 
         let filter = eth::Filter::new()
-            .address(self.hypermap_address)
+            .address(self.hypermap_binding_address)
             .from_block(from_block)
             .to_block(eth::BlockNumberOrTag::Number(to_block));
 
@@ -556,7 +559,7 @@ impl State {
         Ok(())
     }
 
-    // Try to bootstrap from other hypermap-cacher nodes
+    // Try to bootstrap from other binding-cacher nodes
     fn try_bootstrap_from_nodes(&mut self) -> anyhow::Result<()> {
         // Create alternate drive for initfiles and read the test data
         let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None).unwrap();
@@ -652,7 +655,7 @@ impl State {
             info!("Requesting logs from node: {}", node);
 
             let cacher_process_address =
-                Address::new(&node, ("hypermap-cacher", "hypermap-cacher", "sys"));
+                Address::new(&node, ("binding-cacher", "hypermap-cacher", "sys"));
 
             if cacher_process_address == our() {
                 continue;
@@ -899,7 +902,7 @@ impl State {
             let to_block = from_block + batch_size;
 
             let filter = eth::Filter::new()
-                .address(self.hypermap_address)
+                .address(self.hypermap_binding_address)
                 .from_block(from_block)
                 .to_block(eth::BlockNumberOrTag::Number(to_block));
 
@@ -1080,15 +1083,15 @@ fn handle_request(
         return Ok(());
     }
 
-    if !is_local && source.process.to_string() != "hypermap-cacher:hypermap-cacher:sys" {
-        warn!("Rejecting remote request from non-hypermap-cacher: {source}");
+    if !is_local && source.process.to_string() != "binding-cacher:hypermap-cacher:sys" {
+        warn!("Rejecting remote request from non-binding-cacher: {source}");
         Response::new().body(CacherResponse::Rejected).send()?;
         return Ok(());
     }
 
     if !is_local
         && !state.is_providing
-        && source.process.to_string() == "hypermap-cacher:hypermap-cacher:sys"
+        && source.process.to_string() == "binding-cacher:hypermap-cacher:sys"
     {
         warn!("Rejecting remote request from {source} - not in provider mode");
         Response::new().body(CacherResponse::Rejected).send()?;
@@ -1278,7 +1281,7 @@ fn handle_request(
                 return Ok(());
             }
 
-            info!("Resetting hypermap-cacher state and clearing VFS...");
+            info!("Resetting binding-cacher state and clearing VFS...");
 
             // Clear all files from the drive
             if let Err(e) = state.clear_drive() {
@@ -1298,11 +1301,11 @@ fn handle_request(
                     error!("Failed to write nodes to cache_sources: {:?}", e);
                 }
                 info!(
-                    "hypermap-cacher reset complete. New nodes: {:?}",
+                    "binding-cacher reset complete. New nodes: {:?}",
                     state.nodes
                 );
                 CacherResponse::Reset(Ok(
-                    "Reset completed successfully. Hypermap Cacher will restart with new settings."
+                    "Reset completed successfully. Binding Cacher will restart with new settings."
                         .to_string(),
                 ))
             }
@@ -1319,10 +1322,10 @@ fn main_loop(
     hypermap: &hypermap::Hypermap,
     server: &http::server::HttpServer,
 ) -> anyhow::Result<()> {
-    info!("Hypermap Cacher main_loop started. Our address: {}", our);
+    info!("Hypermap Binding Cacher main_loop started. Our address: {}", our);
     info!(
-        "Monitoring Hypermap contract: {}",
-        state.hypermap_address.to_string()
+        "Monitoring Binding contract: {}",
+        state.hypermap_binding_address.to_string()
     );
     info!(
         "Chain ID: {}, Protocol Version: {}",
@@ -1421,9 +1424,9 @@ fn main_loop(
 call_init!(init);
 fn init(our: Address) {
     init_logging(Level::INFO, Level::DEBUG, None, None, None).unwrap();
-    info!("Hypermap Cacher process starting...");
+    info!("Hypermap Binding Cacher process starting...");
 
-    let drive_path = vfs::create_drive(our.package_id(), "cache", None).unwrap();
+    let drive_path = vfs::create_drive(our.package_id(), "binding-cache", None).unwrap();
     // Create alternate drive for initfiles and read the test data
     let alt_drive_path = vfs::create_drive(our.package_id(), "initfiles", None).unwrap();
 
