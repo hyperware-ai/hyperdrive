@@ -558,6 +558,55 @@ impl State {
 
     // Try to bootstrap from other hypermap-cacher nodes
     fn try_bootstrap_from_nodes(&mut self) -> anyhow::Result<()> {
+        // Create alternate drive for initfiles and read the test data
+        let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None).unwrap();
+
+        // Try to read the cache_sources file from the initfiles drive
+        match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
+            Ok(file) => {
+                match file.read() {
+                    Ok(contents) => {
+                        let content_str = String::from_utf8_lossy(&contents);
+                        info!("Contents of cache_sources: {}", content_str);
+
+                        // Parse the JSON to get the vector of node names
+                        match serde_json::from_str::<Vec<String>>(&content_str) {
+                            Ok(custom_cache_nodes) => {
+                                if !custom_cache_nodes.is_empty() {
+                                    info!(
+                                        "Loading custom cache source nodes: {:?}",
+                                        custom_cache_nodes
+                                    );
+                                    // Clear existing nodes and add custom ones
+                                    self.nodes.clear();
+                                    for node_name in custom_cache_nodes {
+                                        self.nodes.push(node_name.clone());
+                                    }
+                                } else {
+                                    info!("Custom cache nodes list is empty, keeping existing node configuration");
+                                }
+                            }
+                            Err(e) => {
+                                info!("Failed to parse cache_sources as JSON: {}, keeping existing node configuration", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        info!(
+                            "Failed to read cache_sources: {}, keeping existing node configuration",
+                            e
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                info!(
+                    "Failed to open cache_sources: {}, keeping existing node configuration",
+                    e
+                );
+            }
+        }
+
         if self.nodes.is_empty() {
             info!("No nodes configured for bootstrap, will fallback to RPC");
             return Err(anyhow::anyhow!("No nodes configured for bootstrap"));
@@ -691,6 +740,33 @@ impl State {
         }
 
         Err(anyhow::anyhow!("Failed to bootstrap from any node"))
+    }
+
+    // Helper function to write nodes to cache_sources file
+    fn write_nodes_to_file(&self) -> anyhow::Result<()> {
+        info!("Beginning of subroutine");
+        let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None)?;
+        info!("drive path defined");
+        let nodes_json = serde_json::to_string(&self.nodes)?;
+        info!("nodes_json defined");
+        let file_path = format!("{}/cache_sources", alt_drive_path);
+        info!("file_path defined");
+
+        // Open file in write mode which should truncate, but to be safe we'll write exact bytes
+        let mut file = vfs::open_file(&file_path, true, None)?;
+
+        // Get the bytes to write
+        let bytes = nodes_json.as_bytes();
+
+        // Write all bytes
+        file.write_all(bytes)?;
+
+        // Explicitly set the file length to the exact size of what we wrote
+        // This ensures any old content beyond this point is truncated
+        file.set_len(bytes.len() as u64)?;
+
+        info!("Updated cache_sources with {} nodes", self.nodes.len());
+        Ok(())
     }
 
     // Process received log caches and write them to VFS
@@ -1189,6 +1265,9 @@ fn handle_request(
             }
             state.nodes = new_nodes;
             state.save();
+            if let Err(e) = state.write_nodes_to_file() {
+                error!("Failed to write nodes to cache_sources: {:?}", e);
+            }
             info!("Nodes updated to: {:?}", state.nodes);
             CacherResponse::SetNodes(Ok("Nodes updated successfully".to_string()))
         }
@@ -1215,7 +1294,9 @@ fn handle_request(
                 *state = State::new(&state.drive_path);
                 state.nodes = nodes;
                 state.save();
-
+                if let Err(e) = state.write_nodes_to_file() {
+                    error!("Failed to write nodes to cache_sources: {:?}", e);
+                }
                 info!(
                     "Hypermap-cacher reset complete. New nodes: {:?}",
                     state.nodes
@@ -1343,6 +1424,24 @@ fn init(our: Address) {
     info!("Hypermap Cacher process starting...");
 
     let drive_path = vfs::create_drive(our.package_id(), "cache", None).unwrap();
+    // Create alternate drive for initfiles and read the test data
+    let alt_drive_path = vfs::create_drive(our.package_id(), "initfiles", None).unwrap();
+
+    // Try to read the cache_sources file from the initfiles drive
+    match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
+        Ok(file) => match file.read() {
+            Ok(contents) => {
+                let content_str = String::from_utf8_lossy(&contents);
+                info!("Contents of cache_sources: {}", content_str);
+            }
+            Err(e) => {
+                info!("Failed to read cache_sources: {}", e);
+            }
+        },
+        Err(e) => {
+            info!("Failed to open cache_sources: {}", e);
+        }
+    }
 
     let bind_config = http::server::HttpBindingConfig::default().authenticated(false);
     let mut server = http::server::HttpServer::new(5);

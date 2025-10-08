@@ -158,6 +158,8 @@ export async function updateConfig(config: Partial<ConfigResponse>): Promise<str
     defaultLlmProvider: config.defaultLlmProvider || null,
     maxTokens: config.maxTokens || null,
     temperature: config.temperature || null,
+    buildContainerWsUri: config.buildContainerWsUri || null,
+    buildContainerApiKey: config.buildContainerApiKey || null,
     authKey
   });
 }
