@@ -2,11 +2,13 @@ import React, { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../../stores/appStore';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
 import { useNavigationStore } from '../../../stores/navigationStore';
+import { useNotificationStore } from '../../../stores/notificationStore';
 import { Draggable } from './Draggable';
 import { AppIcon } from './AppIcon';
 import { Widget } from './Widget';
+import { NotificationMenu } from './NotificationMenu';
 import type { HomepageApp } from '../../../types/app.types';
-import { BsCheck, BsClock, BsEnvelope, BsGridFill, BsImage, BsLayers, BsPencilSquare, BsSearch, BsX } from 'react-icons/bs';
+import { BsBell, BsCheck, BsClock, BsEnvelope, BsGridFill, BsImage, BsLayers, BsPencilSquare, BsSearch, BsX } from 'react-icons/bs';
 import classNames from 'classnames';
 import { Modal } from './Modal';
 
@@ -32,17 +34,33 @@ export const HomeScreen: React.FC = () => {
   } = usePersistenceStore();
   const { isEditMode, setEditMode } = useAppStore();
   const { openApp, toggleAppDrawer, toggleRecentApps } = useNavigationStore();
+  const {
+    getUnreadCount,
+    menuOpen,
+    setMenuOpen,
+    permissionGranted,
+    setPermissionGranted
+  } = useNotificationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
   const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [showBackgroundSettings, setShowBackgroundSettings] = React.useState(false);
   const [showWidgetSettings, setShowWidgetSettings] = React.useState(false);
   const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
+  const unreadCount = getUnreadCount();
 
-  // console.log({ widgetSettings, appPositions })
+
+  const handleNotificationClick = async () => {
+    // Request permission if not granted
+    if (!permissionGranted && 'Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setPermissionGranted(permission === 'granted');
+    }
+    // Toggle menu
+    setMenuOpen(!menuOpen);
+  };
 
   useEffect(() => {
-    console.log('isInitialized', isInitialized);
     if (isInitialized) return;
     // add appstore, contacts, and settings to the homepage on initial load
     setIsInitialized(true);
@@ -209,7 +227,6 @@ export const HomeScreen: React.FC = () => {
   }, [apps, homeScreenApps]);
 
   const widgetApps = useMemo(() => {
-    console.log({ homeApps });
     return homeApps.filter(app => app.widget);
   }, [homeApps]);
 
@@ -241,7 +258,6 @@ export const HomeScreen: React.FC = () => {
     const x = index * (screenPortion + spacing) + screenPortion / 4
     // ensure position sets so future movements do not cause a jump
     moveItem(appId, { x, y });
-    console.log('autosetting position', appId, { x, y });
     return { x, y }
   }
 
@@ -624,6 +640,20 @@ export const HomeScreen: React.FC = () => {
             >
               <BsPencilSquare />
             </button>
+            <div className="relative">
+              <button
+                onClick={handleNotificationClick}
+                className="bg-gradient-to-r from-gray-600 to-gray-700 !text-neon text-sm !p-2 relative"
+                title="Notifications"
+                data-notification-button
+              >
+                <BsBell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                )}
+              </button>
+              <NotificationMenu />
+            </div>
             <button
               className=" thin  grow self-stretch max-w-sm md:max-w-md !justify-start !bg-black/10 dark:!bg-white/10 backdrop-blur-xl"
               onClick={() => toggleAppDrawer()}

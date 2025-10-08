@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import type { RunningApp } from '../../../types/app.types';
 
 interface AppContainerProps {
@@ -12,7 +12,10 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
   const [isLoading, setIsLoading] = useState(true);
 
   // Ensure we have a valid path
-  const appUrl = app.path || `/app:${app.process}:${app.publisher}.os/`;
+  const appUrl = useMemo(() => {
+    setIsLoading(true);
+    return app.path || `/app:${app.process}:${app.publisher}.os/`;
+  }, [app.path]);
 
   const handleError = () => {
     setHasError(true);

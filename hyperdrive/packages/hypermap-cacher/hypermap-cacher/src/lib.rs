@@ -30,8 +30,8 @@ wit_bindgen::generate!({
 });
 
 const PROTOCOL_VERSION: &str = "0";
-const DEFAULT_BLOCK_BATCH_SIZE: u64 = 500;
-const DEFAULT_CACHE_INTERVAL_S: u64 = 2 * 500; // 500 blocks, 2s / block = 1000s;
+const DEFAULT_BLOCK_BATCH_SIZE: u64 = 10;
+const DEFAULT_CACHE_INTERVAL_S: u64 = 3_600; // 2s / block -> 1hr ~ 1800 blocks
 const MAX_LOG_RETRIES: u8 = 3;
 const RETRY_DELAY_S: u64 = 10;
 const LOG_ITERATION_DELAY_MS: u64 = 200;
@@ -142,7 +142,7 @@ impl State {
             chain_id,
             protocol_version: PROTOCOL_VERSION.to_string(),
             cache_interval_s: DEFAULT_CACHE_INTERVAL_S,
-            block_batch_size: DEFAULT_BLOCK_BATCH_SIZE,
+            block_batch_size: 0, // Will be determined dynamically
             is_cache_timer_live: false,
             drive_path: drive_path.to_string(),
             is_providing: false,
@@ -203,6 +203,11 @@ impl State {
         &mut self,
         hypermap: &hypermap::Hypermap,
     ) -> anyhow::Result<()> {
+        // Ensure batch size is determined
+        if self.block_batch_size == 0 {
+            self.determine_batch_size(hypermap)?;
+        }
+
         let current_chain_head = match hypermap.provider.get_block_number() {
             Ok(block_num) => block_num,
             Err(e) => {
@@ -553,6 +558,55 @@ impl State {
 
     // Try to bootstrap from other hypermap-cacher nodes
     fn try_bootstrap_from_nodes(&mut self) -> anyhow::Result<()> {
+        // Create alternate drive for initfiles and read the test data
+        let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None).unwrap();
+
+        // Try to read the cache_sources file from the initfiles drive
+        match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
+            Ok(file) => {
+                match file.read() {
+                    Ok(contents) => {
+                        let content_str = String::from_utf8_lossy(&contents);
+                        info!("Contents of cache_sources: {}", content_str);
+
+                        // Parse the JSON to get the vector of node names
+                        match serde_json::from_str::<Vec<String>>(&content_str) {
+                            Ok(custom_cache_nodes) => {
+                                if !custom_cache_nodes.is_empty() {
+                                    info!(
+                                        "Loading custom cache source nodes: {:?}",
+                                        custom_cache_nodes
+                                    );
+                                    // Clear existing nodes and add custom ones
+                                    self.nodes.clear();
+                                    for node_name in custom_cache_nodes {
+                                        self.nodes.push(node_name.clone());
+                                    }
+                                } else {
+                                    info!("Custom cache nodes list is empty, keeping existing node configuration");
+                                }
+                            }
+                            Err(e) => {
+                                info!("Failed to parse cache_sources as JSON: {}, keeping existing node configuration", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        info!(
+                            "Failed to read cache_sources: {}, keeping existing node configuration",
+                            e
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                info!(
+                    "Failed to open cache_sources: {}, keeping existing node configuration",
+                    e
+                );
+            }
+        }
+
         if self.nodes.is_empty() {
             info!("No nodes configured for bootstrap, will fallback to RPC");
             return Err(anyhow::anyhow!("No nodes configured for bootstrap"));
@@ -688,6 +742,33 @@ impl State {
         Err(anyhow::anyhow!("Failed to bootstrap from any node"))
     }
 
+    // Helper function to write nodes to cache_sources file
+    fn write_nodes_to_file(&self) -> anyhow::Result<()> {
+        info!("Beginning of subroutine");
+        let alt_drive_path = vfs::create_drive(our().package_id(), "initfiles", None)?;
+        info!("drive path defined");
+        let nodes_json = serde_json::to_string(&self.nodes)?;
+        info!("nodes_json defined");
+        let file_path = format!("{}/cache_sources", alt_drive_path);
+        info!("file_path defined");
+
+        // Open file in write mode which should truncate, but to be safe we'll write exact bytes
+        let mut file = vfs::open_file(&file_path, true, None)?;
+
+        // Get the bytes to write
+        let bytes = nodes_json.as_bytes();
+
+        // Write all bytes
+        file.write_all(bytes)?;
+
+        // Explicitly set the file length to the exact size of what we wrote
+        // This ensures any old content beyond this point is truncated
+        file.set_len(bytes.len() as u64)?;
+
+        info!("Updated cache_sources with {} nodes", self.nodes.len());
+        Ok(())
+    }
+
     // Process received log caches and write them to VFS
     fn process_received_log_caches(
         &mut self,
@@ -780,6 +861,69 @@ impl State {
         manifest_file.write(&manifest_bytes)?;
         info!("Updated manifest file: {}", manifest_path);
         Ok(())
+    }
+
+    // Determine optimal batch size dynamically
+    fn determine_batch_size(&mut self, hypermap: &hypermap::Hypermap) -> anyhow::Result<()> {
+        if self.block_batch_size > 0 {
+            // Already determined
+            return Ok(());
+        }
+
+        let current_block = match hypermap.provider.get_block_number() {
+            Ok(block_num) => block_num,
+            Err(e) => {
+                error!("Failed to get current block number: {:?}", e);
+                // Fall back to default if we can't get the current block
+                self.block_batch_size = DEFAULT_BLOCK_BATCH_SIZE;
+                return Ok(());
+            }
+        };
+
+        // Start with the difference between current block and HYPERMAP_FIRST_BLOCK
+        let mut batch_size = current_block.saturating_sub(hypermap::HYPERMAP_FIRST_BLOCK);
+
+        // Ensure we have at least a minimum batch size
+        if batch_size < 1 {
+            batch_size = DEFAULT_BLOCK_BATCH_SIZE;
+            self.block_batch_size = batch_size;
+            info!("Using default batch size: {batch_size}");
+            return Ok(());
+        }
+
+        info!("Determining optimal batch size starting from {batch_size}");
+
+        // Try progressively smaller batch sizes until we find one that works
+        loop {
+            let from_block = hypermap::HYPERMAP_FIRST_BLOCK;
+            let to_block = from_block + batch_size;
+
+            let filter = eth::Filter::new()
+                .address(self.hypermap_address)
+                .from_block(from_block)
+                .to_block(eth::BlockNumberOrTag::Number(to_block));
+
+            match hypermap.provider.get_logs(&filter) {
+                Ok(_) => {
+                    // Success! This batch size works
+                    self.block_batch_size = batch_size;
+                    info!("Successfully determined batch size: {}", batch_size);
+                    return Ok(());
+                }
+                Err(e) => {
+                    // Request failed or timed out, try smaller batch
+                    warn!("Batch size {} failed: {:?}, halving...", batch_size, e);
+                    batch_size = batch_size / 2;
+
+                    // Don't go below a minimum threshold
+                    if batch_size < 10 {
+                        warn!("Could not determine optimal batch size, using minimum: {DEFAULT_BLOCK_BATCH_SIZE}");
+                        self.block_batch_size = DEFAULT_BLOCK_BATCH_SIZE;
+                        return Ok(());
+                    }
+                }
+            }
+        }
     }
 
     // Fallback to RPC bootstrap - catch up from where we left off
@@ -1121,6 +1265,9 @@ fn handle_request(
             }
             state.nodes = new_nodes;
             state.save();
+            if let Err(e) = state.write_nodes_to_file() {
+                error!("Failed to write nodes to cache_sources: {:?}", e);
+            }
             info!("Nodes updated to: {:?}", state.nodes);
             CacherResponse::SetNodes(Ok("Nodes updated successfully".to_string()))
         }
@@ -1147,7 +1294,9 @@ fn handle_request(
                 *state = State::new(&state.drive_path);
                 state.nodes = nodes;
                 state.save();
-
+                if let Err(e) = state.write_nodes_to_file() {
+                    error!("Failed to write nodes to cache_sources: {:?}", e);
+                }
                 info!(
                     "hypermap-cacher reset complete. New nodes: {:?}",
                     state.nodes
@@ -1275,6 +1424,24 @@ fn init(our: Address) {
     info!("Hypermap Cacher process starting...");
 
     let drive_path = vfs::create_drive(our.package_id(), "cache", None).unwrap();
+    // Create alternate drive for initfiles and read the test data
+    let alt_drive_path = vfs::create_drive(our.package_id(), "initfiles", None).unwrap();
+
+    // Try to read the cache_sources file from the initfiles drive
+    match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
+        Ok(file) => match file.read() {
+            Ok(contents) => {
+                let content_str = String::from_utf8_lossy(&contents);
+                info!("Contents of cache_sources: {}", content_str);
+            }
+            Err(e) => {
+                info!("Failed to read cache_sources: {}", e);
+            }
+        },
+        Err(e) => {
+            info!("Failed to open cache_sources: {}", e);
+        }
+    }
 
     let bind_config = http::server::HttpBindingConfig::default().authenticated(false);
     let mut server = http::server::HttpServer::new(5);

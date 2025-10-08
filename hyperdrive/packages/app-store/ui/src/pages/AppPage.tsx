@@ -163,11 +163,11 @@ export default function AppPage() {
           if (installedVersion) {
             setCurrentVersion(installedVersion[0]);
             setUpToDate(installedVersion[0] === latestVer);
+            setAwaitPresenceInHomepageApps(true);
           }
         }
       }
 
-      setAwaitPresenceInHomepageApps(true);
     } catch (err) {
       setError("Failed to load app details. Please try again.");
       console.error(err);
@@ -178,6 +178,7 @@ export default function AppPage() {
 
   const calculateCanLaunch = useCallback((appData: AppListing) => {
     const { foundApp, path } = getLaunchUrl(`${appData?.package_id.package_name}:${appData?.package_id.publisher_node}`);
+    //console.log({ foundApp, path });
     setCanLaunch(foundApp);
     setLaunchUrl(path);
     if (foundApp) {
@@ -396,20 +397,25 @@ export default function AppPage() {
 
   // Handle intent parameter from URL
   useEffect(() => {
+    if (hasProcessedIntent) {
+      return;
+    }
+
+
     const searchParams = new URLSearchParams(location.search);
     const intent = searchParams.get('intent');
 
     console.log({ intent, app, id });
 
-    if (!intent || !app || !id) {
-      console.log('no intent or app or id; returning');
+    if (!intent) {
+      setHasProcessedIntent(true);
+    }
+
+    if (!app || !id) {
+      console.log('no app or id; returning');
       return;
     }
 
-    if (hasProcessedIntent) {
-      console.log('has processed intent; returning');
-      return;
-    }
 
     // For install intent, ensure all required data is loaded before proceeding
     if (intent === 'install' && !installedApp) {

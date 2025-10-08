@@ -1,0 +1,35 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+
+# Generated files
+/api/
+/target/
+
+# Package directory - IMPORTANT: This is intentionally NOT ignored
+# The pkg directory contains compiled AND uncompiled; don't commit compiled
+# /pkg/
+/pkg/*zip
+/pkg/*wasm
+/pkg/ui
+
+# UI dependencies and build
+/ui/node_modules/
+/ui/dist/
+/ui/.vite/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Environment files
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*~

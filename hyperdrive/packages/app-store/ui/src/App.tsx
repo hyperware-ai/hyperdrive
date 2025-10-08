@@ -18,7 +18,6 @@ const BASE_URL = import.meta.env.BASE_URL;
 if (window.our) window.our.process = BASE_URL?.replace("/", "");
 
 function App() {
-
   return (
     <div className="bg-white dark:bg-stone grow self-stretch min-h-screen px-4 pb-32 md:pb-0 md:px-0 overflow-y-auto">
       <Router basename={BASE_URL}>
