@@ -1322,7 +1322,10 @@ fn main_loop(
     hypermap: &hypermap::Hypermap,
     server: &http::server::HttpServer,
 ) -> anyhow::Result<()> {
-    info!("Hypermap Binding Cacher main_loop started. Our address: {}", our);
+    info!(
+        "Hypermap Binding Cacher main_loop started. Our address: {}",
+        our
+    );
     info!(
         "Monitoring Binding contract: {}",
         state.hypermap_binding_address.to_string()
