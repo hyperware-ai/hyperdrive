@@ -64,16 +64,16 @@ export const Draggable: React.FC<DraggableProps> = ({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
+      try {e.preventDefault();} catch {}
       const touch = e.touches[0];
       handleMove(touch.clientX, touch.clientY);
     };
     const handleMouseUp = (e: MouseEvent) => {
-      e.preventDefault();
+      try {e.preventDefault();} catch {}
       handleEnd();
     };
     const handleTouchEnd = (e: TouchEvent) => {
-      e.preventDefault();
+      try {e.preventDefault();} catch {}
       handleEnd();
     };
 
@@ -130,8 +130,8 @@ export const Draggable: React.FC<DraggableProps> = ({
       onTouchStart={(e) => {
         // Only handle touch for widgets (when enableHtmlDrag is false)
         if (isEditMode && !enableHtmlDrag) {
-          e.preventDefault();
-          e.stopPropagation();
+          try {e.preventDefault();} catch {}
+          try {e.stopPropagation();} catch {}
           const touch = e.touches[0];
           handleStart(touch.clientX, touch.clientY);
         }
