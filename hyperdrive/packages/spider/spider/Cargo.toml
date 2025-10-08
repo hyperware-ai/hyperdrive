@@ -21,6 +21,9 @@ rev = "66884c0"
 git = "https://github.com/hyperware-ai/hyperware-anthropic-sdk"
 rev = "c0cbd5e"
 
+[dependencies.hyperware-parse-wit]
+path = "../crates/hyperware-parse-wit"
+
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
@@ -36,6 +39,10 @@ features = [
     "serde",
 ]
 version = "1.4.1"
+
+[dependencies.wit-parser]
+features = ["serde"]
+version = "0.220.0"
 
 [features]
 simulation-mode = []
