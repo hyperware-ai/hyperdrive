@@ -1933,7 +1933,9 @@ impl SpiderState {
         if is_response_tts {
             if let Some(last) = processed_messages.last_mut() {
                 if let MessageContent::Text(ref mut text) = last.content {
-                    text.push_str("\n\nReply concisely unless the above explicitly says to not be concise.");
+                    text.push_str(
+                        "\n\nReply concisely unless the above explicitly says to not be concise.",
+                    );
                 }
             }
         }
@@ -2223,8 +2225,7 @@ impl SpiderState {
                 match self.convert_text_to_audio(response_text.to_string()).await {
                     Ok(audio_data) => {
                         println!("Spider: Converting response to audio for STT user");
-                        final_response.content =
-                            MessageContent::BaseSixFourAudio(audio_data);
+                        final_response.content = MessageContent::BaseSixFourAudio(audio_data);
                     }
                     Err(e) => {
                         println!("Spider: Failed to convert response to audio: {}", e);
