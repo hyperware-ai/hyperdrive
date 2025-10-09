@@ -30,7 +30,7 @@ Rust must be version 1.85.1.
 ```bash
 # Clone the repo.
 
-git clone --recurse-submodules git@github.com:hyperware-ai/hyperdrive.git
+git clone --recurse-submodules https://github.com/hyperware-ai/hyperdrive
 
 # Install Rust and some `cargo` tools so we can build the runtime and Wasm.
 
