@@ -270,7 +270,7 @@ function ResetHnsName({
                                                     id="custom-routers-reset"
                                                     value={customRouters}
                                                     onChange={(e) => handleCustomRoutersChange(e.target.value)}
-                                                    placeholder="Enter one router name per line, e.g.:&#10;router-node-1.hypr&#10;other-router.hypr&#10;myrouter.os"
+                                                    placeholder="Enter one router name per line, e.g.:&#10;direct-router-1.hypr&#10;direct-other.hypr&#10;mydirectrouter.os"
                                                     className={`input resize-vertical min-h-[80px] ${
                                                         specifyRouters && !isCustomRoutersValid()
                                                             ? 'border-red-500 focus:border-red-500'
