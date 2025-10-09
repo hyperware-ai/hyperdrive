@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileInfo, unshare_file, delete_file, delete_directory } from '../../lib/api';
+import { FileExplorer } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import './ContextMenu.css';
 
 interface ContextMenuProps {
   position: { x: number; y: number };
-  file: FileInfo;
+  file: FileExplorer.FileInfo;
   onClose: () => void;
   onShare: () => void;
   onDelete: () => void;
@@ -84,7 +84,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ position, file, onClose, onSh
 
   const handleUnshare = async () => {
     try {
-      await unshare_file(file.path);
+      await FileExplorer.unshare_file(file.path);
       removeSharedLink(file.path);
       onClose();
     } catch (err) {

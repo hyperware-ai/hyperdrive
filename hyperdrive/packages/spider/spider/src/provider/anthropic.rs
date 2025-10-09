@@ -13,7 +13,7 @@ use hyperware_anthropic_sdk::{
 use hyperware_process_lib::println;
 
 use crate::provider::LlmProvider;
-use crate::types::{Message, Tool, ToolCall, ToolResult};
+use crate::types::{Message, MessageContent, Tool, ToolCall, ToolResult};
 
 pub struct AnthropicProvider {
     api_key: String,
@@ -39,7 +39,7 @@ impl AnthropicProvider {
         // Create a message to send to Sonnet 4
         let check_message = Message {
             role: "user".to_string(),
-            content: prompt,
+            content: MessageContent::Text(prompt),
             tool_calls_json: None,
             tool_results_json: None,
             timestamp: Utc::now().timestamp() as u64,
@@ -57,7 +57,10 @@ impl AnthropicProvider {
             .await
         {
             Ok(response) => {
-                let response_text = response.content.trim().to_lowercase();
+                let response_text = match &response.content {
+                    MessageContent::Text(text) => text.trim().to_lowercase(),
+                    MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => String::new(),
+                };
 
                 // Parse the response
                 if response_text == "done" {
@@ -351,21 +354,41 @@ impl AnthropicProvider {
                 // Add cache control to final message
                 if is_final_message {
                     Content::Blocks(vec![ContentBlock::Text {
-                        text: msg.content.clone(),
+                        text: match &msg.content {
+                            MessageContent::Text(t) => t.clone(),
+                            MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                                String::new()
+                            }
+                        },
                         cache_control: Some(CacheControl::ephemeral()),
                     }])
                 } else {
-                    Content::Text(msg.content.clone())
+                    Content::Text(match &msg.content {
+                        MessageContent::Text(t) => t.clone(),
+                        MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                            String::new()
+                        }
+                    })
                 }
             } else {
                 // Add cache control to final message
                 if is_final_message {
                     Content::Blocks(vec![ContentBlock::Text {
-                        text: msg.content.clone(),
+                        text: match &msg.content {
+                            MessageContent::Text(t) => t.clone(),
+                            MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                                String::new()
+                            }
+                        },
                         cache_control: Some(CacheControl::ephemeral()),
                     }])
                 } else {
-                    Content::Text(msg.content.clone())
+                    Content::Text(match &msg.content {
+                        MessageContent::Text(t) => t.clone(),
+                        MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                            String::new()
+                        }
+                    })
                 }
             };
 
@@ -482,7 +505,7 @@ impl AnthropicProvider {
 
         let final_message = Message {
             role: "assistant".to_string(),
-            content: final_content,
+            content: MessageContent::Text(final_content),
             tool_calls_json: if tool_calls.is_empty() {
                 None
             } else {

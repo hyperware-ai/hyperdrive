@@ -3,17 +3,17 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use chrono::Utc;
-use serde_json::Value;
+use serde_json::{json, Value};
 use uuid::Uuid;
 
-use hyperprocess_macro::*;
+use hyperprocess_macro::hyperprocess;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::{
         client::{open_ws_connection, send_ws_client_push},
         server::{send_ws_push, WsMessageType},
     },
-    hyperapp::source,
+    hyperapp::{add_response_header, source},
     our, println, Address, LazyLoadBlob, ProcessId, Request,
 };
 #[cfg(not(feature = "simulation-mode"))]
@@ -24,18 +24,17 @@ use provider::create_llm_provider;
 
 mod types;
 use types::{
-    AddMcpServerRequest, ApiKey, ApiKeyInfo, ChatClient, ChatRequest, ChatResponse, ConfigResponse,
-    ConnectMcpServerRequest, Conversation, ConversationMetadata, CreateSpiderKeyRequest,
-    DisconnectMcpServerRequest, ErrorResponse, GetConfigRequest, GetConversationRequest,
-    HypergridConnection, HypergridMessage, HypergridMessageType, JsonRpcNotification,
-    JsonRpcRequest, ListApiKeysRequest, ListConversationsRequest, ListMcpServersRequest,
-    ListSpiderKeysRequest, McpCapabilities, McpClientInfo, McpInitializeParams, McpRequestType,
-    McpServer, McpServerDetails, McpToolCallParams, McpToolInfo, Message, OAuthCodeExchangeRequest,
-    OAuthExchangeRequest, OAuthRefreshRequest, OAuthRefreshTokenRequest, OAuthTokenResponse,
-    PendingMcpRequest, ProcessRequest, ProcessResponse, RemoveApiKeyRequest,
-    RemoveMcpServerRequest, RevokeSpiderKeyRequest, SetApiKeyRequest, SpiderApiKey, SpiderState,
-    Tool, ToolCall, ToolExecutionResult, ToolResponseContent, ToolResponseContentItem, ToolResult,
-    TrialNotification, UpdateConfigRequest, WsClientMessage, WsConnection, WsServerMessage,
+    AddMcpServerReq, ApiKey, ApiKeyInfo, ChatClient, ChatReq, ChatRes, ConfigRes,
+    ConnectMcpServerReq, Conversation, ConversationMetadata, CreateSpiderKeyReq,
+    DisconnectMcpServerReq, ErrorRes, GetConfigReq, GetConversationReq, HypergridConnection,
+    HypergridMessage, HypergridMessageType, JsonRpcNotification, JsonRpcReq, ListApiKeysReq,
+    ListConversationsReq, ListMcpServersReq, ListSpiderKeysReq, McpCapabilities, McpClientInfo,
+    McpInitializeParams, McpRequestType, McpServer, McpServerDetails, McpToolCallParams,
+    McpToolInfo, Message, MessageContent, OAuthCodeExchangeReq, OAuthExchangeReq, OAuthRefreshReq,
+    OAuthRefreshTokenReq, OAuthTokenRes, PendingMcpReq, ProcessReq, ProcessRes, RemoveApiKeyReq,
+    RemoveMcpServerReq, RevokeSpiderKeyReq, SetApiKeyReq, SpiderApiKey, SpiderState, Tool,
+    ToolCall, ToolExecutionResult, ToolResponseContent, ToolResponseContentItem, ToolResult,
+    TrialNotification, UpdateConfigReq, WsClientMessage, WsConnection, WsServerMessage,
 };
 
 mod utils;
@@ -65,6 +64,7 @@ const API_KEY_DISPENSER_PROCESS_ID: (&str, &str, &str) = (
     "ware.hypr",
 );
 const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
+const TTSTT: (&str, &str, &str) = ("ttstt", "spider", "sys");
 
 #[hyperprocess(
     name = "Spider",
@@ -443,7 +443,7 @@ impl SpiderState {
                         String::new()
                     });
 
-                let connect_request = ConnectMcpServerRequest {
+                let connect_request = ConnectMcpServerReq {
                     server_id: server_id.clone(),
                     auth_key: admin_key,
                 };
@@ -607,8 +607,8 @@ impl SpiderState {
                                         return;
                                     }
 
-                                    // Convert WsChatPayload to ChatRequest
-                                    let chat_request = ChatRequest {
+                                    // Convert WsChatPayload to ChatReq
+                                    let chat_request = ChatReq {
                                         api_key: client.api_key,
                                         messages: payload.messages,
                                         llm_provider: payload.llm_provider,
@@ -792,7 +792,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn set_api_key(&mut self, request: SetApiKeyRequest) -> Result<String, String> {
+    async fn set_api_key(&mut self, request: SetApiKeyReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -814,7 +814,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn list_api_keys(&self, request: ListApiKeysRequest) -> Result<Vec<ApiKeyInfo>, String> {
+    async fn list_api_keys(&self, request: ListApiKeysReq) -> Result<Vec<ApiKeyInfo>, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
@@ -835,7 +835,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn remove_api_key(&mut self, request: RemoveApiKeyRequest) -> Result<String, String> {
+    async fn remove_api_key(&mut self, request: RemoveApiKeyReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -855,7 +855,7 @@ impl SpiderState {
     #[http]
     async fn create_spider_key(
         &mut self,
-        request: CreateSpiderKeyRequest,
+        request: CreateSpiderKeyReq,
     ) -> Result<SpiderApiKey, String> {
         // Validate admin key
         let hypergrid: ProcessId = HYPERGRID.parse().unwrap();
@@ -880,7 +880,7 @@ impl SpiderState {
     #[http]
     async fn list_spider_keys(
         &self,
-        request: ListSpiderKeysRequest,
+        request: ListSpiderKeysReq,
     ) -> Result<Vec<SpiderApiKey>, String> {
         // Validate admin key
         if !self.validate_admin_key(&request.admin_key) {
@@ -891,10 +891,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn revoke_spider_key(
-        &mut self,
-        request: RevokeSpiderKeyRequest,
-    ) -> Result<String, String> {
+    async fn revoke_spider_key(&mut self, request: RevokeSpiderKeyReq) -> Result<String, String> {
         // Validate admin key
         if !self.validate_admin_key(&request.admin_key) {
             return Err("Unauthorized: Invalid or non-admin Spider API key".to_string());
@@ -911,7 +908,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn add_mcp_server(&mut self, request: AddMcpServerRequest) -> Result<String, String> {
+    async fn add_mcp_server(&mut self, request: AddMcpServerReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -933,10 +930,7 @@ impl SpiderState {
 
     #[local]
     #[http]
-    async fn list_mcp_servers(
-        &self,
-        request: ListMcpServersRequest,
-    ) -> Result<Vec<McpServer>, String> {
+    async fn list_mcp_servers(&self, request: ListMcpServersReq) -> Result<Vec<McpServer>, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
@@ -948,7 +942,7 @@ impl SpiderState {
     #[http]
     async fn disconnect_mcp_server(
         &mut self,
-        request: DisconnectMcpServerRequest,
+        request: DisconnectMcpServerReq,
     ) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
@@ -989,17 +983,14 @@ impl SpiderState {
     }
 
     #[http]
-    async fn remove_mcp_server(
-        &mut self,
-        request: RemoveMcpServerRequest,
-    ) -> Result<String, String> {
+    async fn remove_mcp_server(&mut self, request: RemoveMcpServerReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
         }
 
         // First disconnect if connected
-        let disconnect_request = DisconnectMcpServerRequest {
+        let disconnect_request = DisconnectMcpServerReq {
             server_id: request.server_id.clone(),
             auth_key: request.auth_key.clone(),
         };
@@ -1017,10 +1008,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn connect_mcp_server(
-        &mut self,
-        request: ConnectMcpServerRequest,
-    ) -> Result<String, String> {
+    async fn connect_mcp_server(&mut self, request: ConnectMcpServerReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -1066,7 +1054,7 @@ impl SpiderState {
             );
 
             // Send initialize request
-            let init_request = JsonRpcRequest {
+            let init_request = JsonRpcReq {
                 jsonrpc: "2.0".to_string(),
                 method: "initialize".to_string(),
                 params: Some(
@@ -1086,7 +1074,7 @@ impl SpiderState {
             // Store pending request
             self.pending_mcp_requests.insert(
                 format!("init_{}", channel_id),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id: format!("init_{}", channel_id),
                     conversation_id: None,
                     server_id: request.server_id.clone(),
@@ -1206,7 +1194,7 @@ impl SpiderState {
     #[http]
     async fn list_conversations(
         &self,
-        request: ListConversationsRequest,
+        request: ListConversationsReq,
     ) -> Result<Vec<Conversation>, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
@@ -1231,10 +1219,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn get_conversation(
-        &self,
-        request: GetConversationRequest,
-    ) -> Result<Conversation, String> {
+    async fn get_conversation(&self, request: GetConversationReq) -> Result<Conversation, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
@@ -1252,13 +1237,13 @@ impl SpiderState {
     }
 
     #[http]
-    async fn get_config(&self, request: GetConfigRequest) -> Result<ConfigResponse, String> {
+    async fn get_config(&self, request: GetConfigReq) -> Result<ConfigRes, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
         }
 
-        Ok(ConfigResponse {
+        Ok(ConfigRes {
             default_llm_provider: self.default_llm_provider.clone(),
             max_tokens: self.max_tokens,
             temperature: self.temperature,
@@ -1268,7 +1253,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn update_config(&mut self, request: UpdateConfigRequest) -> Result<String, String> {
+    async fn update_config(&mut self, request: UpdateConfigReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -1368,9 +1353,17 @@ impl SpiderState {
 
     #[local]
     #[http]
-    async fn chat(&mut self, request: ChatRequest) -> Result<ChatResponse, String> {
+    async fn chat(&mut self, request: ChatReq) -> Result<ChatRes, String> {
         // Use the shared internal chat processing logic (without WebSocket streaming)
-        self.process_chat_internal(request, None).await
+        let source = source();
+        if source.publisher() == "sys"
+            && source.package() == "distro"
+            && source.process() == "http-server"
+        {
+            add_response_header("Content-Type".to_string(), "application/json".to_string());
+        }
+        let result = self.process_chat_internal(request, None).await;
+        result
     }
 
     #[local]
@@ -1379,23 +1372,20 @@ impl SpiderState {
     }
 
     #[local]
-    async fn process_request(
-        &mut self,
-        request: ProcessRequest,
-    ) -> Result<ProcessResponse, String> {
+    async fn process_request(&mut self, request: ProcessReq) -> Result<ProcessRes, String> {
         match request.action.as_str() {
             "chat" => {
-                let chat_request: ChatRequest = serde_json::from_str(&request.payload)
+                let chat_request: ChatReq = serde_json::from_str(&request.payload)
                     .map_err(|e| format!("Invalid chat request: {}", e))?;
                 let result = self.chat(chat_request).await?;
                 let serialized = serde_json::to_string(&result)
                     .map_err(|e| format!("Failed to serialize chat response: {}", e))?;
-                Ok(ProcessResponse {
+                Ok(ProcessRes {
                     success: true,
                     data: serialized,
                 })
             }
-            _ => Ok(ProcessResponse {
+            _ => Ok(ProcessRes {
                 success: false,
                 data: format!("Unknown action: {}", request.action),
             }),
@@ -1404,10 +1394,7 @@ impl SpiderState {
 
     // OAuth endpoints - proxy requests to Anthropic to avoid CORS
     #[http]
-    async fn exchange_oauth_token(
-        &self,
-        req: OAuthExchangeRequest,
-    ) -> Result<OAuthTokenResponse, String> {
+    async fn exchange_oauth_token(&self, req: OAuthExchangeReq) -> Result<OAuthTokenRes, String> {
         use hyperware_process_lib::http::client::send_request_await_response;
         use hyperware_process_lib::http::Method;
 
@@ -1417,7 +1404,7 @@ impl SpiderState {
         let state = parts.get(1).unwrap_or(&"").to_string();
 
         // Prepare the request body
-        let body = OAuthCodeExchangeRequest {
+        let body = OAuthCodeExchangeReq {
             code,
             state,
             grant_type: "authorization_code".to_string(),
@@ -1445,7 +1432,7 @@ impl SpiderState {
         if response.status().is_success() {
             // Parse the response body
             match serde_json::from_slice::<serde_json::Value>(response.body()) {
-                Ok(json) => Ok(OAuthTokenResponse {
+                Ok(json) => Ok(OAuthTokenRes {
                     refresh: json["refresh_token"].as_str().unwrap_or("").to_string(),
                     access: json["access_token"].as_str().unwrap_or("").to_string(),
                     expires: chrono::Utc::now().timestamp() as u64
@@ -1464,15 +1451,12 @@ impl SpiderState {
     }
 
     #[http]
-    async fn refresh_oauth_token(
-        &self,
-        req: OAuthRefreshRequest,
-    ) -> Result<OAuthTokenResponse, String> {
+    async fn refresh_oauth_token(&self, req: OAuthRefreshReq) -> Result<OAuthTokenRes, String> {
         use hyperware_process_lib::http::client::send_request_await_response;
         use hyperware_process_lib::http::Method;
 
         // Prepare the request body
-        let body = OAuthRefreshTokenRequest {
+        let body = OAuthRefreshTokenReq {
             grant_type: "refresh_token".to_string(),
             refresh_token: req.refresh_token,
             client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e".to_string(),
@@ -1497,7 +1481,7 @@ impl SpiderState {
         if response.status().is_success() {
             // Parse the response body
             match serde_json::from_slice::<serde_json::Value>(response.body()) {
-                Ok(json) => Ok(OAuthTokenResponse {
+                Ok(json) => Ok(OAuthTokenRes {
                     refresh: json["refresh_token"].as_str().unwrap_or("").to_string(),
                     access: json["access_token"].as_str().unwrap_or("").to_string(),
                     expires: chrono::Utc::now().timestamp() as u64
@@ -1602,12 +1586,129 @@ impl SpiderState {
         }
     }
 
+    // Helper function to convert text to audio using ttstt
+    async fn convert_text_to_audio(&self, text: String) -> Result<String, String> {
+        // Create TTS request for ttstt
+        #[derive(serde::Serialize)]
+        struct TtsRequest {
+            text: String,
+            provider: Option<String>,
+            model: Option<String>,
+            voice: Option<String>,
+            api_key: Option<String>,
+        }
+
+        let tts_request = TtsRequest {
+            text,
+            provider: None,
+            model: None,
+            voice: None,
+            api_key: None, // ttstt will accept requests from spider without auth
+        };
+
+        // Send request to ttstt using the tts endpoint
+        let request = Request::to(("our", TTSTT))
+            .body(
+                serde_json::to_vec(&json!({
+                    "Tts": tts_request
+                }))
+                .map_err(|e| format!("Failed to serialize TTS request: {}", e))?,
+            )
+            .blob_bytes(vec![]);
+
+        let response: Value = hyperware_process_lib::hyperapp::send(request)
+            .await
+            .map_err(|e| format!("Failed to call ttstt TTS: {:?}", e))?;
+
+        // Handle the Result wrapper from ttstt
+        if let Some(ok_value) = response.get("Ok") {
+            // Success case - extract audio_data from TtsRes
+            let audio_base64 = ok_value
+                .get("audio_data")
+                .and_then(|v| v.as_str())
+                .ok_or("Missing audio_data in TTS response".to_string())?;
+
+            Ok(audio_base64.to_string())
+        } else if let Some(err_value) = response.get("Err") {
+            // Error case
+            let error_msg = err_value.as_str().unwrap_or("Unknown error from ttstt");
+            Err(format!("TTS failed: {}", error_msg))
+        } else {
+            Err("Invalid response format from ttstt: expected Ok or Err".to_string())
+        }
+    }
+
+    // Helper function to convert audio to text using ttstt
+    async fn convert_audio_to_text(
+        &self,
+        audio_message: &MessageContent,
+    ) -> Result<String, String> {
+        use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+
+        // Create STT request for ttstt - matching the SttReq structure
+        #[derive(serde::Serialize)]
+        struct SttRequest {
+            audio_data: String,
+            provider: Option<String>,
+            model: Option<String>,
+            language: Option<String>,
+            api_key: Option<String>,
+        }
+
+        let audio_data = match audio_message {
+            MessageContent::Audio(audio_data) => BASE64.encode(&audio_data),
+            MessageContent::BaseSixFourAudio(audio_data) => audio_data.to_string(),
+            MessageContent::Text(_) => {
+                return Err("convert_audio_to_text requires audio to convert".to_string())
+            }
+        };
+
+        let stt_request = SttRequest {
+            audio_data,
+            provider: Some("OpenAI".to_string()),
+            model: Some("whisper-1".to_string()),
+            language: None,
+            api_key: None, // ttstt will accept requests from spider without auth
+        };
+
+        // Send request to ttstt using the stt endpoint
+        let request = Request::to(("our", TTSTT))
+            .body(
+                serde_json::to_vec(&json!({
+                    "Stt": stt_request
+                }))
+                .unwrap(),
+            )
+            .expects_response(30); // 30 second timeout for STT
+
+        let response: Value = hyperware_process_lib::hyperapp::send(request)
+            .await
+            .map_err(|e| format!("Failed to call ttstt STT: {:?}", e))?;
+
+        // Handle the Result wrapper from ttstt
+        // Response format is either {"Ok": {...}} or {"Err": "..."}
+        if let Some(ok_value) = response.get("Ok") {
+            // Success case - extract text from SttRes
+            let text = ok_value
+                .get("text")
+                .and_then(|t| t.as_str())
+                .ok_or("Invalid STT response: missing text field")?;
+            Ok(text.to_string())
+        } else if let Some(err_value) = response.get("Err") {
+            // Error case
+            let error_msg = err_value.as_str().unwrap_or("Unknown error from ttstt");
+            Err(format!("STT failed: {}", error_msg))
+        } else {
+            Err("Invalid response format from ttstt: expected Ok or Err".to_string())
+        }
+    }
+
     // Streaming version of chat for WebSocket clients
     async fn process_chat_request_with_streaming(
         &mut self,
-        request: ChatRequest,
+        request: ChatReq,
         channel_id: u32,
-    ) -> Result<ChatResponse, String> {
+    ) -> Result<ChatRes, String> {
         // Create a cancellation flag for this request
         let cancel_flag = Arc::new(AtomicBool::new(false));
         self.active_chat_cancellation
@@ -1649,9 +1750,9 @@ impl SpiderState {
     // Internal chat processing logic shared by HTTP and WebSocket
     async fn process_chat_internal(
         &mut self,
-        request: ChatRequest,
+        request: ChatReq,
         channel_id: Option<u32>,
-    ) -> Result<ChatResponse, String> {
+    ) -> Result<ChatRes, String> {
         // This is a refactored version of the chat logic that can send WebSocket updates
         // For now, just call the regular chat method
         // TODO: Refactor the chat method to use this shared logic
@@ -1742,8 +1843,103 @@ impl SpiderState {
             }
         };
 
+        // Process messages to convert any audio content to text
+        let mut processed_messages = Vec::new();
+        for mut message in request.messages.clone() {
+            match &message.content {
+                MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                    // Convert audio to text using ttstt
+                    match self.convert_audio_to_text(&message.content).await {
+                        Ok(text) => {
+                            println!("Spider: Converted audio to text: {}", text);
+                            message.content = MessageContent::Text(text);
+                        }
+                        Err(e) => {
+                            return Err(format!("Failed to convert audio to text: {}", e));
+                        }
+                    }
+                }
+                MessageContent::Text(_) => {
+                    // Text content, no conversion needed
+                }
+            }
+            processed_messages.push(message);
+        }
+
+        // Determine whether to reply with TTS or not
+        let user_prompt = processed_messages.clone();
+        let user_prompt = user_prompt
+            .last()
+            .and_then(|m| m.content.as_text())
+            .unwrap_or("");
+        let metadata = request.metadata.clone().unwrap_or(ConversationMetadata {
+            start_time: Utc::now().to_rfc3339(),
+            client: "unknown".to_string(),
+            from_stt: false,
+        });
+        let is_response_tts = if !metadata.from_stt {
+            false
+        } else {
+            // Ask the LLM whether to respond with text or audio
+            let decision_prompt = format!(
+                "Decide whether to reply with text or audio.\n\n\
+                Always choose audio EXCEPT when user EXPLICITLY indicates they want text. \
+                Examples of user wanting text: \
+                - mentions \"dictating\"\n\
+                - mentions \"transcribing\"\n\
+                - mentions \"put this in my clipboard\"\n\n\
+                User's last message: {user_prompt}\n\n\
+                If should reply with text, reply only with `text`. \
+                If should reply with audio, reply only with `audio`.",
+            );
+
+            // Create a simple request to the LLM for the decision
+            let decision_messages = vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::Text(decision_prompt),
+                tool_calls_json: None,
+                tool_results_json: None,
+                timestamp: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs(),
+            }];
+
+            let provider = create_llm_provider(&llm_provider, &api_key);
+
+            // Get decision from LLM (no tools needed)
+            if let Ok(decision_response) = provider
+                .complete(
+                    &decision_messages,
+                    &[], // No tools needed for this decision
+                    None,
+                    100, // Small max tokens
+                    0.3, // Low temperature for consistent decisions
+                )
+                .await
+            {
+                if let Some(decision_text) = decision_response.content.as_text() {
+                    let decision = decision_text.trim().to_lowercase();
+
+                    decision == "audio"
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
+        if is_response_tts {
+            if let Some(last) = processed_messages.last_mut() {
+                if let MessageContent::Text(ref mut text) = last.content {
+                    text.push_str("\n\nReply concisely unless the above explicitly says to not be concise.");
+                }
+            }
+        }
+
         // Start the agentic loop - runs indefinitely until the agent stops making tool calls
-        let mut working_messages = request.messages.clone();
+        let mut working_messages = processed_messages;
         let mut iteration_count = 0;
 
         let response = loop {
@@ -1842,7 +2038,13 @@ impl SpiderState {
 
             // Check if the response contains tool calls
             println!("[DEBUG] LLM response received:");
-            println!("[DEBUG]   - content: {}", llm_response.content);
+            println!(
+                "[DEBUG]   - content: {}",
+                match &llm_response.content {
+                    MessageContent::Text(t) => t.as_str(),
+                    MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => "<audio>",
+                }
+            );
             println!(
                 "[DEBUG]   - has tool_calls_json: {}",
                 llm_response.tool_calls_json.is_some()
@@ -1894,7 +2096,7 @@ impl SpiderState {
                 // Add tool results as a new message for the LLM to see
                 let tool_message = Message {
                     role: "tool".to_string(),
-                    content: "Tool execution results".to_string(),
+                    content: MessageContent::Text("Tool execution results".to_string()),
                     tool_calls_json: None,
                     tool_results_json: Some(serde_json::to_string(&tool_results).unwrap()),
                     timestamp: Utc::now().timestamp() as u64,
@@ -1924,7 +2126,8 @@ impl SpiderState {
                 );
 
                 // Check if response is just a "." - if so, continue immediately
-                let completion_status = if llm_response.content.trim() == "." {
+                let completion_status = if matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
+                {
                     println!("[DEBUG] Response is just '.', treating as continue");
                     "continue".to_string()
                 } else if llm_provider == "anthropic" {
@@ -1936,7 +2139,12 @@ impl SpiderState {
                     let anthropic_provider = AnthropicProvider::new(api_key.clone(), is_oauth);
 
                     anthropic_provider
-                        .check_tool_loop_completion(&llm_response.content)
+                        .check_tool_loop_completion(&match llm_response.content.clone() {
+                            MessageContent::Text(t) => t,
+                            MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                                String::new()
+                            }
+                        })
                         .await
                 } else {
                     // For non-Anthropic providers, assume done
@@ -1953,7 +2161,8 @@ impl SpiderState {
 
                     // Send the assistant message to the client (but skip if it's just ".")
                     if let Some(ch_id) = channel_id {
-                        if llm_response.content.trim() != "." {
+                        if !matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
+                        {
                             let msg_update = WsServerMessage::Message {
                                 message: llm_response.clone(),
                             };
@@ -1969,7 +2178,7 @@ impl SpiderState {
                     // Add a continue message and loop
                     let continue_message = Message {
                         role: "user".to_string(),
-                        content: "continue".to_string(),
+                        content: MessageContent::Text("continue".to_string()),
                         tool_calls_json: None,
                         tool_results_json: None,
                         timestamp: Utc::now().timestamp() as u64,
@@ -1987,7 +2196,8 @@ impl SpiderState {
 
                     // Send the final assistant message to the client (but skip if it's just ".")
                     if let Some(ch_id) = channel_id {
-                        if llm_response.content.trim() != "." {
+                        if !matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
+                        {
                             let msg_update = WsServerMessage::Message {
                                 message: llm_response.clone(),
                             };
@@ -2005,14 +2215,27 @@ impl SpiderState {
             }
         };
 
-        // Add the final response to messages
-        working_messages.push(response.clone());
+        let mut final_response = response.clone();
 
-        let metadata = request.metadata.unwrap_or(ConversationMetadata {
-            start_time: Utc::now().to_rfc3339(),
-            client: "unknown".to_string(),
-            from_stt: false,
-        });
+        if is_response_tts {
+            if let Some(response_text) = final_response.content.as_text() {
+                // Convert text response to audio
+                match self.convert_text_to_audio(response_text.to_string()).await {
+                    Ok(audio_data) => {
+                        println!("Spider: Converting response to audio for STT user");
+                        final_response.content =
+                            MessageContent::BaseSixFourAudio(audio_data);
+                    }
+                    Err(e) => {
+                        println!("Spider: Failed to convert response to audio: {}", e);
+                        // Keep as text if conversion fails
+                    }
+                }
+            }
+        }
+
+        // Add the final response to messages
+        working_messages.push(final_response.clone());
 
         // Get only the new messages that were added during this chat session
         // (everything after the initial user messages)
@@ -2064,9 +2287,9 @@ impl SpiderState {
         self.active_conversations
             .push((conversation_id.clone(), conversation));
 
-        Ok(ChatResponse {
+        Ok(ChatRes {
             conversation_id,
-            response,
+            response: final_response,
             all_messages: new_messages,
         })
     }
@@ -2105,12 +2328,12 @@ impl SpiderState {
                 let result = if let Some(result_value) = message.get("result") {
                     result_value.clone()
                 } else if let Some(error) = message.get("error") {
-                    serde_json::to_value(ErrorResponse {
+                    serde_json::to_value(ErrorRes {
                         error: error.clone(),
                     })
                     .unwrap_or_else(|_| Value::Null)
                 } else {
-                    serde_json::to_value(ErrorResponse {
+                    serde_json::to_value(ErrorRes {
                         error: Value::String("Invalid response format".to_string()),
                     })
                     .unwrap_or_else(|_| Value::Null)
@@ -2129,7 +2352,7 @@ impl SpiderState {
                     McpRequestType::ToolsList => {
                         self.handle_tools_list_response(channel_id, &conn, &message);
                     }
-                    McpRequestType::ToolCall { tool_name: _ } => {
+                    McpRequestType::ToolCall(ref _tool_name) => {
                         self.handle_tool_call_response(&pending, &message);
                     }
                 }
@@ -2193,7 +2416,7 @@ impl SpiderState {
 
     fn request_tools_list(&mut self, channel_id: u32) {
         let request_id = format!("tools_{}", channel_id);
-        let tools_request = JsonRpcRequest {
+        let tools_request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "tools/list".to_string(),
             params: None,
@@ -2204,7 +2427,7 @@ impl SpiderState {
         if let Some(conn) = self.ws_connections.get(&channel_id) {
             self.pending_mcp_requests.insert(
                 request_id.clone(),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id,
                     conversation_id: None,
                     server_id: conn.server_id.clone(),
@@ -2358,7 +2581,7 @@ impl SpiderState {
         }
     }
 
-    fn handle_tool_call_response(&mut self, pending: &PendingMcpRequest, message: &Value) {
+    fn handle_tool_call_response(&mut self, pending: &PendingMcpReq, message: &Value) {
         println!(
             "Spider: Received tool call response for request {}: {:?}",
             pending.request_id, message
@@ -2368,12 +2591,12 @@ impl SpiderState {
         let result = if let Some(result_value) = message.get("result") {
             result_value.clone()
         } else if let Some(error) = message.get("error") {
-            serde_json::to_value(ErrorResponse {
+            serde_json::to_value(ErrorRes {
                 error: error.clone(),
             })
             .unwrap_or_else(|_| Value::Null)
         } else {
-            serde_json::to_value(ErrorResponse {
+            serde_json::to_value(ErrorRes {
                 error: Value::String("Invalid MCP response format".to_string()),
             })
             .unwrap_or_else(|_| Value::Null)
@@ -2430,7 +2653,7 @@ impl SpiderState {
 
             // Execute via WebSocket using MCP protocol
             let request_id = format!("tool_{}_{}", channel_id, Uuid::new_v4());
-            let tool_request = JsonRpcRequest {
+            let tool_request = JsonRpcReq {
                 jsonrpc: "2.0".to_string(),
                 method: "tools/call".to_string(),
                 params: Some(
@@ -2446,13 +2669,11 @@ impl SpiderState {
             // Store pending request
             self.pending_mcp_requests.insert(
                 request_id.clone(),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id: request_id.clone(),
                     conversation_id,
                     server_id: server_id.to_string(),
-                    request_type: McpRequestType::ToolCall {
-                        tool_name: tool_name.to_string(),
-                    },
+                    request_type: McpRequestType::ToolCall(tool_name.to_string()),
                 },
             );
 
@@ -2756,7 +2977,7 @@ impl SpiderState {
                 // Execute via WebSocket
                 let request_id = format!("tool_{}_{}", channel_id, Uuid::new_v4());
 
-                let tool_request = JsonRpcRequest {
+                let tool_request = JsonRpcReq {
                     jsonrpc: "2.0".to_string(),
                     method: "tools/call".to_string(),
                     params: Some(
@@ -2772,13 +2993,11 @@ impl SpiderState {
                 // Store pending request
                 self.pending_mcp_requests.insert(
                     request_id.clone(),
-                    PendingMcpRequest {
+                    PendingMcpReq {
                         request_id: request_id.clone(),
                         conversation_id: conversation_id.clone(),
                         server_id: server_id.to_string(),
-                        request_type: McpRequestType::ToolCall {
-                            tool_name: tool_name.to_string(),
-                        },
+                        request_type: McpRequestType::ToolCall(tool_name.to_string()),
                     },
                 );
 
