@@ -115,26 +115,40 @@ function UpgradeCustom({ }: UpgradeCustomNameProps) {
                     ) : (
                         <>
                             <p className="form-label">
-                                <span>
-                                    Upgrade an existing Hyper Account
-                                    <div>
-                                        <span className="text-xs">
-                                            This will fail if the account or implementation does not support ERC-1967
-                                        </span>
-                                    </div>
-                                </span>
+                                <span>Upgrade Hyper Account Implementation</span>
                             </p>
+
+                            <div className="mb-4 text-sm text-gray-300 space-y-2">
+                                <p>
+                                    <strong>What is "Upgrade Hyper Account"?</strong>
+                                </p>
+                                <p>
+                                    When minting a Hyper Account, you can make it upgradable. This allows the operator
+                                    to update the contract implementation and add or remove various functions without
+                                    changing the account address.
+                                </p>
+                                <p>
+                                    This page allows you to upgrade an existing upgradable Hyper Account (TBA - Token Bound Account)
+                                    to a new implementation contract. The new implementation can include additional features,
+                                    bug fixes, or optimizations.
+                                </p>
+                                <p className="text-yellow-400">
+                                    ⚠️ In the default implementation, only the operator can call upgradeToAndCall.
+                                    This operation requires ERC-1967 support in both the account and implementation contracts.
+                                </p>
+                            </div>
+
                             <input
                                 type="text"
                                 name="tba"
-                                placeholder="Enter TBA to upgrade"
+                                placeholder="Enter TBA address to upgrade"
                                 value={tbaAddress}
                                 onChange={(e) => setTbaAddress(e.target.value)}
                             />
                             <input
                                 type="text"
                                 name="impl"
-                                placeholder="Enter new TBA implementation"
+                                placeholder="Enter new implementation address"
                                 value={implAddress}
                                 onChange={(e) => setImplAddress(e.target.value)}
                             />
