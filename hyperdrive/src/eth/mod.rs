@@ -544,33 +544,47 @@ async fn handle_message(
                         Ok(EthSub { id, .. }) => id,
                         Err(EthSubError { id, .. }) => id,
                     };
-                    if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
-                        if let Some(sub) = sub_map.get(&sub_id) {
-                            if let ActiveSub::Remote {
-                                provider_node,
-                                sender,
-                                ..
-                            } = sub
-                            {
-                                if provider_node == &km.source.node {
-                                    if let Ok(()) = sender.send(eth_sub_result).await {
-                                        // successfully sent a subscription update from a
-                                        // remote provider to one of our processes
-                                        return Ok(());
+                    // Extract the subscription and check if we need to close it
+                    let sub_to_close = {
+                        if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
+                            if let Some(sub) = sub_map.get(&sub_id) {
+                                if let ActiveSub::Remote {
+                                    provider_node,
+                                    sender,
+                                    ..
+                                } = sub
+                                {
+                                    if provider_node == &km.source.node {
+                                        if let Ok(()) = sender.send(eth_sub_result).await {
+                                            // successfully sent a subscription update from a
+                                            // remote provider to one of our processes
+                                            return Ok(());
+                                        }
                                     }
+                                    // failed to send subscription update to process,
+                                    // need to unsubscribe from provider and close
+                                    verbose_print(
+                                        &state.print_tx,
+                                        "eth: got eth_sub_result but provider node did not match or local sub was already closed",
+                                    )
+                                    .await;
+                                    // Remove and return the subscription for closing
+                                    Some(sub_map.remove(&sub_id))
+                                } else {
+                                    None
                                 }
-                                // failed to send subscription update to process,
-                                // unsubscribe from provider and close
-                                verbose_print(
-                                    &state.print_tx,
-                                    "eth: got eth_sub_result but provider node did not match or local sub was already closed",
-                                )
-                                .await;
-                                sub.close(sub_id, state).await;
-                                sub_map.remove(&sub_id);
-                                return Ok(());
+                            } else {
+                                None
                             }
+                        } else {
+                            None
                         }
+                    }; // Guard is released here
+
+                    // Close the subscription if needed, without holding the guard
+                    if let Some(Some(sub)) = sub_to_close {
+                        sub.close(sub_id, state).await;
+                        return Ok(());
                     }
                     // tell the remote provider that we don't have this sub
                     // so they can stop sending us updates
@@ -694,26 +708,32 @@ async fn handle_eth_action(
             .await;
         }
         EthAction::UnsubscribeLogs(sub_id) => {
-            let Some(mut sub_map) = state.active_subscriptions.get_mut(&km.source) else {
-                verbose_print(
-                    &state.print_tx,
-                    &format!(
-                        "eth: got unsubscribe from {} but no subscription found",
-                        km.source
-                    ),
-                )
-                .await;
-                error_message(
-                    &state.our,
-                    km.id,
-                    km.source,
-                    EthError::MalformedRequest,
-                    &state.send_to_loop,
-                )
-                .await;
-                return Ok(());
-            };
-            if let Some(sub) = sub_map.remove(&sub_id) {
+            // Remove the subscription from the map first, releasing the guard
+            let sub = {
+                let Some(mut sub_map) = state.active_subscriptions.get_mut(&km.source) else {
+                    verbose_print(
+                        &state.print_tx,
+                        &format!(
+                            "eth: got unsubscribe from {} but no subscription found",
+                            km.source
+                        ),
+                    )
+                    .await;
+                    error_message(
+                        &state.our,
+                        km.id,
+                        km.source,
+                        EthError::MalformedRequest,
+                        &state.send_to_loop,
+                    )
+                    .await;
+                    return Ok(());
+                };
+                sub_map.remove(&sub_id)
+            }; // Guard is released here
+
+            if let Some(sub) = sub {
+                // Now we can safely call close without holding the guard
                 sub.close(sub_id, state).await;
                 verbose_print(
                     &state.print_tx,
@@ -750,10 +770,7 @@ async fn handle_eth_action(
                 .await;
             }
             // if sub_map is now empty, remove the source from the active_subscriptions map
-            if sub_map.is_empty() {
-                drop(sub_map);
-                state.active_subscriptions.remove(&km.source);
-            }
+            state.active_subscriptions.retain(|_, sub_map| !sub_map.is_empty());
         }
         EthAction::Request { .. } => {
             let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
