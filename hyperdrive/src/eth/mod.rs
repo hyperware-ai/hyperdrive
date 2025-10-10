@@ -770,7 +770,9 @@ async fn handle_eth_action(
                 .await;
             }
             // if sub_map is now empty, remove the source from the active_subscriptions map
-            state.active_subscriptions.retain(|_, sub_map| !sub_map.is_empty());
+            state
+                .active_subscriptions
+                .retain(|_, sub_map| !sub_map.is_empty());
         }
         EthAction::Request { .. } => {
             let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
