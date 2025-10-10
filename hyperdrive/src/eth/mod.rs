@@ -472,7 +472,12 @@ async fn handle_network_error(wrapped_error: WrappedSendError, state: &ModuleSta
     }
 
     // forward error to response channel if it exists
-    if let Some(chan) = state.response_channels.get(&wrapped_error.id) {
+    let chan_to_send = state
+        .response_channels
+        .get(&wrapped_error.id)
+        .map(|chan| chan.clone());
+
+    if let Some(chan) = chan_to_send {
         // don't close channel here, as channel holder will wish to try other providers.
         verbose_print(
             &state.print_tx,
@@ -494,7 +499,9 @@ async fn handle_message(
     match &km.message {
         Message::Response(_) => {
             // map response to the correct channel
-            if let Some(chan) = state.response_channels.get(&km.id) {
+            let chan_to_send = state.response_channels.get(&km.id).map(|chan| chan.clone());
+
+            if let Some(chan) = chan_to_send {
                 // can't close channel here, as response may be an error
                 // and fulfill_request may wish to try other providers.
                 let _ = chan.send(Ok(km)).await;
@@ -545,7 +552,7 @@ async fn handle_message(
                         Err(EthSubError { id, .. }) => id,
                     };
                     // Extract the subscription and check if we need to close it
-                    let sub_to_close = {
+                    let (sender_to_use, needs_close) = {
                         if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
                             if let Some(sub) = sub_map.get(&sub_id) {
                                 if let ActiveSub::Remote {
@@ -555,36 +562,61 @@ async fn handle_message(
                                 } = sub
                                 {
                                     if provider_node == &km.source.node {
-                                        if let Ok(()) = sender.send(eth_sub_result).await {
-                                            // successfully sent a subscription update from a
-                                            // remote provider to one of our processes
-                                            return Ok(());
-                                        }
+                                        // Clone sender to avoid holding guard across await
+                                        (Some(sender.clone()), false)
+                                    } else {
+                                        // Provider node doesn't match
+                                        (None, true)
                                     }
-                                    // failed to send subscription update to process,
-                                    // need to unsubscribe from provider and close
-                                    verbose_print(
-                                        &state.print_tx,
-                                        "eth: got eth_sub_result but provider node did not match or local sub was already closed",
-                                    )
-                                    .await;
-                                    // Remove and return the subscription for closing
-                                    Some(sub_map.remove(&sub_id))
                                 } else {
-                                    None
+                                    // Not a remote subscription
+                                    (None, false)
                                 }
                             } else {
-                                None
+                                // Subscription not found in map
+                                (None, false)
                             }
                         } else {
-                            None
+                            // No subscription map for this rsvp
+                            (None, false)
                         }
-                    }; // Guard is released here
+                    }; // Drop the guard here before awaiting
 
-                    // Close the subscription if needed, without holding the guard
-                    if let Some(Some(sub)) = sub_to_close {
-                        sub.close(sub_id, state).await;
-                        return Ok(());
+                    if let Some(sender) = sender_to_use {
+                        if let Ok(()) = sender.send(eth_sub_result).await {
+                            // successfully sent a subscription update from a
+                            // remote provider to one of our processes
+                            return Ok(());
+                        }
+                        // failed to send subscription update to process,
+                        // need to unsubscribe from provider and close
+                        verbose_print(
+                            &state.print_tx,
+                            "eth: failed to send subscription update to process",
+                        )
+                        .await;
+                        // Now remove and close the subscription
+                        if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
+                            if let Some(sub) = sub_map.remove(&sub_id) {
+                                drop(sub_map); // Release guard before awaiting
+                                sub.close(sub_id, state).await;
+                                return Ok(());
+                            }
+                        }
+                    } else if needs_close {
+                        // Provider node didn't match, close the subscription
+                        verbose_print(
+                            &state.print_tx,
+                            "eth: got eth_sub_result but provider node did not match",
+                        )
+                        .await;
+                        if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
+                            if let Some(sub) = sub_map.remove(&sub_id) {
+                                drop(sub_map); // Release guard before awaiting
+                                sub.close(sub_id, state).await;
+                                return Ok(());
+                            }
+                        }
                     }
                     // tell the remote provider that we don't have this sub
                     // so they can stop sending us updates
