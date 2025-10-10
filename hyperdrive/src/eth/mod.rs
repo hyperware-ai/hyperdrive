@@ -1189,8 +1189,7 @@ async fn fulfill_request(
 
                 // Spawn method retry task if this is a new failure
                 if should_spawn_retry && method != "eth_sendRawTransaction" {
-                    use crate::eth::utils::spawn_method_retry_for_node_provider;
-                    spawn_method_retry_for_node_provider(
+                    crate::eth::utils::spawn_method_retry_for_node_provider(
                         our.to_string(),
                         providers.clone(),
                         chain_id.clone(),
@@ -1235,8 +1234,7 @@ async fn fulfill_request(
 
                 // Spawn health check task if needed
                 if spawn_health_check {
-                    use crate::eth::utils::spawn_health_check_for_node_provider;
-                    spawn_health_check_for_node_provider(
+                    crate::eth::utils::spawn_health_check_for_node_provider(
                         our.to_string(),
                         providers.clone(),
                         chain_id.clone(),
