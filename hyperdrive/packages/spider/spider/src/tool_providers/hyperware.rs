@@ -155,10 +155,12 @@ pub async fn search_apis(query: &str) -> Result<Value, String> {
             .ok_or_else(|| "Missing publisher_node".to_string())?;
         let package_id = format!("{}:{}", package_name, publisher_node);
 
-        // Skip if package doesn't match the query (case-insensitive)
-        let query_lower = query.to_lowercase();
-        if !package_id.to_lowercase().contains(&query_lower) {
-            continue;
+        if query != "" && query != "*" {
+            // Skip if package doesn't match the query (case-insensitive)
+            let query_lower = query.to_lowercase();
+            if !package_id.to_lowercase().contains(&query_lower) {
+                continue;
+            }
         }
 
         // Try to get the package documentation

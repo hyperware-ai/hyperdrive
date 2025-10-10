@@ -25,12 +25,12 @@ On certain operating systems, you may need to install these dependencies if they
 - openssl-sys: https://docs.rs/crate/openssl-sys/0.9.19
 - libclang 5.0: https://rust-lang.github.io/rust-bindgen/requirements.html
 
-Rust must be between versions 1.81 and 1.85.1.
+Rust must be version 1.85.1.
 
 ```bash
 # Clone the repo.
 
-git clone --recurse-submodules git@github.com:hyperware-ai/hyperdrive.git
+git clone --recurse-submodules https://github.com/hyperware-ai/hyperdrive
 
 # Install Rust and some `cargo` tools so we can build the runtime and Wasm.
 

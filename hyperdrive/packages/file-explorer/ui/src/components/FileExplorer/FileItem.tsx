@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileInfo, delete_file, delete_directory } from '../../lib/api';
+import { FileExplorer } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ShareDialog from '../ShareDialog/ShareDialog';
 import './FileItem.css';
 
 interface FileItemProps {
-  file: FileInfo & { children?: FileInfo[] };
+  file: FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] };
   viewMode: 'list' | 'grid';
   onNavigate: (path: string) => void;
   depth?: number;
-  onLoadSubdirectory?: (path: string) => Promise<FileInfo[]>;
+  onLoadSubdirectory?: (path: string) => Promise<FileExplorer.FileInfo[]>;
   onDelete?: () => void;
 }
 
@@ -26,7 +26,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
-  const [loadedChildren, setLoadedChildren] = useState<(FileInfo & { children?: FileInfo[] })[]>([]);
+  const [loadedChildren, setLoadedChildren] = useState<(FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[]>([]);
 
   // Touch handling for iOS long-press
   const touchTimerRef = useRef<number | null>(null);
@@ -43,9 +43,9 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     // Remove file selection on single click - no action for files
   };
 
-  const buildTreeFromFlatList = (flatList: FileInfo[], parentPath: string): (FileInfo & { children?: FileInfo[] })[] => {
-    const fileMap = new Map<string, FileInfo & { children?: FileInfo[] }>();
-    const topLevelFiles: (FileInfo & { children?: FileInfo[] })[] = [];
+  const buildTreeFromFlatList = (flatList: FileExplorer.FileInfo[], parentPath: string): (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[] => {
+    const fileMap = new Map<string, FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] }>();
+    const topLevelFiles: (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[] = [];
 
     // First pass: create map of all files
     flatList.forEach(file => {
@@ -69,7 +69,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     });
 
     // Sort files: directories first, then by name
-    const sortFiles = (files: (FileInfo & { children?: FileInfo[] })[]) => {
+    const sortFiles = (files: (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[]) => {
       return [...files].sort((a, b) => {
         if (a.is_directory && !b.is_directory) return -1;
         if (!a.is_directory && b.is_directory) return 1;
@@ -78,7 +78,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
     };
 
     // Recursively sort all children
-    const sortRecursive = (files: (FileInfo & { children?: FileInfo[] })[]) => {
+    const sortRecursive = (files: (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[]) => {
       const sorted = sortFiles(files);
       sorted.forEach(file => {
         if (file.children && file.children.length > 0) {
@@ -184,9 +184,9 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
 
     try {
       if (file.is_directory) {
-        await delete_directory(file.path);
+        await FileExplorer.delete_directory(file.path);
       } else {
-        await delete_file(file.path);
+        await FileExplorer.delete_file(file.path);
       }
       // Call the parent's onDelete callback to refresh the list
       if (onDelete) {
@@ -273,7 +273,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, viewMode, onNavigate, depth =
           {childrenToRender.map((child) => (
             <FileItem
               key={child.path}
-              file={child as FileInfo & { children?: FileInfo[] }}
+              file={child as FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] }}
               viewMode={viewMode}
               onNavigate={onNavigate}
               depth={depth + 1}

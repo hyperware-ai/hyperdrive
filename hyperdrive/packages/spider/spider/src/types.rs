@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
 use crate::tool_providers::ToolProviderRegistry;
@@ -33,7 +33,7 @@ pub struct SpiderState {
     #[serde(skip)]
     pub ws_connections: HashMap<u32, WsConnection>, // channel_id -> connection info
     #[serde(skip)]
-    pub pending_mcp_requests: HashMap<String, PendingMcpRequest>, // request_id -> pending request
+    pub pending_mcp_requests: HashMap<String, PendingMcpReq>, // request_id -> pending request
     #[serde(skip)]
     pub tool_responses: HashMap<String, Value>, // request_id -> response received from MCP
     #[serde(skip)]
@@ -60,7 +60,7 @@ pub(crate) struct WsConnection {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PendingMcpRequest {
+pub(crate) struct PendingMcpReq {
     pub(crate) request_id: String,
     pub(crate) conversation_id: Option<String>,
     pub(crate) server_id: String,
@@ -71,7 +71,7 @@ pub(crate) struct PendingMcpRequest {
 pub(crate) enum McpRequestType {
     Initialize,
     ToolsList,
-    ToolCall { tool_name: String },
+    ToolCall(String), // tool_name
 }
 
 #[derive(Clone, Debug)]
@@ -153,7 +153,11 @@ pub(crate) struct Conversation {
     pub(crate) llm_provider: String,
     #[serde(rename = "mcpServers")]
     pub(crate) mcp_servers: Vec<String>,
-    #[serde(rename = "mcpServersDetails", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "mcpServersDetails",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub(crate) mcp_servers_details: Option<Vec<McpServerDetails>>,
 }
 
@@ -180,14 +184,85 @@ pub(crate) struct ConversationMetadata {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub(crate) enum MessageContent {
+    Text(String),
+    Audio(Vec<u8>),           // audio_data
+    BaseSixFourAudio(String), // base64 encoded audio data
+}
+
+impl MessageContent {
+    pub fn as_text(&self) -> Option<&str> {
+        match self {
+            MessageContent::Text(text) => Some(text.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn to_text(self) -> String {
+        match self {
+            MessageContent::Text(text) => text,
+            MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => String::new(),
+        }
+    }
+
+    pub fn is_audio(&self) -> bool {
+        matches!(
+            self,
+            MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_)
+        )
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
 pub(crate) struct Message {
     pub(crate) role: String,
-    pub(crate) content: String,
+    pub(crate) content: MessageContent,
     #[serde(rename = "toolCallsJson")]
     pub(crate) tool_calls_json: Option<String>, // JSON string of tool calls
     #[serde(rename = "toolResultsJson")]
     pub(crate) tool_results_json: Option<String>, // JSON string of tool results
     pub(crate) timestamp: u64,
+}
+
+// Custom deserialization for backwards compatibility
+impl<'de> Deserialize<'de> for Message {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct MessageHelper {
+            role: String,
+            content: serde_json::Value,
+            #[serde(rename = "toolCallsJson")]
+            tool_calls_json: Option<String>,
+            #[serde(rename = "toolResultsJson")]
+            tool_results_json: Option<String>,
+            timestamp: u64,
+        }
+
+        let helper = MessageHelper::deserialize(deserializer)?;
+
+        // Handle both old string format and new enum format
+        let content = match helper.content {
+            // If it's a string (old format), wrap in Text variant
+            Value::String(s) => MessageContent::Text(s),
+            // If it's an object, try to deserialize as MessageContent enum
+            Value::Object(_) => {
+                serde_json::from_value(helper.content).map_err(serde::de::Error::custom)?
+            }
+            // Fallback for any other unexpected format
+            _ => MessageContent::Text(helper.content.to_string()),
+        };
+
+        Ok(Message {
+            role: helper.role,
+            content,
+            tool_calls_json: helper.tool_calls_json,
+            tool_results_json: helper.tool_results_json,
+            timestamp: helper.timestamp,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -204,7 +279,7 @@ pub(crate) struct ToolResult {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct SetApiKeyRequest {
+pub(crate) struct SetApiKeyReq {
     pub(crate) provider: String,
     pub(crate) key: String,
     #[serde(rename = "authKey")]
@@ -212,7 +287,7 @@ pub(crate) struct SetApiKeyRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct CreateSpiderKeyRequest {
+pub(crate) struct CreateSpiderKeyReq {
     pub(crate) name: String,
     pub(crate) permissions: Vec<String>,
     #[serde(rename = "adminKey")]
@@ -220,13 +295,13 @@ pub(crate) struct CreateSpiderKeyRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ListSpiderKeysRequest {
+pub(crate) struct ListSpiderKeysReq {
     #[serde(rename = "adminKey")]
     pub(crate) admin_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct RevokeSpiderKeyRequest {
+pub(crate) struct RevokeSpiderKeyReq {
     #[serde(rename = "keyId")]
     pub(crate) key_id: String,
     #[serde(rename = "adminKey")]
@@ -234,20 +309,20 @@ pub(crate) struct RevokeSpiderKeyRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ListApiKeysRequest {
+pub(crate) struct ListApiKeysReq {
     #[serde(rename = "authKey")]
     pub(crate) auth_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct RemoveApiKeyRequest {
+pub(crate) struct RemoveApiKeyReq {
     pub(crate) provider: String,
     #[serde(rename = "authKey")]
     pub(crate) auth_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ConnectMcpServerRequest {
+pub(crate) struct ConnectMcpServerReq {
     #[serde(rename = "serverId")]
     pub(crate) server_id: String,
     #[serde(rename = "authKey")]
@@ -255,7 +330,7 @@ pub(crate) struct ConnectMcpServerRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct DisconnectMcpServerRequest {
+pub(crate) struct DisconnectMcpServerReq {
     #[serde(rename = "serverId")]
     pub(crate) server_id: String,
     #[serde(rename = "authKey")]
@@ -263,7 +338,7 @@ pub(crate) struct DisconnectMcpServerRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct RemoveMcpServerRequest {
+pub(crate) struct RemoveMcpServerReq {
     #[serde(rename = "serverId")]
     pub(crate) server_id: String,
     #[serde(rename = "authKey")]
@@ -271,13 +346,13 @@ pub(crate) struct RemoveMcpServerRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ListMcpServersRequest {
+pub(crate) struct ListMcpServersReq {
     #[serde(rename = "authKey")]
     pub(crate) auth_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct GetConversationRequest {
+pub(crate) struct GetConversationReq {
     #[serde(rename = "conversationId")]
     pub(crate) conversation_id: String,
     #[serde(rename = "authKey")]
@@ -285,13 +360,13 @@ pub(crate) struct GetConversationRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct GetConfigRequest {
+pub(crate) struct GetConfigReq {
     #[serde(rename = "authKey")]
     pub(crate) auth_key: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct AddMcpServerRequest {
+pub(crate) struct AddMcpServerReq {
     pub(crate) name: String,
     pub(crate) transport: TransportConfig,
     #[serde(rename = "authKey")]
@@ -299,7 +374,7 @@ pub(crate) struct AddMcpServerRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ListConversationsRequest {
+pub(crate) struct ListConversationsReq {
     pub(crate) limit: Option<u32>,
     pub(crate) offset: Option<u32>,
     pub(crate) client: Option<String>,
@@ -308,7 +383,7 @@ pub(crate) struct ListConversationsRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct UpdateConfigRequest {
+pub(crate) struct UpdateConfigReq {
     #[serde(rename = "defaultLlmProvider")]
     pub(crate) default_llm_provider: Option<String>,
     #[serde(rename = "maxTokens")]
@@ -323,7 +398,7 @@ pub(crate) struct UpdateConfigRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ChatRequest {
+pub(crate) struct ChatReq {
     #[serde(rename = "apiKey")]
     pub(crate) api_key: String,
     pub(crate) messages: Vec<Message>,
@@ -337,7 +412,7 @@ pub(crate) struct ChatRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ChatResponse {
+pub(crate) struct ChatRes {
     #[serde(rename = "conversationId")]
     pub(crate) conversation_id: String,
     pub(crate) response: Message,
@@ -346,7 +421,7 @@ pub(crate) struct ChatResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ConfigResponse {
+pub(crate) struct ConfigRes {
     #[serde(rename = "defaultLlmProvider")]
     pub(crate) default_llm_provider: String,
     #[serde(rename = "maxTokens")]
@@ -359,20 +434,20 @@ pub(crate) struct ConfigResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ProcessRequest {
+pub(crate) struct ProcessReq {
     pub(crate) action: String,
     pub(crate) payload: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct ProcessResponse {
+pub(crate) struct ProcessRes {
     pub(crate) success: bool,
     pub(crate) data: String,
 }
 
 // JSON-RPC Message Types for MCP Protocol
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonRpcRequest {
+pub(crate) struct JsonRpcReq {
     pub(crate) jsonrpc: String,
     pub(crate) method: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -389,7 +464,7 @@ pub(crate) struct JsonRpcNotification {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct JsonRpcResponse {
+pub(crate) struct JsonRpcRes {
     pub(crate) jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) result: Option<Value>,
@@ -502,7 +577,7 @@ pub(crate) enum WsServerMessage {
     #[serde(rename = "message")]
     Message { message: Message },
     #[serde(rename = "chat_complete")]
-    ChatComplete { payload: ChatResponse },
+    ChatComplete { payload: ChatRes },
     #[serde(rename = "error")]
     Error { error: String },
     #[serde(rename = "pong")]
@@ -536,7 +611,7 @@ pub(crate) struct HypergridConnection {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
-pub(crate) enum HypergridRequest {
+pub(crate) enum HypergridReq {
     SearchRegistry(String),
     CallProvider {
         #[serde(rename = "providerId")]
@@ -568,20 +643,20 @@ pub(crate) enum HypergridMessageType {
 
 // OAuth types
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct OAuthExchangeRequest {
+pub(crate) struct OAuthExchangeReq {
     pub(crate) code: String,
     pub(crate) verifier: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct OAuthTokenResponse {
+pub(crate) struct OAuthTokenRes {
     pub(crate) refresh: String,
     pub(crate) access: String,
     pub(crate) expires: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct OAuthRefreshRequest {
+pub(crate) struct OAuthRefreshReq {
     #[serde(rename = "refreshToken")]
     pub(crate) refresh_token: String,
 }
@@ -601,13 +676,13 @@ pub(crate) struct ToolResponseContentItem {
 
 // Error response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct ErrorResponse {
+pub(crate) struct ErrorRes {
     pub(crate) error: Value,
 }
 
 // OAuth request types
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct OAuthCodeExchangeRequest {
+pub(crate) struct OAuthCodeExchangeReq {
     pub(crate) code: String,
     pub(crate) state: String,
     pub(crate) grant_type: String,
@@ -617,7 +692,7 @@ pub(crate) struct OAuthCodeExchangeRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct OAuthRefreshTokenRequest {
+pub(crate) struct OAuthRefreshTokenReq {
     pub(crate) grant_type: String,
     pub(crate) refresh_token: String,
     pub(crate) client_id: String,
@@ -625,13 +700,13 @@ pub(crate) struct OAuthRefreshTokenRequest {
 
 // Build container request/response types
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct BuildContainerRequest {
+pub(crate) struct BuildContainerReq {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) metadata: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct SpiderAuthRequest {
+pub(crate) struct SpiderAuthReq {
     pub(crate) jsonrpc: String,
     pub(crate) method: String,
     pub(crate) params: SpiderAuthParams,

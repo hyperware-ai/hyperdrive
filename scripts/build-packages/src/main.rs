@@ -81,6 +81,7 @@ fn build_and_zip_package(
             false,
             false,
             false,
+            kit::build::DEFAULT_RUST_TOOLCHAIN,
         )
         .await
         .map_err(|e| anyhow::anyhow!("{:?}", e))?;

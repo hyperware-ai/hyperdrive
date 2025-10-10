@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { FileInfo } from '../lib/api';
+import { FileExplorer } from '../lib/api';
 
 interface FileExplorerStore {
   currentPath: string;
-  files: FileInfo[];
+  files: FileExplorer.FileInfo[];
   selectedFiles: string[];
   expandedDirectories: Set<string>;
   uploadProgress: Map<string, number>;
@@ -13,7 +13,7 @@ interface FileExplorerStore {
   
   // Actions
   setCurrentPath: (path: string) => void;
-  setFiles: (files: FileInfo[]) => void;
+  setFiles: (files: FileExplorer.FileInfo[]) => void;
   selectFile: (path: string) => void;
   deselectFile: (path: string) => void;
   toggleFileSelection: (path: string) => void;

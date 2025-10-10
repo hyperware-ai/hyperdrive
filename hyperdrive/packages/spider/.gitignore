@@ -12,11 +12,15 @@
 /pkg/*zip
 /pkg/*wasm
 /pkg/ui
+/pkg/ttstt-ui
 
 # UI dependencies and build
 /ui/node_modules/
 /ui/dist/
 /ui/.vite/
+/ttstt-ui/node_modules/
+/ttstt-ui/dist/
+/ttstt-ui/.vite/
 *.log
 
 # IDE files
