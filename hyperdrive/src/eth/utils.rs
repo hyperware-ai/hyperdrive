@@ -441,22 +441,33 @@ pub fn spawn_method_retry_for_node_provider(
         // For eth_sendRawTransaction, just wait 60 minutes then clear
         if method == "eth_sendRawTransaction" {
             tokio::time::sleep(Duration::from_secs(3600)).await;
-            if let Some(mut aps) = providers.get_mut(&chain_id) {
-                if let Some(provider) = aps
-                    .nodes
-                    .iter_mut()
-                    .find(|p| p.hns_update.name == node_name)
-                {
-                    provider.method_failures.send_raw_tx_failed = None;
-                    verbose_print(
-                        &print_tx,
-                        &format!(
-                            "eth: cleared eth_sendRawTransaction failure for node {}",
-                            node_name
-                        ),
-                    )
-                    .await;
+            let should_print = {
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
+                        .find(|p| p.hns_update.name == node_name)
+                    {
+                        provider.method_failures.send_raw_tx_failed = None;
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
                 }
+            };
+
+            // Perform verbose print after releasing the guard
+            if should_print {
+                verbose_print(
+                    &print_tx,
+                    &format!(
+                        "eth: cleared eth_sendRawTransaction failure for node {}",
+                        node_name
+                    ),
+                )
+                .await;
             }
             return;
         }

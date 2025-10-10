@@ -553,7 +553,7 @@ async fn handle_message(
                     };
                     // Extract the subscription and check if we need to close it
                     let (sender_to_use, needs_close) = {
-                        if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
+                        if let Some(sub_map) = state.active_subscriptions.get_mut(&rsvp) {
                             if let Some(sub) = sub_map.get(&sub_id) {
                                 if let ActiveSub::Remote {
                                     provider_node,
