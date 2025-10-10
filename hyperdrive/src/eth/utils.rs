@@ -342,16 +342,12 @@ pub fn spawn_method_retry_for_url_provider(
 
             if success {
                 // Clear the method failure
-                if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
-                        provider.method_failures.clear_method_failure(&method);
-                        verbose_print(
-                            &print_tx,
-                            &format!("eth: {} now working again for {}", method, url),
-                        )
-                        .await;
-                    }
-                }
+                provider.method_failures.clear_method_failure(&method);
+                verbose_print(
+                    &print_tx,
+                    &format!("eth: {} now working again for {}", method, url),
+                )
+                .await;
                 break;
             }
         }
