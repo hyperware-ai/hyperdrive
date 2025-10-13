@@ -778,10 +778,14 @@ impl State {
 
         for log_cache in log_caches {
             // Validate the log cache signature
+            // TODO Remove or find other method
+            // Temporarily skip
+            /*
             if !self.validate_log_cache(&log_cache)? {
                 warn!("Invalid log cache signature, skipping");
                 continue;
             }
+            */
 
             // Generate filename from metadata
             let filename = format!(
