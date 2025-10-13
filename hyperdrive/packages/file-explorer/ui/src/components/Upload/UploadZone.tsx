@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { upload_file, create_directory } from '../../lib/api';
+import { FileExplorer } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import './UploadZone.css';
 
@@ -143,7 +143,7 @@ const UploadZone: React.FC<UploadZoneProps> = ({ currentPath, onUploadComplete, 
         for (const folderName of pathParts) {
           uploadPath = uploadPath === '/' ? `/${folderName}` : `${uploadPath}/${folderName}`;
           try {
-            await create_directory(uploadPath);
+            await FileExplorer.create_directory(uploadPath);
           } catch (err) {
             // Ignore if directory already exists
             console.log(`Directory ${uploadPath} might already exist`);
@@ -154,7 +154,7 @@ const UploadZone: React.FC<UploadZoneProps> = ({ currentPath, onUploadComplete, 
       // Simulate upload progress
       updateUploadProgress(fileId, 50);
       
-      await upload_file(uploadPath, fileName, contentArray);
+      await FileExplorer.upload_file(uploadPath, fileName, contentArray);
       
       updateUploadProgress(fileId, 100);
       onUploadComplete();

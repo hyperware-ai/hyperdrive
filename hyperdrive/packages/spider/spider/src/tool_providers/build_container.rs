@@ -1,9 +1,9 @@
 use crate::tool_providers::{ToolExecutionCommand, ToolProvider};
 use crate::types::{
-    BuildContainerRequest, InitializeParams, JsonRpcRequest, LoadProjectParams, McpCapabilities,
-    McpClientInfo, McpRequestType, PendingMcpRequest, PersistParams, SpiderAuthParams,
-    SpiderAuthRequest, SpiderState, StartPackageParams, Tool, ToolResponseContent,
-    ToolResponseContentItem, WsConnection,
+    BuildContainerReq, InitializeParams, JsonRpcReq, LoadProjectParams, McpCapabilities,
+    McpClientInfo, McpRequestType, PendingMcpReq, PersistParams, SpiderAuthParams, SpiderAuthReq,
+    SpiderState, StartPackageParams, Tool, ToolResponseContent, ToolResponseContentItem,
+    WsConnection,
 };
 use hyperware_process_lib::{
     http::{
@@ -339,7 +339,7 @@ impl BuildContainerExt for SpiderState {
         let constructor_url = format!("{CONSTRUCTOR_SERVER_URL}/init-build-container");
 
         // Prepare request body
-        let body = BuildContainerRequest {
+        let body = BuildContainerReq {
             metadata: metadata.clone(),
         };
 
@@ -411,7 +411,7 @@ impl BuildContainerExt for SpiderState {
         );
 
         // Send authentication message
-        let auth_request = SpiderAuthRequest {
+        let auth_request = SpiderAuthReq {
             jsonrpc: "2.0".to_string(),
             method: "spider/authorization".to_string(),
             params: SpiderAuthParams {
@@ -551,7 +551,7 @@ impl BuildContainerExt for SpiderState {
             "Spider: Sending load-project request with id: {}",
             request_id
         );
-        let request = JsonRpcRequest {
+        let request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "spider/load-project".to_string(),
             params: Some(
@@ -609,7 +609,7 @@ impl BuildContainerExt for SpiderState {
                 // Send tools/list and wait for the response to ensure tools are updated
                 println!("Spider: Requesting updated tools list after successful load-project");
                 let tools_request_id = format!("tools_refresh_{}", channel_id);
-                let tools_request = JsonRpcRequest {
+                let tools_request = JsonRpcReq {
                     jsonrpc: "2.0".to_string(),
                     method: "tools/list".to_string(),
                     params: None,
@@ -620,7 +620,7 @@ impl BuildContainerExt for SpiderState {
                 if let Some(conn) = self.ws_connections.get(&channel_id) {
                     self.pending_mcp_requests.insert(
                         tools_request_id.clone(),
-                        PendingMcpRequest {
+                        PendingMcpReq {
                             request_id: tools_request_id.clone(),
                             conversation_id: None,
                             server_id: conn.server_id.clone(),
@@ -687,7 +687,7 @@ impl BuildContainerExt for SpiderState {
     ) -> Result<Value, String> {
         // Send spider/start-package request over WebSocket
         let request_id = format!("start-package-{}", Uuid::new_v4());
-        let request = JsonRpcRequest {
+        let request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "spider/start-package".to_string(),
             params: Some(
@@ -796,7 +796,7 @@ impl BuildContainerExt for SpiderState {
 
         // Send spider/persist request over WebSocket
         let request_id = format!("persist_{}", Uuid::new_v4());
-        let request = JsonRpcRequest {
+        let request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "spider/persist".to_string(),
             params: Some(
@@ -987,7 +987,7 @@ impl BuildContainerExt for SpiderState {
         let constructor_url = format!("{CONSTRUCTOR_SERVER_URL}/done-build-container");
 
         // Prepare request body
-        let body = BuildContainerRequest {
+        let body = BuildContainerReq {
             metadata: metadata.clone(),
         };
 
@@ -1091,7 +1091,7 @@ impl BuildContainerExt for SpiderState {
 
         // Send authentication message
         let auth_id = format!("auth_{}", channel_id);
-        let auth_request = SpiderAuthRequest {
+        let auth_request = SpiderAuthReq {
             jsonrpc: "2.0".to_string(),
             method: "spider/authorization".to_string(),
             params: SpiderAuthParams {
@@ -1159,11 +1159,11 @@ impl BuildContainerExt for SpiderState {
     }
 
     fn request_build_container_tools_list(&mut self, channel_id: u32) {
-        use crate::types::{McpRequestType, PendingMcpRequest};
+        use crate::types::{McpRequestType, PendingMcpReq};
 
         // First send initialize request
         let init_request_id = format!("init_build_container_{}", channel_id);
-        let init_request = JsonRpcRequest {
+        let init_request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "initialize".to_string(),
             params: Some(
@@ -1184,7 +1184,7 @@ impl BuildContainerExt for SpiderState {
         if let Some(conn) = self.ws_connections.get(&channel_id) {
             self.pending_mcp_requests.insert(
                 init_request_id.clone(),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id: init_request_id.clone(),
                     conversation_id: None,
                     server_id: conn.server_id.clone(),
@@ -1208,10 +1208,10 @@ impl BuildContainerExt for SpiderState {
     }
 
     fn send_tools_list_request(&mut self, channel_id: u32) {
-        use crate::types::{McpRequestType, PendingMcpRequest};
+        use crate::types::{McpRequestType, PendingMcpReq};
 
         let request_id = format!("tools_refresh_{}", channel_id);
-        let tools_request = JsonRpcRequest {
+        let tools_request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "tools/list".to_string(),
             params: None,
@@ -1222,7 +1222,7 @@ impl BuildContainerExt for SpiderState {
         if let Some(conn) = self.ws_connections.get(&channel_id) {
             self.pending_mcp_requests.insert(
                 request_id.clone(),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id: request_id.clone(),
                     conversation_id: None,
                     server_id: conn.server_id.clone(),

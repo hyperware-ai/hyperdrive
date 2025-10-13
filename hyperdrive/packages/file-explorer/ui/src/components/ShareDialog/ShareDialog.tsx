@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileInfo, AuthScheme, share_file } from '../../lib/api';
+import { FileExplorer } from '../../lib/api';
 import useFileExplorerStore from '../../store/fileExplorer';
 import QRCode from 'qrcode';
 import './ShareDialog.css';
 
 interface ShareDialogProps {
-  file: FileInfo;
+  file: FileExplorer.FileInfo;
   onClose: () => void;
 }
 
 const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
-  const [authScheme, setAuthScheme] = useState<AuthScheme>("Public");
+  const [authScheme, setAuthScheme] = useState<FileExplorer.AuthScheme>(FileExplorer.AuthScheme.Public);
   const [shareLink, setShareLink] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
@@ -70,7 +70,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({ file, onClose }) => {
   const handleShare = async () => {
     setLoading(true);
     try {
-      const link = await share_file(file.path, authScheme);
+      const link = await FileExplorer.share_file(file.path, authScheme);
 
       // Remove first element of origin (e.g., http://foo.bar.com -> http://bar.com)
       let origin = window.location.origin;

@@ -54,12 +54,28 @@ interface Conversation {
   mcpServers: string[];
 }
 
+type MessageContent = { Text: string } | { Audio: number[] };
+
 interface Message {
   role: string;
-  content: string;
+  content: MessageContent;
   toolCallsJson?: string;
   toolResultsJson?: string;
   timestamp: number;
+}
+
+// Helper function to normalize message content to enum format
+function normalizeMessageContent(content: any): MessageContent {
+  if (typeof content === 'string') {
+    // Old format - plain string
+    return { Text: content };
+  } else if (content && typeof content === 'object') {
+    // New format - already an enum
+    return content;
+  } else {
+    // Fallback for unexpected formats
+    return { Text: String(content) };
+  }
 }
 
 interface SpiderConfig {
@@ -85,7 +101,7 @@ interface SpiderStore {
   currentRequestId: string | null;
   useWebSocket: boolean;
   wsConnected: boolean;
-  
+
   // Actions
   initialize: () => Promise<void>;
   setApiKey: (provider: string, key: string) => Promise<void>;
@@ -125,22 +141,31 @@ async function getApiKeyForChat(provider: string): Promise<string | null> {
     if (oauthData) {
       try {
         const tokens = JSON.parse(oauthData);
-        
+
         // Check if token is expired
         if (tokens.expires && tokens.expires > Date.now()) {
           return tokens.access;
         }
-        
+
         // Try to refresh the token
         const refreshed = await AuthAnthropic.refresh(tokens.refresh);
-        
-        // Update stored tokens
+
+        // Update stored tokens in localStorage
         localStorage.setItem('claude_oauth', JSON.stringify({
           refresh: refreshed.refresh,
           access: refreshed.access,
           expires: refreshed.expires,
         }));
-        
+
+        // IMPORTANT: Also update the backend's stored OAuth token to keep them in sync
+        // This ensures curl requests use the same refreshed token as the UI
+        try {
+          await api.setApiKey('anthropic-oauth', refreshed.access);
+        } catch (error) {
+          console.error('Failed to update backend OAuth token:', error);
+          // Continue anyway - at least the UI will work
+        }
+
         return refreshed.access;
       } catch (error) {
         console.error('Failed to refresh OAuth token:', error);
@@ -149,7 +174,7 @@ async function getApiKeyForChat(provider: string): Promise<string | null> {
       }
     }
   }
-  
+
   // Fall back to admin key
   return (window as any).__spiderAdminKey || null;
 }
@@ -191,13 +216,13 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
         }
       }
       set({ isLoading: true });
-      
+
       // Check if our.js is loaded
       if (typeof window.our === 'undefined') {
-        set({ 
-          isConnected: false, 
+        set({
+          isConnected: false,
           error: 'Not connected to Hyperware node. Make sure you are running on a Hyperware node.',
-          isLoading: false 
+          isLoading: false
         });
         return;
       }
@@ -212,18 +237,18 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
         get().loadMcpServers(),
         get().loadConfig(),
       ]);
-      
+
       // Try to connect WebSocket for progressive updates
       if (get().useWebSocket) {
         await get().connectWebSocket();
       }
-      
+
       set({ isLoading: false });
     } catch (error: any) {
-      set({ 
-        error: error.message || 'Failed to initialize', 
+      set({
+        error: error.message || 'Failed to initialize',
         isLoading: false,
-        isConnected: false 
+        isConnected: false
       });
     }
   },
@@ -292,7 +317,7 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
           console.error('Failed to fetch admin key:', error);
         }
       }
-      
+
       const keys = await api.listSpiderKeys();
       set({ spiderKeys: keys });
     } catch (error: any) {
@@ -357,7 +382,7 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
     try {
       const requestId = Math.random().toString(36).substring(7);
       set({ isLoading: true, error: null, currentRequestId: requestId });
-      
+
       // Get current conversation or create new one
       let conversation = get().activeConversation;
       if (!conversation) {
@@ -374,20 +399,20 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
           mcpServers: get().mcpServers.filter(s => s.connected).map(s => s.id),
         };
       }
-      
+
       // Add user message
       const userMessage: Message = {
         role: 'user',
-        content: message,
+        content: { Text: message },
         toolCallsJson: null,
         toolResultsJson: null,
         timestamp: Date.now(),
       };
-      
+
       // Update local state immediately for better UX
       conversation.messages.push(userMessage);
       set({ activeConversation: { ...conversation } });
-      
+
       // Check if we should use WebSocket
       if (get().useWebSocket && webSocketService.isReady) {
         // Send via WebSocket for progressive updates
@@ -401,14 +426,14 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
         // WebSocket responses will be handled by the message handler
         return;
       }
-      
+
       // Fallback to HTTP
       // Get appropriate API key (OAuth or admin)
       const apiKey = await getApiKeyForChat(conversation.llmProvider);
       if (!apiKey) {
         throw new Error('No valid API key available. Please add an API key or login with Claude.');
       }
-      
+
       // Send to backend with abort signal support
       const response = await api.chat(
         apiKey,
@@ -419,20 +444,29 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
         conversation.metadata,
         signal
       );
-      
+
       // Only update if this request hasn't been cancelled
       if (get().currentRequestId === requestId) {
         // Update conversation with response
         conversation.id = response.conversationId;
-        
+
         // Add all messages from the response (includes tool calls and results)
         if (response.allMessages && response.allMessages.length > 0) {
-          conversation.messages.push(...response.allMessages);
+          // Normalize all messages to ensure content is in enum format
+          const normalizedMessages = response.allMessages.map((msg: any) => ({
+            ...msg,
+            content: normalizeMessageContent(msg.content)
+          }));
+          conversation.messages.push(...normalizedMessages);
         } else {
           // Fallback to just the final response if allMessages is not available
-          conversation.messages.push(response.response);
+          const normalizedResponse = {
+            ...response.response,
+            content: normalizeMessageContent(response.response.content)
+          };
+          conversation.messages.push(normalizedResponse);
         }
-        
+
         // Update conversations list
         const conversations = get().conversations;
         const existingIndex = conversations.findIndex(c => c.id === conversation.id);
@@ -441,8 +475,8 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
         } else {
           conversations.unshift(conversation);
         }
-        
-        set({ 
+
+        set({
           activeConversation: { ...conversation },
           conversations: [...conversations],
           isLoading: false,
@@ -453,8 +487,8 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
       if (error.name === 'AbortError') {
         set({ isLoading: false, currentRequestId: null });
       } else {
-        set({ 
-          error: error.message || 'Failed to send message', 
+        set({
+          error: error.message || 'Failed to send message',
           isLoading: false,
           currentRequestId: null
         });
@@ -474,7 +508,15 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
   loadConversations: async (client?: string, limit?: number) => {
     try {
       const conversations = await api.listConversations(client, limit);
-      set({ conversations });
+      // Normalize all message contents in all loaded conversations
+      const normalizedConversations = conversations.map((conv: any) => ({
+        ...conv,
+        messages: conv.messages ? conv.messages.map((msg: any) => ({
+          ...msg,
+          content: normalizeMessageContent(msg.content)
+        })) : []
+      }));
+      set({ conversations: normalizedConversations });
     } catch (error: any) {
       set({ error: error.message || 'Failed to load conversations' });
     }
@@ -483,6 +525,13 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
   loadConversation: async (id: string) => {
     try {
       const conversation = await api.getConversation(id);
+      // Normalize all message contents in the loaded conversation
+      if (conversation && conversation.messages) {
+        conversation.messages = conversation.messages.map((msg: any) => ({
+          ...msg,
+          content: normalizeMessageContent(msg.content)
+        }));
+      }
       set({ activeConversation: conversation });
     } catch (error: any) {
       set({ error: error.message || 'Failed to load conversation' });
@@ -510,18 +559,18 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
-  
+
   toggleWebSocket: async () => {
     const newState = !get().useWebSocket;
     set({ useWebSocket: newState });
-    
+
     if (newState) {
       await get().connectWebSocket();
     } else {
       get().disconnectWebSocket();
     }
   },
-  
+
   connectWebSocket: async () => {
     try {
       // Determine WebSocket URL based on current location and BASE_URL
@@ -530,30 +579,35 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
       const baseUrl = import.meta.env.BASE_URL || '/';
       const wsPath = baseUrl.endsWith('/') ? `${baseUrl}ws` : `${baseUrl}/ws`;
       const wsUrl = `${protocol}//${host}${wsPath}`;
-      
+
       console.log('Connecting to WebSocket at:', wsUrl);
       await webSocketService.connect(wsUrl);
-      
+
       // Set up message handler for progressive updates
       webSocketService.addMessageHandler((message: WsServerMessage) => {
         const state = get();
-        
+
         switch (message.type) {
           case 'message':
             // Progressive message update from tool loop
             if (state.activeConversation && message.message) {
               const updatedConversation = { ...state.activeConversation };
-              updatedConversation.messages.push(message.message);
+              // Normalize the message content to ensure it's in the enum format
+              const normalizedMessage = {
+                ...message.message,
+                content: normalizeMessageContent(message.message.content)
+              };
+              updatedConversation.messages.push(normalizedMessage);
               set({ activeConversation: updatedConversation });
             }
             break;
-            
+
           case 'chat_complete':
             // Final response received
             if (state.activeConversation && message.payload) {
               const updatedConversation = { ...state.activeConversation };
               updatedConversation.id = message.payload.conversationId;
-              
+
               // Update conversations list
               const conversations = [...state.conversations];
               const existingIndex = conversations.findIndex(c => c.id === updatedConversation.id);
@@ -562,8 +616,8 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
               } else {
                 conversations.unshift(updatedConversation);
               }
-              
-              set({ 
+
+              set({
                 activeConversation: updatedConversation,
                 conversations,
                 isLoading: false,
@@ -571,9 +625,9 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
               });
             }
             break;
-            
+
           case 'error':
-            set({ 
+            set({
               error: message.error || 'WebSocket error occurred',
               isLoading: false,
               currentRequestId: null
@@ -581,7 +635,7 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
             break;
         }
       });
-      
+
       // Authenticate with appropriate API key (OAuth or admin)
       const provider = get().config.defaultLlmProvider;
       const authKey = await getApiKeyForChat(provider);
@@ -590,18 +644,18 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
         throw new Error('No valid API key available. Please add an API key or login with Claude.');
       }
       await webSocketService.authenticate(authKey);
-      
+
       set({ wsConnected: true });
     } catch (error: any) {
       console.error('Failed to connect WebSocket:', error);
-      set({ 
-        wsConnected: false, 
+      set({
+        wsConnected: false,
         useWebSocket: false,
         error: 'Failed to connect WebSocket. Falling back to HTTP.'
       });
     }
   },
-  
+
   disconnectWebSocket: () => {
     webSocketService.disconnect();
     set({ wsConnected: false });

@@ -254,10 +254,15 @@ export default function Chat() {
 
           return (
             <React.Fragment key={index}>
-              {msg.role !== 'tool' && (msg.content && msg.content.trim() && msg.content !== '[Tool calls pending]') && (
+              {msg.role !== 'tool' && msg.content && (
                 <div className={`message message-${msg.role}`}>
                   <div className="message-content">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown>
+                      {msg.content && typeof msg.content === 'object' && 'Text' in msg.content ? 
+                        (msg.content.Text.trim() && msg.content.Text !== '[Tool calls pending]' ? msg.content.Text : null) : 
+                        (typeof msg.content === 'string' ? msg.content : '[Audio content]')
+                      }
+                    </ReactMarkdown>
                   </div>
                 </div>
               )}
