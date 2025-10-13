@@ -384,8 +384,25 @@ async fn maintain_local_subscription(
 ) -> Result<(), EthSubError> {
     let e = loop {
         tokio::select! {
-            _ = close_receiver.recv() => {
-                return Ok(());
+            is_error = close_receiver.recv() => {
+                match is_error {
+                    Some(true) => {
+                        // Network error - return an error so client gets EthSubResult::Err
+                        return Err(EthSubError {
+                            id: sub_id,
+                            error: "subscription closed due to network error".to_string(),
+                        });
+                    },
+                    Some(false) | None => {
+                        // Manual close by user - clean up and return Ok
+                        active_subscriptions
+                            .entry(target.clone())
+                            .and_modify(|sub_map| {
+                                sub_map.remove(&sub_id);
+                            });
+                        return Ok(());
+                    }
+                }
             },
             value = rx.recv() => {
                 let value = match value {
