@@ -163,18 +163,6 @@ pub async fn kernel_message<T: Serialize>(
     }
 }
 
-pub fn find_index(vec: &Vec<&str>, item: &str) -> Option<usize> {
-    vec.iter().enumerate().find_map(
-        |(index, value)| {
-            if *value == item {
-                Some(index)
-            } else {
-                None
-            }
-        },
-    )
-}
-
 pub async fn set_node_unusable(
     providers: &Providers,
     chain_id: &u64,
@@ -183,19 +171,15 @@ pub async fn set_node_unusable(
 ) -> bool {
     let mut is_replacement_successful = true;
     providers.entry(chain_id.clone()).and_modify(|aps| {
-        let Some(index) = find_index(
-            &aps.nodes
-                .iter()
-                .map(|n| n.hns_update.name.as_str())
-                .collect(),
-            &node_name,
-        ) else {
+        if let Some(node) = aps
+            .nodes
+            .iter_mut()
+            .find(|n| n.hns_update.name == node_name)
+        {
+            node.usable = false;
+        } else {
             is_replacement_successful = false;
-            return ();
-        };
-        let mut node = aps.nodes.remove(index);
-        node.usable = false;
-        aps.nodes.insert(index, node);
+        }
     });
     if !is_replacement_successful {
         verbose_print(

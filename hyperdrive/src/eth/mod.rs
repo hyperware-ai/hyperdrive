@@ -1090,25 +1090,20 @@ async fn fulfill_request(
                 // Transport/connection error - mark the provider as offline and spawn health check
                 let mut spawn_health_check = false;
                 providers.entry(chain_id.clone()).and_modify(|aps| {
-                    let Some(index) = find_index(
-                        &aps.urls.iter().map(|u| u.url.as_str()).collect(),
-                        &url_provider.url,
-                    ) else {
-                        return ();
-                    };
-                    let mut url = aps.urls.remove(index);
-                    url.pubsub = vec![];
-                    url.online = false;
-                    url.last_health_check = Some(Instant::now());
+                    if let Some(url) = aps.urls.iter_mut().find(|u| u.url == url_provider.url) {
+                        url.pubsub.clear();
+                        url.online = false;
+                        let now = Instant::now();
 
-                    // Only spawn health check if not already running
-                    if url.last_health_check.is_none()
-                        || url.last_health_check.unwrap().elapsed() > Duration::from_secs(30)
-                    {
-                        spawn_health_check = true;
+                        // Only spawn health check if not already running
+                        if url.last_health_check.is_none()
+                            || url.last_health_check.unwrap().elapsed() > Duration::from_secs(30)
+                        {
+                            spawn_health_check = true;
+                        }
+
+                        url.last_health_check = Some(now);
                     }
-
-                    aps.urls.insert(index, url);
                 });
 
                 // Spawn health check task if needed
