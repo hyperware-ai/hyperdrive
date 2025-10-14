@@ -6,6 +6,7 @@ use std::{
 
 use clap::{Arg, Command};
 use fs_err as fs;
+use rayon::prelude::*;
 use zip::write::FileOptions;
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -113,6 +114,12 @@ fn main() -> anyhow::Result<()> {
                 .help("Set output filename (default: packages-{features}.zip)")
                 .action(clap::ArgAction::Set),
         )
+        .arg(
+            Arg::new("PARALLEL")
+                .long("parallel")
+                .help("Build packages in parallel (faster but uses more resources)")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     // hyperdrive/target/debug/build-package
@@ -137,6 +144,7 @@ fn main() -> anyhow::Result<()> {
     let features = features.join(",");
 
     let skip_frontend = matches.get_flag("SKIP_FRONTEND");
+    let parallel = matches.get_flag("PARALLEL");
 
     let build_parameters = fs::read(hyperdrive_dir.join("packages-build-parameters.json"))?;
     let build_parameters: HashMap<String, PackageBuildParameters> =
@@ -157,7 +165,8 @@ fn main() -> anyhow::Result<()> {
         })
         .collect();
 
-    let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = fs::read_dir(&packages_dir)?
+    // First, collect all package info sequentially (since we're mutating build_parameters)
+    let package_build_info: Vec<(PathBuf, String, String, Vec<PathBuf>, bool)> = fs::read_dir(&packages_dir)?
         .filter_map(|entry| {
             let entry_path = match entry {
                 Ok(e) => e.path(),
@@ -201,16 +210,45 @@ fn main() -> anyhow::Result<()> {
             } else {
                 format!("{features},{}", package_specific_features.join(","))
             };
-            Some(build_and_zip_package(
-                entry_path.clone(),
-                child_pkg_path.to_str().unwrap(),
-                skip_frontend,
-                &package_specific_features,
+            Some((
+                entry_path,
+                child_pkg_path.to_string_lossy().to_string(),
+                package_specific_features,
                 local_dependency_array,
                 is_hyperapp,
             ))
         })
         .collect();
+
+    let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = if parallel {
+        package_build_info
+            .into_par_iter()
+            .map(|(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
+                build_and_zip_package(
+                    entry_path,
+                    &child_pkg_path,
+                    skip_frontend,
+                    &package_features,
+                    local_deps,
+                    is_hyperapp,
+                )
+            })
+            .collect()
+    } else {
+        package_build_info
+            .into_iter()
+            .map(|(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
+                build_and_zip_package(
+                    entry_path,
+                    &child_pkg_path,
+                    skip_frontend,
+                    &package_features,
+                    local_deps,
+                    is_hyperapp,
+                )
+            })
+            .collect()
+    };
 
     let mut file_to_metadata = std::collections::HashMap::new();
 

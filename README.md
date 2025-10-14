@@ -51,9 +51,12 @@ rustup target add wasm32-wasip1
 # The compiled packages will be at `hyperdrive/target/packages.zip`.
 # The compiled binary will be at `hyperdrive/target/debug/hyperdrive`.
 # OPTIONAL: --release flag (slower build; faster runtime; binary at `hyperdrive/target/release/hyperdrive`).
+# OPTIONAL: --parallel flag to build packages in parallel (faster but uses more resources).
 
 cd hyperdrive
 cargo run -p build-packages
+# OR for parallel builds:
+# cargo run -p build-packages -- --parallel
 # OPTIONAL: --release flag
 cargo build -p hyperdrive
 ```
