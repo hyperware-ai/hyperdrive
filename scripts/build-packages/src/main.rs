@@ -166,87 +166,92 @@ fn main() -> anyhow::Result<()> {
         .collect();
 
     // First, collect all package info sequentially (since we're mutating build_parameters)
-    let package_build_info: Vec<(PathBuf, String, String, Vec<PathBuf>, bool)> = fs::read_dir(&packages_dir)?
-        .filter_map(|entry| {
-            let entry_path = match entry {
-                Ok(e) => e.path(),
-                Err(_) => return None,
-            };
-            let child_pkg_path = entry_path.join("pkg");
-            if !child_pkg_path.exists() {
-                // don't run on, e.g., `.DS_Store`
-                return None;
-            }
-            let (local_dependency_array, is_hyperapp, package_specific_features) =
-                if let Some(filename) = entry_path.file_name() {
-                    if let Some(maybe_params) =
-                        build_parameters.remove(&filename.to_string_lossy().to_string())
-                    {
-                        (
-                            maybe_params.local_dependencies.unwrap_or_default(),
-                            maybe_params.is_hyperapp.unwrap_or_default(),
-                            maybe_params.features.unwrap_or_default(),
-                        )
+    let package_build_info: Vec<(PathBuf, String, String, Vec<PathBuf>, bool)> =
+        fs::read_dir(&packages_dir)?
+            .filter_map(|entry| {
+                let entry_path = match entry {
+                    Ok(e) => e.path(),
+                    Err(_) => return None,
+                };
+                let child_pkg_path = entry_path.join("pkg");
+                if !child_pkg_path.exists() {
+                    // don't run on, e.g., `.DS_Store`
+                    return None;
+                }
+                let (local_dependency_array, is_hyperapp, package_specific_features) =
+                    if let Some(filename) = entry_path.file_name() {
+                        if let Some(maybe_params) =
+                            build_parameters.remove(&filename.to_string_lossy().to_string())
+                        {
+                            (
+                                maybe_params.local_dependencies.unwrap_or_default(),
+                                maybe_params.is_hyperapp.unwrap_or_default(),
+                                maybe_params.features.unwrap_or_default(),
+                            )
+                        } else {
+                            (vec![], false, vec![])
+                        }
                     } else {
                         (vec![], false, vec![])
-                    }
+                    };
+                let package_specific_features = if package_specific_features.is_empty() {
+                    features.clone()
+                } else if package_specific_features.contains(&"caller-utils".to_string()) {
+                    // build without caller-utils flag, which will fail but will
+                    //  also create caller-utils crate (required for succeeding build)
+                    let _ = build_and_zip_package(
+                        entry_path.clone(),
+                        child_pkg_path.to_str().unwrap(),
+                        skip_frontend,
+                        &features,
+                        local_dependency_array.clone(),
+                        is_hyperapp,
+                    );
+                    format!("{features},{}", package_specific_features.join(","))
                 } else {
-                    (vec![], false, vec![])
+                    format!("{features},{}", package_specific_features.join(","))
                 };
-            let package_specific_features = if package_specific_features.is_empty() {
-                features.clone()
-            } else if package_specific_features.contains(&"caller-utils".to_string()) {
-                // build without caller-utils flag, which will fail but will
-                //  also create caller-utils crate (required for succeeding build)
-                let _ = build_and_zip_package(
-                    entry_path.clone(),
-                    child_pkg_path.to_str().unwrap(),
-                    skip_frontend,
-                    &features,
-                    local_dependency_array.clone(),
+                Some((
+                    entry_path,
+                    child_pkg_path.to_string_lossy().to_string(),
+                    package_specific_features,
+                    local_dependency_array,
                     is_hyperapp,
-                );
-                format!("{features},{}", package_specific_features.join(","))
-            } else {
-                format!("{features},{}", package_specific_features.join(","))
-            };
-            Some((
-                entry_path,
-                child_pkg_path.to_string_lossy().to_string(),
-                package_specific_features,
-                local_dependency_array,
-                is_hyperapp,
-            ))
-        })
-        .collect();
+                ))
+            })
+            .collect();
 
     let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = if parallel {
         package_build_info
             .into_par_iter()
-            .map(|(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
-                build_and_zip_package(
-                    entry_path,
-                    &child_pkg_path,
-                    skip_frontend,
-                    &package_features,
-                    local_deps,
-                    is_hyperapp,
-                )
-            })
+            .map(
+                |(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
+                    build_and_zip_package(
+                        entry_path,
+                        &child_pkg_path,
+                        skip_frontend,
+                        &package_features,
+                        local_deps,
+                        is_hyperapp,
+                    )
+                },
+            )
             .collect()
     } else {
         package_build_info
             .into_iter()
-            .map(|(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
-                build_and_zip_package(
-                    entry_path,
-                    &child_pkg_path,
-                    skip_frontend,
-                    &package_features,
-                    local_deps,
-                    is_hyperapp,
-                )
-            })
+            .map(
+                |(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
+                    build_and_zip_package(
+                        entry_path,
+                        &child_pkg_path,
+                        skip_frontend,
+                        &package_features,
+                        local_deps,
+                        is_hyperapp,
+                    )
+                },
+            )
             .collect()
     };
 
