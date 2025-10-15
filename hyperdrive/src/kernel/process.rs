@@ -13,11 +13,8 @@ use wasmtime::{
     component::{Component, Linker, ResourceTable as Table},
     Engine, Store,
 };
-use wasmtime_wasi::{
-    p2::{
-        pipe::MemoryOutputPipe, IoView, StdoutStream, StreamResult, WasiCtx, WasiCtxBuilder,
-        WasiView,
-    },
+use wasmtime_wasi::p2::{
+    pipe::MemoryOutputPipe, IoView, StdoutStream, StreamResult, WasiCtx, WasiCtxBuilder, WasiView,
 };
 use wasmtime_wasi_io::{async_trait, poll::Pollable, streams::OutputStream};
 
