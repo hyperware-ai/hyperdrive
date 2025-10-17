@@ -114,12 +114,6 @@ fn main() -> anyhow::Result<()> {
                 .help("Set output filename (default: packages-{features}.zip)")
                 .action(clap::ArgAction::Set),
         )
-        .arg(
-            Arg::new("PARALLEL")
-                .long("parallel")
-                .help("Build packages in parallel (faster but uses more resources)")
-                .action(clap::ArgAction::SetTrue),
-        )
         .get_matches();
 
     // hyperdrive/target/debug/build-package
@@ -144,7 +138,6 @@ fn main() -> anyhow::Result<()> {
     let features = features.join(",");
 
     let skip_frontend = matches.get_flag("SKIP_FRONTEND");
-    let parallel = matches.get_flag("PARALLEL");
 
     let build_parameters = fs::read(hyperdrive_dir.join("packages-build-parameters.json"))?;
     let build_parameters: HashMap<String, PackageBuildParameters> =
@@ -221,7 +214,8 @@ fn main() -> anyhow::Result<()> {
             })
             .collect();
 
-    let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = if parallel {
+    // Build in parallel
+    let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> =
         package_build_info
             .into_par_iter()
             .map(
@@ -236,24 +230,7 @@ fn main() -> anyhow::Result<()> {
                     )
                 },
             )
-            .collect()
-    } else {
-        package_build_info
-            .into_iter()
-            .map(
-                |(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
-                    build_and_zip_package(
-                        entry_path,
-                        &child_pkg_path,
-                        skip_frontend,
-                        &package_features,
-                        local_deps,
-                        is_hyperapp,
-                    )
-                },
-            )
-            .collect()
-    };
+            .collect();
 
     let mut file_to_metadata = std::collections::HashMap::new();
 
