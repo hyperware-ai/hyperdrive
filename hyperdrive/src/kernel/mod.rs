@@ -95,7 +95,6 @@ async fn handle_kernel_request(
     process_map: &mut t::ProcessMap,
     caps_oracle: &t::CapMessageSender,
     engine: &Engine,
-    home_directory_path: &PathBuf,
     process_restart_backoffs: &mut ProcessRestartBackoffs,
 ) -> Option<()> {
     let t::Message::Request(request) = km.message else {
@@ -290,7 +289,6 @@ async fn handle_kernel_request(
                 engine,
                 caps_oracle,
                 &start_process_metadata,
-                &home_directory_path,
                 process_restart_backoffs,
             )
             .await
@@ -550,7 +548,6 @@ async fn start_process(
     engine: &Engine,
     caps_oracle: &t::CapMessageSender,
     process_metadata: &StartProcessMetadata,
-    home_directory_path: &PathBuf,
     process_restart_backoffs: &mut ProcessRestartBackoffs,
 ) -> anyhow::Result<()> {
     let (send_to_process, recv_in_process) =
@@ -594,7 +591,6 @@ async fn start_process(
             km_blob_bytes,
             caps_oracle.clone(),
             engine.clone(),
-            home_directory_path.clone(),
             maybe_restart_backoff,
         )),
     );
@@ -747,7 +743,6 @@ pub async fn kernel(
             &engine,
             &caps_oracle_sender,
             &start_process_metadata,
-            &home_directory_path,
             &mut process_restart_backoffs,
         )
         .await
@@ -1030,7 +1025,6 @@ pub async fn kernel(
                         &mut process_map,
                         &caps_oracle_sender,
                         &engine,
-                        &home_directory_path,
                         &mut process_restart_backoffs,
                     ).await {
                         // drain process map of processes with OnExit::None
