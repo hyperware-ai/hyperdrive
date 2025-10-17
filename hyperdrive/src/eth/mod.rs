@@ -252,10 +252,10 @@ enum ActiveSub {
 }
 
 impl ActiveSub {
-    async fn close(&self, sub_id: u64, state: &ModuleState) {
+    async fn close(&self, sub_id: u64, state: &ModuleState, is_error: bool) {
         match self {
             ActiveSub::Local((close_sender, _handle)) => {
-                close_sender.send(true).await.unwrap();
+                close_sender.send(is_error).await.unwrap();
                 //handle.abort();
             }
             ActiveSub::Remote {
@@ -467,7 +467,7 @@ async fn handle_network_error(wrapped_error: WrappedSendError, state: &ModuleSta
                 ),
             )
             .await;
-            sub.close(*sub_id, state).await;
+            sub.close(*sub_id, state, true).await;
         }
     }
 
@@ -599,7 +599,7 @@ async fn handle_message(
                         if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
                             if let Some(sub) = sub_map.remove(&sub_id) {
                                 drop(sub_map); // Release guard before awaiting
-                                sub.close(sub_id, state).await;
+                                sub.close(sub_id, state, true).await;
                                 return Ok(());
                             }
                         }
@@ -613,7 +613,7 @@ async fn handle_message(
                         if let Some(mut sub_map) = state.active_subscriptions.get_mut(&rsvp) {
                             if let Some(sub) = sub_map.remove(&sub_id) {
                                 drop(sub_map); // Release guard before awaiting
-                                sub.close(sub_id, state).await;
+                                sub.close(sub_id, state, true).await;
                                 return Ok(());
                             }
                         }
@@ -766,7 +766,7 @@ async fn handle_eth_action(
 
             if let Some(sub) = sub {
                 // Now we can safely call close without holding the guard
-                sub.close(sub_id, state).await;
+                sub.close(sub_id, state, false).await;
                 verbose_print(
                     &state.print_tx,
                     &format!("eth: closed subscription {} for {}", sub_id, km.source.node),
