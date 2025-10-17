@@ -241,27 +241,23 @@ async fn build_subscription(
         {
             Ok(sub) => {
                 let rx = sub.into_raw();
-                let mut is_replacement_successful = true;
-                providers.entry(*chain_id).and_modify(|aps| {
-                    let Some(index) = find_index(
-                        &aps.urls.iter().map(|u| u.url.as_str()).collect(),
-                        &url_provider.url,
-                    ) else {
-                        is_replacement_successful = false;
-                        return ();
-                    };
-                    let mut old_provider = aps.urls.remove(index);
-                    if newly_activated {
-                        old_provider.pubsub.push(url_provider.pubsub.pop().unwrap());
+                if newly_activated {
+                    let mut provider_found = false;
+                    providers.entry(*chain_id).and_modify(|aps| {
+                        if let Some(provider) =
+                            aps.urls.iter_mut().find(|p| p.url == url_provider.url)
+                        {
+                            provider.pubsub.push(url_provider.pubsub.pop().unwrap());
+                            provider_found = true;
+                        }
+                    });
+                    if !provider_found {
+                        verbose_print(
+                            print_tx,
+                            &format!("eth: unexpectedly couldn't find provider to be modified"),
+                        )
+                        .await;
                     }
-                    aps.urls.insert(0, old_provider);
-                });
-                if !is_replacement_successful {
-                    verbose_print(
-                        print_tx,
-                        &format!("eth: unexpectedly couldn't find provider to be modified"),
-                    )
-                    .await;
                 }
                 return Ok(Ok((rx, *chain_id)));
             }
@@ -276,20 +272,16 @@ async fn build_subscription(
                 .await;
                 if !newly_activated {
                     // this provider failed and needs to be reset
-                    let mut is_reset_successful = true;
+                    let mut provider_found = false;
                     providers.entry(*chain_id).and_modify(|aps| {
-                        let Some(index) = find_index(
-                            &aps.urls.iter().map(|u| u.url.as_str()).collect(),
-                            &url_provider.url,
-                        ) else {
-                            is_reset_successful = false;
-                            return ();
-                        };
-                        let mut old_provider = aps.urls.remove(index);
-                        old_provider.pubsub = vec![];
-                        aps.urls.insert(index, old_provider);
+                        if let Some(provider) =
+                            aps.urls.iter_mut().find(|p| p.url == url_provider.url)
+                        {
+                            provider.pubsub.clear();
+                            provider_found = true;
+                        }
                     });
-                    if !is_reset_successful {
+                    if !provider_found {
                         verbose_print(
                             print_tx,
                             &format!("eth: unexpectedly couldn't find provider to be modified"),
