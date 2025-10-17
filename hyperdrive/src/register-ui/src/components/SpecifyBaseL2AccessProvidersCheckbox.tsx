@@ -14,7 +14,7 @@ export default function SpecifyBaseL2AccessProvidersCheckbox({
                                                              }: SpecifyBaseL2AccessProvidersProps) {
     return (
         <div className="flex gap-2 items-center">
-            <button className="icon" onClick={(e) => {
+            <button type="button" className="icon" onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setSpecifyBaseL2AccessProviders(!specifyBaseL2AccessProviders);

@@ -3,23 +3,18 @@ use bytes::{BufMut, Bytes, BytesMut};
 use lib::{types::core as t, v1::ProcessV1};
 use std::{
     collections::{HashMap, VecDeque},
-    path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex as StdMutex,
     },
 };
-use tokio::{fs, sync::Mutex, task::JoinHandle};
+use tokio::{sync::Mutex, task::JoinHandle};
 use wasmtime::{
     component::{Component, Linker, ResourceTable as Table},
     Engine, Store,
 };
-use wasmtime_wasi::{
-    p2::{
-        pipe::MemoryOutputPipe, IoView, StdoutStream, StreamResult, WasiCtx, WasiCtxBuilder,
-        WasiView,
-    },
-    DirPerms, FilePerms,
+use wasmtime_wasi::p2::{
+    pipe::MemoryOutputPipe, IoView, StdoutStream, StreamResult, WasiCtx, WasiCtxBuilder, WasiView,
 };
 use wasmtime_wasi_io::{async_trait, poll::Pollable, streams::OutputStream};
 
@@ -83,48 +78,11 @@ impl WasiView for ProcessWasiV1 {
     }
 }
 
-async fn make_table_and_wasi(
-    home_directory_path: PathBuf,
-    process_state: &ProcessState,
-) -> (Table, WasiCtx, RotatingOutputPipe) {
+async fn make_table_and_wasi() -> (Table, WasiCtx, RotatingOutputPipe) {
     let table = Table::new();
     let wasi_stderr = RotatingOutputPipe::new(STACK_TRACE_SIZE);
 
-    #[cfg(unix)]
-    let tmp_path = home_directory_path
-        .join("vfs")
-        .join(format!(
-            "{}:{}",
-            process_state.metadata.our.process.package(),
-            process_state.metadata.our.process.publisher()
-        ))
-        .join("tmp");
-    #[cfg(target_os = "windows")]
-    let tmp_path = home_directory_path
-        .join("vfs")
-        .join(format!(
-            "{}_{}",
-            process_state.metadata.our.process.package(),
-            process_state.metadata.our.process.publisher()
-        ))
-        .join("tmp");
-
-    let tmp_path = tmp_path.to_str().unwrap();
-
     let mut wasi = WasiCtxBuilder::new();
-
-    // TODO make guarantees about this
-    if let Ok(Ok(())) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        fs::create_dir_all(&tmp_path),
-    )
-    .await
-    {
-        if let Ok(wasi) = wasi.preopened_dir(tmp_path, tmp_path, DirPerms::all(), FilePerms::all())
-        {
-            wasi.env("TEMP_DIR", tmp_path);
-        }
-    }
 
     (table, wasi.stderr(wasi_stderr.clone()).build(), wasi_stderr)
 }
@@ -132,7 +90,6 @@ async fn make_table_and_wasi(
 async fn make_component_v1(
     engine: Engine,
     wasm_bytes: &[u8],
-    home_directory_path: PathBuf,
     process_state: ProcessState,
 ) -> anyhow::Result<(ProcessV1, Store<ProcessWasiV1>, RotatingOutputPipe)> {
     let our_process_id = process_state.metadata.our.process.clone();
@@ -154,7 +111,7 @@ async fn make_component_v1(
 
     let mut linker = Linker::new(&engine);
     ProcessV1::add_to_linker(&mut linker, |state: &mut ProcessWasiV1| state).unwrap();
-    let (table, wasi, wasi_stderr) = make_table_and_wasi(home_directory_path, &process_state).await;
+    let (table, wasi, wasi_stderr) = make_table_and_wasi().await;
     wasmtime_wasi::p2::add_to_linker_async(&mut linker).unwrap();
     let mut store = Store::new(
         &engine,
@@ -193,7 +150,6 @@ pub async fn make_process_loop(
     wasm_bytes: Vec<u8>,
     caps_oracle: t::CapMessageSender,
     engine: Engine,
-    home_directory_path: PathBuf,
     maybe_restart_backoff: Option<Arc<Mutex<Option<RestartBackoff>>>>,
 ) -> anyhow::Result<()> {
     // before process can be instantiated, need to await 'run' message from kernel
@@ -252,7 +208,7 @@ pub async fn make_process_loop(
         // assume missing version is oldest wit version
         None | Some(1) | _ => {
             let (bindings, mut store, wasi_stderr) =
-                make_component_v1(engine, &wasm_bytes, home_directory_path, process_state).await?;
+                make_component_v1(engine, &wasm_bytes, process_state).await?;
 
             // the process will run until it returns from init() or crashes
             match bindings.call_init(&mut store, &our.to_string()).await {
