@@ -251,17 +251,36 @@ pub fn spawn_health_check_for_url_provider(
             // Try to check health
             let mut provider_online = false;
 
-            if let Some(mut aps) = providers.get_mut(&chain_id) {
-                if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
-                    provider.last_health_check = Some(Instant::now());
-                    if check_url_provider_health(provider).await {
-                        provider.online = true;
-                        provider_online = true;
+            // Clone provider data and drop the guard before async operations
+            let provider_to_check = {
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
                         provider.last_health_check = Some(Instant::now());
-
-                        verbose_print(&print_tx, &format!("eth: provider {} is back online", url))
-                            .await;
+                        Some(provider.clone())
+                    } else {
+                        None
                     }
+                } else {
+                    None
+                }
+            };
+
+            // Perform health check without holding the guard
+            if let Some(mut provider) = provider_to_check {
+                if check_url_provider_health(&mut provider).await {
+                    provider_online = true;
+
+                    // Update provider state after successful health check
+                    if let Some(mut aps) = providers.get_mut(&chain_id) {
+                        if let Some(p) = aps.urls.iter_mut().find(|p| p.url == url) {
+                            p.online = true;
+                            p.last_health_check = Some(Instant::now());
+                        }
+                    }
+
+                    // Send verbose print after releasing the guard
+                    verbose_print(&print_tx, &format!("eth: provider {} is back online", url))
+                        .await;
                 }
             }
 
@@ -288,15 +307,28 @@ pub fn spawn_method_retry_for_url_provider(
         // For eth_sendRawTransaction, just wait 60 minutes then clear
         if method == "eth_sendRawTransaction" {
             tokio::time::sleep(Duration::from_secs(3600)).await;
-            if let Some(mut aps) = providers.get_mut(&chain_id) {
-                if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
-                    provider.method_failures.send_raw_tx_failed = None;
-                    verbose_print(
-                        &print_tx,
-                        &format!("eth: cleared eth_sendRawTransaction failure for {}", url),
-                    )
-                    .await;
+
+            // Clear the failure flag without holding guard during async operations
+            let should_print = {
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                        provider.method_failures.send_raw_tx_failed = None;
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
                 }
+            };
+
+            // Perform verbose print after releasing the guard
+            if should_print {
+                verbose_print(
+                    &print_tx,
+                    &format!("eth: cleared eth_sendRawTransaction failure for {}", url),
+                )
+                .await;
             }
             return;
         }
@@ -308,26 +340,55 @@ pub fn spawn_method_retry_for_url_provider(
             // Double the backoff, max 60 minutes
             backoff_mins = (backoff_mins * 2).min(60);
 
-            // Try to activate and test the method
-            let Some(mut aps) = providers.get_mut(&chain_id) else {
+            // Clone provider data and check if activation is needed
+            let (needs_activation, provider_clone) = {
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                        (provider.pubsub.is_empty(), Some(provider.clone()))
+                    } else {
+                        (false, None)
+                    }
+                } else {
+                    (false, None)
+                }
+            };
+
+            let Some(mut provider_clone) = provider_clone else {
                 continue;
             };
 
-            let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) else {
-                continue;
-            };
-
-            if provider.pubsub.is_empty() {
-                let Ok(_) = activate_url_provider(provider).await else {
+            // Activate provider if needed (without holding guard)
+            if needs_activation {
+                let Ok(_) = activate_url_provider(&mut provider_clone).await else {
                     continue;
                 };
+
+                // Update provider with new connection
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                        provider.pubsub = provider_clone.pubsub.clone();
+                    }
+                }
             }
 
-            let Some(pubsub) = provider.pubsub.first() else {
+            // Get pubsub for testing
+            let pubsub = {
+                if let Some(aps) = providers.get(&chain_id) {
+                    if let Some(provider) = aps.urls.iter().find(|p| p.url == url) {
+                        provider.pubsub.first().cloned()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
+            let Some(pubsub) = pubsub else {
                 continue;
             };
 
-            // Try the previously-failing method
+            // Try the previously-failing method (without holding guard)
             let success = matches!(
                 tokio::time::timeout(
                     Duration::from_secs(10),
@@ -342,16 +403,20 @@ pub fn spawn_method_retry_for_url_provider(
 
             if success {
                 // Clear the method failure
-                if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
-                        provider.method_failures.clear_method_failure(&method);
-                        verbose_print(
-                            &print_tx,
-                            &format!("eth: {} now working again for {}", method, url),
-                        )
-                        .await;
+                {
+                    if let Some(mut aps) = providers.get_mut(&chain_id) {
+                        if let Some(provider) = aps.urls.iter_mut().find(|p| p.url == url) {
+                            provider.method_failures.clear_method_failure(&method);
+                        }
                     }
                 }
+
+                // Perform verbose print after releasing the guard
+                verbose_print(
+                    &print_tx,
+                    &format!("eth: {} now working again for {}", method, url),
+                )
+                .await;
                 break;
             }
         }
@@ -376,22 +441,33 @@ pub fn spawn_method_retry_for_node_provider(
         // For eth_sendRawTransaction, just wait 60 minutes then clear
         if method == "eth_sendRawTransaction" {
             tokio::time::sleep(Duration::from_secs(3600)).await;
-            if let Some(mut aps) = providers.get_mut(&chain_id) {
-                if let Some(provider) = aps
-                    .nodes
-                    .iter_mut()
-                    .find(|p| p.hns_update.name == node_name)
-                {
-                    provider.method_failures.send_raw_tx_failed = None;
-                    verbose_print(
-                        &print_tx,
-                        &format!(
-                            "eth: cleared eth_sendRawTransaction failure for node {}",
-                            node_name
-                        ),
-                    )
-                    .await;
+            let should_print = {
+                if let Some(mut aps) = providers.get_mut(&chain_id) {
+                    if let Some(provider) = aps
+                        .nodes
+                        .iter_mut()
+                        .find(|p| p.hns_update.name == node_name)
+                    {
+                        provider.method_failures.send_raw_tx_failed = None;
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
                 }
+            };
+
+            // Perform verbose print after releasing the guard
+            if should_print {
+                verbose_print(
+                    &print_tx,
+                    &format!(
+                        "eth: cleared eth_sendRawTransaction failure for node {}",
+                        node_name
+                    ),
+                )
+                .await;
             }
             return;
         }
@@ -442,19 +518,30 @@ pub fn spawn_method_retry_for_node_provider(
 
             if success {
                 // Clear the method failure
-                if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps
-                        .nodes
-                        .iter_mut()
-                        .find(|p| p.hns_update.name == node_name)
-                    {
-                        provider.method_failures.clear_method_failure(&method);
-                        verbose_print(
-                            &print_tx,
-                            &format!("eth: {} now working again for node {}", method, node_name),
-                        )
-                        .await;
+                let should_print = {
+                    if let Some(mut aps) = providers.get_mut(&chain_id) {
+                        if let Some(provider) = aps
+                            .nodes
+                            .iter_mut()
+                            .find(|p| p.hns_update.name == node_name)
+                        {
+                            provider.method_failures.clear_method_failure(&method);
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
                     }
+                };
+
+                // Perform verbose print after releasing the guard
+                if should_print {
+                    verbose_print(
+                        &print_tx,
+                        &format!("eth: {} now working again for node {}", method, node_name),
+                    )
+                    .await;
                 }
                 break;
             }
@@ -524,22 +611,32 @@ pub fn spawn_health_check_for_node_provider(
 
             if provider_online {
                 // Mark the provider as online
-                if let Some(mut aps) = providers.get_mut(&chain_id) {
-                    if let Some(provider) = aps
-                        .nodes
-                        .iter_mut()
-                        .find(|p| p.hns_update.name == node_name)
-                    {
-                        provider.online = true;
-                        provider.usable = true;
-                        provider.last_health_check = Some(Instant::now());
-
-                        verbose_print(
-                            &print_tx,
-                            &format!("eth: node provider {} is back online", node_name),
-                        )
-                        .await;
+                let should_print = {
+                    if let Some(mut aps) = providers.get_mut(&chain_id) {
+                        if let Some(provider) = aps
+                            .nodes
+                            .iter_mut()
+                            .find(|p| p.hns_update.name == node_name)
+                        {
+                            provider.online = true;
+                            provider.usable = true;
+                            provider.last_health_check = Some(Instant::now());
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
                     }
+                };
+
+                // Perform verbose print after releasing the guard
+                if should_print {
+                    verbose_print(
+                        &print_tx,
+                        &format!("eth: node provider {} is back online", node_name),
+                    )
+                    .await;
                 }
                 // Provider is back online, exit the health check loop
                 break;
