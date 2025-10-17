@@ -215,22 +215,21 @@ fn main() -> anyhow::Result<()> {
             .collect();
 
     // Build in parallel
-    let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> =
-        package_build_info
-            .into_par_iter()
-            .map(
-                |(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
-                    build_and_zip_package(
-                        entry_path,
-                        &child_pkg_path,
-                        skip_frontend,
-                        &package_features,
-                        local_deps,
-                        is_hyperapp,
-                    )
-                },
-            )
-            .collect();
+    let results: Vec<anyhow::Result<(PathBuf, String, Vec<u8>)>> = package_build_info
+        .into_par_iter()
+        .map(
+            |(entry_path, child_pkg_path, package_features, local_deps, is_hyperapp)| {
+                build_and_zip_package(
+                    entry_path,
+                    &child_pkg_path,
+                    skip_frontend,
+                    &package_features,
+                    local_deps,
+                    is_hyperapp,
+                )
+            },
+        )
+        .collect();
 
     let mut file_to_metadata = std::collections::HashMap::new();
 
