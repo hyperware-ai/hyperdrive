@@ -459,14 +459,33 @@ fn handle_message(
                     return Ok(());
                 };
 
-                let download_from = metadata.properties.mirrors
+                let mut mirror_candidates: Vec<String> = Vec::new();
+                let mut seen = HashSet::new();
+
+                if !metadata.properties.publisher.is_empty()
+                    && seen.insert(metadata.properties.publisher.clone())
+                {
+                    mirror_candidates.push(metadata.properties.publisher.clone());
+                }
+
+                for mirror in &metadata.properties.mirrors {
+                    if mirror.is_empty() {
+                        continue;
+                    }
+                    if seen.insert(mirror.clone()) {
+                        mirror_candidates.push(mirror.clone());
+                    }
+                }
+
+                let download_from = mirror_candidates
                     .first()
-                    .ok_or_else(||
+                    .ok_or_else(|| {
                         anyhow::anyhow!(
                             "auto_update: error for package_id: {}, current_version: {}, no mirrors found",
-                            process_lib_package_id.to_string(), current_version
+                            process_lib_package_id.to_string(),
+                            current_version
                         )
-                    )?
+                    })?
                     .to_string();
 
                 print_to_terminal(
@@ -479,10 +498,15 @@ fn handle_message(
 
                 // Initialize auto-update status with mirrors
                 let key = (process_lib_package_id.clone(), version_hash.clone());
+                let mirrors_left = if mirror_candidates.len() > 1 {
+                    mirror_candidates[1..].to_vec()
+                } else {
+                    Vec::new()
+                };
                 auto_updates.insert(
                     key,
                     AutoUpdateStatus {
-                        mirrors_left: metadata.properties.mirrors[1..].to_vec(),
+                        mirrors_left,
                         mirrors_failed: Vec::new(),
                         active_mirror: download_from.clone(),
                     },
@@ -642,13 +666,13 @@ fn try_next_mirror(
     metadata
         .mirrors_failed
         .push((metadata.active_mirror.clone(), error));
-    metadata.mirrors_left = metadata.mirrors_left[1..].to_vec();
 
     let (package_id, version_hash) = key.clone();
 
-    match metadata.mirrors_left.iter().next().cloned() {
+    match metadata.mirrors_left.first().cloned() {
         Some(next_mirror) => {
             metadata.active_mirror = next_mirror.clone();
+            metadata.mirrors_left.remove(0);
             auto_updates.insert(key, metadata);
             Request::to(("our", "downloads", "app-store", "sys"))
                 .body(
@@ -656,7 +680,7 @@ fn try_next_mirror(
                         package_id: crate::hyperware::process::main::PackageId::from_process_lib(
                             package_id,
                         ),
-                        download_from: next_mirror,
+                        download_from: next_mirror.clone(),
                         desired_version_hash: version_hash.clone(),
                     }))
                     .unwrap(),
