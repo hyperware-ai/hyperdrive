@@ -4,6 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     sync::Arc,
+    time::Duration,
 };
 use tokio::{
     sync::{mpsc, Mutex},
@@ -43,16 +44,14 @@ enum ProcessSender {
 pub type ProcessRestartBackoffs = HashMap<t::ProcessId, Arc<Mutex<Option<RestartBackoff>>>>;
 
 pub struct RestartBackoff {
-    /// if try to restart before this:
-    ///  * wait till `next_soonest_restart_time`
-    ///  * increment `consecutive_attempts`
-    /// else if try to restart after this:
-    ///  * set `consecutive_attempts = 0`,
-    /// and in either case:
-    ///  set `next_soonest_restart_time += 2 ** consecutive_attempts` seconds
+    /// earliest time at which the kernel may attempt another restart
     next_soonest_restart_time: tokio::time::Instant,
-    /// how many times has process tried to restart in a row
+    /// count of consecutive unhealthy exits (starts at 1)
     consecutive_attempts: u32,
+    /// delay that gated the launch of the currently running attempt
+    current_backoff: Duration,
+    /// instant when the current process instance began executing
+    last_start_time: tokio::time::Instant,
     /// task that will do the restart after wait time has elapsed
     _restart_handle: Option<JoinHandle<()>>,
 }
