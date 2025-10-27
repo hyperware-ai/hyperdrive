@@ -1,23 +1,31 @@
 use crate::KERNEL_PROCESS_ID;
+use bytes::{BufMut, Bytes, BytesMut};
 use lib::{types::core as t, v1::ProcessV1};
 use std::{
     collections::{HashMap, VecDeque},
-    path::PathBuf,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex as StdMutex,
+    },
+    time::Duration,
 };
-use tokio::{fs, sync::Mutex, task::JoinHandle};
+use tokio::{sync::Mutex, task::JoinHandle};
 use wasmtime::{
     component::{Component, Linker, ResourceTable as Table},
     Engine, Store,
 };
-use wasmtime_wasi::{
-    p2::{pipe::MemoryOutputPipe, IoView, WasiCtx, WasiCtxBuilder, WasiView},
-    DirPerms, FilePerms,
+use wasmtime_wasi::p2::{
+    pipe::MemoryOutputPipe, IoView, StdoutStream, StreamResult, WasiCtx, WasiCtxBuilder, WasiView,
 };
+use wasmtime_wasi_io::{async_trait, poll::Pollable, streams::OutputStream};
 
 use super::RestartBackoff;
 
 const STACK_TRACE_SIZE: usize = 5000;
+const BASE_BACKOFF_SECS: u64 = 1;
+const MAX_BACKOFF_SECS: u64 = 10 * 60;
+const MAX_HEALTHY_DURATION_SECS: u64 = 50 * 60;
+const HEALTHY_RUN_MULTIPLIER: u32 = 5;
 
 pub struct ProcessContext {
     // store predecessor in order to set prompting message when popped
@@ -75,48 +83,11 @@ impl WasiView for ProcessWasiV1 {
     }
 }
 
-async fn make_table_and_wasi(
-    home_directory_path: PathBuf,
-    process_state: &ProcessState,
-) -> (Table, WasiCtx, MemoryOutputPipe) {
+async fn make_table_and_wasi() -> (Table, WasiCtx, RotatingOutputPipe) {
     let table = Table::new();
-    let wasi_stderr = MemoryOutputPipe::new(STACK_TRACE_SIZE);
-
-    #[cfg(unix)]
-    let tmp_path = home_directory_path
-        .join("vfs")
-        .join(format!(
-            "{}:{}",
-            process_state.metadata.our.process.package(),
-            process_state.metadata.our.process.publisher()
-        ))
-        .join("tmp");
-    #[cfg(target_os = "windows")]
-    let tmp_path = home_directory_path
-        .join("vfs")
-        .join(format!(
-            "{}_{}",
-            process_state.metadata.our.process.package(),
-            process_state.metadata.our.process.publisher()
-        ))
-        .join("tmp");
-
-    let tmp_path = tmp_path.to_str().unwrap();
+    let wasi_stderr = RotatingOutputPipe::new(STACK_TRACE_SIZE);
 
     let mut wasi = WasiCtxBuilder::new();
-
-    // TODO make guarantees about this
-    if let Ok(Ok(())) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        fs::create_dir_all(&tmp_path),
-    )
-    .await
-    {
-        if let Ok(wasi) = wasi.preopened_dir(tmp_path, tmp_path, DirPerms::all(), FilePerms::all())
-        {
-            wasi.env("TEMP_DIR", tmp_path);
-        }
-    }
 
     (table, wasi.stderr(wasi_stderr.clone()).build(), wasi_stderr)
 }
@@ -124,20 +95,29 @@ async fn make_table_and_wasi(
 async fn make_component_v1(
     engine: Engine,
     wasm_bytes: &[u8],
-    home_directory_path: PathBuf,
     process_state: ProcessState,
-) -> anyhow::Result<(ProcessV1, Store<ProcessWasiV1>, MemoryOutputPipe)> {
-    let component =
-        Component::new(&engine, wasm_bytes.to_vec()).expect("make_component: couldn't read file");
-
-    let mut linker = Linker::new(&engine);
-    ProcessV1::add_to_linker(&mut linker, |state: &mut ProcessWasiV1| state).unwrap();
-    let (table, wasi, wasi_stderr) = make_table_and_wasi(home_directory_path, &process_state).await;
-    wasmtime_wasi::p2::add_to_linker_async(&mut linker).unwrap();
-
+) -> anyhow::Result<(ProcessV1, Store<ProcessWasiV1>, RotatingOutputPipe)> {
     let our_process_id = process_state.metadata.our.process.clone();
     let send_to_terminal = process_state.send_to_terminal.clone();
 
+    let component = match Component::new(&engine, wasm_bytes.to_vec()) {
+        Ok(c) => c,
+        Err(e) => {
+            t::Printout::new(
+                0,
+                t::KERNEL_PROCESS_ID.clone(),
+                format!("kernel: process {our_process_id} invalid wasm file: {e:?}"),
+            )
+            .send(&send_to_terminal)
+            .await;
+            return Err(e);
+        }
+    };
+
+    let mut linker = Linker::new(&engine);
+    ProcessV1::add_to_linker(&mut linker, |state: &mut ProcessWasiV1| state).unwrap();
+    let (table, wasi, wasi_stderr) = make_table_and_wasi().await;
+    wasmtime_wasi::p2::add_to_linker_async(&mut linker).unwrap();
     let mut store = Store::new(
         &engine,
         ProcessWasiV1 {
@@ -175,7 +155,6 @@ pub async fn make_process_loop(
     wasm_bytes: Vec<u8>,
     caps_oracle: t::CapMessageSender,
     engine: Engine,
-    home_directory_path: PathBuf,
     maybe_restart_backoff: Option<Arc<Mutex<Option<RestartBackoff>>>>,
 ) -> anyhow::Result<()> {
     // before process can be instantiated, need to await 'run' message from kernel
@@ -212,6 +191,24 @@ pub async fn make_process_loop(
         send_to_process.send(message).await?;
     }
 
+    let run_started_at = tokio::time::Instant::now();
+    if let Some(restart_backoff) = &maybe_restart_backoff {
+        let mut restart_backoff_lock = restart_backoff.lock().await;
+        if restart_backoff_lock.is_none() {
+            let base_backoff = Duration::from_secs(BASE_BACKOFF_SECS);
+            *restart_backoff_lock = Some(RestartBackoff {
+                next_soonest_restart_time: run_started_at + base_backoff,
+                consecutive_attempts: 1,
+                current_backoff: base_backoff,
+                last_start_time: run_started_at,
+                _restart_handle: None,
+            });
+        } else if let Some(ref mut rb) = *restart_backoff_lock {
+            rb.last_start_time = run_started_at;
+            rb._restart_handle = None;
+        }
+    }
+
     let our = metadata.our.clone();
     let wit_version = metadata.wit_version.clone();
 
@@ -234,7 +231,7 @@ pub async fn make_process_loop(
         // assume missing version is oldest wit version
         None | Some(1) | _ => {
             let (bindings, mut store, wasi_stderr) =
-                make_component_v1(engine, &wasm_bytes, home_directory_path, process_state).await?;
+                make_component_v1(engine, &wasm_bytes, process_state).await?;
 
             // the process will run until it returns from init() or crashes
             match bindings.call_init(&mut store, &our.to_string()).await {
@@ -312,27 +309,58 @@ pub async fn make_process_loop(
             let restart_backoff = maybe_restart_backoff.unwrap();
             let mut restart_backoff_lock = restart_backoff.lock().await;
             let now = tokio::time::Instant::now();
-            let (wait_till, next_soonest_restart_time, consecutive_attempts) =
-                match *restart_backoff_lock {
-                    None => (None, now + tokio::time::Duration::from_secs(1), 0),
-                    Some(ref rb) => {
-                        if rb.next_soonest_restart_time <= now {
-                            // no need to wait
-                            (None, now + tokio::time::Duration::from_secs(1), 0)
-                        } else {
-                            // must wait
-                            let base: u64 = 2;
-                            (
-                                Some(rb.next_soonest_restart_time.clone()),
-                                rb.next_soonest_restart_time.clone()
-                                    + tokio::time::Duration::from_secs(
-                                        base.pow(rb.consecutive_attempts),
-                                    ),
-                                rb.consecutive_attempts.clone() + 1,
-                            )
-                        }
-                    }
+            let base_backoff = Duration::from_secs(BASE_BACKOFF_SECS);
+            let mut restart_state = restart_backoff_lock
+                .take()
+                .unwrap_or_else(|| RestartBackoff {
+                    next_soonest_restart_time: now + base_backoff,
+                    consecutive_attempts: 1,
+                    current_backoff: base_backoff,
+                    last_start_time: now,
+                    _restart_handle: None,
+                });
+
+            let uptime = now
+                .checked_duration_since(restart_state.last_start_time)
+                .unwrap_or_default();
+            let max_healthy_duration = Duration::from_secs(MAX_HEALTHY_DURATION_SECS);
+            let healthy_duration = restart_state
+                .current_backoff
+                .checked_mul(HEALTHY_RUN_MULTIPLIER)
+                .unwrap_or(max_healthy_duration)
+                .min(max_healthy_duration);
+            let compute_backoff = |attempt: u32| -> Duration {
+                let exponent = attempt.saturating_sub(1).min(63);
+                let secs = if exponent >= 63 {
+                    u64::MAX
+                } else {
+                    1u64 << exponent
                 };
+                let secs = secs.max(BASE_BACKOFF_SECS).min(MAX_BACKOFF_SECS);
+                Duration::from_secs(secs)
+            };
+
+            if uptime >= healthy_duration {
+                restart_state.consecutive_attempts = 1;
+                restart_state.current_backoff = base_backoff;
+            } else {
+                restart_state.consecutive_attempts =
+                    restart_state.consecutive_attempts.saturating_add(1);
+                restart_state.current_backoff = compute_backoff(restart_state.consecutive_attempts);
+            }
+
+            let wait_duration = restart_state
+                .current_backoff
+                .min(Duration::from_secs(MAX_BACKOFF_SECS));
+            restart_state.current_backoff = wait_duration;
+            restart_state.next_soonest_restart_time = now + wait_duration;
+            restart_state._restart_handle = None;
+
+            let wait_till = if restart_state.consecutive_attempts == 1 {
+                None
+            } else {
+                Some(restart_state.next_soonest_restart_time)
+            };
 
             // get caps before killing
             let (tx, rx) = tokio::sync::oneshot::channel();
@@ -430,11 +458,8 @@ pub async fn make_process_loop(
                     reinitialize.await;
                 })),
             };
-            *restart_backoff_lock = Some(RestartBackoff {
-                next_soonest_restart_time,
-                consecutive_attempts,
-                _restart_handle: restart_handle,
-            });
+            restart_state._restart_handle = restart_handle;
+            *restart_backoff_lock = Some(restart_state);
         }
         // if requests, fire them
         t::OnExit::Requests(requests) => {
@@ -472,4 +497,147 @@ pub async fn make_process_loop(
         }
     }
     Ok(())
+}
+
+#[derive(Clone)]
+pub struct RotatingOutputPipe {
+    pipes: Arc<StdMutex<Vec<MemoryOutputPipe>>>,
+    current_pipe: Arc<StdMutex<usize>>,
+    capacity_per_pipe: usize,
+    max_pipes: usize,
+    bytes_written: Arc<AtomicUsize>,
+}
+
+impl RotatingOutputPipe {
+    pub fn new(total_capacity: usize) -> Self {
+        // Use multiple smaller pipes to avoid blocking
+        let max_pipes = 2;
+        let capacity_per_pipe = total_capacity / max_pipes;
+
+        let mut pipes = Vec::new();
+        for _ in 0..max_pipes {
+            pipes.push(MemoryOutputPipe::new(capacity_per_pipe));
+        }
+
+        Self {
+            pipes: Arc::new(StdMutex::new(pipes)),
+            current_pipe: Arc::new(StdMutex::new(0)),
+            capacity_per_pipe,
+            max_pipes,
+            bytes_written: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+
+    pub fn contents(&self) -> Bytes {
+        let pipes = self.pipes.lock().unwrap();
+        let current = *self.current_pipe.lock().unwrap();
+
+        // Collect contents from all pipes
+        let mut all_data = BytesMut::new();
+
+        // Start from the next pipe after current (oldest data)
+        for i in 0..self.max_pipes {
+            let idx = (current + 1 + i) % self.max_pipes;
+            let pipe_contents = pipes[idx].contents();
+            all_data.put_slice(&pipe_contents);
+        }
+
+        all_data.freeze()
+    }
+}
+
+impl StdoutStream for RotatingOutputPipe {
+    fn stream(&self) -> Box<dyn OutputStream> {
+        let pipes = self.pipes.lock().unwrap();
+        let current = *self.current_pipe.lock().unwrap();
+
+        // Create a wrapper that monitors writes and switches pipes when needed
+        Box::new(RotatingWrapperStream {
+            pipes: self.pipes.clone(),
+            current_pipe: self.current_pipe.clone(),
+            current_stream: pipes[current].stream(),
+            capacity_per_pipe: self.capacity_per_pipe,
+            bytes_written_to_current: 0,
+            bytes_written: self.bytes_written.clone(),
+        })
+    }
+
+    fn isatty(&self) -> bool {
+        false
+    }
+}
+
+struct RotatingWrapperStream {
+    pipes: Arc<StdMutex<Vec<MemoryOutputPipe>>>,
+    current_pipe: Arc<StdMutex<usize>>,
+    current_stream: Box<dyn OutputStream>,
+    capacity_per_pipe: usize,
+    bytes_written_to_current: usize,
+    bytes_written: Arc<AtomicUsize>,
+}
+
+impl OutputStream for RotatingWrapperStream {
+    fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
+        let bytes_len = bytes.len();
+
+        // Check if we need to switch to a new pipe
+        if self.bytes_written_to_current + bytes_len > self.capacity_per_pipe * 90 / 100 {
+            // Switch to next pipe (this will overwrite old data in a circular fashion)
+            let mut pipes = self.pipes.lock().unwrap();
+            let mut current = self.current_pipe.lock().unwrap();
+
+            *current = (*current + 1) % pipes.len();
+
+            // Create a fresh pipe at this position (clearing old data)
+            pipes[*current] = MemoryOutputPipe::new(self.capacity_per_pipe);
+            self.current_stream = pipes[*current].stream();
+            self.bytes_written_to_current = 0;
+        }
+
+        // Write to current stream
+        let result = self.current_stream.write(bytes);
+        if result.is_ok() {
+            self.bytes_written_to_current += bytes_len;
+            self.bytes_written.fetch_add(bytes_len, Ordering::Relaxed);
+        }
+
+        result
+    }
+
+    fn flush(&mut self) -> StreamResult<()> {
+        self.current_stream.flush()
+    }
+
+    fn check_write(&mut self) -> StreamResult<usize> {
+        // Always report available space
+        Ok(self.capacity_per_pipe - self.bytes_written_to_current)
+    }
+}
+
+#[async_trait]
+impl Pollable for RotatingWrapperStream {
+    async fn ready(&mut self) {
+        self.current_stream.ready().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wrapper_rotation() {
+        let pipe = RotatingOutputPipeWrapper::new(100);
+        let mut stream = pipe.stream();
+
+        // Write data that will cause rotation
+        for i in 0..20 {
+            let data = format!("data{:02}", i);
+            stream.write(Bytes::from(data)).unwrap();
+        }
+
+        // Should have rotated and kept recent data
+        let contents = pipe.contents();
+        assert!(contents.len() <= 100);
+    }
 }

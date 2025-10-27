@@ -9,11 +9,11 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use lib::types::core::{
     DebugCommand, DebugSender, Identity, KernelMessage, Message, MessageSender, PrintReceiver,
-    PrintSender, Printout, ProcessId, ProcessVerbosity, ProcessVerbosityVal, Request,
-    TERMINAL_PROCESS_ID,
+    PrintSender, Printout, ProcessId, ProcessVerbosity, ProcessVerbosityVal, Request, VfsAction,
+    VfsRequest, TERMINAL_PROCESS_ID,
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fs::{read_to_string, OpenOptions},
     io::BufWriter,
     path::PathBuf,
@@ -59,6 +59,8 @@ struct State {
     pub printout_queue: VecDeque<Printout>,
     pub max_printout_queue_len: usize,
     pub printout_queue_number_dropped_printouts: u64,
+    /// request ids suppressed at verbosity 3 so their responses can be dropped too
+    pub suppressed_event_loop_ids: HashSet<u64>,
 }
 
 impl State {
@@ -188,7 +190,8 @@ impl State {
                     0 => "off",
                     1 => "debug",
                     2 => "super-debug",
-                    3 => "full event loop",
+                    3 => "event loop (no logging)",
+                    4 => "event loop",
                     _ => "unknown",
                 }
             )),
@@ -215,7 +218,7 @@ impl State {
         execute!(
             self.stdout,
             cursor::MoveTo(0, row + 1),
-            Print("To set process verbosity, input '<ProcessId> <verbosity (u8)>' and then press <Enter>\n\r  e.g.\n\r  chat:chat:template.os 3\n\rTo mute a process, input '<ProcessId> m' or 'mute' or 'muted' and then press <Enter>.\n\rTo remove a previously set process verbosity, input '<ProcessId>' and then press <Enter>.\n\r"),
+            Print("To set process verbosity, input '<ProcessId> <verbosity (u8)>' and then press <Enter>\n\r  e.g.\n\r  chat:chat:template.os 3 (event loop, no logging)\n\r  chat:chat:template.os 4 (event loop)\n\rTo mute a process, input '<ProcessId> m' or 'mute' or 'muted' and then press <Enter>.\n\rTo remove a previously set process verbosity, input '<ProcessId>' and then press <Enter>.\n\r"),
             Print("Press CTRL+W to exit\n\r"),
         )?;
 
@@ -363,6 +366,7 @@ pub async fn terminal(
     let printout_queue = VecDeque::new();
     let max_printout_queue_len = MAX_PRINTOUT_QUEUE_LEN_DEFAULT.clone();
     let printout_queue_number_dropped_printouts = 0;
+    let suppressed_event_loop_ids = HashSet::new();
 
     let mut state = State {
         stdout,
@@ -388,6 +392,7 @@ pub async fn terminal(
         printout_queue,
         max_printout_queue_len,
         printout_queue_number_dropped_printouts,
+        suppressed_event_loop_ids,
     };
 
     // use to trigger cleanup if receive signal to kill process
@@ -412,25 +417,25 @@ pub async fn terminal(
         signal(SignalKind::user_defined2()).expect("terminal: failed to set up SIGUSR2 handler"),
     );
 
-    // if the verbosity boot flag was **not** set to "full event loop", tell kernel
+    // if the verbosity boot flag was below the event loop level, tell kernel
     // the kernel will try and print all events by default so that booting with
-    // verbosity mode 3 guarantees all events from boot are shown.
-    if verbose_mode != 3 {
+    // verbosity mode >= 3 guarantees all events from boot are shown.
+    if verbose_mode < 3 {
         debug_event_loop
             .send(DebugCommand::ToggleEventLoop)
             .await
-            .expect("failed to toggle full event loop off");
+            .expect("failed to toggle event loop off");
     }
 
-    // in contrast, "full event loop" per-process is default off:
+    // in contrast, per-process event loop logging is default off:
     //  here, we toggle it ON if we have any given at that level
     for (process, verbosity) in state.process_verbosity.iter() {
         if let ProcessVerbosityVal::U8(verbosity) = verbosity {
-            if *verbosity == 3 {
+            if *verbosity >= 3 {
                 debug_event_loop
                     .send(DebugCommand::ToggleEventLoopForProcess(process.clone()))
                     .await
-                    .expect("failed to toggle process-level full event loop on");
+                    .expect("failed to toggle process-level event loop on");
             }
         }
     }
@@ -514,15 +519,20 @@ fn handle_printout(printout: Printout, state: &mut State) -> anyhow::Result<()> 
     }
     // skip writing print to terminal if it's of a greater
     // verbosity level than our current mode
-    let current_verbosity = match state.process_verbosity.get(&printout.source) {
-        None => &state.verbose_mode,
+    let effective_verbosity = match state.process_verbosity.get(&printout.source) {
+        None => state.verbose_mode,
         Some(cv) => match cv.get_verbosity() {
-            Some(v) => v,
+            Some(v) => *v,
             None => return Ok(()), // process is muted
         },
     };
-    if &printout.verbosity > current_verbosity {
+    if printout.verbosity > effective_verbosity {
         return Ok(());
+    }
+    if effective_verbosity == 3 && printout.verbosity == 3 {
+        if should_suppress_event_loop_printout(&printout, state) {
+            return Ok(());
+        }
     }
     let now = Local::now();
     execute!(
@@ -549,6 +559,85 @@ fn handle_printout(printout: Printout, state: &mut State) -> anyhow::Result<()> 
     // re-display the current input line
     state.display_current_input_line(false)?;
     Ok(())
+}
+
+fn should_suppress_event_loop_printout(printout: &Printout, state: &mut State) -> bool {
+    let content = &printout.content;
+    if content.contains("message: Request(") {
+        if is_logging_request(content) {
+            if request_expects_response(content) {
+                if let Some(id) = parse_kernel_message_id(content) {
+                    state.suppressed_event_loop_ids.insert(id);
+                }
+            }
+            return true;
+        }
+    } else if content.contains("message: Response(") {
+        if let Some(id) = parse_kernel_message_id(content) {
+            if state.suppressed_event_loop_ids.remove(&id) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn parse_kernel_message_id(content: &str) -> Option<u64> {
+    content.lines().find_map(|line| {
+        let trimmed = line.trim();
+        trimmed
+            .strip_prefix("id: ")
+            .and_then(|rest| rest.trim_end_matches(',').trim().parse::<u64>().ok())
+    })
+}
+
+fn request_expects_response(content: &str) -> bool {
+    content
+        .lines()
+        .any(|line| line.trim().starts_with("expects_response: Some("))
+}
+
+fn extract_body_str(content: &str) -> Option<String> {
+    content.lines().find_map(|line| {
+        let trimmed = line.trim();
+        trimmed.strip_prefix("body: ").and_then(|rest| {
+            let candidate = rest.trim_end_matches(',').trim();
+            if candidate.starts_with('{') && candidate.ends_with('}') {
+                Some(candidate.to_string())
+            } else {
+                None
+            }
+        })
+    })
+}
+
+fn is_logging_request(content: &str) -> bool {
+    let target_is_vfs = content.lines().any(|line| {
+        let trimmed = line.trim();
+        trimmed.starts_with("target: ") && trimmed.contains("@vfs:")
+    });
+    if !target_is_vfs {
+        return false;
+    }
+    let Some(body_str) = extract_body_str(content) else {
+        return false;
+    };
+    let Ok(request) = serde_json::from_str::<VfsRequest>(&body_str) else {
+        return false;
+    };
+    let is_log_dir = path_has_log_second_segment(&request.path);
+    if !is_log_dir {
+        return false;
+    }
+    matches!(
+        request.action,
+        VfsAction::Metadata | VfsAction::Append | VfsAction::CloseFile
+    )
+}
+
+fn path_has_log_second_segment(path: &str) -> bool {
+    let mut segments = path.split('/').filter(|seg| !seg.is_empty());
+    matches!(segments.next(), Some(_)) && matches!(segments.next(), Some("log"))
 }
 
 /// returns true if runtime should exit due to CTRL+C or CTRL+D
@@ -707,14 +796,17 @@ async fn handle_key_event(
                     debug_event_loop
                         .send(DebugCommand::ToggleEventLoop)
                         .await
-                        .expect("failed to toggle ON full event loop");
+                        .expect("failed to toggle ON event loop");
                 }
                 3 => {
+                    *verbose_mode = 4;
+                }
+                4 => {
                     *verbose_mode = 0;
                     debug_event_loop
                         .send(DebugCommand::ToggleEventLoop)
                         .await
-                        .expect("failed to toggle OFF full event loop");
+                        .expect("failed to toggle OFF event loop");
                 }
                 _ => unreachable!(),
             }
@@ -727,7 +819,8 @@ async fn handle_key_event(
                         0 => "off",
                         1 => "debug",
                         2 => "super-debug",
-                        3 => "full event loop",
+                        3 => "event loop (no logging)",
+                        4 => "event loop",
                         _ => unreachable!(),
                     }
                 ),
@@ -1070,19 +1163,19 @@ async fn handle_key_event(
                                 .insert(process_id.clone(), verbosity.clone())
                                 .and_then(|ov| ov.get_verbosity().map(|ov| ov.clone()))
                                 .unwrap_or_default();
-                            let verbosity = verbosity
+                            let new_verbosity = verbosity
                                 .get_verbosity()
                                 .map(|v| v.clone())
                                 .unwrap_or_default();
-                            if (old_verbosity == 3 && verbosity != 3)
-                                || (verbosity == 3 && old_verbosity != 3)
-                            {
+                            let old_event_loop = old_verbosity >= 3;
+                            let new_event_loop = new_verbosity >= 3;
+                            if old_event_loop != new_event_loop {
                                 debug_event_loop
                                     .send(DebugCommand::ToggleEventLoopForProcess(
                                         process_id.clone(),
                                     ))
                                     .await
-                                    .expect("failed to toggle process-level full event loop on");
+                                    .expect("failed to toggle process-level event loop");
                             }
                             current_line.line.clear();
                             current_line.line_col = 0;
@@ -1096,15 +1189,13 @@ async fn handle_key_event(
                                     .get_verbosity()
                                     .map(|ov| ov.clone())
                                     .unwrap_or_default();
-                                if old_verbosity == 3 {
+                                if old_verbosity >= 3 {
                                     debug_event_loop
                                         .send(DebugCommand::ToggleEventLoopForProcess(
                                             process_id.clone(),
                                         ))
                                         .await
-                                        .expect(
-                                            "failed to toggle process-level full event loop on",
-                                        );
+                                        .expect("failed to toggle process-level event loop");
                                 }
                             }
                             current_line.line.clear();

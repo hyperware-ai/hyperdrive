@@ -1,32 +1,35 @@
 // Import the generated functions and types directly
-import {
-  set_api_key as _setApiKey,
-  list_api_keys as _listApiKeys,
-  remove_api_key as _removeApiKey,
-  create_spider_key as _createSpiderKey,
-  list_spider_keys as _listSpiderKeys,
-  revoke_spider_key as _revokeSpiderKey,
-  add_mcp_server as _addMcpServer,
-  list_mcp_servers as _listMcpServers,
-  connect_mcp_server as _connectMcpServer,
-  disconnect_mcp_server as _disconnectMcpServer,
-  remove_mcp_server as _removeMcpServer,
-  list_conversations as _listConversations,
-  get_conversation as _getConversation,
-  get_config as _getConfig,
-  update_config as _updateConfig,
-  chat as _chat,
-  get_admin_key as _getAdminKey,
-  type ApiKeyInfo,
-  type SpiderApiKey,
-  type McpServer,
-  type Conversation,
-  type ConfigResponse,
-  type ChatResponse,
-  type Message,
-  type ConversationMetadata,
-  type TransportConfig,
-} from '@caller-utils';
+import { Spider } from '@caller-utils';
+
+// Alias the functions for internal use
+const _setApiKey = Spider.set_api_key;
+const _listApiKeys = Spider.list_api_keys;
+const _removeApiKey = Spider.remove_api_key;
+const _createSpiderKey = Spider.create_spider_key;
+const _listSpiderKeys = Spider.list_spider_keys;
+const _revokeSpiderKey = Spider.revoke_spider_key;
+const _addMcpServer = Spider.add_mcp_server;
+const _listMcpServers = Spider.list_mcp_servers;
+const _connectMcpServer = Spider.connect_mcp_server;
+const _disconnectMcpServer = Spider.disconnect_mcp_server;
+const _removeMcpServer = Spider.remove_mcp_server;
+const _listConversations = Spider.list_conversations;
+const _getConversation = Spider.get_conversation;
+const _getConfig = Spider.get_config;
+const _updateConfig = Spider.update_config;
+const _chat = Spider.chat;
+const _getAdminKey = Spider.get_admin_key;
+
+// Type aliases
+type ApiKeyInfo = Spider.ApiKeyInfo;
+type SpiderApiKey = Spider.SpiderApiKey;
+type McpServer = Spider.McpServer;
+type Conversation = Spider.Conversation;
+type ConfigResponse = Spider.ConfigRes;
+type ChatResponse = Spider.ChatRes;
+type Message = Spider.Message;
+type ConversationMetadata = Spider.ConversationMetadata;
+type TransportConfig = Spider.TransportConfig;
 
 export async function getAdminKey(): Promise<string> {
   return _getAdminKey();
@@ -158,6 +161,8 @@ export async function updateConfig(config: Partial<ConfigResponse>): Promise<str
     defaultLlmProvider: config.defaultLlmProvider || null,
     maxTokens: config.maxTokens || null,
     temperature: config.temperature || null,
+    buildContainerWsUri: config.buildContainerWsUri || null,
+    buildContainerApiKey: config.buildContainerApiKey || null,
     authKey
   });
 }
@@ -173,3 +178,16 @@ export async function chat(apiKey: string, messages: Message[], llmProvider?: st
     metadata: metadata || null
   });
 }
+
+// Re-export types for use in other files
+export type {
+  ApiKeyInfo,
+  SpiderApiKey,
+  McpServer,
+  Conversation,
+  ConfigResponse,
+  ChatResponse,
+  Message,
+  ConversationMetadata,
+  TransportConfig
+};

@@ -10,12 +10,28 @@ const BASE_URL = import.meta.env.BASE_URL;
 if (window.our) window.our.process = BASE_URL?.replace("/", "");
 
 function App() {
+  const trimmedBase =
+    !BASE_URL || BASE_URL === "/"
+      ? ""
+      : BASE_URL.endsWith("/")
+        ? BASE_URL.slice(0, -1)
+        : BASE_URL;
+  const normalizedBase =
+    trimmedBase.length === 0
+      ? "/"
+      : trimmedBase.startsWith("/")
+        ? trimmedBase
+        : `/${trimmedBase}`;
+
   const getBasename = () => {
     const path = window.location.pathname;
-    if (path.startsWith('/main:app-store:sys/public')) {
-      return '/main:app-store:sys/public';
+    if (
+      normalizedBase !== "/" &&
+      path.startsWith(normalizedBase)
+    ) {
+      return normalizedBase;
     }
-    return '/';
+    return "/";
   };
 
   return (

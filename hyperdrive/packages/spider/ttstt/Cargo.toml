@@ -1,0 +1,62 @@
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+base64 = "0.21"
+process_macros = "0.1"
+serde_json = "1.0"
+wit-bindgen = "0.42.1"
+
+[dependencies.chrono]
+features = ["serde"]
+version = "0.4"
+
+[dependencies.hyperprocess_macro]
+git = "https://github.com/hyperware-ai/hyperprocess-macro"
+rev = "98fac21"
+
+[dependencies.hyperware-elevenlabs-tts]
+git = "https://github.com/hyperware-ai/hyperware-elevenlabs-tts"
+rev = "65899de"
+
+[dependencies.hyperware-openai-stt]
+git = "https://github.com/hyperware-ai/hyperware-openai-ttstt"
+rev = "0e6bf83"
+
+[dependencies.hyperware-openai-tts]
+git = "https://github.com/hyperware-ai/hyperware-openai-ttstt"
+rev = "0e6bf83"
+
+[dependencies.hyperware_process_lib]
+features = ["hyperapp"]
+git = "https://github.com/hyperware-ai/process_lib"
+rev = "232fe25"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0"
+
+[dependencies.spider_caller_utils]
+optional = true
+path = "../target/spider-caller-utils"
+
+[dependencies.uuid]
+features = [
+    "v4",
+    "serde",
+]
+version = "1.0"
+
+[features]
+caller-utils = ["spider_caller_utils"]
+simulation-mode = []
+
+[lib]
+crate-type = ["cdylib"]
+
+[package]
+edition = "2021"
+name = "ttstt"
+version = "0.1.0"
+
+[package.metadata.component]
+package = "hyperware:process"

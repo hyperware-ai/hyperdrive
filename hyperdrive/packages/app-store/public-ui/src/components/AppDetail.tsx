@@ -54,9 +54,21 @@ export default function AppDetail() {
         }
     }, [backtickPressCount]);
 
+    const derivedId = React.useMemo(() => {
+        if (id) return id;
+        const match = window.location.pathname.match(/\/app\/([^/?#]+)/);
+        if (match && match[1]) {
+            return decodeURIComponent(match[1]);
+        }
+        return undefined;
+    }, [id]);
+
     useEffect(() => {
         const loadApp = async () => {
-            if (!id) return;
+            if (!derivedId) {
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             setError(null);
 
@@ -64,7 +76,8 @@ export default function AppDetail() {
                 if (isDevMode) {
                     setApp(mockApp);
                 } else {
-                    const response = await fetch(`/main:app-store:sys/apps-public/${id}`);
+                    const encodedId = encodeURIComponent(derivedId).replace(/%3A/g, ":");
+                    const response = await fetch(`/main:app-store:sys/apps-public/${encodedId}`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch app details');
                     }
@@ -81,7 +94,7 @@ export default function AppDetail() {
 
         loadApp();
         window.scrollTo(0, 0);
-    }, [id, isDevMode]);
+    }, [derivedId, isDevMode]);
 
     if (isLoading) {
         return (
@@ -102,7 +115,7 @@ export default function AppDetail() {
     if (!app) {
         return (
             <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-center justify-center min-h-96">
-                <div>App details not found for {id}</div>
+                <div>App details not found for {derivedId ?? "unknown app"}</div>
             </div>
         );
     }

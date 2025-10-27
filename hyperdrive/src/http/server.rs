@@ -765,6 +765,12 @@ async fn http_handler(
         }
     }
 
+    let timeout = headers
+        .get("X-Hyperware-Http-Server-Timeout")
+        .and_then(|t| t.to_str().ok())
+        .and_then(|t| t.parse().ok())
+        .unwrap_or_else(|| HTTP_SELF_IMPOSED_TIMEOUT);
+
     // RPC functionality: if path is /rpc:distro:sys/message,
     // we extract message from base64 encoded bytes in data
     // and send it to the correct app.
@@ -796,7 +802,7 @@ async fn http_handler(
                 rsvp: None,
                 message: Message::Request(Request {
                     inherit: false,
-                    expects_response: Some(HTTP_SELF_IMPOSED_TIMEOUT),
+                    expects_response: Some(timeout.clone()),
                     body: serde_json::to_vec(&HttpServerRequest::Http(IncomingHttpRequest {
                         source_socket_addr: socket_addr.map(|addr| addr.to_string()),
                         method: method.to_string(),
@@ -836,7 +842,7 @@ async fn http_handler(
 
     message.send(&send_to_loop).await;
 
-    let timeout_duration = tokio::time::Duration::from_secs(HTTP_SELF_IMPOSED_TIMEOUT);
+    let timeout_duration = tokio::time::Duration::from_secs(timeout);
     let result = tokio::time::timeout(timeout_duration, response_receiver).await;
 
     let (http_response, body) = match result {

@@ -5,19 +5,48 @@
     "on_exit": "Restart",
     "request_networking": true,
     "request_capabilities": [
+      "chat:chat:ware.hypr",
       "homepage:homepage:sys",
       "http-client:distro:sys",
       "http-server:distro:sys",
+      "hypermap-cacher:hypermap-cacher:sys",
+      "main:app-store:sys",
       "operator:hypergrid:ware.hypr",
       "timer:distro:sys",
+      "ttstt:spider:sys",
+      "vfs:distro:sys"
+    ],
+    "grant_capabilities": [
+      "chat:chat:ware.hypr",
+      "homepage:homepage:sys",
+      "http-client:distro:sys",
+      "http-server:distro:sys",
+      "hypermap-cacher:hypermap-cacher:sys",
+      "main:app-store:sys",
+      "operator:hypergrid:ware.hypr",
+      "timer:distro:sys",
+      "ttstt:spider:sys",
+      "vfs:distro:sys"
+    ],
+    "public": false
+  },
+  {
+    "process_name": "ttstt",
+    "process_wasm_path": "/ttstt.wasm",
+    "on_exit": "Restart",
+    "request_networking": false,
+    "request_capabilities": [
+      "homepage:homepage:sys",
+      "http-client:distro:sys",
+      "http-server:distro:sys",
+      "spider:spider:sys",
       "vfs:distro:sys"
     ],
     "grant_capabilities": [
       "homepage:homepage:sys",
       "http-client:distro:sys",
       "http-server:distro:sys",
-      "operator:hypergrid:ware.hypr",
-      "timer:distro:sys",
+      "spider:spider:sys",
       "vfs:distro:sys"
     ],
     "public": false

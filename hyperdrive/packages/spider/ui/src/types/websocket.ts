@@ -1,6 +1,9 @@
 // WebSocket message types for Spider chat
 
-import { Message, ConversationMetadata, ChatResponse } from '@caller-utils';
+import { Spider } from '@caller-utils';
+type Message = Spider.Message;
+type ConversationMetadata = Spider.ConversationMetadata;
+type ChatResponse = Spider.ChatRes;
 
 // Client -> Server messages
 export type WsClientMessage = 
