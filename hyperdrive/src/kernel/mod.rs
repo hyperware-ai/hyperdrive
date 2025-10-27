@@ -4,6 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     sync::Arc,
+    time::Duration,
 };
 use tokio::{
     sync::{mpsc, Mutex},
@@ -43,16 +44,14 @@ enum ProcessSender {
 pub type ProcessRestartBackoffs = HashMap<t::ProcessId, Arc<Mutex<Option<RestartBackoff>>>>;
 
 pub struct RestartBackoff {
-    /// if try to restart before this:
-    ///  * wait till `next_soonest_restart_time`
-    ///  * increment `consecutive_attempts`
-    /// else if try to restart after this:
-    ///  * set `consecutive_attempts = 0`,
-    /// and in either case:
-    ///  set `next_soonest_restart_time += 2 ** consecutive_attempts` seconds
+    /// earliest time at which the kernel may attempt another restart
     next_soonest_restart_time: tokio::time::Instant,
-    /// how many times has process tried to restart in a row
+    /// count of consecutive unhealthy exits (starts at 1)
     consecutive_attempts: u32,
+    /// delay that gated the launch of the currently running attempt
+    current_backoff: Duration,
+    /// instant when the current process instance began executing
+    last_start_time: tokio::time::Instant,
     /// task that will do the restart after wait time has elapsed
     _restart_handle: Option<JoinHandle<()>>,
 }
@@ -95,7 +94,6 @@ async fn handle_kernel_request(
     process_map: &mut t::ProcessMap,
     caps_oracle: &t::CapMessageSender,
     engine: &Engine,
-    home_directory_path: &PathBuf,
     process_restart_backoffs: &mut ProcessRestartBackoffs,
 ) -> Option<()> {
     let t::Message::Request(request) = km.message else {
@@ -290,7 +288,6 @@ async fn handle_kernel_request(
                 engine,
                 caps_oracle,
                 &start_process_metadata,
-                &home_directory_path,
                 process_restart_backoffs,
             )
             .await
@@ -550,7 +547,6 @@ async fn start_process(
     engine: &Engine,
     caps_oracle: &t::CapMessageSender,
     process_metadata: &StartProcessMetadata,
-    home_directory_path: &PathBuf,
     process_restart_backoffs: &mut ProcessRestartBackoffs,
 ) -> anyhow::Result<()> {
     let (send_to_process, recv_in_process) =
@@ -594,7 +590,6 @@ async fn start_process(
             km_blob_bytes,
             caps_oracle.clone(),
             engine.clone(),
-            home_directory_path.clone(),
             maybe_restart_backoff,
         )),
     );
@@ -747,7 +742,6 @@ pub async fn kernel(
             &engine,
             &caps_oracle_sender,
             &start_process_metadata,
-            &home_directory_path,
             &mut process_restart_backoffs,
         )
         .await
@@ -1030,7 +1024,6 @@ pub async fn kernel(
                         &mut process_map,
                         &caps_oracle_sender,
                         &engine,
-                        &home_directory_path,
                         &mut process_restart_backoffs,
                     ).await {
                         // drain process map of processes with OnExit::None
