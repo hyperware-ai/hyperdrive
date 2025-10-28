@@ -11,7 +11,6 @@ const ICON: &str = include_str!("./icon");
 const PROCESS_ID_LINK: &str = "explorer:file-explorer:sys";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct FileInfo {
     pub name: String,
     pub path: String,

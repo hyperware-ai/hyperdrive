@@ -278,7 +278,7 @@ async fn load_keys_from_state(
             inherit: false,
             expects_response: Some(5),
             body: serde_json::to_vec(&StateAction::GetState(ProcessId::new(
-                Some("notifications-subscriptions"),
+                Some("notifications"),
                 "distro",
                 "sys",
             )))
@@ -770,7 +770,7 @@ async fn save_subscriptions_to_state(
             inherit: false,
             expects_response: None, // Don't expect a response to avoid polluting the main loop
             body: serde_json::to_vec(&StateAction::SetState(ProcessId::new(
-                Some("notifications-subscriptions"),
+                Some("notifications"),
                 "distro",
                 "sys",
             )))

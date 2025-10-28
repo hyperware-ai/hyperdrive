@@ -14,15 +14,15 @@ import { base } from 'viem/chains'
 interface RegisterOsNameProps extends PageProps { }
 
 function MintDotOsName({
-                         direct,
-                         hnsName,
-                         setNetworkingKey,
-                         setIpAddress,
-                         setWsPort,
-                         setTcpPort,
-                         setRouters,
-                         routers,
-                       }: RegisterOsNameProps) {
+  direct,
+  hnsName,
+  setNetworkingKey,
+  setIpAddress,
+  setWsPort,
+  setTcpPort,
+  setRouters,
+  routers,
+}: RegisterOsNameProps) {
   let { address } = useAccount();
   let navigate = useNavigate();
   let { openConnectModal } = useConnectModal();

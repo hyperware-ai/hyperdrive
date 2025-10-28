@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
+import UpgradableCheckbox from "../components/UpgradableCheckbox";
 import { useAccount, useWaitForTransactionReceipt, useSendTransaction, useConfig } from "wagmi";
 import { readContract } from "wagmi/actions";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit";
@@ -21,6 +22,7 @@ const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0
 
 function MintCustom({
     upgradable,
+    setUpgradable,
     direct,
     setDirect,
     hnsName,
@@ -249,6 +251,7 @@ function MintCustom({
                                 <details className="advanced-options">
                                     <summary>Advanced Network Options</summary>
                                     <div className="flex flex-col gap-3">
+                                        <UpgradableCheckbox {...{ upgradable, setUpgradable }} />
                                         <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
                                         <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
                                         {specifyRouters && (
