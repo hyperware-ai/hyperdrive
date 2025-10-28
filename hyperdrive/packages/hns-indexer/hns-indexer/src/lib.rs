@@ -7,9 +7,10 @@ use alloy_sol_types::SolEvent;
 use hyperware::process::standard::clear_state;
 use hyperware_process_lib::logging::{debug, error, info, init_logging, warn, Level};
 use hyperware_process_lib::{
-    await_message, call_init, eth, get_state, hypermap, net, set_state, timer, Address, Capability,
-    Message, Request, Response,
+    await_message, call_init, eth, get_state, hypermap, net, our, set_state, timer, vfs, Address,
+    Capability, Message, Request, Response,
 };
+use std::sync::{Mutex, OnceLock};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
@@ -31,15 +32,17 @@ const SUBSCRIPTION_TIMEOUT_S: u64 = 60;
 const DELAY_MS: u64 = 2_000;
 const CHECKPOINT_MS: u64 = 5 * 60 * 1_000; // 5 minutes
 
+static NODES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
 #[cfg(not(feature = "simulation-mode"))]
-const DEFAULT_NODES: &[&str] = &[
+const DEFAULT_NODES_FALLBACK: &[&str] = &[
     "us-cacher-1.hypr",
     "eu-cacher-1.hypr",
     "nick.hypr",
     "nick1udwig.os",
 ];
 #[cfg(feature = "simulation-mode")]
-const DEFAULT_NODES: &[&str] = &["fake.os"];
+const DEFAULT_NODES_FALLBACK: &[&str] = &["fake.os"];
 
 type PendingNotes = BTreeMap<u64, Vec<(String, String, eth::Bytes, u8)>>;
 
@@ -707,6 +710,55 @@ impl From<StateV1> for WitState {
     }
 }
 
+// Function to get nodes (replaces direct access to DEFAULT_NODES)
+fn get_nodes() -> Vec<String> {
+    NODES.get_or_init(|| {
+        // Try to read from initfiles drive
+        match vfs::create_drive(our().package_id(), "initfiles", None) {
+            Ok(alt_drive_path) => {
+                match vfs::open_file(&format!("{}/cache_sources", alt_drive_path), false, None) {
+                    Ok(file) => {
+                        match file.read() {
+                            Ok(contents) => {
+                                let content_str = String::from_utf8_lossy(&contents);
+                                info!("Contents of cache_sources: {}", content_str);
+
+                                // Parse the JSON to get the vector of node names
+                                match serde_json::from_str::<Vec<String>>(&content_str) {
+                                    Ok(custom_nodes) => {
+                                        if !custom_nodes.is_empty() {
+                                            info!("Loading custom nodes: {:?}", custom_nodes);
+                                            return Mutex::new(custom_nodes);
+                                        } else {
+                                            info!("Custom nodes list is empty, using defaults");
+                                        }
+                                    }
+                                    Err(e) => {
+                                        info!("Failed to parse cache_sources as JSON: {}, using defaults", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                info!("Failed to read cache_sources: {}, using defaults", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        info!("Failed to open cache_sources: {}, using defaults", e);
+                    }
+                }
+            }
+            Err(e) => {
+                info!("Failed to create drive: {}, using defaults", e);
+            }
+        }
+
+        // Fallback to default nodes
+        let default_nodes: Vec<String> = DEFAULT_NODES_FALLBACK.iter().map(|s| s.to_string()).collect();
+        Mutex::new(default_nodes)
+    }).lock().unwrap().clone()
+}
+
 fn make_filters() -> (eth::Filter, eth::Filter) {
     let hypermap_address = eth::Address::from_str(hypermap::HYPERMAP_ADDRESS).unwrap();
     // sub_id: 1
@@ -805,7 +857,7 @@ fn main(our: &Address, state: &mut StateV1) -> anyhow::Result<()> {
     // if block in state is < current_block, get logs from that part.
     info!("syncing old logs from block: {}", state.last_block);
 
-    let nodes: HashSet<String> = DEFAULT_NODES.iter().map(|s| s.to_string()).collect();
+    let nodes: HashSet<String> = get_nodes().iter().map(|s| s.to_string()).collect();
     state.fetch_and_process_logs(nodes);
 
     // set a timer tick so any pending logs will be processed

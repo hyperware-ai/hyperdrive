@@ -12,6 +12,8 @@ export interface PageProps {
   setRouters: React.Dispatch<React.SetStateAction<string[]>>,
   direct: boolean,
   setDirect: React.Dispatch<React.SetStateAction<boolean>>,
+  upgradable: boolean,
+  setUpgradable: React.Dispatch<React.SetStateAction<boolean>>,
   hnsName: string,
   setHnsName: React.Dispatch<React.SetStateAction<string>>,
   key: string,
@@ -42,4 +44,20 @@ export type NetworkingInfo = {
 export type UnencryptedIdentity = {
   name: string,
   allowed_routers: string[]
+}
+
+export type InfoResponse = {
+  name?: string;
+  allowed_routers?: string[];
+  initial_cache_sources: string[];
+  initial_base_l2_providers: string[];
+}
+
+export interface RpcProviderConfig {
+  url: string;
+  auth: {
+    Basic?: string;
+    Bearer?: string;
+    Raw?: string;
+  } | null;
 }

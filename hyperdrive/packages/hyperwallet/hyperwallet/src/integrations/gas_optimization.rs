@@ -28,7 +28,7 @@ impl OperationType {
             Self::Erc20Transfer => (
                 U256::from(80_000),  // ERC20 transfer + TBA overhead
                 U256::from(150_000), // TBA validation is complex
-                U256::from(47_000),  // Minimum for TBA calldata
+                U256::from(60_000),  // Reasonable default for TBA calldata
             ),
             Self::Erc721Transfer => (U256::from(100_000), U256::from(60_000), U256::from(40_000)),
             Self::SimpleExecute => (U256::from(100_000), U256::from(70_000), U256::from(40_000)),
@@ -44,7 +44,7 @@ impl OperationType {
             Self::Erc20Transfer => (
                 U256::from(100_000), // Hard cap for ERC20
                 U256::from(220_000), // TBAs need high verification gas
-                U256::from(55_000),  // Enough for TBA calldata
+                U256::from(65_000),  // Buffer for TBA calldata (bundler may require more)
             ),
             Self::Erc721Transfer => (U256::from(130_000), U256::from(80_000), U256::from(50_000)),
             _ => (U256::from(250_000), U256::from(150_000), U256::from(70_000)),
@@ -109,17 +109,13 @@ pub fn apply_smart_gas_limits(
         .map(|est| est.min(max_call))
         .unwrap_or(opt_call);
 
-    // For verification gas: TBAs genuinely need high verification gas
-    // Trust the estimate but cap at maximum to prevent extreme cases
+    // For verification gas: TBAs need high verification gas
     let verification_gas = estimated_verification
         .map(|est| est.min(max_verif))
         .unwrap_or(opt_verif);
 
-    // For pre-verification gas: ensure we meet minimum requirements
-    // Use the maximum of our optimized value and the estimate (bundler's minimum)
     let pre_verification_gas = estimated_pre_verification
-        .map(|est| opt_pre.max(est).min(max_pre))
-        .unwrap_or(opt_pre);
+        .unwrap_or_else(|| opt_pre.max(max_pre)); // Fallback should never be reached (we error earlier)
 
     (call_gas, verification_gas, pre_verification_gas)
 }
@@ -161,14 +157,14 @@ mod tests {
         let (call_gas, verif_gas, pre_verif_gas) = apply_smart_gas_limits(
             Some(U256::from(300_000)), // Inflated estimate
             Some(U256::from(200_000)), // Reasonable for TBA
-            Some(U256::from(100_000)), // Inflated estimate
+            Some(U256::from(100_000)), // Bundler's estimate
             &op_type,
         );
 
-        // Should be capped to reasonable values
-        assert!(call_gas <= U256::from(100_000)); // Capped
-        assert!(verif_gas <= U256::from(220_000)); // TBAs need more
-        assert!(pre_verif_gas <= U256::from(100_000)); // Uses max of optimized and estimate
+        // Should cap call/verification but trust pre-verification
+        assert_eq!(call_gas, U256::from(100_000)); // Capped at max
+        assert_eq!(verif_gas, U256::from(200_000)); // Within cap, so unchanged
+        assert_eq!(pre_verif_gas, U256::from(100_000)); // Trust bundler's estimate
     }
 
     #[test]
@@ -179,9 +175,29 @@ mod tests {
         let (call_gas, verif_gas, pre_verif_gas) =
             apply_smart_gas_limits(None, None, None, &op_type);
 
-        // Should use optimized defaults
+        // Should use optimized defaults for call/verification, max for pre-verification
         assert_eq!(call_gas, U256::from(80_000));
         assert_eq!(verif_gas, U256::from(150_000));
-        assert_eq!(pre_verif_gas, U256::from(47_000));
+        assert_eq!(pre_verif_gas, U256::from(65_000)); // max(60k optimized, 65k max) = 65k
+    }
+
+    #[test]
+    fn test_gas_optimization_respects_bundler_pre_verification_gas() {
+        let op_type = OperationType::Erc20Transfer;
+
+        // Test with the exact scenario from production: bundler requires 58,531 (0xe4a3)
+        let (call_gas, verif_gas, pre_verif_gas) = apply_smart_gas_limits(
+            Some(U256::from(80_000)),   // Reasonable call gas
+            Some(U256::from(150_000)),  // Reasonable verification
+            Some(U256::from(58_531)),   // Bundler's exact requirement: 0xe4a3
+            &op_type,
+        );
+
+        // CRITICAL: Pre-verification gas must NOT be capped below bundler's requirement
+        assert_eq!(pre_verif_gas, U256::from(58_531)); // Must use bundler's exact value
+        
+        // Call and verification can still be capped
+        assert_eq!(call_gas, U256::from(80_000));
+        assert_eq!(verif_gas, U256::from(150_000));
     }
 }

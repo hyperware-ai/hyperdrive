@@ -11,6 +11,7 @@ import type { HomepageApp } from '../../../types/app.types';
 import { BsBell, BsCheck, BsClock, BsEnvelope, BsGridFill, BsImage, BsLayers, BsPencilSquare, BsSearch, BsX } from 'react-icons/bs';
 import classNames from 'classnames';
 import { Modal } from './Modal';
+import { initializePushNotifications } from '../../../utils/pushNotifications';
 
 export const HomeScreen: React.FC = () => {
   const { apps } = useAppStore();
@@ -38,8 +39,8 @@ export const HomeScreen: React.FC = () => {
     getUnreadCount,
     menuOpen,
     setMenuOpen,
-    permissionGranted,
-    setPermissionGranted
+    setPermissionGranted,
+    hasVapidKey,
   } = useNotificationStore();
   const [draggedAppId, setDraggedAppId] = React.useState<string | null>(null);
   const [touchDragPosition, setTouchDragPosition] = React.useState<{ x: number; y: number } | null>(null);
@@ -48,15 +49,35 @@ export const HomeScreen: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const [showWidgetOnboarding, setShowWidgetOnboarding] = React.useState(!doNotShowOnboardingAgain);
   const unreadCount = getUnreadCount();
-
+  const showNotificationIndicator = unreadCount > 0 || hasVapidKey === false;
 
   const handleNotificationClick = async () => {
-    // Request permission if not granted
-    if (!permissionGranted && 'Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setPermissionGranted(permission === 'granted');
+    let shouldInitializeNotifications = false;
+
+    if ('Notification' in window && 'serviceWorker' in navigator) {
+      const currentPermission = Notification.permission;
+
+      if (currentPermission === 'default') {
+        const permissionResult = await Notification.requestPermission();
+        const granted = permissionResult === 'granted';
+        setPermissionGranted(granted);
+        shouldInitializeNotifications = granted;
+      } else {
+        const granted = currentPermission === 'granted';
+        setPermissionGranted(granted);
+        shouldInitializeNotifications = granted;
+      }
+
+      if (shouldInitializeNotifications) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await initializePushNotifications(registration);
+        } catch (error) {
+          console.error('[Push] Failed to initialize notifications:', error);
+        }
+      }
     }
-    // Toggle menu
+
     setMenuOpen(!menuOpen);
   };
 
@@ -648,7 +669,7 @@ export const HomeScreen: React.FC = () => {
                 data-notification-button
               >
                 <BsBell className="w-4 h-4" />
-                {unreadCount > 0 && (
+                {showNotificationIndicator && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
                 )}
               </button>

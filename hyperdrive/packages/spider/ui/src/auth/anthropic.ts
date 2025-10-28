@@ -1,4 +1,6 @@
-import { ApiError, exchange_oauth_token as exchangeOauthToken, refresh_oauth_token as refreshOauthToken } from '@caller-utils';
+import { ApiError, Spider } from '@caller-utils';
+const exchangeOauthToken = Spider.exchange_oauth_token;
+const refreshOauthToken = Spider.refresh_oauth_token;
 
 export namespace AuthAnthropic {
   const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";

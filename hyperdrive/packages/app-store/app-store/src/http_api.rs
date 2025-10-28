@@ -174,7 +174,7 @@ fn make_widget() -> String {
     <h3>Top Apps</h3>
     <div id="latest-apps"></div>
     <script>
-    
+
 class HWProtocolWatcher {
     constructor() {
         this.isListening = false;
@@ -245,7 +245,7 @@ if (typeof document !== 'undefined') {
     }
 }
 
-    
+
 
 
     </script>
@@ -394,7 +394,7 @@ fn serve_public_ui(http_server: &mut server::HttpServer) {
     http_server
         .serve_ui(
             "public-ui",
-            vec!["/public"],
+            vec!["/public", "/public/app", "/public/app/:id"],
             server::HttpBindingConfig::default().authenticated(false),
         )
         .expect("failed to serve static public UI");

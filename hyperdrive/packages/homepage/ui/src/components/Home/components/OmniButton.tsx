@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigationStore } from '../../../stores/navigationStore';
 import classNames from 'classnames';
 import { usePersistenceStore } from '../../../stores/persistenceStore';
@@ -72,7 +72,7 @@ export const OmniButton: React.FC = () => {
     });
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isMobile()) return;
     console.log('omnibutton handleMouseMove', e);
     e.stopPropagation();
@@ -90,9 +90,9 @@ export const OmniButton: React.FC = () => {
       const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
       setOmnibuttonPosition({ x: newX, y: newY });
     }
-  };
+  }, [dragStart, isDragging, setOmnibuttonPosition]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (isMobile()) return;
     console.log('omnibutton handleMouseUp');
     if (!isDragging && dragStart) {
@@ -101,19 +101,19 @@ export const OmniButton: React.FC = () => {
     }
     setDragStart(null);
     setIsDragging(false);
-  };
+  }, [isDragging, dragStart, isRecentAppsOpen, toggleRecentApps, closeAllOverlays]);
 
   // Mouse event listeners
   useEffect(() => {
     if (dragStart) {
-      document.addEventListener('mousemove', handleMouseMove), { passive: false };
-      document.addEventListener('mouseup', handleMouseUp), { passive: false };
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove), { passive: false };
-        document.removeEventListener('mouseup', handleMouseUp), { passive: false };
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [dragStart, isDragging]);
+  }, [dragStart, isDragging, handleMouseMove, handleMouseUp]);
 
   // Handle window resize to keep button in bounds
   useEffect(() => {
