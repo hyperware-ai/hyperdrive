@@ -7,7 +7,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps, UnencryptedIdentity } from "../lib/types";
-import { MULTICALL, generateNetworkingKeys, mechAbi } from "../abis";
+import { MULTICALL, mechAbi } from "../abis";
+import { generateNetworkingKeys } from "../abis/helpers";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
 import EnterHnsName from "../components/EnterHnsName";
@@ -133,8 +134,15 @@ function ResetHnsName({
                     res.json()
                 )) as UnencryptedIdentity;
 
+                const allowedRouters = Array.isArray(infoData.allowed_routers)
+                    ? infoData.allowed_routers
+                    : undefined;
+                if (!allowedRouters) {
+                    return;
+                }
+
                 // Determine if node has specified routers (indirect node)
-                const hasRouters = infoData.allowed_routers && infoData.allowed_routers.length > 0;
+                const hasRouters = allowedRouters.length > 0;
 
                 // If allowed_routers is empty, the node is direct; if it has routers, it's indirect
                 const isDirect = !hasRouters;
@@ -148,7 +156,7 @@ function ResetHnsName({
 
                 // Prepopulate customRouters if this is an indirect node with existing routers
                 if (hasRouters) {
-                    const routersText = infoData.allowed_routers.join('\n');
+                    const routersText = allowedRouters.join('\n');
                     setCustomRouters(routersText);
                     setSpecifyRouters(true); // Auto-enable the checkbox
                 }
@@ -192,6 +200,7 @@ function ResetHnsName({
 
             try {
                 const data = await generateNetworkingKeys({
+                    upgradable: false,
                     direct,
                     label: name,
                     our_address: address,
@@ -220,7 +229,7 @@ function ResetHnsName({
                 console.error("An error occurred:", error);
             }
         },
-        [address, direct, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal]
+        [address, direct, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal, getValidCustomRouters, setHnsName]
     );
 
     useEffect(() => {

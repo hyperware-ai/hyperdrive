@@ -12,6 +12,8 @@ export interface PageProps {
   setRouters: React.Dispatch<React.SetStateAction<string[]>>,
   direct: boolean,
   setDirect: React.Dispatch<React.SetStateAction<boolean>>,
+  upgradable: boolean,
+  setUpgradable: React.Dispatch<React.SetStateAction<boolean>>,
   hnsName: string,
   setHnsName: React.Dispatch<React.SetStateAction<string>>,
   key: string,

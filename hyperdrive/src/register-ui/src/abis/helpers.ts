@@ -2,7 +2,7 @@
 import { NetworkingInfo } from "../lib/types";
 import { hyperhash } from "../utils/hyperhash";
 import { ipToBytes, portToBytes } from "../utils/hns_encoding";
-import { multicallAbi, hypermapAbi, mechAbi, HYPERMAP, MULTICALL } from "./";
+import { multicallAbi, hypermapAbi, mechAbi, HYPERMAP, MULTICALL } from ".";
 import { encodeFunctionData, encodePacked, stringToHex, bytesToHex } from "viem";
 
 // Function to encode router names into keccak256 hashes
@@ -13,14 +13,17 @@ const encodeRouters = (routers: string[]): `0x${string}` => {
 };
 
 export const generateNetworkingKeys = async ({
+    upgradable,
     direct,
     setNetworkingKey,
     setWsPort,
     setTcpPort,
     setRouters,
     reset,
+    tbaAddress,
     customRouters,
 }: {
+    upgradable: boolean,
     direct: boolean,
     label: string,
     our_address: `0x${string}`,
@@ -30,6 +33,7 @@ export const generateNetworkingKeys = async ({
     setTcpPort: (tcpPort: number) => void;
     setRouters: (routers: string[]) => void;
     reset: boolean;
+    tbaAddress?: `0x${string}`;
     customRouters?: string[];
 }) => {
     const {
@@ -111,7 +115,14 @@ export const generateNetworkingKeys = async ({
                 )]
         });
 
-    const calls = direct ? [
+    // Add initialize call if TBA address is provided
+    const initializeCall = upgradable && tbaAddress ? encodeFunctionData({
+        abi: [{ "inputs": [], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function" }],
+        functionName: 'initialize',
+        args: []
+    }) : null;
+
+    const baseCalls = direct ? [
         { target: HYPERMAP, callData: netkeycall },
         { target: HYPERMAP, callData: ws_port_call },
         { target: HYPERMAP, callData: tcp_port_call },
@@ -120,6 +131,10 @@ export const generateNetworkingKeys = async ({
         { target: HYPERMAP, callData: netkeycall },
         { target: HYPERMAP, callData: router_call },
     ];
+
+    const calls = upgradable && initializeCall && tbaAddress ?
+        [{ target: tbaAddress, callData: initializeCall }, ...baseCalls] :
+        baseCalls;
 
     const multicalls = encodeFunctionData({
         abi: multicallAbi,
