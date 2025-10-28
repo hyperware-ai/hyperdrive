@@ -134,8 +134,15 @@ function ResetHnsName({
                     res.json()
                 )) as UnencryptedIdentity;
 
+                const allowedRouters = Array.isArray(infoData.allowed_routers)
+                    ? infoData.allowed_routers
+                    : undefined;
+                if (!allowedRouters) {
+                    return;
+                }
+
                 // Determine if node has specified routers (indirect node)
-                const hasRouters = infoData.allowed_routers && infoData.allowed_routers.length > 0;
+                const hasRouters = allowedRouters.length > 0;
 
                 // If allowed_routers is empty, the node is direct; if it has routers, it's indirect
                 const isDirect = !hasRouters;
@@ -149,7 +156,7 @@ function ResetHnsName({
 
                 // Prepopulate customRouters if this is an indirect node with existing routers
                 if (hasRouters) {
-                    const routersText = infoData.allowed_routers.join('\n');
+                    const routersText = allowedRouters.join('\n');
                     setCustomRouters(routersText);
                     setSpecifyRouters(true); // Auto-enable the checkbox
                 }

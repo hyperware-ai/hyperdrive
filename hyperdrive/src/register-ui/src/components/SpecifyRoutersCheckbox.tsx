@@ -24,6 +24,7 @@ export default function SpecifyRoutersCheckbox({
     return (
         <div className="flex gap-2 items-center">
             <button
+                type="button"
                 className="icon"
                 onClick={(e) => {
                     e.preventDefault();

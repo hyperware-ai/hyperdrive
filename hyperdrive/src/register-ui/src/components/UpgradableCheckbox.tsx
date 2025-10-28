@@ -8,7 +8,7 @@ interface UpgradableCheckboxProps {
 export default function UpgradableCheckbox({ upgradable, setUpgradable }: UpgradableCheckboxProps) {
   return (
     <div className="flex gap-2 items-center">
-      <button className="icon" onClick={(e) => {
+      <button type="button" className="icon" onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         setUpgradable(!upgradable);
