@@ -489,7 +489,6 @@ async fn main() {
     // Create the cache_sources file with test content
     let data_file_path = initfiles_dir.join("cache_sources");
 
-
     #[cfg(not(feature = "simulation-mode"))]
     {
         // Write cache_source_vector to cache_sources as JSON
