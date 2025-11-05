@@ -17,6 +17,7 @@ interface NotificationStore {
   notifications: AppNotification[];
   permissionGranted: boolean;
   menuOpen: boolean;
+  hasVapidKey: boolean | null;
 
   // Actions
   addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'read' | 'seen'>) => void;
@@ -27,6 +28,7 @@ interface NotificationStore {
   clearNotifications: () => void;
   setPermissionGranted: (granted: boolean) => void;
   setMenuOpen: (open: boolean) => void;
+  setHasVapidKey: (hasKey: boolean | null) => void;
 
   // Computed
   getUnreadCount: () => number;
@@ -41,6 +43,7 @@ export const useNotificationStore = create<NotificationStore>()(
       notifications: [],
       permissionGranted: false,
       menuOpen: false,
+      hasVapidKey: null,
 
       addNotification: (notification) => {
         const newNotification: AppNotification = {
@@ -98,6 +101,10 @@ export const useNotificationStore = create<NotificationStore>()(
         if (!open) {
           get().markAllAsSeen();
         }
+      },
+
+      setHasVapidKey: (hasKey) => {
+        set({ hasVapidKey: hasKey });
       },
 
       getUnreadCount: () => {

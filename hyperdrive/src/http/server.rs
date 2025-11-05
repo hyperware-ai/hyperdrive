@@ -350,6 +350,8 @@ async fn login_handler(
     let info = LoginInfo {
         password_hash: "secret".to_string(),
         subdomain: info.subdomain,
+        custom_cache_sources: None,
+        custom_base_l2_access_providers: None,
     };
 
     println!("login_handler: got info {info:?}\r");

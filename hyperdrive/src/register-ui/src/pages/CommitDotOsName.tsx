@@ -4,7 +4,6 @@ import { toAscii } from "idna-uts46-hx";
 import EnterHnsName from "../components/EnterHnsName";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
-
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
 
@@ -20,15 +19,15 @@ interface RegisterOsNameProps extends PageProps { }
 const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
 
 function CommitDotOsName({
-                             direct,
-                             setDirect,
-                             setHnsName,
-                             setNetworkingKey,
-                             setIpAddress,
-                             setWsPort,
-                             setTcpPort,
-                             setRouters,
-                         }: RegisterOsNameProps) {
+    direct,
+    setDirect,
+    setHnsName,
+    setNetworkingKey,
+    setIpAddress,
+    setWsPort,
+    setTcpPort,
+    setRouters,
+}: RegisterOsNameProps) {
     let { address } = useAccount();
     let navigate = useNavigate();
     let { openConnectModal } = useConnectModal();
