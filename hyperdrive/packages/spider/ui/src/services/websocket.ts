@@ -1,4 +1,6 @@
-import { Message, ConversationMetadata } from '@caller-utils';
+import { Spider } from '@caller-utils';
+type Message = Spider.Message;
+type ConversationMetadata = Spider.ConversationMetadata;
 import { 
   WsClientMessage, 
   WsServerMessage,

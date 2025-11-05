@@ -41,7 +41,7 @@ const NotificationBay: React.FC = () => {
 
     return (
         <>
-            <div className={classNames("relative rounded-md p-2 z-50")}>
+            <div className={classNames("relative rounded-md p-2")}>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     className={`clear thin notification-button ${hasErrors ? 'has-errors' : ''}`}
@@ -54,8 +54,12 @@ const NotificationBay: React.FC = () => {
                     )}
                 </button>
 
-                {isExpanded && (
-                    <div className="absolute top-full right-0 w-md max-w-screen-sm max-h-md min-h-0 overflow-y-auto bg-white dark:bg-black rounded-md shadow-md z-50 p-2 flex flex-col gap-2 items-stretch">
+                {isExpanded && <div
+                    className="absolute top-full right-0 w-md max-w-[90vw] z-10 flex flex-col items-stretch"
+                >
+                    <div
+                        className="max-h-md min-h-0 overflow-y-auto bg-white dark:bg-black rounded-md shadow-md px-4 py-2 flex flex-col gap-2 items-stretch"
+                    >
                         {notifications.length === 0 ? (
                             <p>All clear, no notifications!</p>
                         ) : (
@@ -69,7 +73,7 @@ const NotificationBay: React.FC = () => {
                             ))
                         )}
                     </div>
-                )}
+                </div>}
             </div>
 
             {modalContent && (

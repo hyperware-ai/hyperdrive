@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { AppListing } from "../types/app";
-import { FaChevronDown, FaChevronRight } from "react-icons/fa6";
+import { FaChevronDown, FaChevronRight, FaXmark } from "react-icons/fa6";
 import classNames from "classnames";
 
 const mockApp: AppListing = {
@@ -33,10 +33,11 @@ export default function AppDetail() {
     const [app, setApp] = useState<AppListing | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [showScreenshots, setShowScreenshots] = useState(false);
+    const [showScreenshots, setShowScreenshots] = useState(true);
     const [isDevMode, setIsDevMode] = useState(false);
     const [backtickPressCount, setBacktickPressCount] = useState(0);
     const [detailExpanded, setDetailExpanded] = useState(false);
+    const [activeScreenshot, setActiveScreenshot] = useState<string | null>(null);
     useEffect(() => {
         const backTickCounter = (e: KeyboardEvent) => {
             if (e.key === '`') {
@@ -54,9 +55,21 @@ export default function AppDetail() {
         }
     }, [backtickPressCount]);
 
+    const derivedId = React.useMemo(() => {
+        if (id) return id;
+        const match = window.location.pathname.match(/\/app\/([^/?#]+)/);
+        if (match && match[1]) {
+            return decodeURIComponent(match[1]);
+        }
+        return undefined;
+    }, [id]);
+
     useEffect(() => {
         const loadApp = async () => {
-            if (!id) return;
+            if (!derivedId) {
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             setError(null);
 
@@ -64,7 +77,8 @@ export default function AppDetail() {
                 if (isDevMode) {
                     setApp(mockApp);
                 } else {
-                    const response = await fetch(`/main:app-store:sys/apps-public/${id}`);
+                    const encodedId = encodeURIComponent(derivedId).replace(/%3A/g, ":");
+                    const response = await fetch(`/main:app-store:sys/apps-public/${encodedId}`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch app details');
                     }
@@ -81,7 +95,7 @@ export default function AppDetail() {
 
         loadApp();
         window.scrollTo(0, 0);
-    }, [id, isDevMode]);
+    }, [derivedId, isDevMode]);
 
     if (isLoading) {
         return (
@@ -102,7 +116,7 @@ export default function AppDetail() {
     if (!app) {
         return (
             <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-center justify-center min-h-96">
-                <div>App details not found for {id}</div>
+                <div>App details not found for {derivedId ?? "unknown app"}</div>
             </div>
         );
     }
@@ -113,6 +127,9 @@ export default function AppDetail() {
 
     const hasScreenshots = (app.metadata?.properties?.screenshots &&
         app.metadata.properties.screenshots.length > 0) || isDevMode;
+    const screenshots = isDevMode
+        ? mockApp.metadata!.properties!.screenshots!
+        : (app.metadata?.properties?.screenshots ?? []);
 
     return (
         <div className="max-w-screen md:max-w-screen-md mx-auto flex flex-col items-stretch gap-4">
@@ -201,18 +218,43 @@ export default function AppDetail() {
 
                     {showScreenshots && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {(isDevMode ? mockApp.metadata!.properties!.screenshots! : app.metadata?.properties?.screenshots || []).map((screenshot: string, index: number) => (
+                            {screenshots.map((screenshot: string, index: number) => (
                                 <img
                                     key={index}
                                     src={screenshot}
                                     alt={`Screenshot ${index + 1}`}
                                     className="rounded-lg w-full h-auto object-cover aspect-video max-h-64 hover:scale-105 transition-transform cursor-pointer"
                                     loading="lazy"
-                                    onClick={() => window.open(screenshot, '_blank')}
+                                    onClick={() => setActiveScreenshot(screenshot)}
                                 />
                             ))}
                         </div>
                     )}
+                </div>
+            )}
+            {activeScreenshot && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    onClick={() => setActiveScreenshot(null)}
+                >
+                    <div
+                        className="relative max-w-5xl max-h-[90vh] flex items-center justify-center"
+                        onClick={event => event.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors"
+                            onClick={() => setActiveScreenshot(null)}
+                            aria-label="Close screenshot preview"
+                        >
+                            <FaXmark size={18} />
+                        </button>
+                        <img
+                            src={activeScreenshot}
+                            alt="Selected app screenshot"
+                            className="max-h-[85vh] w-auto max-w-full rounded-lg shadow-2xl"
+                        />
+                    </div>
                 </div>
             )}
 

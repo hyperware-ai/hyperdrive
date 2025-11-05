@@ -278,7 +278,7 @@ async fn load_keys_from_state(
             inherit: false,
             expects_response: Some(5),
             body: serde_json::to_vec(&StateAction::GetState(ProcessId::new(
-                Some("notifications-subscriptions"),
+                Some("notifications"),
                 "distro",
                 "sys",
             )))
@@ -516,10 +516,18 @@ async fn handle_request(
                 // Clone what we need for the async task
                 let state_clone = state.clone();
                 let send_to_terminal_clone = send_to_terminal.clone();
+                let send_to_state_clone = send_to_state.clone();
+                let our_node_clone = our_node.to_string();
 
                 // Start the queue processor
                 let handle = tokio::spawn(async move {
-                    process_notification_queue(&send_to_terminal_clone, &state_clone).await;
+                    process_notification_queue(
+                        &our_node_clone,
+                        &send_to_terminal_clone,
+                        &send_to_state_clone,
+                        &state_clone,
+                    )
+                    .await;
                 });
 
                 state_guard.queue_processor_handle = Some(handle);
@@ -762,7 +770,7 @@ async fn save_subscriptions_to_state(
             inherit: false,
             expects_response: None, // Don't expect a response to avoid polluting the main loop
             body: serde_json::to_vec(&StateAction::SetState(ProcessId::new(
-                Some("notifications-subscriptions"),
+                Some("notifications"),
                 "distro",
                 "sys",
             )))
@@ -783,7 +791,9 @@ async fn save_subscriptions_to_state(
 }
 
 async fn process_notification_queue(
+    our_node: &str,
     send_to_terminal: &PrintSender,
+    send_to_state: &MessageSender,
     state: &Arc<RwLock<NotificationsState>>,
 ) {
     loop {
@@ -818,8 +828,14 @@ async fn process_notification_queue(
                 .await;
 
                 // Send the notification
-                if let Err(e) =
-                    send_notification_to_all(send_to_terminal, state, notification).await
+                if let Err(e) = send_notification_to_all(
+                    our_node,
+                    send_to_terminal,
+                    send_to_state,
+                    state,
+                    notification,
+                )
+                .await
                 {
                     Printout::new(
                         0,
@@ -883,7 +899,9 @@ async fn process_notification_queue(
 }
 
 async fn send_notification_to_all(
+    our_node: &str,
     send_to_terminal: &PrintSender,
+    send_to_state: &MessageSender,
     state: &Arc<RwLock<NotificationsState>>,
     notification: QueuedNotification,
 ) -> Result<(), NotificationsError> {
@@ -927,6 +945,7 @@ async fn send_notification_to_all(
     // Send to all subscriptions
     let mut send_errors = Vec::new();
     let mut send_count = 0;
+    let mut invalid_endpoints = Vec::new();
 
     for subscription in &state_guard.subscriptions {
         // Create subscription info for web-push
@@ -1007,17 +1026,80 @@ async fn send_notification_to_all(
                 send_count += 1;
             }
             Err(e) => {
+                let error_str = format!("{:?}", e);
+
+                // Check if this is an EndpointNotValid error
+                if error_str.contains("EndpointNotValid") || error_str.contains("410") {
+                    Printout::new(
+                        0,
+                        NOTIFICATIONS_PROCESS_ID.clone(),
+                        format!(
+                            "notifications: Endpoint invalid, will remove: {}",
+                            subscription.endpoint
+                        ),
+                    )
+                    .send(send_to_terminal)
+                    .await;
+                    invalid_endpoints.push(subscription.endpoint.clone());
+                } else {
+                    Printout::new(
+                        0,
+                        NOTIFICATIONS_PROCESS_ID.clone(),
+                        format!(
+                            "notifications: Failed to send to {}: {:?}",
+                            subscription.endpoint, e
+                        ),
+                    )
+                    .send(send_to_terminal)
+                    .await;
+                }
+                send_errors.push(format!("Failed to send to endpoint: {:?}", e));
+            }
+        }
+    }
+
+    // Drop the read guard before attempting to write
+    drop(state_guard);
+
+    // Remove invalid endpoints if any were found
+    if !invalid_endpoints.is_empty() {
+        let mut state_guard = state.write().await;
+        let initial_count = state_guard.subscriptions.len();
+
+        for endpoint in &invalid_endpoints {
+            state_guard
+                .subscriptions
+                .retain(|s| &s.endpoint != endpoint);
+        }
+
+        if state_guard.subscriptions.len() < initial_count {
+            Printout::new(
+                2,
+                NOTIFICATIONS_PROCESS_ID.clone(),
+                format!(
+                    "notifications: Removed {} invalid endpoints, {} subscriptions remaining",
+                    initial_count - state_guard.subscriptions.len(),
+                    state_guard.subscriptions.len()
+                ),
+            )
+            .send(send_to_terminal)
+            .await;
+
+            // Save the updated subscriptions to state
+            if let Err(e) =
+                save_subscriptions_to_state(our_node, send_to_state, &state_guard.subscriptions)
+                    .await
+            {
                 Printout::new(
                     0,
                     NOTIFICATIONS_PROCESS_ID.clone(),
                     format!(
-                        "notifications: Failed to send to {}: {:?}",
-                        subscription.endpoint, e
+                        "notifications: Failed to save updated subscriptions: {:?}",
+                        e
                     ),
                 )
                 .send(send_to_terminal)
                 .await;
-                send_errors.push(format!("Failed to send to endpoint: {:?}", e));
             }
         }
     }
@@ -1025,11 +1107,7 @@ async fn send_notification_to_all(
     Printout::new(
         2,
         NOTIFICATIONS_PROCESS_ID.clone(),
-        format!(
-            "notifications: Sent to {}/{} devices",
-            send_count,
-            state_guard.subscriptions.len()
-        ),
+        format!("notifications: Sent to {} devices successfully", send_count),
     )
     .send(send_to_terminal)
     .await;

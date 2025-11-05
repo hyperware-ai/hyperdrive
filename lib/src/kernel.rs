@@ -50,6 +50,9 @@ pub struct BootInfo {
     pub signature: String,
     pub timestamp: u64,
     pub chain_id: u64,
+    pub custom_routers: Option<Vec<String>>,
+    pub custom_cache_sources: Option<Vec<String>>,
+    pub custom_base_l2_access_providers: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +65,8 @@ pub struct ImportKeyfileInfo {
 pub struct LoginInfo {
     pub password_hash: String,
     pub subdomain: Option<String>,
+    pub custom_cache_sources: Option<Vec<String>>,
+    pub custom_base_l2_access_providers: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -171,6 +176,14 @@ impl Identity {
 pub struct UnencryptedIdentity {
     pub name: NodeId,
     pub allowed_routers: Vec<NodeId>,
+}
+
+#[derive(serde::Serialize)]
+pub struct InfoResponse {
+    pub name: Option<String>,
+    pub allowed_routers: Option<Vec<String>>,
+    pub initial_cache_sources: Vec<String>,
+    pub initial_base_l2_providers: Vec<String>,
 }
 
 //

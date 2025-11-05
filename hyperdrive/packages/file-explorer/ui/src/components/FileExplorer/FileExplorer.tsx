@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import useFileExplorerStore from '../../store/fileExplorer';
-import { list_directory, create_directory, create_file, delete_file, delete_directory, FileInfo, get_current_directory } from '../../lib/api';
+import { FileExplorer as FileExplorerAPI } from '../../lib/api';
 import FileList from './FileList';
 import Breadcrumb from './Breadcrumb';
 import Toolbar from './Toolbar';
@@ -43,7 +43,7 @@ const FileExplorer: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const fileList = await list_directory(path);
+      const fileList = await FileExplorerAPI.list_directory(path);
       
       // Backend returns files for the requested directory with 2 levels of depth
       // We need to include all files so the tree structure works, but we'll filter
@@ -64,9 +64,9 @@ const FileExplorer: React.FC = () => {
     }
   };
 
-  const loadSubdirectory = async (path: string): Promise<FileInfo[]> => {
+  const loadSubdirectory = async (path: string): Promise<FileExplorerAPI.FileInfo[]> => {
     try {
-      const fileList = await list_directory(path);
+      const fileList = await FileExplorerAPI.list_directory(path);
       
       // Filter out the directory itself and return only its contents
       const filteredFiles = fileList.filter(file => {
@@ -85,7 +85,7 @@ const FileExplorer: React.FC = () => {
   useEffect(() => {
     const initializeDirectory = async () => {
       try {
-        const cwd = await get_current_directory();
+        const cwd = await FileExplorerAPI.get_current_directory();
         setCurrentPath(cwd);
       } catch (err) {
         // If getting cwd fails, fall back to root
@@ -119,7 +119,7 @@ const FileExplorer: React.FC = () => {
       : `${currentPath}/${folderName}`;
 
     try {
-      await create_directory(newPath);
+      await FileExplorerAPI.create_directory(newPath);
       await loadDirectory(currentPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create folder');
@@ -137,7 +137,7 @@ const FileExplorer: React.FC = () => {
 
     try {
       // Create an empty file
-      await create_file(newPath, []);
+      await FileExplorerAPI.create_file(newPath, []);
       await loadDirectory(currentPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create file');
@@ -153,9 +153,9 @@ const FileExplorer: React.FC = () => {
       for (const path of selectedFiles) {
         const file = files.find(f => f.path === path);
         if (file?.is_directory) {
-          await delete_directory(path);
+          await FileExplorerAPI.delete_directory(path);
         } else {
-          await delete_file(path);
+          await FileExplorerAPI.delete_file(path);
         }
       }
       clearSelection();

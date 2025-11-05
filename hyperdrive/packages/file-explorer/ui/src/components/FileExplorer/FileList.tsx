@@ -1,15 +1,15 @@
 import React from 'react';
-import { FileInfo } from '../../lib/api';
+import { FileExplorer } from '../../lib/api';
 import FileItem from './FileItem';
 import './FileList.css';
 
 interface FileListProps {
-  files: FileInfo[];
+  files: FileExplorer.FileInfo[];
   viewMode: 'list' | 'grid';
   loading: boolean;
   onNavigate: (path: string) => void;
   currentPath: string;
-  onLoadSubdirectory?: (path: string) => Promise<FileInfo[]>;
+  onLoadSubdirectory?: (path: string) => Promise<FileExplorer.FileInfo[]>;
   onDelete?: () => void;
 }
 
@@ -23,8 +23,8 @@ const FileList: React.FC<FileListProps> = ({ files, viewMode, loading, onNavigat
   }
 
   // Build tree structure from flat list
-  const fileMap = new Map<string, FileInfo & { children?: FileInfo[] }>();
-  const topLevelFiles: (FileInfo & { children?: FileInfo[] })[] = [];
+  const fileMap = new Map<string, FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] }>();
+  const topLevelFiles: (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[] = [];
   
   // First pass: create map of all files
   files.forEach(file => {
@@ -63,7 +63,7 @@ const FileList: React.FC<FileListProps> = ({ files, viewMode, loading, onNavigat
   });
 
   // Sort files: directories first, then by name
-  const sortFiles = (files: (FileInfo & { children?: FileInfo[] })[]) => {
+  const sortFiles = (files: (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[]) => {
     return [...files].sort((a, b) => {
       if (a.is_directory && !b.is_directory) return -1;
       if (!a.is_directory && b.is_directory) return 1;
@@ -72,7 +72,7 @@ const FileList: React.FC<FileListProps> = ({ files, viewMode, loading, onNavigat
   };
 
   // Recursively sort all children
-  const sortRecursive = (files: (FileInfo & { children?: FileInfo[] })[]) => {
+  const sortRecursive = (files: (FileExplorer.FileInfo & { children?: FileExplorer.FileInfo[] })[]) => {
     const sorted = sortFiles(files);
     sorted.forEach(file => {
       if (file.children && file.children.length > 0) {

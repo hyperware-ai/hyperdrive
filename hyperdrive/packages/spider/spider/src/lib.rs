@@ -3,18 +3,18 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use chrono::Utc;
-use serde_json::Value;
+use serde_json::{json, Value};
 use uuid::Uuid;
 
-use hyperprocess_macro::*;
+use hyperprocess_macro::hyperprocess;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::{
         client::{open_ws_connection, send_ws_client_push},
         server::{send_ws_push, WsMessageType},
     },
-    hyperapp::source,
-    our, println, Address, LazyLoadBlob, ProcessId,
+    hyperapp::{add_response_header, source},
+    our, println, Address, LazyLoadBlob, ProcessId, Request,
 };
 #[cfg(not(feature = "simulation-mode"))]
 use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
@@ -24,17 +24,17 @@ use provider::create_llm_provider;
 
 mod types;
 use types::{
-    AddMcpServerRequest, ApiKey, ApiKeyInfo, ChatClient, ChatRequest, ChatResponse, ConfigResponse,
-    ConnectMcpServerRequest, Conversation, ConversationMetadata, CreateSpiderKeyRequest,
-    DisconnectMcpServerRequest, GetConfigRequest, GetConversationRequest, HypergridConnection,
-    HypergridMessage, HypergridMessageType, JsonRpcNotification, JsonRpcRequest,
-    ListApiKeysRequest, ListConversationsRequest, ListMcpServersRequest, ListSpiderKeysRequest,
-    McpCapabilities, McpClientInfo, McpInitializeParams, McpRequestType, McpServer,
-    McpServerDetails, McpToolCallParams, McpToolInfo, Message, OAuthExchangeRequest,
-    OAuthRefreshRequest, OAuthTokenResponse, PendingMcpRequest, ProcessRequest, ProcessResponse,
-    RemoveApiKeyRequest, RemoveMcpServerRequest, RevokeSpiderKeyRequest, SetApiKeyRequest,
-    SpiderApiKey, SpiderState, Tool, ToolCall, ToolExecutionResult, ToolResult, TrialNotification,
-    UpdateConfigRequest, WsClientMessage, WsConnection, WsServerMessage,
+    AddMcpServerReq, ApiKey, ApiKeyInfo, ChatClient, ChatReq, ChatRes, ConfigRes,
+    ConnectMcpServerReq, Conversation, ConversationMetadata, CreateSpiderKeyReq,
+    DisconnectMcpServerReq, ErrorRes, GetConfigReq, GetConversationReq, HypergridConnection,
+    HypergridMessage, HypergridMessageType, JsonRpcNotification, JsonRpcReq, ListApiKeysReq,
+    ListConversationsReq, ListMcpServersReq, ListSpiderKeysReq, McpCapabilities, McpClientInfo,
+    McpInitializeParams, McpRequestType, McpServer, McpServerDetails, McpToolCallParams,
+    McpToolInfo, Message, MessageContent, OAuthCodeExchangeReq, OAuthExchangeReq, OAuthRefreshReq,
+    OAuthRefreshTokenReq, OAuthTokenRes, PendingMcpReq, ProcessReq, ProcessRes, RemoveApiKeyReq,
+    RemoveMcpServerReq, RevokeSpiderKeyReq, SetApiKeyReq, SpiderApiKey, SpiderState, Tool,
+    ToolCall, ToolExecutionResult, ToolResponseContent, ToolResponseContentItem, ToolResult,
+    TrialNotification, UpdateConfigReq, WsClientMessage, WsConnection, WsServerMessage,
 };
 
 mod utils;
@@ -44,7 +44,12 @@ use utils::{
 };
 
 mod tool_providers;
-use tool_providers::{hypergrid::HypergridToolProvider, ToolProvider};
+use tool_providers::{
+    build_container::{BuildContainerExt, BuildContainerToolProvider},
+    hypergrid::{HypergridExt, HypergridToolProvider},
+    hyperware::HyperwareToolProvider,
+    ToolProvider,
+};
 
 const ICON: &str = include_str!("./icon");
 
@@ -59,6 +64,7 @@ const API_KEY_DISPENSER_PROCESS_ID: (&str, &str, &str) = (
     "ware.hypr",
 );
 const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
+const TTSTT: (&str, &str, &str) = ("ttstt", "spider", "sys");
 
 #[hyperprocess(
     name = "Spider",
@@ -78,38 +84,209 @@ const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
         }
     ],
     save_config = hyperware_process_lib::hyperapp::SaveOptions::OnDiff,
-    wit_world = "spider-dot-os-v0"
+    wit_world = "spider-sys-v0"
 )]
 impl SpiderState {
     #[init]
     async fn initialize(&mut self) {
+        // Wait for hypermap-cacher to be ready
+        let cacher_address = Address::new("our", ("hypermap-cacher", "hypermap-cacher", "sys"));
+        let mut attempt = 1;
+        const RETRY_DELAY_S: u64 = 2;
+        const TIMEOUT_S: u64 = 15;
+
+        println!("Spider: Waiting for hypermap-cacher to be ready...");
+
+        loop {
+            // Create GetStatus request JSON
+            let cacher_request = r#""GetStatus""#;
+
+            match Request::to(cacher_address.clone())
+                .body(cacher_request.as_bytes().to_vec())
+                .send_and_await_response(TIMEOUT_S)
+            {
+                Ok(Ok(response)) => {
+                    // Try to parse the response as JSON
+                    if let Ok(response_str) = String::from_utf8(response.body().to_vec()) {
+                        // Check if it's IsStarting response
+                        if response_str.contains("IsStarting")
+                            || response_str.contains(r#""IsStarting""#)
+                        {
+                            println!(
+                                "Spider: hypermap-cacher is still starting (attempt {}). Retrying in {}s...",
+                                attempt, RETRY_DELAY_S
+                            );
+                            std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+                            attempt += 1;
+                            continue;
+                        }
+                        // Check if it's GetStatus response
+                        if response_str.contains("GetStatus")
+                            || response_str.contains("last_cached_block")
+                        {
+                            println!("Spider: hypermap-cacher is ready!");
+                            break;
+                        }
+                    }
+                    // If we get here, we got some response we don't understand, but cacher is at least responding
+                    println!("Spider: hypermap-cacher responded, proceeding with initialization");
+                    break;
+                }
+                Ok(Err(e)) => {
+                    println!(
+                        "Spider: Error response from hypermap-cacher (attempt {}): {:?}",
+                        attempt, e
+                    );
+                    std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+                    attempt += 1;
+                }
+                Err(e) => {
+                    println!(
+                        "Spider: Failed to contact hypermap-cacher (attempt {}): {:?}",
+                        attempt, e
+                    );
+                    std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+                    attempt += 1;
+                }
+            }
+        }
+
+        // wait an additional 2s to allow hns to get ready
+        std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
+
         add_to_homepage("Spider", Some(ICON), Some("/"), None);
 
         self.default_llm_provider = "anthropic".to_string();
-        self.max_tokens = 4096;
+        self.max_tokens = 32_000;
         self.temperature = 1.0;
+        // Only set if empty (preserves existing value from deserialized state)
         self.next_channel_id = 1000; // Start channel IDs at 1000
 
         let our_node = our().node.clone();
         println!("Spider MCP client initialized on node: {}", our_node);
 
-        // Register Hypergrid tool provider if not already registered
+        // Register Build Container tool provider
+        let build_container_provider = BuildContainerToolProvider::new();
+
+        // Always register the provider (even if server exists)
+        self.tool_provider_registry
+            .register(Box::new(build_container_provider));
+
+        // Check if build container server exists
+        let has_build_container = self
+            .mcp_servers
+            .iter()
+            .any(|s| s.transport.transport_type == "build_container");
+
+        if !has_build_container {
+            // Create new build container server
+            let build_container_provider = BuildContainerToolProvider::new();
+            let build_container_tools = build_container_provider.get_tools(self);
+
+            let build_container_server = McpServer {
+                id: "build_container".to_string(),
+                name: "Build Container".to_string(),
+                transport: types::TransportConfig {
+                    transport_type: "build_container".to_string(),
+                    command: None,
+                    args: None,
+                    url: None,
+                    hypergrid_token: None,
+                    hypergrid_client_id: None,
+                    hypergrid_node: None,
+                },
+                tools: build_container_tools,
+                connected: true, // Always mark as connected
+            };
+
+            self.mcp_servers.push(build_container_server);
+            println!("Spider: Build Container MCP server initialized");
+        } else {
+            // Server exists, refresh its tools from the provider
+            println!("Spider: Refreshing Build Container tools on startup");
+
+            // Get fresh tools from provider
+            let build_container_provider = BuildContainerToolProvider::new();
+            let fresh_tools = build_container_provider.get_tools(self);
+
+            // Update the existing server's tools
+            if let Some(server) = self
+                .mcp_servers
+                .iter_mut()
+                .find(|s| s.id == "build_container")
+            {
+                server.tools = fresh_tools;
+                println!(
+                    "Spider: Build Container tools refreshed with {} tools",
+                    server.tools.len()
+                );
+            }
+        }
+
+        // Register Hypergrid tool provider
+        let hypergrid_provider = HypergridToolProvider::new("hypergrid_default".to_string());
+
+        // Always register the provider (even if server exists)
+        self.tool_provider_registry
+            .register(Box::new(hypergrid_provider));
+
+        // Register Hyperware tool provider
+        let hyperware_provider = HyperwareToolProvider::new();
+        self.tool_provider_registry
+            .register(Box::new(hyperware_provider));
+
+        // Check if hyperware server exists
+        let has_hyperware = self
+            .mcp_servers
+            .iter()
+            .any(|s| s.transport.transport_type == "hyperware");
+        if !has_hyperware {
+            // Create new hyperware server
+            let hyperware_provider = HyperwareToolProvider::new();
+            let hyperware_tools = hyperware_provider.get_tools(self);
+            let hyperware_server = McpServer {
+                id: "hyperware".to_string(),
+                name: "Hyperware".to_string(),
+                transport: types::TransportConfig {
+                    transport_type: "hyperware".to_string(),
+                    command: None,
+                    args: None,
+                    url: None,
+                    hypergrid_token: None,
+                    hypergrid_client_id: None,
+                    hypergrid_node: None,
+                },
+                tools: hyperware_tools,
+                connected: true, // Always mark as connected
+            };
+            self.mcp_servers.push(hyperware_server);
+            println!("Spider: Hyperware MCP server initialized");
+        } else {
+            // Server exists, refresh its tools from the provider
+            println!("Spider: Refreshing Hyperware tools on startup");
+            // Get fresh tools from provider
+            let hyperware_provider = HyperwareToolProvider::new();
+            let fresh_tools = hyperware_provider.get_tools(self);
+            // Update the existing server's tools
+            if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "hyperware") {
+                server.tools = fresh_tools;
+                println!(
+                    "Spider: Hyperware tools refreshed with {} tools",
+                    server.tools.len()
+                );
+            }
+        }
+
+        // Check if hypergrid server exists
         let has_hypergrid = self
             .mcp_servers
             .iter()
             .any(|s| s.transport.transport_type == "hypergrid");
 
-        // Only create the hypergrid MCP server if none exists
         if !has_hypergrid {
-            // Register the Hypergrid tool provider
+            // Create new hypergrid server
             let hypergrid_provider = HypergridToolProvider::new("hypergrid_default".to_string());
-
-            // Get ALL tools from the provider (not filtered)
             let hypergrid_tools = hypergrid_provider.get_tools(self);
-
-            // Register the provider for later use
-            self.tool_provider_registry
-                .register(Box::new(hypergrid_provider));
 
             let hypergrid_server = McpServer {
                 id: "hypergrid_default".to_string(),
@@ -118,9 +295,7 @@ impl SpiderState {
                     transport_type: "hypergrid".to_string(),
                     command: None,
                     args: None,
-                    url: Some(
-                        "http://localhost:8080/operator:hypergrid:ware.hypr/shim/mcp".to_string(),
-                    ),
+                    url: Some(format!("http://localhost:8080/{HYPERGRID}/shim/mcp")),
                     hypergrid_token: None,
                     hypergrid_client_id: None,
                     hypergrid_node: None,
@@ -132,7 +307,24 @@ impl SpiderState {
             self.mcp_servers.push(hypergrid_server);
             println!("Spider: Hypergrid MCP server initialized (unconfigured)");
         } else {
-            println!("Spider: Hypergrid MCP server already exists, skipping initialization");
+            println!("Spider: Refreshing Hypergrid tools on startup");
+
+            // Get fresh tools from provider
+            let hypergrid_provider = HypergridToolProvider::new("hypergrid_default".to_string());
+            let fresh_tools = hypergrid_provider.get_tools(self);
+
+            // Update the existing server's tools
+            if let Some(server) = self
+                .mcp_servers
+                .iter_mut()
+                .find(|s| s.id == "hypergrid_default")
+            {
+                server.tools = fresh_tools;
+                println!(
+                    "Spider: Hypergrid tools refreshed with {} tools",
+                    server.tools.len()
+                );
+            }
 
             // Restore hypergrid connections for configured servers
             for server in self.mcp_servers.iter() {
@@ -233,7 +425,7 @@ impl SpiderState {
             println!("Auto-reconnecting to MCP server: {}", server_id);
 
             // Retry logic with exponential backoff
-            let max_retries = 3;
+            let max_retries = 10;
             let mut retry_delay_ms = 1000u64; // Start with 1 second
             let mut success = false;
 
@@ -251,7 +443,7 @@ impl SpiderState {
                         String::new()
                     });
 
-                let connect_request = ConnectMcpServerRequest {
+                let connect_request = ConnectMcpServerReq {
                     server_id: server_id.clone(),
                     auth_key: admin_key,
                 };
@@ -361,6 +553,9 @@ impl SpiderState {
                                         },
                                     );
 
+                                    // Clean up disconnected Build Container MCP connections
+                                    self.cleanup_disconnected_build_containers();
+
                                     // Send auth success response
                                     let response = WsServerMessage::AuthSuccess {
                                         message: "Authenticated successfully".to_string(),
@@ -412,8 +607,8 @@ impl SpiderState {
                                         return;
                                     }
 
-                                    // Convert WsChatPayload to ChatRequest
-                                    let chat_request = ChatRequest {
+                                    // Convert WsChatPayload to ChatReq
+                                    let chat_request = ChatReq {
                                         api_key: client.api_key,
                                         messages: payload.messages,
                                         llm_provider: payload.llm_provider,
@@ -546,6 +741,10 @@ impl SpiderState {
 
                 // Parse the message as JSON
                 let message_str = String::from_utf8(message_bytes).unwrap_or_default();
+                println!(
+                    "Spider: Received WebSocket message on channel {}: {}",
+                    channel_id, message_str
+                );
                 if let Ok(json_msg) = serde_json::from_str::<Value>(&message_str) {
                     self.handle_mcp_message(channel_id, json_msg);
                 } else {
@@ -571,6 +770,10 @@ impl SpiderState {
                         server.connected = false;
                         println!("Spider: MCP server {} disconnected", server.name);
                     }
+
+                    // Also remove any ws_mcp server that was created for this connection
+                    let ws_mcp_server_id = format!("ws_mcp_{}", channel_id);
+                    self.mcp_servers.retain(|s| s.id != ws_mcp_server_id);
                 }
 
                 // Clean up any pending requests for this connection
@@ -589,7 +792,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn set_api_key(&mut self, request: SetApiKeyRequest) -> Result<String, String> {
+    async fn set_api_key(&mut self, request: SetApiKeyReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -611,7 +814,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn list_api_keys(&self, request: ListApiKeysRequest) -> Result<Vec<ApiKeyInfo>, String> {
+    async fn list_api_keys(&self, request: ListApiKeysReq) -> Result<Vec<ApiKeyInfo>, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
@@ -632,7 +835,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn remove_api_key(&mut self, request: RemoveApiKeyRequest) -> Result<String, String> {
+    async fn remove_api_key(&mut self, request: RemoveApiKeyReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -652,7 +855,7 @@ impl SpiderState {
     #[http]
     async fn create_spider_key(
         &mut self,
-        request: CreateSpiderKeyRequest,
+        request: CreateSpiderKeyReq,
     ) -> Result<SpiderApiKey, String> {
         // Validate admin key
         let hypergrid: ProcessId = HYPERGRID.parse().unwrap();
@@ -677,7 +880,7 @@ impl SpiderState {
     #[http]
     async fn list_spider_keys(
         &self,
-        request: ListSpiderKeysRequest,
+        request: ListSpiderKeysReq,
     ) -> Result<Vec<SpiderApiKey>, String> {
         // Validate admin key
         if !self.validate_admin_key(&request.admin_key) {
@@ -688,10 +891,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn revoke_spider_key(
-        &mut self,
-        request: RevokeSpiderKeyRequest,
-    ) -> Result<String, String> {
+    async fn revoke_spider_key(&mut self, request: RevokeSpiderKeyReq) -> Result<String, String> {
         // Validate admin key
         if !self.validate_admin_key(&request.admin_key) {
             return Err("Unauthorized: Invalid or non-admin Spider API key".to_string());
@@ -708,7 +908,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn add_mcp_server(&mut self, request: AddMcpServerRequest) -> Result<String, String> {
+    async fn add_mcp_server(&mut self, request: AddMcpServerReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -730,10 +930,7 @@ impl SpiderState {
 
     #[local]
     #[http]
-    async fn list_mcp_servers(
-        &self,
-        request: ListMcpServersRequest,
-    ) -> Result<Vec<McpServer>, String> {
+    async fn list_mcp_servers(&self, request: ListMcpServersReq) -> Result<Vec<McpServer>, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
@@ -745,7 +942,7 @@ impl SpiderState {
     #[http]
     async fn disconnect_mcp_server(
         &mut self,
-        request: DisconnectMcpServerRequest,
+        request: DisconnectMcpServerReq,
     ) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
@@ -786,17 +983,14 @@ impl SpiderState {
     }
 
     #[http]
-    async fn remove_mcp_server(
-        &mut self,
-        request: RemoveMcpServerRequest,
-    ) -> Result<String, String> {
+    async fn remove_mcp_server(&mut self, request: RemoveMcpServerReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
         }
 
         // First disconnect if connected
-        let disconnect_request = DisconnectMcpServerRequest {
+        let disconnect_request = DisconnectMcpServerReq {
             server_id: request.server_id.clone(),
             auth_key: request.auth_key.clone(),
         };
@@ -814,10 +1008,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn connect_mcp_server(
-        &mut self,
-        request: ConnectMcpServerRequest,
-    ) -> Result<String, String> {
+    async fn connect_mcp_server(&mut self, request: ConnectMcpServerReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -863,7 +1054,7 @@ impl SpiderState {
             );
 
             // Send initialize request
-            let init_request = JsonRpcRequest {
+            let init_request = JsonRpcReq {
                 jsonrpc: "2.0".to_string(),
                 method: "initialize".to_string(),
                 params: Some(
@@ -883,7 +1074,7 @@ impl SpiderState {
             // Store pending request
             self.pending_mcp_requests.insert(
                 format!("init_{}", channel_id),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id: format!("init_{}", channel_id),
                     conversation_id: None,
                     server_id: request.server_id.clone(),
@@ -1003,7 +1194,7 @@ impl SpiderState {
     #[http]
     async fn list_conversations(
         &self,
-        request: ListConversationsRequest,
+        request: ListConversationsReq,
     ) -> Result<Vec<Conversation>, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
@@ -1028,10 +1219,7 @@ impl SpiderState {
     }
 
     #[http]
-    async fn get_conversation(
-        &self,
-        request: GetConversationRequest,
-    ) -> Result<Conversation, String> {
+    async fn get_conversation(&self, request: GetConversationReq) -> Result<Conversation, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
@@ -1049,21 +1237,23 @@ impl SpiderState {
     }
 
     #[http]
-    async fn get_config(&self, request: GetConfigRequest) -> Result<ConfigResponse, String> {
+    async fn get_config(&self, request: GetConfigReq) -> Result<ConfigRes, String> {
         // Validate read permission
         if !self.validate_permission(&request.auth_key, "read") {
             return Err("Unauthorized: API key lacks read permission".to_string());
         }
 
-        Ok(ConfigResponse {
+        Ok(ConfigRes {
             default_llm_provider: self.default_llm_provider.clone(),
             max_tokens: self.max_tokens,
             temperature: self.temperature,
+            build_container_ws_uri: self.build_container_ws_uri.clone(),
+            build_container_api_key: self.build_container_api_key.clone(),
         })
     }
 
     #[http]
-    async fn update_config(&mut self, request: UpdateConfigRequest) -> Result<String, String> {
+    async fn update_config(&mut self, request: UpdateConfigReq) -> Result<String, String> {
         // Validate write permission
         if !self.validate_permission(&request.auth_key, "write") {
             return Err("Unauthorized: API key lacks write permission".to_string());
@@ -1079,6 +1269,46 @@ impl SpiderState {
 
         if let Some(temp) = request.temperature {
             self.temperature = temp;
+        }
+
+        // Track if build container settings changed
+        let mut build_container_changed = false;
+
+        if let Some(uri) = request.build_container_ws_uri {
+            if self.build_container_ws_uri != uri {
+                self.build_container_ws_uri = uri;
+                build_container_changed = true;
+            }
+        }
+
+        if let Some(key) = request.build_container_api_key {
+            if self.build_container_api_key != key {
+                self.build_container_api_key = key;
+                build_container_changed = true;
+            }
+        }
+
+        // If build container settings changed, update the tools list
+        if build_container_changed {
+            // Try multiple tool names since the provider has tools with hyphens
+            let provider = self
+                .tool_provider_registry
+                .find_provider_for_tool("init-build-container", self)
+                .or_else(|| {
+                    self.tool_provider_registry
+                        .find_provider_for_tool("load-project", self)
+                });
+
+            if let Some(provider) = provider {
+                let updated_tools = provider.get_tools(self);
+                if let Some(server) = self
+                    .mcp_servers
+                    .iter_mut()
+                    .find(|s| s.id == "build_container")
+                {
+                    server.tools = updated_tools;
+                }
+            }
         }
 
         Ok("Configuration updated".to_string())
@@ -1123,9 +1353,17 @@ impl SpiderState {
 
     #[local]
     #[http]
-    async fn chat(&mut self, request: ChatRequest) -> Result<ChatResponse, String> {
+    async fn chat(&mut self, request: ChatReq) -> Result<ChatRes, String> {
         // Use the shared internal chat processing logic (without WebSocket streaming)
-        self.process_chat_internal(request, None).await
+        let source = source();
+        if source.publisher() == "sys"
+            && source.package() == "distro"
+            && source.process() == "http-server"
+        {
+            add_response_header("Content-Type".to_string(), "application/json".to_string());
+        }
+        let result = self.process_chat_internal(request, None).await;
+        result
     }
 
     #[local]
@@ -1134,23 +1372,20 @@ impl SpiderState {
     }
 
     #[local]
-    async fn process_request(
-        &mut self,
-        request: ProcessRequest,
-    ) -> Result<ProcessResponse, String> {
+    async fn process_request(&mut self, request: ProcessReq) -> Result<ProcessRes, String> {
         match request.action.as_str() {
             "chat" => {
-                let chat_request: ChatRequest = serde_json::from_str(&request.payload)
+                let chat_request: ChatReq = serde_json::from_str(&request.payload)
                     .map_err(|e| format!("Invalid chat request: {}", e))?;
                 let result = self.chat(chat_request).await?;
                 let serialized = serde_json::to_string(&result)
                     .map_err(|e| format!("Failed to serialize chat response: {}", e))?;
-                Ok(ProcessResponse {
+                Ok(ProcessRes {
                     success: true,
                     data: serialized,
                 })
             }
-            _ => Ok(ProcessResponse {
+            _ => Ok(ProcessRes {
                 success: false,
                 data: format!("Unknown action: {}", request.action),
             }),
@@ -1159,10 +1394,7 @@ impl SpiderState {
 
     // OAuth endpoints - proxy requests to Anthropic to avoid CORS
     #[http]
-    async fn exchange_oauth_token(
-        &self,
-        req: OAuthExchangeRequest,
-    ) -> Result<OAuthTokenResponse, String> {
+    async fn exchange_oauth_token(&self, req: OAuthExchangeReq) -> Result<OAuthTokenRes, String> {
         use hyperware_process_lib::http::client::send_request_await_response;
         use hyperware_process_lib::http::Method;
 
@@ -1172,14 +1404,14 @@ impl SpiderState {
         let state = parts.get(1).unwrap_or(&"").to_string();
 
         // Prepare the request body
-        let body = serde_json::json!({
-            "code": code,
-            "state": state,
-            "grant_type": "authorization_code",
-            "client_id": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
-            "redirect_uri": "https://console.anthropic.com/oauth/code/callback",
-            "code_verifier": req.verifier
-        });
+        let body = OAuthCodeExchangeReq {
+            code,
+            state,
+            grant_type: "authorization_code".to_string(),
+            client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e".to_string(),
+            redirect_uri: "https://console.anthropic.com/oauth/code/callback".to_string(),
+            code_verifier: req.verifier,
+        };
 
         // Prepare headers
         let mut headers = std::collections::HashMap::new();
@@ -1189,7 +1421,9 @@ impl SpiderState {
         let url = url::Url::parse("https://console.anthropic.com/v1/oauth/token")
             .map_err(|e| format!("Invalid URL: {}", e))?;
 
-        let body_bytes = body.to_string().into_bytes();
+        let body_bytes = serde_json::to_string(&body)
+            .map_err(|e| format!("Failed to serialize request: {}", e))?
+            .into_bytes();
         let response =
             send_request_await_response(Method::POST, url, Some(headers), 30000, body_bytes)
                 .await
@@ -1198,7 +1432,7 @@ impl SpiderState {
         if response.status().is_success() {
             // Parse the response body
             match serde_json::from_slice::<serde_json::Value>(response.body()) {
-                Ok(json) => Ok(OAuthTokenResponse {
+                Ok(json) => Ok(OAuthTokenRes {
                     refresh: json["refresh_token"].as_str().unwrap_or("").to_string(),
                     access: json["access_token"].as_str().unwrap_or("").to_string(),
                     expires: chrono::Utc::now().timestamp() as u64
@@ -1217,19 +1451,16 @@ impl SpiderState {
     }
 
     #[http]
-    async fn refresh_oauth_token(
-        &self,
-        req: OAuthRefreshRequest,
-    ) -> Result<OAuthTokenResponse, String> {
+    async fn refresh_oauth_token(&self, req: OAuthRefreshReq) -> Result<OAuthTokenRes, String> {
         use hyperware_process_lib::http::client::send_request_await_response;
         use hyperware_process_lib::http::Method;
 
         // Prepare the request body
-        let body = serde_json::json!({
-            "grant_type": "refresh_token",
-            "refresh_token": req.refresh_token,
-            "client_id": "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
-        });
+        let body = OAuthRefreshTokenReq {
+            grant_type: "refresh_token".to_string(),
+            refresh_token: req.refresh_token,
+            client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e".to_string(),
+        };
 
         // Prepare headers
         let mut headers = std::collections::HashMap::new();
@@ -1239,7 +1470,9 @@ impl SpiderState {
         let url = url::Url::parse("https://console.anthropic.com/v1/oauth/token")
             .map_err(|e| format!("Invalid URL: {}", e))?;
 
-        let body_bytes = body.to_string().into_bytes();
+        let body_bytes = serde_json::to_string(&body)
+            .map_err(|e| format!("Failed to serialize request: {}", e))?
+            .into_bytes();
         let response =
             send_request_await_response(Method::POST, url, Some(headers), 30000, body_bytes)
                 .await
@@ -1248,7 +1481,7 @@ impl SpiderState {
         if response.status().is_success() {
             // Parse the response body
             match serde_json::from_slice::<serde_json::Value>(response.body()) {
-                Ok(json) => Ok(OAuthTokenResponse {
+                Ok(json) => Ok(OAuthTokenRes {
                     refresh: json["refresh_token"].as_str().unwrap_or("").to_string(),
                     access: json["access_token"].as_str().unwrap_or("").to_string(),
                     expires: chrono::Utc::now().timestamp() as u64
@@ -1297,12 +1530,185 @@ impl SpiderState {
             .any(|k| k.key == key && k.permissions.contains(&permission.to_string()))
     }
 
+    fn cleanup_disconnected_build_containers(&mut self) {
+        // Find all ws_mcp_* servers that are disconnected
+        let disconnected_server_ids: Vec<String> = self
+            .mcp_servers
+            .iter()
+            .filter(|s| {
+                // Only cleanup ws_mcp_* servers (Build Container connections)
+                s.id.starts_with("ws_mcp_") && !s.connected
+            })
+            .map(|s| s.id.clone())
+            .collect();
+
+        if !disconnected_server_ids.is_empty() {
+            println!(
+                "Spider: Cleaning up {} disconnected Build Container MCP connections",
+                disconnected_server_ids.len()
+            );
+
+            for server_id in disconnected_server_ids {
+                // Extract channel_id from server_id (format: "ws_mcp_{channel_id}")
+                if let Some(channel_str) = server_id.strip_prefix("ws_mcp_") {
+                    if let Ok(old_channel_id) = channel_str.parse::<u32>() {
+                        // Remove from ws_connections if it exists
+                        if self.ws_connections.remove(&old_channel_id).is_some() {
+                            println!(
+                                "Spider: Removed ws_connection for channel {}",
+                                old_channel_id
+                            );
+                        }
+
+                        // Clean up any pending MCP requests for this server
+                        let requests_to_remove: Vec<String> = self
+                            .pending_mcp_requests
+                            .iter()
+                            .filter(|(_, req)| req.server_id == server_id)
+                            .map(|(id, _)| id.clone())
+                            .collect();
+
+                        for req_id in requests_to_remove {
+                            self.pending_mcp_requests.remove(&req_id);
+                            self.tool_responses.remove(&req_id);
+                        }
+                    }
+                }
+
+                // Remove the server from mcp_servers list
+                self.mcp_servers.retain(|s| s.id != server_id);
+                println!("Spider: Removed Build Container MCP server {}", server_id);
+            }
+
+            println!("Spider: Build Container cleanup complete");
+        } else {
+            println!("Spider: No disconnected Build Container MCP connections to clean up");
+        }
+    }
+
+    // Helper function to convert text to audio using ttstt
+    async fn convert_text_to_audio(&self, text: String) -> Result<String, String> {
+        // Create TTS request for ttstt
+        #[derive(serde::Serialize)]
+        struct TtsRequest {
+            text: String,
+            provider: Option<String>,
+            model: Option<String>,
+            voice: Option<String>,
+            api_key: Option<String>,
+        }
+
+        let tts_request = TtsRequest {
+            text,
+            provider: None,
+            model: None,
+            voice: None,
+            api_key: None, // ttstt will accept requests from spider without auth
+        };
+
+        // Send request to ttstt using the tts endpoint
+        let request = Request::to(("our", TTSTT))
+            .body(
+                serde_json::to_vec(&json!({
+                    "Tts": tts_request
+                }))
+                .map_err(|e| format!("Failed to serialize TTS request: {}", e))?,
+            )
+            .blob_bytes(vec![]);
+
+        let response: Value = hyperware_process_lib::hyperapp::send(request)
+            .await
+            .map_err(|e| format!("Failed to call ttstt TTS: {:?}", e))?;
+
+        // Handle the Result wrapper from ttstt
+        if let Some(ok_value) = response.get("Ok") {
+            // Success case - extract audio_data from TtsRes
+            let audio_base64 = ok_value
+                .get("audio_data")
+                .and_then(|v| v.as_str())
+                .ok_or("Missing audio_data in TTS response".to_string())?;
+
+            Ok(audio_base64.to_string())
+        } else if let Some(err_value) = response.get("Err") {
+            // Error case
+            let error_msg = err_value.as_str().unwrap_or("Unknown error from ttstt");
+            Err(format!("TTS failed: {}", error_msg))
+        } else {
+            Err("Invalid response format from ttstt: expected Ok or Err".to_string())
+        }
+    }
+
+    // Helper function to convert audio to text using ttstt
+    async fn convert_audio_to_text(
+        &self,
+        audio_message: &MessageContent,
+    ) -> Result<String, String> {
+        use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+
+        // Create STT request for ttstt - matching the SttReq structure
+        #[derive(serde::Serialize)]
+        struct SttRequest {
+            audio_data: String,
+            provider: Option<String>,
+            model: Option<String>,
+            language: Option<String>,
+            api_key: Option<String>,
+        }
+
+        let audio_data = match audio_message {
+            MessageContent::Audio(audio_data) => BASE64.encode(&audio_data),
+            MessageContent::BaseSixFourAudio(audio_data) => audio_data.to_string(),
+            MessageContent::Text(_) => {
+                return Err("convert_audio_to_text requires audio to convert".to_string())
+            }
+        };
+
+        let stt_request = SttRequest {
+            audio_data,
+            provider: Some("OpenAI".to_string()),
+            model: Some("whisper-1".to_string()),
+            language: None,
+            api_key: None, // ttstt will accept requests from spider without auth
+        };
+
+        // Send request to ttstt using the stt endpoint
+        let request = Request::to(("our", TTSTT))
+            .body(
+                serde_json::to_vec(&json!({
+                    "Stt": stt_request
+                }))
+                .unwrap(),
+            )
+            .expects_response(30); // 30 second timeout for STT
+
+        let response: Value = hyperware_process_lib::hyperapp::send(request)
+            .await
+            .map_err(|e| format!("Failed to call ttstt STT: {:?}", e))?;
+
+        // Handle the Result wrapper from ttstt
+        // Response format is either {"Ok": {...}} or {"Err": "..."}
+        if let Some(ok_value) = response.get("Ok") {
+            // Success case - extract text from SttRes
+            let text = ok_value
+                .get("text")
+                .and_then(|t| t.as_str())
+                .ok_or("Invalid STT response: missing text field")?;
+            Ok(text.to_string())
+        } else if let Some(err_value) = response.get("Err") {
+            // Error case
+            let error_msg = err_value.as_str().unwrap_or("Unknown error from ttstt");
+            Err(format!("STT failed: {}", error_msg))
+        } else {
+            Err("Invalid response format from ttstt: expected Ok or Err".to_string())
+        }
+    }
+
     // Streaming version of chat for WebSocket clients
     async fn process_chat_request_with_streaming(
         &mut self,
-        request: ChatRequest,
+        request: ChatReq,
         channel_id: u32,
-    ) -> Result<ChatResponse, String> {
+    ) -> Result<ChatRes, String> {
         // Create a cancellation flag for this request
         let cancel_flag = Arc::new(AtomicBool::new(false));
         self.active_chat_cancellation
@@ -1344,9 +1750,9 @@ impl SpiderState {
     // Internal chat processing logic shared by HTTP and WebSocket
     async fn process_chat_internal(
         &mut self,
-        request: ChatRequest,
+        request: ChatReq,
         channel_id: Option<u32>,
-    ) -> Result<ChatResponse, String> {
+    ) -> Result<ChatRes, String> {
         // This is a refactored version of the chat logic that can send WebSocket updates
         // For now, just call the regular chat method
         // TODO: Refactor the chat method to use this shared logic
@@ -1437,28 +1843,132 @@ impl SpiderState {
             }
         };
 
-        // Collect available tools from connected MCP servers
-        let available_tools: Vec<Tool> = if let Some(ref mcp_server_ids) = request.mcp_servers {
-            self.mcp_servers
-                .iter()
-                .filter(|s| s.connected && mcp_server_ids.contains(&s.id))
-                .flat_map(|s| s.tools.clone())
-                .collect()
+        // Process messages to convert any audio content to text
+        let mut processed_messages = Vec::new();
+        for mut message in request.messages.clone() {
+            match &message.content {
+                MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                    // Convert audio to text using ttstt
+                    match self.convert_audio_to_text(&message.content).await {
+                        Ok(text) => {
+                            println!("Spider: Converted audio to text: {}", text);
+                            message.content = MessageContent::Text(text);
+                        }
+                        Err(e) => {
+                            return Err(format!("Failed to convert audio to text: {}", e));
+                        }
+                    }
+                }
+                MessageContent::Text(_) => {
+                    // Text content, no conversion needed
+                }
+            }
+            processed_messages.push(message);
+        }
+
+        // Determine whether to reply with TTS or not
+        let user_prompt = processed_messages.clone();
+        let user_prompt = user_prompt
+            .last()
+            .and_then(|m| m.content.as_text())
+            .unwrap_or("");
+        let metadata = request.metadata.clone().unwrap_or(ConversationMetadata {
+            start_time: Utc::now().to_rfc3339(),
+            client: "unknown".to_string(),
+            from_stt: false,
+        });
+        let is_response_tts = if !metadata.from_stt {
+            false
         } else {
-            // Use all connected servers if none specified
-            self.mcp_servers
-                .iter()
-                .filter(|s| s.connected)
-                .flat_map(|s| s.tools.clone())
-                .collect()
+            // Ask the LLM whether to respond with text or audio
+            let decision_prompt = format!(
+                "Decide whether to reply with text or audio.\n\n\
+                Always choose audio EXCEPT when user EXPLICITLY indicates they want text. \
+                Examples of user wanting text: \
+                - mentions \"dictating\"\n\
+                - mentions \"transcribing\"\n\
+                - mentions \"put this in my clipboard\"\n\n\
+                User's last message: {user_prompt}\n\n\
+                If should reply with text, reply only with `text`. \
+                If should reply with audio, reply only with `audio`.",
+            );
+
+            // Create a simple request to the LLM for the decision
+            let decision_messages = vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::Text(decision_prompt),
+                tool_calls_json: None,
+                tool_results_json: None,
+                timestamp: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs(),
+            }];
+
+            let provider = create_llm_provider(&llm_provider, &api_key);
+
+            // Get decision from LLM (no tools needed)
+            if let Ok(decision_response) = provider
+                .complete(
+                    &decision_messages,
+                    &[], // No tools needed for this decision
+                    None,
+                    100, // Small max tokens
+                    0.3, // Low temperature for consistent decisions
+                )
+                .await
+            {
+                if let Some(decision_text) = decision_response.content.as_text() {
+                    let decision = decision_text.trim().to_lowercase();
+
+                    decision == "audio"
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
         };
 
+        if is_response_tts {
+            if let Some(last) = processed_messages.last_mut() {
+                if let MessageContent::Text(ref mut text) = last.content {
+                    text.push_str(
+                        "\n\nReply concisely unless the above explicitly says to not be concise.",
+                    );
+                }
+            }
+        }
+
         // Start the agentic loop - runs indefinitely until the agent stops making tool calls
-        let mut working_messages = request.messages.clone();
+        let mut working_messages = processed_messages;
         let mut iteration_count = 0;
 
         let response = loop {
             iteration_count += 1;
+
+            // Collect available tools from connected MCP servers - refreshed each iteration
+            // This ensures newly available tools (e.g., after load-project) are immediately available
+            let available_tools: Vec<Tool> = if let Some(ref mcp_server_ids) = request.mcp_servers {
+                self.mcp_servers
+                    .iter()
+                    .filter(|s| {
+                        s.connected && (
+                            mcp_server_ids.contains(&s.id) ||
+                            // If build_container is selected, also include ws_mcp_* servers
+                            (mcp_server_ids.contains(&"build_container".to_string()) && s.id.starts_with("ws_mcp_"))
+                        )
+                    })
+                    .flat_map(|s| s.tools.clone())
+                    .collect()
+            } else {
+                // Use all connected servers if none specified
+                self.mcp_servers
+                    .iter()
+                    .filter(|s| s.connected)
+                    .flat_map(|s| s.tools.clone())
+                    .collect()
+            };
 
             // Check for cancellation
             if let Some(ch_id) = channel_id {
@@ -1529,12 +2039,26 @@ impl SpiderState {
             };
 
             // Check if the response contains tool calls
+            println!("[DEBUG] LLM response received:");
+            println!(
+                "[DEBUG]   - content: {}",
+                match &llm_response.content {
+                    MessageContent::Text(t) => t.as_str(),
+                    MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => "<audio>",
+                }
+            );
+            println!(
+                "[DEBUG]   - has tool_calls_json: {}",
+                llm_response.tool_calls_json.is_some()
+            );
+
             if let Some(ref tool_calls_json) = llm_response.tool_calls_json {
                 // The agent wants to use tools - execute them
                 println!(
                     "Spider: Iteration {} - Agent requested tool calls",
                     iteration_count
                 );
+                println!("[DEBUG]   Tool calls JSON: {}", tool_calls_json);
 
                 // Send streaming update for tool calls
                 if let Some(ch_id) = channel_id {
@@ -1574,7 +2098,7 @@ impl SpiderState {
                 // Add tool results as a new message for the LLM to see
                 let tool_message = Message {
                     role: "tool".to_string(),
-                    content: "Tool execution results".to_string(),
+                    content: MessageContent::Text("Tool execution results".to_string()),
                     tool_calls_json: None,
                     tool_results_json: Some(serde_json::to_string(&tool_results).unwrap()),
                     timestamp: Utc::now().timestamp() as u64,
@@ -1597,38 +2121,122 @@ impl SpiderState {
                 // Continue the loop - the agent will decide what to do next
                 continue;
             } else {
-                // No tool calls - the agent has decided to provide a final response
-                // Break the loop and return this response
+                // No tool calls - check if the agent is actually done
                 println!(
-                    "Spider: Iteration {} - Agent provided final response (no tool calls)",
+                    "Spider: Iteration {} - No tool calls, checking if agent is done",
                     iteration_count
                 );
 
-                // Send the final assistant message to the client
-                if let Some(ch_id) = channel_id {
-                    let msg_update = WsServerMessage::Message {
-                        message: llm_response.clone(),
-                    };
-                    let json = serde_json::to_string(&msg_update).unwrap();
-                    send_ws_push(
-                        ch_id,
-                        WsMessageType::Text,
-                        LazyLoadBlob::new(Some("application/json"), json),
-                    );
-                }
+                // Check if response is just a "." - if so, continue immediately
+                let completion_status = if matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
+                {
+                    println!("[DEBUG] Response is just '.', treating as continue");
+                    "continue".to_string()
+                } else if llm_provider == "anthropic" {
+                    // Use the same API key that was used for the main request
+                    use crate::provider::AnthropicProvider;
 
-                break llm_response;
+                    // The api_key variable already contains the correct key for this conversation
+                    let is_oauth = is_oauth_token(&api_key);
+                    let anthropic_provider = AnthropicProvider::new(api_key.clone(), is_oauth);
+
+                    anthropic_provider
+                        .check_tool_loop_completion(&match llm_response.content.clone() {
+                            MessageContent::Text(t) => t,
+                            MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => {
+                                String::new()
+                            }
+                        })
+                        .await
+                } else {
+                    // For non-Anthropic providers, assume done
+                    "done".to_string()
+                };
+
+                if completion_status == "continue" {
+                    println!(
+                        "[DEBUG] Agent indicated it wants to continue, sending continue message"
+                    );
+
+                    // Add the assistant's response to messages
+                    working_messages.push(llm_response.clone());
+
+                    // Send the assistant message to the client (but skip if it's just ".")
+                    if let Some(ch_id) = channel_id {
+                        if !matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
+                        {
+                            let msg_update = WsServerMessage::Message {
+                                message: llm_response.clone(),
+                            };
+                            let json = serde_json::to_string(&msg_update).unwrap();
+                            send_ws_push(
+                                ch_id,
+                                WsMessageType::Text,
+                                LazyLoadBlob::new(Some("application/json"), json),
+                            );
+                        }
+                    }
+
+                    // Add a continue message and loop
+                    let continue_message = Message {
+                        role: "user".to_string(),
+                        content: MessageContent::Text("continue".to_string()),
+                        tool_calls_json: None,
+                        tool_results_json: None,
+                        timestamp: Utc::now().timestamp() as u64,
+                    };
+                    working_messages.push(continue_message);
+
+                    // Continue the loop
+                    continue;
+                } else {
+                    // Agent is done (or error/failed to parse)
+                    println!(
+                        "Spider: Iteration {} - Agent provided final response (completion check: {})",
+                        iteration_count, completion_status
+                    );
+
+                    // Send the final assistant message to the client (but skip if it's just ".")
+                    if let Some(ch_id) = channel_id {
+                        if !matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
+                        {
+                            let msg_update = WsServerMessage::Message {
+                                message: llm_response.clone(),
+                            };
+                            let json = serde_json::to_string(&msg_update).unwrap();
+                            send_ws_push(
+                                ch_id,
+                                WsMessageType::Text,
+                                LazyLoadBlob::new(Some("application/json"), json),
+                            );
+                        }
+                    }
+
+                    break llm_response;
+                }
             }
         };
 
-        // Add the final response to messages
-        working_messages.push(response.clone());
+        let mut final_response = response.clone();
 
-        let metadata = request.metadata.unwrap_or(ConversationMetadata {
-            start_time: Utc::now().to_rfc3339(),
-            client: "unknown".to_string(),
-            from_stt: false,
-        });
+        if is_response_tts {
+            if let Some(response_text) = final_response.content.as_text() {
+                // Convert text response to audio
+                match self.convert_text_to_audio(response_text.to_string()).await {
+                    Ok(audio_data) => {
+                        println!("Spider: Converting response to audio for STT user");
+                        final_response.content = MessageContent::BaseSixFourAudio(audio_data);
+                    }
+                    Err(e) => {
+                        println!("Spider: Failed to convert response to audio: {}", e);
+                        // Keep as text if conversion fails
+                    }
+                }
+            }
+        }
+
+        // Add the final response to messages
+        working_messages.push(final_response.clone());
 
         // Get only the new messages that were added during this chat session
         // (everything after the initial user messages)
@@ -1680,14 +2288,19 @@ impl SpiderState {
         self.active_conversations
             .push((conversation_id.clone(), conversation));
 
-        Ok(ChatResponse {
+        Ok(ChatRes {
             conversation_id,
-            response,
+            response: final_response,
             all_messages: new_messages,
         })
     }
 
     fn handle_mcp_message(&mut self, channel_id: u32, message: Value) {
+        println!(
+            "Spider: handle_mcp_message received on channel {}: {:?}",
+            channel_id, message
+        );
+
         // Find the connection for this channel
         let conn = match self.ws_connections.get(&channel_id) {
             Some(c) => c.clone(),
@@ -1702,7 +2315,37 @@ impl SpiderState {
 
         // Check if this is a response to a pending request
         if let Some(id) = message.get("id").and_then(|v| v.as_str()) {
+            println!("Spider: Message has id: {}", id);
+
+            // Check if this is a spider/* method response (not in pending_mcp_requests)
+            // These are direct responses to spider/* methods like load-project, auth, etc.
+            if id.starts_with("load-project-")
+                || id.starts_with("start-package-")
+                || id.starts_with("persist")
+                || id.starts_with("auth_")
+            {
+                println!("Spider: Handling spider/* method response with id: {}", id);
+                // Store the response for the waiting execute_*_impl method
+                let result = if let Some(result_value) = message.get("result") {
+                    result_value.clone()
+                } else if let Some(error) = message.get("error") {
+                    serde_json::to_value(ErrorRes {
+                        error: error.clone(),
+                    })
+                    .unwrap_or_else(|_| Value::Null)
+                } else {
+                    serde_json::to_value(ErrorRes {
+                        error: Value::String("Invalid response format".to_string()),
+                    })
+                    .unwrap_or_else(|_| Value::Null)
+                };
+                self.tool_responses.insert(id.to_string(), result);
+                println!("Spider: Stored response for id {} in tool_responses", id);
+                return;
+            }
+
             if let Some(pending) = self.pending_mcp_requests.remove(id) {
+                println!("Spider: Found pending request for id: {}", id);
                 match pending.request_type {
                     McpRequestType::Initialize => {
                         self.handle_initialize_response(channel_id, &conn, &message);
@@ -1710,10 +2353,12 @@ impl SpiderState {
                     McpRequestType::ToolsList => {
                         self.handle_tools_list_response(channel_id, &conn, &message);
                     }
-                    McpRequestType::ToolCall { tool_name: _ } => {
+                    McpRequestType::ToolCall(ref _tool_name) => {
                         self.handle_tool_call_response(&pending, &message);
                     }
                 }
+            } else {
+                println!("Spider: No pending request found for id: {}", id);
             }
         }
 
@@ -1772,7 +2417,7 @@ impl SpiderState {
 
     fn request_tools_list(&mut self, channel_id: u32) {
         let request_id = format!("tools_{}", channel_id);
-        let tools_request = JsonRpcRequest {
+        let tools_request = JsonRpcReq {
             jsonrpc: "2.0".to_string(),
             method: "tools/list".to_string(),
             params: None,
@@ -1783,7 +2428,7 @@ impl SpiderState {
         if let Some(conn) = self.ws_connections.get(&channel_id) {
             self.pending_mcp_requests.insert(
                 request_id.clone(),
-                PendingMcpRequest {
+                PendingMcpReq {
                     request_id,
                     conversation_id: None,
                     server_id: conn.server_id.clone(),
@@ -1845,10 +2490,88 @@ impl SpiderState {
                     ws_conn.tools = tools.clone();
                 }
 
-                // Update server with tools and mark as connected
-                if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == conn.server_id) {
-                    server.tools = tools;
-                    server.connected = true;
+                // For build container connections, we need special handling
+                if conn.server_id == "build_container_self_hosted"
+                    || conn.server_id.starts_with("build_container_")
+                {
+                    // Create or update a separate ws-mcp server entry for the remote tools
+                    let ws_mcp_server_id = format!("ws_mcp_{}", channel_id);
+
+                    // Check if this ws-mcp server already exists
+                    if let Some(server) = self
+                        .mcp_servers
+                        .iter_mut()
+                        .find(|s| s.id == ws_mcp_server_id)
+                    {
+                        server.tools = tools;
+                        server.connected = true;
+                        println!(
+                            "Spider: Updated ws-mcp server {} with {} tools",
+                            ws_mcp_server_id,
+                            server.tools.len()
+                        );
+                    } else {
+                        // Create a new MCP server entry for ws-mcp tools
+                        let ws_mcp_server = McpServer {
+                            id: ws_mcp_server_id.clone(),
+                            name: "Build Container MCP".to_string(),
+                            transport: crate::types::TransportConfig {
+                                transport_type: "websocket".to_string(),
+                                command: None,
+                                args: None,
+                                url: Some(self.build_container_ws_uri.clone()),
+                                hypergrid_token: None,
+                                hypergrid_client_id: None,
+                                hypergrid_node: None,
+                            },
+                            tools,
+                            connected: true,
+                        };
+                        self.mcp_servers.push(ws_mcp_server);
+                        println!(
+                            "Spider: Created new ws-mcp server {} with {} tools",
+                            ws_mcp_server_id, tool_count
+                        );
+                    }
+
+                    // Make sure the build_container server retains its native tools
+                    // by refreshing them from the tool provider
+                    if let Some(provider) = self
+                        .tool_provider_registry
+                        .find_provider_for_tool("load-project", self)
+                    {
+                        let native_tools = provider.get_tools(self);
+                        if let Some(server) = self
+                            .mcp_servers
+                            .iter_mut()
+                            .find(|s| s.id == "build_container")
+                        {
+                            server.tools = native_tools;
+                            server.connected = true;
+                            println!(
+                                "Spider: Refreshed build_container server with {} native tools",
+                                server.tools.len()
+                            );
+                        }
+                    }
+                } else {
+                    // For non-build-container connections, update normally
+                    if let Some(server) =
+                        self.mcp_servers.iter_mut().find(|s| s.id == conn.server_id)
+                    {
+                        server.tools = tools;
+                        server.connected = true;
+                        println!(
+                            "Spider: Updated MCP server {} with {} tools",
+                            conn.server_id,
+                            server.tools.len()
+                        );
+                    } else {
+                        println!(
+                            "Spider: Warning - could not find MCP server with id {}",
+                            conn.server_id
+                        );
+                    }
                 }
             }
         } else if let Some(error) = message.get("error") {
@@ -1859,7 +2582,7 @@ impl SpiderState {
         }
     }
 
-    fn handle_tool_call_response(&mut self, pending: &PendingMcpRequest, message: &Value) {
+    fn handle_tool_call_response(&mut self, pending: &PendingMcpReq, message: &Value) {
         println!(
             "Spider: Received tool call response for request {}: {:?}",
             pending.request_id, message
@@ -1869,13 +2592,15 @@ impl SpiderState {
         let result = if let Some(result_value) = message.get("result") {
             result_value.clone()
         } else if let Some(error) = message.get("error") {
-            serde_json::json!({
-                "error": error
+            serde_json::to_value(ErrorRes {
+                error: error.clone(),
             })
+            .unwrap_or_else(|_| Value::Null)
         } else {
-            serde_json::json!({
-                "error": "Invalid MCP response format"
+            serde_json::to_value(ErrorRes {
+                error: Value::String("Invalid MCP response format".to_string()),
             })
+            .unwrap_or_else(|_| Value::Null)
         };
 
         self.tool_responses
@@ -1889,6 +2614,111 @@ impl SpiderState {
         parameters: &Value,
         conversation_id: Option<String>,
     ) -> Result<Value, String> {
+        println!(
+            "[DEBUG] execute_mcp_tool called with server_id: {}, tool_name: {}",
+            server_id, tool_name
+        );
+        println!("[DEBUG]   parameters: {}", parameters);
+        println!(
+            "Spider: Available MCP servers: {:?}",
+            self.mcp_servers
+                .iter()
+                .map(|s| (&s.id, s.connected))
+                .collect::<Vec<_>>()
+        );
+
+        // Special handling for ws_mcp servers (build container WebSocket connections)
+        if server_id.starts_with("ws_mcp_") {
+            // Extract channel_id from server_id (format: "ws_mcp_{channel_id}")
+            let channel_id = server_id
+                .strip_prefix("ws_mcp_")
+                .and_then(|s| s.parse::<u32>().ok())
+                .ok_or_else(|| format!("Invalid ws_mcp server id: {}", server_id))?;
+
+            println!(
+                "Spider: Looking for WebSocket connection with channel_id {} for server {}",
+                channel_id, server_id
+            );
+            println!(
+                "Spider: Available ws_connections: {:?}",
+                self.ws_connections.keys().collect::<Vec<_>>()
+            );
+
+            // Verify the connection exists
+            if !self.ws_connections.contains_key(&channel_id) {
+                return Err(format!(
+                    "No WebSocket connection found for server {}",
+                    server_id
+                ));
+            }
+
+            // Execute via WebSocket using MCP protocol
+            let request_id = format!("tool_{}_{}", channel_id, Uuid::new_v4());
+            let tool_request = JsonRpcReq {
+                jsonrpc: "2.0".to_string(),
+                method: "tools/call".to_string(),
+                params: Some(
+                    serde_json::to_value(McpToolCallParams {
+                        name: tool_name.to_string(),
+                        arguments: parameters.clone(),
+                    })
+                    .unwrap(),
+                ),
+                id: request_id.clone(),
+            };
+
+            // Store pending request
+            self.pending_mcp_requests.insert(
+                request_id.clone(),
+                PendingMcpReq {
+                    request_id: request_id.clone(),
+                    conversation_id,
+                    server_id: server_id.to_string(),
+                    request_type: McpRequestType::ToolCall(tool_name.to_string()),
+                },
+            );
+
+            // Send the request
+            let request_json = serde_json::to_string(&tool_request).unwrap();
+            let blob = LazyLoadBlob::new(Some("application/json"), request_json.into_bytes());
+            send_ws_client_push(channel_id, WsMessageType::Text, blob);
+
+            // Wait for response
+            let start = std::time::Instant::now();
+            let timeout = std::time::Duration::from_secs(30);
+
+            loop {
+                if start.elapsed() > timeout {
+                    self.pending_mcp_requests.remove(&request_id);
+                    return Err(format!("Tool call timed out: {}", tool_name));
+                }
+
+                if let Some(result) = self.tool_responses.remove(&request_id) {
+                    // Parse the MCP result format
+                    if let Some(content) = result.get("content") {
+                        return Ok(serde_json::to_value(ToolExecutionResult {
+                            result: content.clone(),
+                            success: true,
+                        })
+                        .unwrap());
+                    } else if let Some(error) = result.get("error") {
+                        return Err(format!("Tool execution failed: {}", error));
+                    } else {
+                        // Fallback: return the raw result wrapped in ToolExecutionResult
+                        return Ok(serde_json::to_value(ToolExecutionResult {
+                            result: result,
+                            success: true,
+                        })
+                        .unwrap());
+                    }
+                }
+
+                // Sleep briefly before checking again
+                let _ = hyperware_process_lib::hyperapp::sleep(100).await;
+            }
+        }
+
+        // Regular MCP server handling
         let server = self
             .mcp_servers
             .iter()
@@ -1905,179 +2735,233 @@ impl SpiderState {
         // Execute the tool based on transport type
         match server.transport.transport_type.as_str() {
             "hypergrid" => {
-                // Map old tool names to new ones for backward compatibility
-                let normalized_tool_name = match tool_name {
-                    "authorize" => "hypergrid_authorize",
-                    "search-registry" => "hypergrid_search",
-                    "call-provider" => "hypergrid_call",
-                    name => name,
-                };
+                // Use the hypergrid tool provider
+                if let Some(provider) = self
+                    .tool_provider_registry
+                    .find_provider_for_tool(tool_name, self)
+                {
+                    let command = provider.prepare_execution(tool_name, parameters, self)?;
+                    self.execute_tool_command(command, conversation_id).await
+                } else {
+                    // Map old tool names to new ones for backward compatibility
+                    let normalized_tool_name = match tool_name {
+                        "authorize" => "hypergrid_authorize",
+                        "search-registry" => "hypergrid_search",
+                        "call-provider" => "hypergrid_call",
+                        name => name,
+                    };
 
-                // Handle the different hypergrid tools
-                match normalized_tool_name {
-                    "hypergrid_authorize" => {
-                        println!(
-                            "Spider: hypergrid_authorize called for server_id: {}",
-                            server_id
-                        );
-                        println!("  Parameters received: {:?}", parameters);
+                    // Try with normalized name
+                    if let Some(provider) = self
+                        .tool_provider_registry
+                        .find_provider_for_tool(normalized_tool_name, self)
+                    {
+                        let command =
+                            provider.prepare_execution(normalized_tool_name, parameters, self)?;
+                        self.execute_tool_command(command, conversation_id).await
+                    } else {
+                        // Fall back to old implementation for backward compatibility
+                        match normalized_tool_name {
+                            "hypergrid_authorize" => {
+                                println!(
+                                    "Spider: hypergrid_authorize called for server_id: {}",
+                                    server_id
+                                );
+                                println!("  Parameters received: {:?}", parameters);
 
-                        // Update hypergrid credentials
-                        let new_url = parameters
-                            .get("url")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing url parameter".to_string())?;
-                        let new_token = parameters
-                            .get("token")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing token parameter".to_string())?;
-                        let new_client_id = parameters
-                            .get("client_id")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing client_id parameter".to_string())?;
-                        let new_node = parameters
-                            .get("node")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing node parameter".to_string())?;
+                                // Update hypergrid credentials
+                                let new_url = parameters
+                                    .get("url")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing url parameter".to_string())?;
+                                let new_token = parameters
+                                    .get("token")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing token parameter".to_string())?;
+                                let new_client_id = parameters
+                                    .get("client_id")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing client_id parameter".to_string())?;
+                                let new_node = parameters
+                                    .get("node")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing node parameter".to_string())?;
 
-                        println!("Spider: Authorizing hypergrid with:");
-                        println!("  - URL: {}", new_url);
-                        println!("  - Token: {}...", &new_token[..new_token.len().min(20)]);
-                        println!("  - Client ID: {}", new_client_id);
-                        println!("  - Node: {}", new_node);
+                                println!("Spider: Authorizing hypergrid with:");
+                                println!("  - URL: {}", new_url);
+                                println!("  - Token: {}...", &new_token[..new_token.len().min(20)]);
+                                println!("  - Client ID: {}", new_client_id);
+                                println!("  - Node: {}", new_node);
 
-                        // Test new connection
-                        println!("Spider: Testing hypergrid connection...");
-                        self.test_hypergrid_connection(new_url, new_token, new_client_id)
-                            .await?;
-                        println!("Spider: Connection test successful!");
+                                // Test new connection
+                                println!("Spider: Testing hypergrid connection...");
+                                self.test_hypergrid_connection(new_url, new_token, new_client_id)
+                                    .await?;
+                                println!("Spider: Connection test successful!");
 
-                        // Create or update the hypergrid connection
-                        let hypergrid_conn = HypergridConnection {
-                            server_id: server_id.to_string(),
-                            url: new_url.to_string(),
-                            token: new_token.to_string(),
-                            client_id: new_client_id.to_string(),
-                            node: new_node.to_string(),
-                            last_retry: Instant::now(),
-                            retry_count: 0,
-                            connected: true,
-                        };
+                                // Create or update the hypergrid connection
+                                let hypergrid_conn = HypergridConnection {
+                                    server_id: server_id.to_string(),
+                                    url: new_url.to_string(),
+                                    token: new_token.to_string(),
+                                    client_id: new_client_id.to_string(),
+                                    node: new_node.to_string(),
+                                    last_retry: Instant::now(),
+                                    retry_count: 0,
+                                    connected: true,
+                                };
 
-                        self.hypergrid_connections
-                            .insert(server_id.to_string(), hypergrid_conn);
-                        println!("Spider: Stored hypergrid connection in memory");
+                                self.hypergrid_connections
+                                    .insert(server_id.to_string(), hypergrid_conn);
+                                println!("Spider: Stored hypergrid connection in memory");
 
-                        // Update transport config
-                        if let Some(server) =
-                            self.mcp_servers.iter_mut().find(|s| s.id == server_id)
-                        {
-                            println!("Spider: Updating server '{}' transport config", server.name);
-                            server.transport.url = Some(new_url.to_string());
-                            server.transport.hypergrid_token = Some(new_token.to_string());
-                            server.transport.hypergrid_client_id = Some(new_client_id.to_string());
-                            server.transport.hypergrid_node = Some(new_node.to_string());
-                            println!("Spider: Server transport config updated successfully");
-                            println!("Spider: State should auto-save due to SaveOptions::OnDiff");
-                        } else {
-                            println!(
-                                "Spider: WARNING - Could not find server with id: {}",
-                                server_id
-                            );
-                        }
+                                // Update transport config
+                                if let Some(server) =
+                                    self.mcp_servers.iter_mut().find(|s| s.id == server_id)
+                                {
+                                    println!(
+                                        "Spider: Updating server '{}' transport config",
+                                        server.name
+                                    );
+                                    server.transport.url = Some(new_url.to_string());
+                                    server.transport.hypergrid_token = Some(new_token.to_string());
+                                    server.transport.hypergrid_client_id =
+                                        Some(new_client_id.to_string());
+                                    server.transport.hypergrid_node = Some(new_node.to_string());
+                                    println!(
+                                        "Spider: Server transport config updated successfully"
+                                    );
+                                    println!(
+                                        "Spider: State should auto-save due to SaveOptions::OnDiff"
+                                    );
+                                } else {
+                                    println!(
+                                        "Spider: WARNING - Could not find server with id: {}",
+                                        server_id
+                                    );
+                                }
 
-                        Ok(serde_json::json!({
-                            "content": [{
-                                "type": "text",
-                                "text": format!("✅ Successfully authorized! Hypergrid is now configured with:\n- Node: {}\n- Client ID: {}\n- URL: {}", new_node, new_client_id, new_url)
-                            }]
-                        }))
-                    }
-                    "hypergrid_search" => {
-                        // Check if configured
-                        let hypergrid_conn = self.hypergrid_connections.get(server_id)
+                                Ok(serde_json::to_value(ToolResponseContent {
+                                    content: vec![ToolResponseContentItem {
+                                        content_type: "text".to_string(),
+                                        text: format!("✅ Successfully authorized! Hypergrid is now configured with:\n- Node: {}\n- Client ID: {}\n- URL: {}", new_node, new_client_id, new_url),
+                                    }],
+                                })
+                                .map_err(|e| format!("Failed to serialize response: {}", e))?)
+                            }
+                            "hypergrid_search" => {
+                                // Check if configured
+                                let hypergrid_conn = self.hypergrid_connections.get(server_id)
                             .ok_or_else(|| "Hypergrid not configured. Please use hypergrid_authorize first with your credentials.".to_string())?;
-                        let query = parameters
-                            .get("query")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing query parameter".to_string())?;
+                                let query = parameters
+                                    .get("query")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing query parameter".to_string())?;
 
-                        let response = self
-                            .call_hypergrid_api(
-                                &hypergrid_conn.url,
-                                &hypergrid_conn.token,
-                                &hypergrid_conn.client_id,
-                                &HypergridMessage {
-                                    request: HypergridMessageType::SearchRegistry(
-                                        query.to_string(),
-                                    ),
-                                },
-                            )
-                            .await?;
+                                let response = self
+                                    .call_hypergrid_api(
+                                        &hypergrid_conn.url,
+                                        &hypergrid_conn.token,
+                                        &hypergrid_conn.client_id,
+                                        &HypergridMessage {
+                                            request: HypergridMessageType::SearchRegistry(
+                                                query.to_string(),
+                                            ),
+                                        },
+                                    )
+                                    .await?;
 
-                        Ok(serde_json::json!({
-                            "content": [{
-                                "type": "text",
-                                "text": response
-                            }]
-                        }))
-                    }
-                    "hypergrid_call" => {
-                        // Check if configured
-                        let hypergrid_conn = self.hypergrid_connections.get(server_id)
+                                Ok(serde_json::to_value(ToolResponseContent {
+                                    content: vec![ToolResponseContentItem {
+                                        content_type: "text".to_string(),
+                                        text: response,
+                                    }],
+                                })
+                                .map_err(|e| format!("Failed to serialize response: {}", e))?)
+                            }
+                            "hypergrid_call" => {
+                                // Check if configured
+                                let hypergrid_conn = self.hypergrid_connections.get(server_id)
                             .ok_or_else(|| "Hypergrid not configured. Please use hypergrid_authorize first with your credentials.".to_string())?;
-                        let provider_id = parameters
-                            .get("providerId")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing providerId parameter".to_string())?;
-                        let provider_name = parameters
-                            .get("providerName")
-                            .and_then(|v| v.as_str())
-                            .ok_or_else(|| "Missing providerName parameter".to_string())?;
-                        // Support both "callArgs" (old) and "arguments" (new) parameter names
-                        let call_args = parameters
-                            .get("arguments")
-                            .or_else(|| parameters.get("callArgs"))
-                            .and_then(|v| v.as_array())
-                            .ok_or_else(|| "Missing arguments parameter".to_string())?;
+                                let provider_id = parameters
+                                    .get("providerId")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing providerId parameter".to_string())?;
+                                let provider_name = parameters
+                                    .get("providerName")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| "Missing providerName parameter".to_string())?;
+                                // Support both "callArgs" (old) and "arguments" (new) parameter names
+                                let call_args = parameters
+                                    .get("arguments")
+                                    .or_else(|| parameters.get("callArgs"))
+                                    .and_then(|v| v.as_array())
+                                    .ok_or_else(|| "Missing arguments parameter".to_string())?;
 
-                        // Convert callArgs to Vec<(String, String)>
-                        let mut arguments = Vec::new();
-                        for arg in call_args {
-                            if let Some(pair) = arg.as_array() {
-                                if pair.len() == 2 {
-                                    if let (Some(key), Some(val)) =
-                                        (pair[0].as_str(), pair[1].as_str())
-                                    {
-                                        arguments.push((key.to_string(), val.to_string()));
+                                // Convert callArgs to Vec<(String, String)>
+                                let mut arguments = Vec::new();
+                                for arg in call_args {
+                                    if let Some(pair) = arg.as_array() {
+                                        if pair.len() == 2 {
+                                            if let (Some(key), Some(val)) =
+                                                (pair[0].as_str(), pair[1].as_str())
+                                            {
+                                                arguments.push((key.to_string(), val.to_string()));
+                                            }
+                                        }
                                     }
                                 }
+
+                                let response = self
+                                    .call_hypergrid_api(
+                                        &hypergrid_conn.url,
+                                        &hypergrid_conn.token,
+                                        &hypergrid_conn.client_id,
+                                        &HypergridMessage {
+                                            request: HypergridMessageType::CallProvider {
+                                                provider_id: provider_id.to_string(),
+                                                provider_name: provider_name.to_string(),
+                                                arguments,
+                                            },
+                                        },
+                                    )
+                                    .await?;
+
+                                Ok(serde_json::to_value(ToolResponseContent {
+                                    content: vec![ToolResponseContentItem {
+                                        content_type: "text".to_string(),
+                                        text: response,
+                                    }],
+                                })
+                                .map_err(|e| format!("Failed to serialize response: {}", e))?)
                             }
+                            _ => Err(format!("Unknown hypergrid tool: {}", tool_name)),
                         }
-
-                        let response = self
-                            .call_hypergrid_api(
-                                &hypergrid_conn.url,
-                                &hypergrid_conn.token,
-                                &hypergrid_conn.client_id,
-                                &HypergridMessage {
-                                    request: HypergridMessageType::CallProvider {
-                                        provider_id: provider_id.to_string(),
-                                        provider_name: provider_name.to_string(),
-                                        arguments,
-                                    },
-                                },
-                            )
-                            .await?;
-
-                        Ok(serde_json::json!({
-                            "content": [{
-                                "type": "text",
-                                "text": response
-                            }]
-                        }))
                     }
-                    _ => Err(format!("Unknown hypergrid tool: {}", tool_name)),
+                }
+            }
+            "build_container" => {
+                // Native build container tools are handled by the tool provider
+                if let Some(provider) = self
+                    .tool_provider_registry
+                    .find_provider_for_tool(tool_name, self)
+                {
+                    let command = provider.prepare_execution(tool_name, parameters, self)?;
+                    self.execute_tool_command(command, conversation_id).await
+                } else {
+                    Err(format!("Unknown build container tool: {}", tool_name))
+                }
+            }
+            "hyperware" => {
+                // Native hyperware tools are handled by the tool provider
+                if let Some(provider) = self
+                    .tool_provider_registry
+                    .find_provider_for_tool(tool_name, self)
+                {
+                    let command = provider.prepare_execution(tool_name, parameters, self)?;
+                    self.execute_tool_command(command, conversation_id).await
+                } else {
+                    Err(format!("Unknown hyperware tool: {}", tool_name))
                 }
             }
             "stdio" | "websocket" => {
@@ -2094,7 +2978,7 @@ impl SpiderState {
                 // Execute via WebSocket
                 let request_id = format!("tool_{}_{}", channel_id, Uuid::new_v4());
 
-                let tool_request = JsonRpcRequest {
+                let tool_request = JsonRpcReq {
                     jsonrpc: "2.0".to_string(),
                     method: "tools/call".to_string(),
                     params: Some(
@@ -2110,13 +2994,11 @@ impl SpiderState {
                 // Store pending request
                 self.pending_mcp_requests.insert(
                     request_id.clone(),
-                    PendingMcpRequest {
+                    PendingMcpReq {
                         request_id: request_id.clone(),
                         conversation_id: conversation_id.clone(),
                         server_id: server_id.to_string(),
-                        request_type: McpRequestType::ToolCall {
-                            tool_name: tool_name.to_string(),
-                        },
+                        request_type: McpRequestType::ToolCall(tool_name.to_string()),
                     },
                 );
 
@@ -2140,14 +3022,20 @@ impl SpiderState {
                     if let Some(response) = self.tool_responses.remove(&request_id) {
                         self.pending_mcp_requests.remove(&request_id);
 
+                        println!("[DEBUG] Tool response received:");
+                        println!("[DEBUG]   - response: {}", response);
+
                         // Parse the MCP result
                         if let Some(content) = response.get("content") {
-                            return Ok(serde_json::to_value(ToolExecutionResult {
+                            let result = serde_json::to_value(ToolExecutionResult {
                                 result: content.clone(),
                                 success: true,
                             })
-                            .unwrap());
+                            .unwrap();
+                            println!("[DEBUG]   - returning content result: {}", result);
+                            return Ok(result);
                         } else {
+                            println!("[DEBUG]   - returning full response: {}", response);
                             return Ok(response);
                         }
                     }
@@ -2170,7 +3058,7 @@ impl SpiderState {
                 // Execute via HTTP
                 // This is a placeholder - actual implementation would make HTTP requests
                 Ok(serde_json::to_value(ToolExecutionResult {
-                    result: serde_json::json!(format!(
+                    result: Value::String(format!(
                         "HTTP execution of {} with params: {}",
                         tool_name, parameters
                     )),
@@ -2190,12 +3078,20 @@ impl SpiderState {
         tool_calls_json: &str,
         conversation_id: Option<String>,
     ) -> Result<Vec<ToolResult>, String> {
+        println!("[DEBUG] process_tool_calls called");
+        println!("[DEBUG]   tool_calls_json: {}", tool_calls_json);
+
         let tool_calls: Vec<ToolCall> = serde_json::from_str(tool_calls_json)
             .map_err(|e| format!("Failed to parse tool calls: {}", e))?;
 
+        println!("[DEBUG]   Parsed {} tool calls", tool_calls.len());
         let mut results = Vec::new();
 
         for tool_call in tool_calls {
+            println!("[DEBUG]   Processing tool call:");
+            println!("[DEBUG]     - id: {}", tool_call.id);
+            println!("[DEBUG]     - tool_name: {}", tool_call.tool_name);
+            println!("[DEBUG]     - parameters: {}", tool_call.parameters);
             // Find which MCP server has this tool and get its ID
             let server_id = self
                 .mcp_servers
@@ -2204,6 +3100,7 @@ impl SpiderState {
                 .map(|s| s.id.clone());
 
             let result = if let Some(server_id) = server_id {
+                println!("[DEBUG]     Found tool in server: {}", server_id);
                 let params: Value = serde_json::from_str(&tool_call.parameters)
                     .unwrap_or(Value::Object(serde_json::Map::new()));
                 match self
@@ -2215,14 +3112,24 @@ impl SpiderState {
                     )
                     .await
                 {
-                    Ok(res) => res.to_string(),
-                    Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+                    Ok(res) => {
+                        let result_str = res.to_string();
+                        println!("[DEBUG]     Tool execution successful: {}", result_str);
+                        result_str
+                    }
+                    Err(e) => {
+                        let error_str = format!(r#"{{"error":"{}"}}"#, e);
+                        println!("[DEBUG]     Tool execution error: {}", error_str);
+                        error_str
+                    }
                 }
             } else {
-                format!(
+                let error_str = format!(
                     r#"{{"error":"Tool {} not found in any connected MCP server"}}"#,
                     tool_call.tool_name
-                )
+                );
+                println!("[DEBUG]     {}", error_str);
+                error_str
             };
 
             results.push(ToolResult {
@@ -2231,6 +3138,7 @@ impl SpiderState {
             });
         }
 
+        println!("[DEBUG]   Returning {} tool results", results.len());
         Ok(results)
     }
 
@@ -2332,5 +3240,88 @@ impl SpiderState {
         }
 
         Ok(response_text)
+    }
+
+    // Execute tool commands returned by tool providers
+    async fn execute_tool_command(
+        &mut self,
+        command: tool_providers::ToolExecutionCommand,
+        _conversation_id: Option<String>,
+    ) -> Result<Value, String> {
+        use tool_providers::ToolExecutionCommand;
+
+        match command {
+            ToolExecutionCommand::InitBuildContainer { metadata } => {
+                self.execute_init_build_container_impl(metadata).await
+            }
+            ToolExecutionCommand::LoadProject {
+                project_uuid,
+                name,
+                initial_zip,
+                channel_id,
+            } => {
+                self.execute_load_project_impl(project_uuid, name, initial_zip, channel_id)
+                    .await
+            }
+            ToolExecutionCommand::StartPackage {
+                channel_id,
+                package_dir,
+            } => {
+                self.execute_start_package_impl(channel_id, package_dir)
+                    .await
+            }
+            ToolExecutionCommand::Persist {
+                channel_id,
+                directories,
+            } => self.execute_persist_impl(channel_id, directories).await,
+            ToolExecutionCommand::GetProjects => {
+                // Return the project name to UUID mapping as JSON
+                Ok(serde_json::to_value(&self.project_name_to_uuids)
+                    .map_err(|e| format!("Failed to serialize project mapping: {}", e))?)
+            }
+            ToolExecutionCommand::DoneBuildContainer {
+                metadata,
+                channel_id,
+            } => {
+                self.execute_done_build_container_impl(metadata, channel_id)
+                    .await
+            }
+            ToolExecutionCommand::HypergridAuthorize {
+                server_id,
+                url,
+                token,
+                client_id,
+                node,
+                name,
+            } => {
+                self.execute_hypergrid_authorize_impl(server_id, url, token, client_id, node, name)
+                    .await
+            }
+            ToolExecutionCommand::HypergridSearch { server_id, query } => {
+                self.execute_hypergrid_search_impl(server_id, query).await
+            }
+            ToolExecutionCommand::HypergridCall {
+                server_id,
+                provider_id,
+                provider_name,
+                call_args,
+            } => {
+                self.execute_hypergrid_call_impl(server_id, provider_id, provider_name, call_args)
+                    .await
+            }
+            ToolExecutionCommand::HyperwareSearchApis { query } => {
+                tool_providers::hyperware::search_apis(&query).await
+            }
+            ToolExecutionCommand::HyperwareGetApi { package_id } => {
+                tool_providers::hyperware::get_api(&package_id).await
+            }
+            ToolExecutionCommand::HyperwareCallApi {
+                process_id,
+                method,
+                args,
+                timeout,
+            } => tool_providers::hyperware::call_api(&process_id, &method, &args, timeout).await,
+            ToolExecutionCommand::DirectResult(result) => result,
+        }
     }
 }
