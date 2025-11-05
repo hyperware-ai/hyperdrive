@@ -5,7 +5,6 @@ import { toAscii } from "idna-uts46-hx";
 import EnterHnsName from "../components/EnterHnsName";
 import Loader from "../components/Loader";
 import { PageProps } from "../lib/types";
-
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
 
@@ -26,7 +25,7 @@ const IPV4_REGEX = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9
 function CommitDotOsName({
                              direct,
                              setDirect,
-                             directNodeIp,
+                            directNodeIp,
                              setDirectNodeIp,
                              setHnsName,
                              setNetworkingKey,

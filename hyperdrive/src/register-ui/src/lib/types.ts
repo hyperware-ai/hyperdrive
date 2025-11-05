@@ -14,6 +14,8 @@ export interface PageProps {
   setDirect: React.Dispatch<React.SetStateAction<boolean>>,
   directNodeIp: string,
   setDirectNodeIp: React.Dispatch<React.SetStateAction<string>>,
+  upgradable: boolean,
+  setUpgradable: React.Dispatch<React.SetStateAction<boolean>>,
   hnsName: string,
   setHnsName: React.Dispatch<React.SetStateAction<string>>,
   key: string,

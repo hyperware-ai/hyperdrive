@@ -4,14 +4,17 @@ import Loader from "../components/Loader";
 import { PageProps, IPv4Response } from "../lib/types";
 
 import DirectNodeCheckbox from "../components/DirectCheckbox";
+import UpgradableCheckbox from "../components/UpgradableCheckbox";
+import { useAccount, useWaitForTransactionReceipt, useSendTransaction, useConfig } from "wagmi";
+import { readContract } from "wagmi/actions";
+import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit";
+import { tbaMintAbi, HYPER_ACCOUNT_IMPL, HYPER_ACCOUNT_UPGRADABLE_IMPL, HYPERMAP, mechAbi } from "../abis";
+import { generateNetworkingKeys } from "../abis/helpers";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
-
-import { useAccount, useWaitForTransactionReceipt, useSendTransaction } from "wagmi";
-import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
-import { tbaMintAbi, generateNetworkingKeys, HYPER_ACCOUNT_IMPL } from "../abis";
 import { encodePacked, encodeFunctionData, stringToHex } from "viem";
 import BackButton from "../components/BackButton";
-
+import { predictTBAAddress } from "../utils/predictTBA";
+import { hyperhash } from "../utils/hyperhash";
 interface MintCustomNameProps extends PageProps { }
 
 // Regex for valid router names (domain format)
@@ -21,6 +24,8 @@ const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0
 const IPV4_REGEX = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 
 function MintCustom({
+                        upgradable,
+                        setUpgradable,
                         direct,
                         setDirect,
                         directNodeIp,
@@ -33,21 +38,23 @@ function MintCustom({
                         setTcpPort,
                         setRouters,
                     }: MintCustomNameProps) {
-    let { address } = useAccount();
-    let navigate = useNavigate();
-    let { openConnectModal } = useConnectModal();
+    const { address } = useAccount();
+    const navigate = useNavigate();
+    const { openConnectModal } = useConnectModal();
+    const config = useConfig();
+    const [validationError, setValidationError] = useState<string>("");
 
     const { data: hash, sendTransaction, isPending, isError, error } = useSendTransaction({
         mutation: {
             onSuccess: (data) => {
                 addRecentTransaction({ hash: data, description: `Mint ${hnsName}` });
-            }
-        }
+            },
+        },
     });
-    const { isLoading: isConfirming, isSuccess: isConfirmed } =
-        useWaitForTransactionReceipt({
-            hash,
-        });
+
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+        hash,
+    });
     const addRecentTransaction = useAddRecentTransaction();
 
     const [triggerNameCheck, setTriggerNameCheck] = useState<boolean>(false)
@@ -161,16 +168,22 @@ function MintCustom({
     };
 
     useEffect(() => {
-        document.title = "Mint"
-    }, [])
+        document.title = "Mint";
+    }, []);
 
-    useEffect(() => setTriggerNameCheck(!triggerNameCheck), [address])
+    useEffect(() => setTriggerNameCheck(!triggerNameCheck), [address]);
 
     useEffect(() => {
         if (!address) {
             openConnectModal?.();
         }
     }, [address, openConnectModal]);
+
+    useEffect(() => {
+        if (isConfirmed) {
+            navigate("/set-password");
+        }
+    }, [isConfirmed, address, navigate]);
 
     let handleMint = useCallback(async (e: FormEvent) => {
         e.preventDefault()
@@ -183,6 +196,18 @@ function MintCustom({
             return
         }
 
+        const tbaAddr = (formData.get("tba") as `0x${string}`) || HYPERMAP;
+        const fullHnsName = formData.get("full-hns-name") as string;
+
+        if (!fullHnsName || !fullHnsName.includes(".")) {
+            setValidationError("Full HNS name must contain a dot, e.g., foo.bar");
+            return;
+        }
+
+        // Derive name from the first part before the dot
+        const name = fullHnsName.split(".")[0];
+        const rootName = fullHnsName.replace(`${name}.`, "");
+
         // Process custom routers only if the checkbox is checked
         let routersToUse: string[] = [];
         if (specifyRouters && customRouters.trim()) {
@@ -194,7 +219,25 @@ function MintCustom({
             setRouters([]);
         }
 
+
+        try {
+            const tokenData = (await readContract(config, {
+                address: tbaAddr,
+                abi: mechAbi,
+                functionName: "token",
+            })) as readonly [bigint, `0x${string}`, bigint];
+            const tokenId = tokenData[2];
+            const rootNameHash = hyperhash(rootName);
+            if (tokenId !== BigInt(rootNameHash)) {
+                setValidationError(`The name '${rootName}' is not associated with the provided TBA address`);
+                return;
+            }
+            // Predict the TBA address that will be created
+            const predictedTBA = predictTBAAddress(HYPERMAP, fullHnsName);
+            console.log("predictedTBA", predictedTBA);
+
         const initCall = await generateNetworkingKeys({
+            upgradable,
             direct,
             directNodeIp: direct ? directNodeIp : undefined,
             our_address: address,
@@ -206,39 +249,38 @@ function MintCustom({
             setRouters: routersToUse.length > 0 ? () => setRouters(routersToUse) : setRouters,
             reset: false,
             customRouters: routersToUse.length > 0 ? routersToUse : undefined,
+            tbaAddress: predictedTBA.predictedAddress,
         });
 
-        setHnsName(formData.get('full-hns-name') as string)
+            setHnsName(formData.get('full-hns-name') as string)
 
-        const name = formData.get('name') as string
+            console.log("full hns name", formData.get('full-hns-name'))
+            console.log("name", name)
 
-        console.log("full hns name", formData.get('full-hns-name'))
-        console.log("name", name)
+            const impl = upgradable ? HYPER_ACCOUNT_UPGRADABLE_IMPL : HYPER_ACCOUNT_IMPL;
+            const data = encodeFunctionData({
+                abi: tbaMintAbi,
+                functionName: 'mint',
+                args: [
+                    address,
+                    encodePacked(["bytes"], [stringToHex(name)]),
+                    initCall,
+                    impl,
+                ],
+            })
 
-        const data = encodeFunctionData({
-            abi: tbaMintAbi,
-            functionName: 'mint',
-            args: [
-                address,
-                encodePacked(["bytes"], [stringToHex(name)]),
-                initCall,
-                HYPER_ACCOUNT_IMPL,
-            ],
-        })
-
-        // use data to write to contract -- do NOT use writeContract
-        // writeContract will NOT generate the correct selector for some reason
-        // probably THEIR bug.. no abi works
-        try {
+            // use data to write to contract -- do NOT use writeContract
+            // writeContract will NOT generate the correct selector for some reason
+            // probably THEIR bug.. no abi works
             sendTransaction({
                 to: formData.get('tba') as `0x${string}`,
                 data: data,
                 gas: 1000000n,
             })
         } catch (error) {
-            console.error('Failed to send transaction:', error)
+            console.error('Failed to read or write to contract:', error)
         }
-    }, [direct, directNodeIp, specifyRouters, customRouters, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
+    }, [config, getValidCustomRouters, hnsName, setHnsName, upgradable, direct, directNodeIp, specifyRouters, customRouters, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
 
     useEffect(() => {
         if (isConfirmed) {
@@ -266,6 +308,7 @@ function MintCustom({
                                 <details className="advanced-options">
                                     <summary>Advanced Network Options</summary>
                                     <div className="flex flex-col gap-3">
+                                        <UpgradableCheckbox {...{ upgradable, setUpgradable }} />
                                         <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
                                         {direct && (
                                             <div className="flex flex-col gap-2 ml-6">
@@ -351,9 +394,14 @@ function MintCustom({
                                 <BackButton mode="wide" />
                             </>
                         )}
+                        {validationError && (
+                            <p className="text-red-500 font-semibold mt-2">
+                                {validationError}
+                            </p>
+                        )}
                         {isError && (
                             <p className="text-red-500 wrap-anywhere mt-2">
-                                Error: {error?.message || "An error occurred, please try again."}
+                                Error: {error?.message || "There was an error minting your name, please try again."}
                             </p>
                         )}
                     </form>

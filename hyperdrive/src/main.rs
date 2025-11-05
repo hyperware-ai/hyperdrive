@@ -13,7 +13,10 @@ use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
+
+#[cfg(not(feature = "simulation-mode"))]
+use tokio::sync::oneshot;
 
 mod eth;
 mod eth_config_utils;
@@ -319,6 +322,7 @@ async fn main() {
 
     is_eth_provider_config_updated = false;
 
+    #[cfg(not(feature = "simulation-mode"))]
     if !base_l2_access_source_vector.is_empty() {
         // Process in reverse order so the first entry in the vector becomes highest priority
         for (_reverse_index, provider_str) in
@@ -485,33 +489,36 @@ async fn main() {
     // Create the cache_sources file with test content
     let data_file_path = initfiles_dir.join("cache_sources");
 
-    // Write cache_source_vector to cache_sources as JSON
-    let cache_json = serde_json::to_string_pretty(&cache_source_vector)
-        .expect("Failed to serialize cache_source_vector to JSON");
-    let cache_json_clone = cache_json.clone();
+    #[cfg(not(feature = "simulation-mode"))]
+    {
+        // Write cache_source_vector to cache_sources as JSON
+        let cache_json = serde_json::to_string_pretty(&cache_source_vector)
+            .expect("Failed to serialize cache_source_vector to JSON");
+        let cache_json_clone = cache_json.clone();
 
-    if let Err(e) = tokio::fs::write(&data_file_path, cache_json).await {
-        eprintln!("Warning: Failed to write cache data to file: {}", e);
-    }
+        if let Err(e) = tokio::fs::write(&data_file_path, cache_json).await {
+            eprintln!("Warning: Failed to write cache data to file: {}", e);
+        }
 
-    // Create the second directory structure for hns-indexer:sys
-    let hns_indexer_dir = vfs_dir.join("hns-indexer:sys");
-    let hns_initfiles_dir = hns_indexer_dir.join("initfiles");
+        // Create the second directory structure for hns-indexer:sys
+        let hns_indexer_dir = vfs_dir.join("hns-indexer:sys");
+        let hns_initfiles_dir = hns_indexer_dir.join("initfiles");
 
-    // Create all directories at once for the second location
-    if let Err(e) = tokio::fs::create_dir_all(&hns_initfiles_dir).await {
-        eprintln!(
-            "Failed to create directory structure {}: {}",
-            hns_initfiles_dir.display(),
-            e
-        );
-    }
+        // Create all directories at once for the second location
+        if let Err(e) = tokio::fs::create_dir_all(&hns_initfiles_dir).await {
+            eprintln!(
+                "Failed to create directory structure {}: {}",
+                hns_initfiles_dir.display(),
+                e
+            );
+        }
 
-    // Create the cache_sources file in the second location
-    let hns_data_file_path = hns_initfiles_dir.join("cache_sources");
+        // Create the cache_sources file in the second location
+        let hns_data_file_path = hns_initfiles_dir.join("cache_sources");
 
-    if let Err(e) = tokio::fs::write(&hns_data_file_path, cache_json_clone).await {
-        eprintln!("Warning: Failed to write cache data to second file: {}", e);
+        if let Err(e) = tokio::fs::write(&hns_data_file_path, cache_json_clone).await {
+            eprintln!("Warning: Failed to write cache data to second file: {}", e);
+        }
     }
 
     let mut tasks = tokio::task::JoinSet::<Result<()>>::new();

@@ -24,6 +24,7 @@ function App() {
   const [reset, setReset] = useState<boolean>(false);
   const [direct, setDirect] = useState<boolean>(false);
   const [directNodeIp, setDirectNodeIp] = useState<string>('');
+  const [upgradable, setUpgradable] = useState<boolean>(false);
   const [hnsName, setHnsName] = useState<string>('');
   const [networkingKey, setNetworkingKey] = useState<string>('');
   const [ipAddress, setIpAddress] = useState<number>(0);
@@ -96,6 +97,7 @@ function App() {
   // just pass all the props each time since components won't mind extras
   // todo, most of these can be removed...
   const props = {
+    upgradable, setUpgradable,
     direct, setDirect,
     directNodeIp, setDirectNodeIp,
     key,

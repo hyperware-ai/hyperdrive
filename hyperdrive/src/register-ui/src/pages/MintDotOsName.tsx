@@ -5,7 +5,8 @@ import { PageProps } from "../lib/types";
 
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit"
-import { generateNetworkingKeys, HYPER_ACCOUNT_IMPL, DOTOS, tbaMintAbi } from "../abis";
+import { HYPER_ACCOUNT_IMPL, DOTOS, tbaMintAbi } from "../abis";
+import { generateNetworkingKeys } from "../abis/helpers";
 import { createPublicClient, encodePacked, http, stringToHex, BaseError, ContractFunctionRevertedError } from "viem";
 import { base } from 'viem/chains'
 
@@ -66,10 +67,14 @@ function MintDotOsName({
 
     setHasMinted(true);
 
+    // strip .os suffix
+    const name = hnsName.replace(/\.os$/, '');
+
     // Use the routers from app state if they exist (custom routers from previous page)
     const customRoutersToUse = routers && routers.length > 0 ? routers : undefined;
 
     const initCall = await generateNetworkingKeys({
+      upgradable: false,
       direct,
       directNodeIp: direct ? directNodeIp : undefined,
       our_address: address,
@@ -80,11 +85,8 @@ function MintDotOsName({
       setTcpPort,
       setRouters,
       reset: false,
-      customRouters: customRoutersToUse, // Pass the custom routers
+      customRouters: customRoutersToUse,
     });
-
-    // strip .os suffix
-    const name = hnsName.replace(/\.os$/, '');
 
     const publicClient = createPublicClient({
       chain: base,

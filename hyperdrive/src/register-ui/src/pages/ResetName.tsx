@@ -7,7 +7,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import { PageProps, UnencryptedIdentity, IPv4Response } from "../lib/types";
-import { MULTICALL, generateNetworkingKeys, mechAbi } from "../abis";
+import { MULTICALL, mechAbi } from "../abis";
+import { generateNetworkingKeys } from "../abis/helpers";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
 import EnterHnsName from "../components/EnterHnsName";
@@ -209,6 +210,44 @@ function ResetHnsName({
 
     useEffect(() => {
         document.title = "Reset";
+
+        // Fetch current node info and prepopulate routers if indirect node
+        (async () => {
+            try {
+                const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
+                    res.json()
+                )) as UnencryptedIdentity;
+
+                const allowedRouters = Array.isArray(infoData.allowed_routers)
+                    ? infoData.allowed_routers
+                    : undefined;
+                if (!allowedRouters) {
+                    return;
+                }
+
+                // Determine if node has specified routers (indirect node)
+                const hasRouters = allowedRouters.length > 0;
+
+                // If allowed_routers is empty, the node is direct; if it has routers, it's indirect
+                const isDirect = !hasRouters;
+
+                // Set initial states for checkbox help text
+                setInitiallyDirect(isDirect);
+                setInitiallySpecifyRouters(hasRouters);
+
+                // Set the current state to match the node's current configuration
+                setDirect(isDirect);
+
+                // Prepopulate customRouters if this is an indirect node with existing routers
+                if (hasRouters) {
+                    const routersText = allowedRouters.join('\n');
+                    setCustomRouters(routersText);
+                    setSpecifyRouters(true); // Auto-enable the checkbox
+                }
+            } catch (error) {
+                console.log("Could not fetch node info:", error);
+            }
+        })();
     }, []);
 
     // so inputs will validate once wallet is connected
@@ -245,6 +284,7 @@ function ResetHnsName({
 
             try {
                 const data = await generateNetworkingKeys({
+                    upgradable: false,
                     direct,
                     directNodeIp: direct ? directNodeIp : undefined,
                     label: name,
@@ -274,7 +314,7 @@ function ResetHnsName({
                 console.error("An error occurred:", error);
             }
         },
-        [address, direct, directNodeIp, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal]
+        [address, direct, directNodeIp, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal, getValidCustomRouters, setHnsNames]
     );
 
     useEffect(() => {

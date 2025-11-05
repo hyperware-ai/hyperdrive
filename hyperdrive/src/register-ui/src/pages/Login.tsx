@@ -324,7 +324,7 @@ function Login({
                     className="mt-1"
                 />
                 <span className="text-orange-800 dark:text-orange-200 text-sm">
-                  I know what I'm doing and I want to login despite the IP address mismatch and possible node unreachability.
+                  I know what I'm doing and I want to login despite the IP address mismatch and the possible unreachability of my node.
                 </span>
               </label>
             </div>

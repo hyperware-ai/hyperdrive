@@ -4,7 +4,7 @@ import useAppsStore from "../store/appStoreStore";
 import { AppListing, PackageState, ManifestResponse, HomepageApp } from "../types/Apps";
 import { compareVersions } from "../utils/compareVersions";
 import { MirrorSelector, ManifestDisplay } from '../components';
-import { FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay } from "react-icons/fa6";
+import { FaChevronDown, FaChevronRight, FaCheck, FaCircleNotch, FaPlay, FaXmark } from "react-icons/fa6";
 import { BsDownload } from "react-icons/bs";
 import { Modal } from "../components/Modal";
 import classNames from "classnames";
@@ -84,6 +84,8 @@ export default function AppPage() {
   const [hasProcessedIntent, setHasProcessedIntent] = useState(false);
   const [awaitPresenceInHomepageApps, setAwaitPresenceInHomepageApps] = useState(false);
   const [launchUrl, setLaunchUrl] = useState<string | null>(null);
+  const [showScreenshots, setShowScreenshots] = useState(true);
+  const [activeScreenshot, setActiveScreenshot] = useState<string | null>(null);
 
   useEffect(() => {
     const backTickCounter = (e: KeyboardEvent) => {
@@ -110,6 +112,15 @@ export default function AppPage() {
       .map(([version, hash]) => ({ version, hash }))
       .sort((a, b) => compareVersions(b.version, a.version));
   }, [app]);
+
+  const screenshots = useMemo(() => {
+    if (isDevMode) {
+      return MOCK_APP.metadata?.properties?.screenshots ?? [];
+    }
+    return app?.metadata?.properties?.screenshots ?? [];
+  }, [app, isDevMode]);
+
+  const hasScreenshots = screenshots.length > 0;
 
   const isDownloaded = useMemo(() => {
     if (!app || !selectedVersion) return false;
@@ -664,18 +675,53 @@ export default function AppPage() {
 
       {appButtons({ className: "flex-col items-stretch md:hidden" })}
 
-      {(app.metadata?.properties?.screenshots || isDevMode) && (
-        <div className="flex flex-col gap-2">
-          <h3 className="prose">Screenshots</h3>
-          <div className="flex flex-wrap gap-2 overflow-y-auto min-h-0 max-h-lg">
-            {(isDevMode ? MOCK_APP.metadata!.properties.screenshots! : app!.metadata!.properties!.screenshots!).map((screenshot, index) => (
-              <img
-                src={screenshot}
-                alt={`Screenshot ${index + 1}`}
-                className="rounded-lg w-full h-full object-contain aspect-video max-w-md max-h-md"
-                loading="lazy"
-              />
-            ))}
+      {(hasScreenshots || isDevMode) && (
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={() => setShowScreenshots(!showScreenshots)}
+            className="flex items-center gap-2 text-lg font-medium text-gray-900 dark:text-white hover:text-iris dark:hover:text-neon transition-colors"
+          >
+            {showScreenshots ? <FaChevronDown /> : <FaChevronRight />} Screenshots
+          </button>
+          {showScreenshots && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {screenshots.map((screenshot, index) => (
+                <img
+                  key={index}
+                  src={screenshot}
+                  alt={`Screenshot ${index + 1}`}
+                  className="rounded-lg w-full h-auto object-cover aspect-video max-h-64 hover:scale-105 transition-transform cursor-pointer"
+                  loading="lazy"
+                  onClick={() => setActiveScreenshot(screenshot)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeScreenshot && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setActiveScreenshot(null)}
+        >
+          <div
+            className="relative max-w-5xl max-h-[90vh] flex items-center justify-center"
+            onClick={event => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors"
+              onClick={() => setActiveScreenshot(null)}
+              aria-label="Close screenshot preview"
+            >
+              <FaXmark size={18} />
+            </button>
+            <img
+              src={activeScreenshot}
+              alt="Selected app screenshot"
+              className="max-h-[85vh] w-auto max-w-full rounded-lg shadow-2xl"
+            />
           </div>
         </div>
       )}
