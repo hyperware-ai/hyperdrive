@@ -23,6 +23,7 @@ function App() {
   const [keyFileName, setKeyFileName] = useState<string>('');
   const [reset, setReset] = useState<boolean>(false);
   const [direct, setDirect] = useState<boolean>(false);
+  const [directNodeIp, setDirectNodeIp] = useState<string>('');
   const [hnsName, setHnsName] = useState<string>('');
   const [networkingKey, setNetworkingKey] = useState<string>('');
   const [ipAddress, setIpAddress] = useState<number>(0);
@@ -72,6 +73,20 @@ function App() {
       } catch (e) {
         console.error('error getting current chain', e)
       }
+
+      try {
+        const ipv4Response = await fetch('/ipv4', { method: 'GET', credentials: 'include' })
+
+        if (ipv4Response.status < 400) {
+          const ipv4Data: { ip: string } = await ipv4Response.json()
+          setDirectNodeIp(ipv4Data.ip)
+          console.log('IPv4 Address:', ipv4Data.ip)
+        } else {
+          console.error('error processing IPv4 response', ipv4Response)
+        }
+      } catch (e) {
+        console.error('error getting IPv4 address', e)
+      }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -82,6 +97,7 @@ function App() {
   // todo, most of these can be removed...
   const props = {
     direct, setDirect,
+    directNodeIp, setDirectNodeIp,
     key,
     keyFileName, setKeyFileName,
     reset, setReset,

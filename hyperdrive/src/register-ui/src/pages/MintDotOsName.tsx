@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
@@ -14,6 +13,7 @@ interface RegisterOsNameProps extends PageProps { }
 
 function MintDotOsName({
                          direct,
+                         directNodeIp,
                          hnsName,
                          setNetworkingKey,
                          setIpAddress,
@@ -71,6 +71,7 @@ function MintDotOsName({
 
     const initCall = await generateNetworkingKeys({
       direct,
+      directNodeIp: direct ? directNodeIp : undefined,
       our_address: address,
       label: hnsName,
       setNetworkingKey,
@@ -118,7 +119,7 @@ function MintDotOsName({
       }
       throw err;
     }
-  }, [direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted, routers])
+  }, [direct, directNodeIp, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted, routers])
 
   useEffect(() => {
     if (address && !isPending && !isConfirming) {

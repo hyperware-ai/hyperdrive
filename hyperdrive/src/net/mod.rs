@@ -88,11 +88,11 @@ pub async fn networking(
     match &ext.our.routing {
         NodeRouting::Direct { ip, ports } => {
             if *ext.our_ip != *ip {
-                return Err(anyhow::anyhow!(
-                    "net: fatal error: IP address mismatch: {} != {}, update your HNS identity",
-                    ext.our_ip,
-                    ip
-                ));
+                let message = format!(
+                    "IP address mismatch detected. Detected from environment: {}, node's data: {}. Please confirm your node is reachable at {} or restart your node to reset your networking data.",
+                    ext.our_ip, ip, ip
+                );
+                utils::print_loud(&ext.print_tx, &message).await;
             }
             utils::print_debug(&ext.print_tx, "going online as a direct node").await;
             if !ports.contains_key(WS_PROTOCOL) && !ports.contains_key(TCP_PROTOCOL) {

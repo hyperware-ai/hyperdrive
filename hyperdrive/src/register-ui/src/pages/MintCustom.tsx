@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
-import { PageProps } from "../lib/types";
+import { PageProps, IPv4Response } from "../lib/types";
 
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import SpecifyRoutersCheckbox from "../components/SpecifyRoutersCheckbox";
@@ -11,14 +11,20 @@ import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit
 import { tbaMintAbi, generateNetworkingKeys, HYPER_ACCOUNT_IMPL } from "../abis";
 import { encodePacked, encodeFunctionData, stringToHex } from "viem";
 import BackButton from "../components/BackButton";
+
 interface MintCustomNameProps extends PageProps { }
 
 // Regex for valid router names (domain format)
 const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
 
+// IPv4 validation regex
+const IPV4_REGEX = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
 function MintCustom({
                         direct,
                         setDirect,
+                        directNodeIp,
+                        setDirectNodeIp,
                         hnsName,
                         setHnsName,
                         setNetworkingKey,
@@ -48,6 +54,50 @@ function MintCustom({
     const [specifyRouters, setSpecifyRouters] = useState(false)
     const [customRouters, setCustomRouters] = useState('')
     const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
+
+    // Track the initial IPv4 value to determine if it was auto-detected
+    const [initialDirectNodeIp, setInitialDirectNodeIp] = useState<string>('')
+
+    // Fetch and set the detected IP address on mount
+    useEffect(() => {
+        (async () => {
+            try {
+                const ipData = await fetch("/ipv4", { method: "GET" }).then((res) => res.json()) as IPv4Response;
+                if (ipData.ip) {
+                    setDirectNodeIp(ipData.ip);
+                    setInitialDirectNodeIp(ipData.ip);
+                }
+            } catch (error) {
+                console.error("Failed to fetch IPv4 address:", error);
+            }
+        })();
+    }, [setDirectNodeIp]);
+
+    // Validation function for IPv4
+    const isValidIPv4 = (ip: string): boolean => {
+        return IPV4_REGEX.test(ip);
+    };
+
+    // Check if direct node configuration is valid
+    const isDirectNodeValid = (): boolean => {
+        if (!direct) return true; // Not required if checkbox is unchecked
+        return directNodeIp.trim() !== '' && isValidIPv4(directNodeIp.trim());
+    };
+
+    // Determine the appropriate label for the Direct Node IP field
+    const getDirectNodeIpLabel = (): string => {
+        const hasValidInitialIp = initialDirectNodeIp && isValidIPv4(initialDirectNodeIp);
+
+        if (!hasValidInitialIp) {
+            return "Direct Node IP Address (IPv4)";
+        }
+
+        if (directNodeIp === initialDirectNodeIp) {
+            return "Direct Node IP Address (as detected)";
+        }
+
+        return "Direct Node IP Address (overridden by user)";
+    };
 
     // Modified setDirect function - no longer clears custom routers
     const handleSetDirect = (value: boolean) => {
@@ -146,6 +196,7 @@ function MintCustom({
 
         const initCall = await generateNetworkingKeys({
             direct,
+            directNodeIp: direct ? directNodeIp : undefined,
             our_address: address,
             label: hnsName,
             setNetworkingKey,
@@ -187,7 +238,7 @@ function MintCustom({
         } catch (error) {
             console.error('Failed to send transaction:', error)
         }
-    }, [direct, specifyRouters, customRouters, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
+    }, [direct, directNodeIp, specifyRouters, customRouters, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
 
     useEffect(() => {
         if (isConfirmed) {
@@ -216,6 +267,35 @@ function MintCustom({
                                     <summary>Advanced Network Options</summary>
                                     <div className="flex flex-col gap-3">
                                         <DirectNodeCheckbox direct={direct} setDirect={handleSetDirect} />
+                                        {direct && (
+                                            <div className="flex flex-col gap-2 ml-6">
+                                                <label htmlFor="direct-node-ip" className="text-sm font-medium">
+                                                    {getDirectNodeIpLabel()}: <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="direct-node-ip"
+                                                    value={directNodeIp}
+                                                    onChange={(e) => setDirectNodeIp(e.target.value)}
+                                                    placeholder="e.g., 192.168.1.100"
+                                                    className={`input ${
+                                                        direct && !isDirectNodeValid()
+                                                            ? 'border-red-500 focus:border-red-500'
+                                                            : ''
+                                                    }`}
+                                                />
+                                                {direct && directNodeIp.trim() && !isValidIPv4(directNodeIp.trim()) && (
+                                                    <span className="text-xs text-red-500">
+                                                        Please enter a valid IPv4 address
+                                                    </span>
+                                                )}
+                                                {direct && !directNodeIp.trim() && (
+                                                    <span className="text-xs text-red-500">
+                                                        IP address is required for direct nodes
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                         <SpecifyRoutersCheckbox specifyRouters={specifyRouters} setSpecifyRouters={handleSetSpecifyRouters} />
                                         {specifyRouters && (
                                             <div className="flex flex-col gap-2 ml-6">
@@ -261,6 +341,7 @@ function MintCustom({
                                     disabled={
                                         isPending ||
                                         isConfirming ||
+                                        (direct && !isDirectNodeValid()) ||
                                         (specifyRouters && !isCustomRoutersValid())
                                     }
                                 >

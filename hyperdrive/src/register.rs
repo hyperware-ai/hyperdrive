@@ -138,6 +138,7 @@ pub async fn register(
     let boot_provider = provider.clone();
     let login_provider = provider.clone();
     let import_provider = provider.clone();
+    let info_provider = provider.clone();
 
     let initial_cache_sources_arc = Arc::new(initial_cache_sources.clone());
     let initial_base_l2_providers_arc = Arc::new(initial_base_l2_providers.clone());
@@ -148,11 +149,15 @@ pub async fn register(
                 .and(keyfile.clone())
                 .and(warp::any().map(move || initial_cache_sources_arc.clone()))
                 .and(warp::any().map(move || initial_base_l2_providers_arc.clone()))
+                .and(warp::any().map(move || info_provider.clone()))
                 .and_then(get_unencrypted_info),
         )
         .or(warp::path("current-chain")
             .and(warp::get())
             .map(move || warp::reply::json(&"0xa".to_string())))
+        .or(warp::path("ipv4")
+            .and(warp::get())
+            .and_then(get_ipv4))
         .or(warp::path("our").and(warp::get()).and(keyfile.clone()).map(
             move |keyfile: Option<Vec<u8>>| {
                 if let Some(keyfile) = keyfile {
@@ -312,6 +317,7 @@ async fn get_unencrypted_info(
     keyfile: Option<Vec<u8>>,
     initial_cache_sources: Arc<Option<Vec<String>>>,
     initial_base_l2_providers: Arc<Option<Vec<String>>>,
+    provider: Arc<RootProvider<PubSubFrontend>>,
 ) -> Result<impl Reply, Rejection> {
     let (name, allowed_routers, status_code) = match keyfile {
         Some(encoded_keyfile) => match keygen::get_username_and_routers(&encoded_keyfile) {
@@ -321,10 +327,36 @@ async fn get_unencrypted_info(
                     warp::reply::json(&"keyfile deserialization went wrong".to_string()),
                     StatusCode::UNAUTHORIZED,
                 )
-                .into_response())
+                    .into_response())
             }
         },
         None => (None, None, StatusCode::NOT_FOUND),
+    };
+
+    // Use the shared helper function to detect IP
+    let detected_ip_address = detect_ipv4_address().await;
+
+    // Determine networking configuration and HNS IP from chain
+    let (uses_direct_networking, hns_ip_address) = if let Some(ref routers) = allowed_routers {
+        if routers.is_empty() {
+            // This is a direct node - query the chain for its IP
+            if let Some(ref node_name) = name {
+                match query_hns_ip(node_name, &provider).await {
+                    Ok(ip) => (true, Some(ip)),
+                    Err(e) => {
+                        println!("Failed to query HNS IP for {}: {}\r", node_name, e);
+                        (true, None)
+                    }
+                }
+            } else {
+                (true, None)
+            }
+        } else {
+            // This is an indirect node
+            (false, None)
+        }
+    } else {
+        (false, None)
     };
 
     let response = InfoResponse {
@@ -335,13 +367,70 @@ async fn get_unencrypted_info(
             .as_ref()
             .clone()
             .unwrap_or_default(),
+        uses_direct_networking,
+        hns_ip_address,
+        detected_ip_address,
     };
 
     return Ok(warp::reply::with_status(warp::reply::json(&response), status_code).into_response());
 }
 
+/// Query the HNS IP address for a given node name from the chain
+async fn query_hns_ip(
+    node_name: &str,
+    provider: &RootProvider<PubSubFrontend>,
+) -> anyhow::Result<String> {
+    let hypermap = EthAddress::from_str(HYPERMAP_ADDRESS)?;
+    let ip_hash = FixedBytes::<32>::from_slice(&keygen::namehash(&format!("~ip.{}", node_name)));
+
+    let get_call = getCall { namehash: ip_hash }.abi_encode();
+    let tx_input = TransactionInput::new(Bytes::from(get_call));
+    let tx = TransactionRequest::default().to(hypermap).input(tx_input);
+
+    let result = provider.call(&tx).await?;
+    let ip_data = getCall::abi_decode_returns(&result, false)?;
+
+    let ip = keygen::bytes_to_ip(&ip_data.data)?;
+    Ok(ip.to_string())
+}
+
 async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Reply, Rejection> {
     Ok(warp::reply::json(our_temp_id.as_ref()))
+}
+
+async fn detect_ipv4_address() -> String {
+    let ip_addr = {
+        #[cfg(feature = "simulation-mode")]
+        {
+            std::net::Ipv4Addr::LOCALHOST
+        }
+
+        #[cfg(not(feature = "simulation-mode"))]
+        {
+            match tokio::time::timeout(std::time::Duration::from_secs(5), public_ip::addr_v4()).await {
+                Ok(Some(ip)) => ip,
+                _ => {
+                    println!("Failed to find public IPv4 address for /info endpoint.\r");
+                    std::net::Ipv4Addr::LOCALHOST
+                }
+            }
+        }
+    };
+
+    ip_addr.to_string()
+}
+
+async fn get_ipv4() -> Result<impl Reply, Rejection> {
+    #[derive(serde::Serialize)]
+    struct Ipv4Response {
+        ip: String,
+    }
+
+    let ip = detect_ipv4_address().await;
+
+    let response = Ipv4Response { ip };
+
+    Ok(warp::reply::json(&response))
 }
 
 async fn handle_boot(
@@ -354,12 +443,17 @@ async fn handle_boot(
     let hypermap = EthAddress::from_str(HYPERMAP_ADDRESS).unwrap();
     let mut our = our.as_ref().clone();
 
-    our.name = info.username;
-    if info.direct {
-        our.both_to_direct();
+    our.name = info.username.clone();
+
+    // Check if direct IP address is provided (Some = direct, None = routers)
+    let is_direct = info.direct.is_some();
+
+    if is_direct {
+        let ip_address = info.direct.as_ref().unwrap();
+        our.both_to_direct(ip_address);
     } else {
         // Set custom routers if provided
-        if let Some(custom_routers) = info.custom_routers {
+        if let Some(custom_routers) = info.custom_routers.clone() {
             our.routing = NodeRouting::Routers(custom_routers);
         } else {
             our.both_to_routers(); // Use defaults
@@ -404,14 +498,14 @@ async fn handle_boot(
             warp::reply::json(&"Timestamp is outdated.".to_string()),
             StatusCode::UNAUTHORIZED,
         )
-        .into_response());
+            .into_response());
     }
     let Ok(password_hash) = FixedBytes::<32>::from_str(&info.password_hash) else {
         return Ok(warp::reply::with_status(
             warp::reply::json(&"Invalid password hash".to_string()),
             StatusCode::UNAUTHORIZED,
         )
-        .into_response());
+            .into_response());
     };
 
     let namehash = FixedBytes::<32>::from_slice(&keygen::namehash(&our.name));
@@ -435,7 +529,7 @@ async fn handle_boot(
                         ),
                         StatusCode::INTERNAL_SERVER_ERROR,
                     )
-                    .into_response());
+                        .into_response());
                 };
                 let owner = node_info.owner;
 
@@ -452,7 +546,7 @@ async fn handle_boot(
                     username: our.name.clone(),
                     password_hash,
                     timestamp: U256::from(info.timestamp),
-                    direct: info.direct,
+                    direct: is_direct,  // Convert Option<String> to bool
                     reset: info.reset,
                     chain_id: U256::from(chain_id),
                 };
@@ -478,7 +572,7 @@ async fn handle_boot(
                     networking_keypair: signature::Ed25519KeyPair::from_pkcs8(
                         networking_keypair.as_ref(),
                     )
-                    .unwrap(),
+                        .unwrap(),
                     jwt_secret_bytes: jwt_secret.to_vec(),
                     file_key: keygen::generate_file_key(),
                 };
@@ -500,7 +594,7 @@ async fn handle_boot(
                     cache_source_vector,
                     base_l2_access_source_vector,
                 )
-                .await;
+                    .await;
             }
             Err(_) => {
                 attempts += 1;
@@ -513,7 +607,7 @@ async fn handle_boot(
         warp::reply::json(&"Recovered address does not match owner".to_string()),
         StatusCode::UNAUTHORIZED,
     )
-    .into_response());
+        .into_response());
 }
 
 async fn handle_import_keyfile(

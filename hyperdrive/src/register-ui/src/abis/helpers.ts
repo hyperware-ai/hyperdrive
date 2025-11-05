@@ -1,4 +1,3 @@
-
 import { NetworkingInfo } from "../lib/types";
 import { hyperhash } from "../utils/hyperhash";
 import { ipToBytes, portToBytes } from "../utils/hns_encoding";
@@ -13,15 +12,17 @@ const encodeRouters = (routers: string[]): `0x${string}` => {
 };
 
 export const generateNetworkingKeys = async ({
-    direct,
-    setNetworkingKey,
-    setWsPort,
-    setTcpPort,
-    setRouters,
-    reset,
-    customRouters,
-}: {
+                                                 direct,
+                                                 directNodeIp,
+                                                 setNetworkingKey,
+                                                 setWsPort,
+                                                 setTcpPort,
+                                                 setRouters,
+                                                 reset,
+                                                 customRouters,
+                                             }: {
     direct: boolean,
+    directNodeIp?: string,
     label: string,
     our_address: `0x${string}`,
     setNetworkingKey: (networkingKey: string) => void;
@@ -45,7 +46,9 @@ export const generateNetworkingKeys = async ({
         (res) => res.json()
     )) as NetworkingInfo;
 
-    const ipAddress = ipToBytes(ip_address);
+    // Use directNodeIp if provided and direct is true, otherwise use the generated IP
+    const ipToUse = direct && directNodeIp ? directNodeIp : ip_address;
+    const ipAddress = ipToBytes(ipToUse);
 
     const routersToUse = customRouters && customRouters.length > 0 ? customRouters : allowed_routers;
 
@@ -56,6 +59,7 @@ export const generateNetworkingKeys = async ({
     setRouters(routersToUse);
 
     console.log("networking_key: ", networking_key);
+    console.log("IP address being used: ", ipToUse);
     console.log("routers being used: ", routersToUse);
 
     const netkeycall = encodeFunctionData({

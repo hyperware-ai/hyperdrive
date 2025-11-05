@@ -1,4 +1,3 @@
-
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageProps, InfoResponse } from "../lib/types";
 import Loader from "../components/Loader";
@@ -40,6 +39,10 @@ function Login({
   const [cacheSourceValidationErrors, setCacheSourceValidationErrors] = useState<string[]>([]);
   const [specifyBaseL2AccessProviders, setSpecifyBaseL2AccessProviders] = useState(false);
   const [rpcProviders, setRpcProviders] = useState<RpcProviderData[]>([]);
+  const [usesDirectNetworking, setUsesDirectNetworking] = useState<boolean>(false);
+  const [hnsIpAddress, setHnsIpAddress] = useState<string>("");
+  const [detectedIpAddress, setDetectedIpAddress] = useState<string>("");
+  const [acknowledgeIpMismatch, setAcknowledgeIpMismatch] = useState<boolean>(false);
 
   // Track initial states after data is loaded
   const [initialCacheSourcesChecked, setInitialCacheSourcesChecked] = useState(false);
@@ -62,6 +65,17 @@ function Login({
         }
         if (infoData.name) {
           setHnsName(infoData.name);
+        }
+
+        // Set networking information
+        if (infoData.uses_direct_networking !== undefined) {
+          setUsesDirectNetworking(infoData.uses_direct_networking);
+        }
+        if (infoData.hns_ip_address) {
+          setHnsIpAddress(infoData.hns_ip_address);
+        }
+        if (infoData.detected_ip_address) {
+          setDetectedIpAddress(infoData.detected_ip_address);
         }
 
         // Prepopulate cache sources
@@ -132,6 +146,8 @@ function Login({
 
     return errors;
   };
+
+  const hasIpMismatch = usesDirectNetworking && hnsIpAddress && detectedIpAddress && hnsIpAddress !== detectedIpAddress;
 
   // Handle custom cache sources change with validation
   const handleCustomCacheSourcesChange = (value: string) => {
@@ -253,6 +269,12 @@ function Login({
       rpcProviders.some(p => !p.url.trim() || !validateWebSocketUrl(p.url) || (p.auth && !p.auth.value.trim()))
   );
 
+  // Check if login button should be disabled
+  const isLoginDisabled =
+      (specifyCacheSources && !isCustomCacheSourcesValid()) ||
+      hasInvalidRpcProviders ||
+      (hasIpMismatch && !acknowledgeIpMismatch);
+
   return <div className="relative flex flex-col gap-2 items-stretch self-stretch">
     {loading && <div className="absolute top-0 left-0 w-full h-full flex place-content-center place-items-center">
       <Loader msg={loading} className="text-black dark:text-white" />
@@ -281,6 +303,32 @@ function Login({
             onChange={(e) => setPw(e.target.value)}
             autoFocus
         />
+        {/* IP Mismatch Warning */}
+        {hasIpMismatch && (
+            <div className="mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded text-sm">
+              <div className="font-semibold text-orange-800 dark:text-orange-200 mb-1">
+                ⚠️ IP Address Mismatch Detected
+              </div>
+              <div className="text-orange-700 dark:text-orange-300 space-y-1 mb-3">
+                <div><strong>HNS IP:</strong> {hnsIpAddress} <br />(your node's published Hypermap directory address)</div>
+                <div><strong>Detected IP:</strong> {detectedIpAddress} <br />(your node's likely current address)  </div>
+              </div>
+              <div className="text-orange-700 dark:text-orange-300 space-y-1 mb-3">
+                Please use <strong>Reset Password & Networking Info</strong> to reset your networking information, or acknowledge the following to proceed with login.
+              </div>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                    type="checkbox"
+                    checked={acknowledgeIpMismatch}
+                    onChange={(e) => setAcknowledgeIpMismatch(e.target.checked)}
+                    className="mt-1"
+                />
+                <span className="text-orange-800 dark:text-orange-200 text-sm">
+                  I know what I'm doing and I want to login despite the IP address mismatch and possible node unreachability.
+                </span>
+              </label>
+            </div>
+        )}
       </div>
 
       {/* Advanced Options Section */}
@@ -356,7 +404,7 @@ function Login({
 
       <button
           type="submit"
-          disabled={specifyCacheSources && !isCustomCacheSourcesValid() || hasInvalidRpcProviders}
+          disabled={isLoginDisabled}
       >Log in</button>
 
       <button
