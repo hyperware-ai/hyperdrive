@@ -324,7 +324,7 @@ async fn get_unencrypted_info(
                     warp::reply::json(&"keyfile deserialization went wrong".to_string()),
                     StatusCode::UNAUTHORIZED,
                 )
-                    .into_response())
+                .into_response())
             }
         },
         None => (None, None, StatusCode::NOT_FOUND),
@@ -405,10 +405,7 @@ async fn detect_ipv4_address() -> String {
     {
         // Helper function to parse IP from JSON response
         async fn try_hyperware_endpoint(url: &str) -> Option<String> {
-            match tokio::time::timeout(
-                std::time::Duration::from_secs(3),
-                reqwest::get(url)
-            ).await {
+            match tokio::time::timeout(std::time::Duration::from_secs(3), reqwest::get(url)).await {
                 Ok(Ok(response)) => {
                     if let Ok(json) = response.json::<serde_json::Value>().await {
                         if let Some(ip) = json.get("ip").and_then(|v| v.as_str()) {
@@ -520,14 +517,14 @@ async fn handle_boot(
             warp::reply::json(&"Timestamp is outdated.".to_string()),
             StatusCode::UNAUTHORIZED,
         )
-            .into_response());
+        .into_response());
     }
     let Ok(password_hash) = FixedBytes::<32>::from_str(&info.password_hash) else {
         return Ok(warp::reply::with_status(
             warp::reply::json(&"Invalid password hash".to_string()),
             StatusCode::UNAUTHORIZED,
         )
-            .into_response());
+        .into_response());
     };
 
     let namehash = FixedBytes::<32>::from_slice(&keygen::namehash(&our.name));
@@ -551,7 +548,7 @@ async fn handle_boot(
                         ),
                         StatusCode::INTERNAL_SERVER_ERROR,
                     )
-                        .into_response());
+                    .into_response());
                 };
                 let owner = node_info.owner;
 
@@ -568,7 +565,7 @@ async fn handle_boot(
                     username: our.name.clone(),
                     password_hash,
                     timestamp: U256::from(info.timestamp),
-                    direct: is_direct,  // Convert Option<String> to bool
+                    direct: is_direct, // Convert Option<String> to bool
                     reset: info.reset,
                     chain_id: U256::from(chain_id),
                 };
@@ -594,7 +591,7 @@ async fn handle_boot(
                     networking_keypair: signature::Ed25519KeyPair::from_pkcs8(
                         networking_keypair.as_ref(),
                     )
-                        .unwrap(),
+                    .unwrap(),
                     jwt_secret_bytes: jwt_secret.to_vec(),
                     file_key: keygen::generate_file_key(),
                 };
@@ -616,7 +613,7 @@ async fn handle_boot(
                     cache_source_vector,
                     base_l2_access_source_vector,
                 )
-                    .await;
+                .await;
             }
             Err(_) => {
                 attempts += 1;
@@ -629,7 +626,7 @@ async fn handle_boot(
         warp::reply::json(&"Recovered address does not match owner".to_string()),
         StatusCode::UNAUTHORIZED,
     )
-        .into_response());
+    .into_response());
 }
 
 async fn handle_import_keyfile(
