@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
-import { PageProps, IPv4Response } from "../lib/types";
+import { PageProps, InfoResponse } from "../lib/types";
 
 import DirectNodeCheckbox from "../components/DirectCheckbox";
 import UpgradableCheckbox from "../components/UpgradableCheckbox";
@@ -67,15 +67,17 @@ function MintCustom({
 
     // Fetch and set the detected IP address on mount
     useEffect(() => {
+        document.title = "Mint";
+
         (async () => {
             try {
-                const ipData = await fetch("/ipv4", { method: "GET" }).then((res) => res.json()) as IPv4Response;
-                if (ipData.ip) {
-                    setDirectNodeIp(ipData.ip);
-                    setInitialDirectNodeIp(ipData.ip);
+                const infoData = await fetch("/info", { method: "GET" }).then((res) => res.json()) as InfoResponse;
+                if (infoData.detected_ip_address) {
+                    setDirectNodeIp(infoData.detected_ip_address);
+                    setInitialDirectNodeIp(infoData.detected_ip_address);
                 }
             } catch (error) {
-                console.error("Failed to fetch IPv4 address:", error);
+                console.error("Failed to fetch node info:", error);
             }
         })();
     }, [setDirectNodeIp]);
@@ -167,10 +169,6 @@ function MintCustom({
         return validRouters.length > 0 && routerValidationErrors.length === 0;
     };
 
-    useEffect(() => {
-        document.title = "Mint";
-    }, []);
-
     useEffect(() => setTriggerNameCheck(!triggerNameCheck), [address]);
 
     useEffect(() => {
@@ -236,21 +234,21 @@ function MintCustom({
             const predictedTBA = predictTBAAddress(HYPERMAP, fullHnsName);
             console.log("predictedTBA", predictedTBA);
 
-        const initCall = await generateNetworkingKeys({
-            upgradable,
-            direct,
-            directNodeIp: direct ? directNodeIp : undefined,
-            our_address: address,
-            label: hnsName,
-            setNetworkingKey,
-            setIpAddress,
-            setWsPort,
-            setTcpPort,
-            setRouters: routersToUse.length > 0 ? () => setRouters(routersToUse) : setRouters,
-            reset: false,
-            customRouters: routersToUse.length > 0 ? routersToUse : undefined,
-            tbaAddress: predictedTBA.predictedAddress,
-        });
+            const initCall = await generateNetworkingKeys({
+                upgradable,
+                direct,
+                directNodeIp: direct ? directNodeIp : undefined,
+                our_address: address,
+                label: hnsName,
+                setNetworkingKey,
+                setIpAddress,
+                setWsPort,
+                setTcpPort,
+                setRouters: routersToUse.length > 0 ? () => setRouters(routersToUse) : setRouters,
+                reset: false,
+                customRouters: routersToUse.length > 0 ? routersToUse : undefined,
+                tbaAddress: predictedTBA.predictedAddress,
+            });
 
             setHnsName(formData.get('full-hns-name') as string)
 
@@ -281,12 +279,6 @@ function MintCustom({
             console.error('Failed to read or write to contract:', error)
         }
     }, [config, getValidCustomRouters, hnsName, setHnsName, upgradable, direct, directNodeIp, specifyRouters, customRouters, address, sendTransaction, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal])
-
-    useEffect(() => {
-        if (isConfirmed) {
-            navigate("/set-password");
-        }
-    }, [isConfirmed, address, navigate]);
 
     return (
         <div className="container fade-in">

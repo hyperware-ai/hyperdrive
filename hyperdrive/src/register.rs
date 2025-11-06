@@ -155,9 +155,6 @@ pub async fn register(
         .or(warp::path("current-chain")
             .and(warp::get())
             .map(move || warp::reply::json(&"0xa".to_string())))
-        .or(warp::path("ipv4")
-            .and(warp::get())
-            .and_then(get_ipv4))
         .or(warp::path("our").and(warp::get()).and(keyfile.clone()).map(
             move |keyfile: Option<Vec<u8>>| {
                 if let Some(keyfile) = keyfile {
@@ -399,38 +396,63 @@ async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Rep
 }
 
 async fn detect_ipv4_address() -> String {
-    let ip_addr = {
-        #[cfg(feature = "simulation-mode")]
-        {
-            std::net::Ipv4Addr::LOCALHOST
-        }
-
-        #[cfg(not(feature = "simulation-mode"))]
-        {
-            match tokio::time::timeout(std::time::Duration::from_secs(5), public_ip::addr_v4()).await {
-                Ok(Some(ip)) => ip,
-                _ => {
-                    println!("Failed to find public IPv4 address for /info endpoint.\r");
-                    std::net::Ipv4Addr::LOCALHOST
-                }
-            }
-        }
-    };
-
-    ip_addr.to_string()
-}
-
-async fn get_ipv4() -> Result<impl Reply, Rejection> {
-    #[derive(serde::Serialize)]
-    struct Ipv4Response {
-        ip: String,
+    #[cfg(feature = "simulation-mode")]
+    {
+        return std::net::Ipv4Addr::LOCALHOST.to_string();
     }
 
-    let ip = detect_ipv4_address().await;
+    #[cfg(not(feature = "simulation-mode"))]
+    {
+        // Helper function to parse IP from JSON response
+        async fn try_hyperware_endpoint(url: &str) -> Option<String> {
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(3),
+                reqwest::get(url)
+            ).await {
+                Ok(Ok(response)) => {
+                    if let Ok(json) = response.json::<serde_json::Value>().await {
+                        if let Some(ip) = json.get("ip").and_then(|v| v.as_str()) {
+                            // Validate it's a proper IPv4 address
+                            if let Ok(parsed_ip) = ip.parse::<std::net::Ipv4Addr>() {
+                                println!("Detected IPv4 address from {}: {}\r", url, parsed_ip);
+                                return Some(parsed_ip.to_string());
+                            }
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    println!("Failed to fetch IP from {}: {}\r", url, e);
+                }
+                Err(_) => {
+                    println!("Timeout fetching IP from {}\r", url);
+                }
+            }
+            None
+        }
 
-    let response = Ipv4Response { ip };
+        // Try ip-address-2.hyperware.ai first
+        if let Some(ip) = try_hyperware_endpoint("https://ip-address-2.hyperware.ai/").await {
+            return ip;
+        }
 
-    Ok(warp::reply::json(&response))
+        // Try ip-address-1.hyperware.ai as fallback
+        if let Some(ip) = try_hyperware_endpoint("https://ip-address-1.hyperware.ai/").await {
+            return ip;
+        }
+
+        // Final fallback to public_ip crate
+        println!("Falling back to public_ip crate for IP detection\r");
+        match tokio::time::timeout(std::time::Duration::from_secs(5), public_ip::addr_v4()).await {
+            Ok(Some(ip)) => {
+                println!("Detected IPv4 address from public_ip crate: {}\r", ip);
+                ip.to_string()
+            }
+            _ => {
+                println!("Failed to find public IPv4 address for /info endpoint.\r");
+                std::net::Ipv4Addr::LOCALHOST.to_string()
+            }
+        }
+    }
 }
 
 async fn handle_boot(

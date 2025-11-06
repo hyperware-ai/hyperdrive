@@ -6,7 +6,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
-import { PageProps, UnencryptedIdentity, IPv4Response } from "../lib/types";
+import { PageProps, InfoResponse } from "../lib/types";
 import { MULTICALL, mechAbi } from "../abis";
 import { generateNetworkingKeys } from "../abis/helpers";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
@@ -71,21 +71,21 @@ function ResetHnsName({
     // Track the initial IPv4 value to determine if it was auto-detected
     const [initialDirectNodeIp, setInitialDirectNodeIp] = useState<string>('')
 
-    // Fetch detected IP address and current node info on mount
+    // Fetch current node info on mount
     useEffect(() => {
+        document.title = "Reset";
+
         (async () => {
             try {
-                // Fetch detected IP address
-                const ipData = await fetch("/ipv4", { method: "GET" }).then((res) => res.json()) as IPv4Response;
-                if (ipData.ip) {
-                    setInitialDirectNodeIp(ipData.ip);
-                    // Don't set directNodeIp yet - wait for node info
-                }
-
-                // Fetch current node info and prepopulate routers if indirect node
+                // Fetch current node info which includes detected IP address
                 const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
                     res.json()
-                )) as UnencryptedIdentity;
+                )) as InfoResponse;
+
+                // Set detected IP if available
+                if (infoData.detected_ip_address) {
+                    setInitialDirectNodeIp(infoData.detected_ip_address);
+                }
 
                 // Determine if node has specified routers (indirect node)
                 const hasRouters = infoData.allowed_routers && infoData.allowed_routers.length > 0;
@@ -101,8 +101,8 @@ function ResetHnsName({
                 setDirect(isDirect);
 
                 // Set IP address: if direct node and detected IP is available, use it
-                if (isDirect && ipData.ip) {
-                    setDirectNodeIp(ipData.ip);
+                if (isDirect && infoData.detected_ip_address) {
+                    setDirectNodeIp(infoData.detected_ip_address);
                 }
 
                 // Prepopulate customRouters if this is an indirect node with existing routers
@@ -208,48 +208,6 @@ function ResetHnsName({
         return validRouters.length > 0 && routerValidationErrors.length === 0;
     };
 
-    useEffect(() => {
-        document.title = "Reset";
-
-        // Fetch current node info and prepopulate routers if indirect node
-        (async () => {
-            try {
-                const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
-                    res.json()
-                )) as UnencryptedIdentity;
-
-                const allowedRouters = Array.isArray(infoData.allowed_routers)
-                    ? infoData.allowed_routers
-                    : undefined;
-                if (!allowedRouters) {
-                    return;
-                }
-
-                // Determine if node has specified routers (indirect node)
-                const hasRouters = allowedRouters.length > 0;
-
-                // If allowed_routers is empty, the node is direct; if it has routers, it's indirect
-                const isDirect = !hasRouters;
-
-                // Set initial states for checkbox help text
-                setInitiallyDirect(isDirect);
-                setInitiallySpecifyRouters(hasRouters);
-
-                // Set the current state to match the node's current configuration
-                setDirect(isDirect);
-
-                // Prepopulate customRouters if this is an indirect node with existing routers
-                if (hasRouters) {
-                    const routersText = allowedRouters.join('\n');
-                    setCustomRouters(routersText);
-                    setSpecifyRouters(true); // Auto-enable the checkbox
-                }
-            } catch (error) {
-                console.log("Could not fetch node info:", error);
-            }
-        })();
-    }, []);
-
     // so inputs will validate once wallet is connected
     useEffect(() => setTriggerNameCheck(!triggerNameCheck), [address]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -314,7 +272,7 @@ function ResetHnsName({
                 console.error("An error occurred:", error);
             }
         },
-        [address, direct, directNodeIp, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal, getValidCustomRouters, setHnsNames]
+        [address, direct, directNodeIp, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal, getValidCustomRouters, setHnsName]
     );
 
     useEffect(() => {
