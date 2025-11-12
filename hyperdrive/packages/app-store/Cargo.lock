@@ -1655,9 +1655,7 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f3abd008d22c3b96ee43300c4c8dffbf1d072a680a13635b5f9da11a0ce9395"
+version = "2.2.0"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1666,7 +1664,6 @@ dependencies = [
  "anyhow",
  "base64",
  "bincode",
- "hex",
  "http",
  "mime_guess",
  "rand",
@@ -1674,7 +1671,6 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "sha3",
  "thiserror 1.0.69",
  "url",
  "wit-bindgen",
