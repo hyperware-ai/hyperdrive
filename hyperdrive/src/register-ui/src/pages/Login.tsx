@@ -301,7 +301,7 @@ function Login({
                     id="custom-cache-sources-login"
                     value={customCacheSources}
                     onChange={(e) => handleCustomCacheSourcesChange(e.target.value)}
-                    placeholder="Enter one cache source name per line, e.g.:&#10;cache-node-1.hypr&#10;other-cache.hypr&#10;mycache.os"
+                    placeholder="Enter one cache source name per line, e.g.:&#10;direct-cache-1.hypr&#10;direct-other.hypr&#10;mydirectcache.os"
                     className={`input resize-vertical min-h-[80px] ${
                         specifyCacheSources && !isCustomCacheSourcesValid()
                             ? 'border-red-500 focus:border-red-500'

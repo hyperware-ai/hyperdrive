@@ -4,9 +4,11 @@
         "public": false,
         "request_networking": false,
         "request_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
@@ -16,9 +18,11 @@
         "public": false,
         "request_networking": false,
         "request_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
@@ -28,9 +32,11 @@
         "public": false,
         "request_networking": false,
         "request_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
@@ -40,9 +46,11 @@
         "public": false,
         "request_networking": false,
         "request_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
