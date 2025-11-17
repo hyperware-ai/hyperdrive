@@ -16,6 +16,8 @@ import EnterHnsName from "../components/EnterHnsName";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useConnectModal, useAddRecentTransaction } from "@rainbow-me/rainbowkit";
 import BackButton from "../components/BackButton";
+import { Tooltip } from "../components/Tooltip";
+import { FaSquareCheck, FaRegSquare } from "react-icons/fa6";
 
 interface ResetProps extends PageProps { }
 
@@ -58,6 +60,8 @@ function ResetHnsName({
     const [specifyRouters, setSpecifyRouters] = useState(false)
     const [customRouters, setCustomRouters] = useState('')
     const [routerValidationErrors, setRouterValidationErrors] = useState<string[]>([])
+    const [currentNodeName, setCurrentNodeName] = useState<string>("");
+    const [resetDifferentNodeId, setResetDifferentNodeId] = useState<boolean>(false);
 
     // Track initial states for checkbox help text
     const [initiallyDirect, setInitiallyDirect] = useState<boolean | undefined>(undefined);
@@ -134,6 +138,14 @@ function ResetHnsName({
                     res.json()
                 )) as UnencryptedIdentity;
 
+                if (infoData?.name) {
+                    setCurrentNodeName(infoData.name);
+                    setName(infoData.name);
+                    setHnsName(infoData.name);
+                } else {
+                    setResetDifferentNodeId(true);
+                }
+
                 const allowedRouters = Array.isArray(infoData.allowed_routers)
                     ? infoData.allowed_routers
                     : undefined;
@@ -162,6 +174,7 @@ function ResetHnsName({
                 }
             } catch (error) {
                 console.log("Could not fetch node info:", error);
+                setResetDifferentNodeId(true);
             }
         })();
     }, []);
@@ -241,6 +254,19 @@ function ResetHnsName({
     }, [isConfirmed, setReset, setDirect, direct, navigate]);
 
 
+    const handleResetDifferentNodeIdToggle = () => {
+        setResetDifferentNodeId((prev) => {
+            const next = !prev;
+            if (!next && currentNodeName) {
+                setName(currentNodeName);
+                setHnsName(currentNodeName);
+            }
+            return next;
+        });
+    };
+
+    const isNameReadOnly = !resetDifferentNodeId && !!currentNodeName;
+
     return (
         <div className="container fade-in" id="register-ui--reset-name">
             <div className="section">
@@ -253,7 +279,19 @@ function ResetHnsName({
                                 <h3 className="text-iris dark:text-neon">
                                     Node ID to reset:
                                 </h3>
-                                <EnterHnsName {...{ address, name, setName, triggerNameCheck, nameValidities, setNameValidities, setTba, isReset: true }} />
+                                <EnterHnsName
+                                    {...{
+                                        address,
+                                        name,
+                                        setName,
+                                        triggerNameCheck,
+                                        nameValidities,
+                                        setNameValidities,
+                                        setTba,
+                                        isReset: true
+                                    }}
+                                    readOnly={isNameReadOnly}
+                                />
                                 <p className="text-sm text-gray-500">
                                     Nodes use an onchain username in order to identify themselves to other nodes in the network.
                                 </p>
@@ -306,6 +344,27 @@ function ResetHnsName({
                                                 )}
                                             </div>
                                         )}
+                                        <div className="flex gap-2 items-start">
+                                            <button
+                                                type="button"
+                                                className="icon mt-0.5"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleResetDifferentNodeIdToggle();
+                                                }}
+                                                aria-pressed={resetDifferentNodeId}
+                                            >
+                                                {resetDifferentNodeId ? <FaSquareCheck /> : <FaRegSquare />}
+                                            </button>
+                                            <div className="flex flex-col gap-1 min-w-0 wrap-anywhere">
+                                                <span className="text-sm">Reset different node ID.</span>
+                                                <span className="text-xs">If you are unsure, leave unchecked.</span>
+                                            </div>
+                                            <Tooltip
+                                                text={"Reset a different node ID. Only use this if you do not have access to another node that you want to reset."}
+                                            />
+                                        </div>
                                     </div>
                                 </details>
                                 <p className="text-sm text-gray-500">

@@ -2,7 +2,7 @@ import classNames from "classnames";
 
 export const LargeBackgroundVector = ({ className }: { className?: string }) => {
     return (
-        <div className={classNames('absolute bottom-0 left-0 w-screen z-0 pointer-events-none', className)}>
+        <div className={classNames('absolute bottom-0 left-0 w-screen z-0 pointer-events-none opacity-20', className)}>
 
             <svg className="w-full h-full" viewBox="0 0 393 437" fill="none" xmlns="http://www.w3.org/2000/svg"
                 version="1.1" id="register-ui--svg6">
