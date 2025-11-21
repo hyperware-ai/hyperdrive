@@ -297,9 +297,14 @@ export const HomeScreen: React.FC = () => {
       data-is-dark-mode={isDarkMode}
     >
 
-      {/* {backgroundImage && (
-        <div className="absolute inset-0 bg-black/5" />
-      )} */}
+      {backgroundImage && (
+        <div className="absolute inset-0 opacity-20" style={{
+          backgroundImage: `url(${backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }} />
+      )}
 
 
       <div
