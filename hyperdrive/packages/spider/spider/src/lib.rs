@@ -862,7 +862,10 @@ impl SpiderState {
         let hypergrid: ProcessId = HYPERGRID.parse().unwrap();
         let todo: ProcessId = TODO.parse().unwrap();
 
-        if !(self.validate_admin_key(&request.admin_key) || source().process == hypergrid || source().process == todo) {
+        if !(self.validate_admin_key(&request.admin_key)
+            || source().process == hypergrid
+            || source().process == todo)
+        {
             return Err("Unauthorized: Invalid or non-admin Spider API key".to_string());
         }
 
