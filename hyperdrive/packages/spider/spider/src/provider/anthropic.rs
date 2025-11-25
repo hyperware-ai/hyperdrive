@@ -49,13 +49,7 @@ impl AnthropicProvider {
 
         // Use Sonnet 4 specifically for this check
         match self
-            .complete_with_retry(
-                &[check_message],
-                &[],
-                Some(DEFAULT_MODEL),
-                100,
-                0.0,
-            )
+            .complete_with_retry(&[check_message], &[], Some(DEFAULT_MODEL), 100, 0.0)
             .await
         {
             Ok(response) => {
