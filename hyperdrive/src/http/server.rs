@@ -511,6 +511,7 @@ async fn ws_handler(
         .host()
         .contains("localhost");
 
+    #[cfg(not(feature = "public-mode"))]
     if bound_path.authenticated {
         let Some(auth_token) = serialized_headers.get("cookie") else {
             return Err(warp::reject::not_found());
@@ -644,6 +645,7 @@ async fn http_handler(
 
     let is_localhost = host.as_ref().contains("localhost");
 
+    #[cfg(not(feature = "public-mode"))]
     if bound_path.authenticated {
         if let Some(ref subdomain) = bound_path.secure_subdomain {
             let request_subdomain = host.host().split('.').next().unwrap_or("");
