@@ -25,8 +25,8 @@ impl HyperwareToolProvider {
         Tool {
             name: "hyperware_get_api".to_string(),
             description: "Get the detailed API documentation for a specific package, including all available types and methods.".to_string(),
-            parameters: r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node' (e.g., 'weather-app-9000:foo.os')"}}}"#.to_string(),
-            input_schema_json: Some(r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node' (e.g., 'weather-app-9000:foo.os')"}}}"#.to_string()),
+            parameters: r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node'"}}}"#.to_string(),
+            input_schema_json: Some(r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node'"}}}"#.to_string()),
         }
     }
 
@@ -34,8 +34,8 @@ impl HyperwareToolProvider {
         Tool {
             name: "hyperware_call_api".to_string(),
             description: "Call a specific API method on a Hyperware process to execute functionality.".to_string(),
-            parameters: r#"{"type":"object","required":["process_id","method","args"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'"},"method":{"type":"string","description":"The method name to call on the process. By convention UpperCamelCase"},"args":{"type":"string","description":"JSON string of arguments to pass to the method"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string(),
-            input_schema_json: Some(r#"{"type":"object","required":["process_id","method","args"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'"},"method":{"type":"string","description":"The method name to call on the process. By convention UpperCamelCase"},"args":{"type":"string","description":"JSON string of arguments to pass to the method"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string()),
+            parameters: r#"{"type":"object","required":["process_id","method","args"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'. Process ID is the process prepended to the package ID. By convention the main process-name of a package shares the package-name"},"method":{"type":"string","description":"The method name to call on the process. By convention UpperCamelCase"},"args":{"type":"string","description":"JSON string of arguments to pass to the method"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string(),
+            input_schema_json: Some(r#"{"type":"object","required":["process_id","method","args"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'. Process ID is the process prepended to the package ID. By convention the main process-name of a package shares the package-name"},"method":{"type":"string","description":"The method name to call on the process. By convention UpperCamelCase"},"args":{"type":"string","description":"JSON string of arguments to pass to the method"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string()),
         }
     }
 }

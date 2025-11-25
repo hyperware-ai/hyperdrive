@@ -15,6 +15,8 @@ use hyperware_process_lib::println;
 use crate::provider::LlmProvider;
 use crate::types::{Message, MessageContent, Tool, ToolCall, ToolResult};
 
+const DEFAULT_MODEL: &str = "claude-sonnet-4-5-20250929";
+
 pub struct AnthropicProvider {
     api_key: String,
     is_oauth: bool,
@@ -50,7 +52,7 @@ impl AnthropicProvider {
             .complete_with_retry(
                 &[check_message],
                 &[],
-                Some("claude-sonnet-4-20250514"),
+                Some(DEFAULT_MODEL),
                 100,
                 0.0,
             )
@@ -441,7 +443,7 @@ impl AnthropicProvider {
         }
 
         // Create the request with the specified model or default
-        let model_id = model.unwrap_or("claude-sonnet-4-20250514");
+        let model_id = model.unwrap_or(DEFAULT_MODEL);
         let mut request = CreateMessageRequest::new(model_id, sdk_messages, max_tokens)
             .with_temperature(temperature);
 
