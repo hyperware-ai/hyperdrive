@@ -64,6 +64,7 @@ const API_KEY_DISPENSER_PROCESS_ID: (&str, &str, &str) = (
     "ware.hypr",
 );
 const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
+const TODO: &str = "todo:todo:ware.hypr";
 const TTSTT: (&str, &str, &str) = ("ttstt", "spider", "sys");
 
 #[hyperprocess(
@@ -859,7 +860,12 @@ impl SpiderState {
     ) -> Result<SpiderApiKey, String> {
         // Validate admin key
         let hypergrid: ProcessId = HYPERGRID.parse().unwrap();
-        if !(self.validate_admin_key(&request.admin_key) || source().process == hypergrid) {
+        let todo: ProcessId = TODO.parse().unwrap();
+
+        if !(self.validate_admin_key(&request.admin_key)
+            || source().process == hypergrid
+            || source().process == todo)
+        {
             return Err("Unauthorized: Invalid or non-admin Spider API key".to_string());
         }
 
