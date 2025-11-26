@@ -1153,20 +1153,32 @@ async fn login_with_password(
 
     let providers = register::connect_to_providers(&eth_provider_config).await;
 
-    register::assign_routing(
-        &mut our,
-        &providers[0],
-        match ws_networking.0 {
-            Some(listener) => (listener.local_addr().unwrap().port(), ws_networking.1),
-            None => (0, ws_networking.1),
-        },
-        match tcp_networking.0 {
-            Some(listener) => (listener.local_addr().unwrap().port(), tcp_networking.1),
-            None => (0, tcp_networking.1),
-        },
-    )
-    .await
-    .expect("information used to boot does not match information onchain");
+    let ws_port = match ws_networking.0 {
+        Some(listener) => (listener.local_addr().unwrap().port(), ws_networking.1),
+        None => (0, ws_networking.1),
+    };
+    let tcp_port = match tcp_networking.0 {
+        Some(listener) => (listener.local_addr().unwrap().port(), tcp_networking.1),
+        None => (0, tcp_networking.1),
+    };
+
+    // Try each provider until one succeeds
+    let mut last_error = None;
+    for provider in providers.iter() {
+        match register::assign_routing(&mut our, provider, ws_port, tcp_port).await {
+            Ok(()) => {
+                last_error = None;
+                break;
+            }
+            Err(e) => {
+                last_error = Some(e);
+                continue;
+            }
+        }
+    }
+    if let Some(e) = last_error {
+        panic!("information used to boot does not match information onchain: {e}");
+    }
 
     tokio::fs::write(home_directory_path.join(".keys"), &disk_keyfile)
         .await
