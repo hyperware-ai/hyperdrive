@@ -57,8 +57,7 @@ pub enum ToolExecutionCommand {
     },
     HyperwareCallApi {
         process_id: String,
-        method: String,
-        args: String,
+        signature: String,
         timeout: u64,
     },
     // Direct result (for synchronous operations)
