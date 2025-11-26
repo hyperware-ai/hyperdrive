@@ -1151,11 +1151,11 @@ async fn login_with_password(
         },
     };
 
-    let provider = Arc::new(register::connect_to_provider_from_config(&eth_provider_config).await);
+    let providers = register::connect_to_providers(&eth_provider_config).await;
 
     register::assign_routing(
         &mut our,
-        provider,
+        &providers[0],
         match ws_networking.0 {
             Some(listener) => (listener.local_addr().unwrap().port(), ws_networking.1),
             None => (0, ws_networking.1),

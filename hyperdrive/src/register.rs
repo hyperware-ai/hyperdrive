@@ -29,6 +29,15 @@ use warp::{
 #[cfg(feature = "simulation-mode")]
 use {alloy_sol_macro::sol, alloy_sol_types::SolValue};
 
+/// Default fallback RPC URLs for Base L2.
+/// These are used when user-configured providers fail or return stale data.
+const DEFAULT_RPC_URLS: &[&str] = &[
+    "wss://base.llamarpc.com",
+    "wss://base-rpc.publicnode.com",
+    "wss://base.drpc.org",
+    "wss://base.gateway.tenderly.co",
+];
+
 type RegistrationSender = mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>;
 
 /// Serve the registration page and receive POSTs and PUTs from it
@@ -91,7 +100,7 @@ pub async fn register(
         },
     });
 
-    let provider = Arc::new(connect_to_provider_from_config(&eth_provider_config).await);
+    let providers = Arc::new(connect_to_providers(&eth_provider_config).await);
 
     let keyfile = warp::any().map(move || keyfile.clone());
     let our_temp_id = warp::any().map(move || our_temp_id.clone());
@@ -135,9 +144,9 @@ pub async fn register(
             warp::reply::html(include_str!("register-ui\\build\\index.html").to_string())
         });
 
-    let boot_provider = provider.clone();
-    let login_provider = provider.clone();
-    let import_provider = provider.clone();
+    let boot_providers = providers.clone();
+    let login_providers = providers.clone();
+    let import_providers = providers.clone();
 
     let initial_cache_sources_arc = Arc::new(initial_cache_sources.clone());
     let initial_base_l2_providers_arc = Arc::new(initial_base_l2_providers.clone());
@@ -193,8 +202,8 @@ pub async fn register(
                 .and(our_temp_id.clone())
                 .and(net_keypair.clone())
                 .and_then(move |boot_info, tx, our_temp_id, net_keypair| {
-                    let boot_provider = boot_provider.clone();
-                    handle_boot(boot_info, tx, our_temp_id, net_keypair, boot_provider)
+                    let boot_providers = boot_providers.clone();
+                    handle_boot(boot_info, tx, our_temp_id, net_keypair, boot_providers)
                 }),
         ))
         .or(warp::path("import-keyfile").and(
@@ -206,8 +215,8 @@ pub async fn register(
                 .and(tcp_port.clone())
                 .and(tx.clone())
                 .and_then(move |boot_info, ip, ws_port, tcp_port, tx| {
-                    let import_provider = import_provider.clone();
-                    handle_import_keyfile(boot_info, ip, ws_port, tcp_port, tx, import_provider)
+                    let import_providers = import_providers.clone();
+                    handle_import_keyfile(boot_info, ip, ws_port, tcp_port, tx, import_providers)
                 }),
         ))
         .or(warp::path("login").and(
@@ -220,7 +229,7 @@ pub async fn register(
                 .and(tx.clone())
                 .and(keyfile.clone())
                 .and_then(move |boot_info, ip, ws_port, tcp_port, tx, keyfile| {
-                    let login_provider = login_provider.clone();
+                    let login_providers = login_providers.clone();
                     handle_login(
                         boot_info,
                         ip,
@@ -228,7 +237,7 @@ pub async fn register(
                         tcp_port,
                         tx,
                         keyfile,
-                        login_provider,
+                        login_providers,
                     )
                 }),
         ));
@@ -255,11 +264,14 @@ pub async fn register(
         .await;
 }
 
-/// Connect to provider using the saved configuration with fallbacks
-pub async fn connect_to_provider_from_config(
+/// Connect to as many providers as possible from the saved configuration and fallbacks.
+/// Returns a Vec of connected providers (user-configured first, then fallbacks).
+/// Panics if unable to connect to any provider.
+pub async fn connect_to_providers(
     eth_provider_config: &lib::eth::SavedConfigs,
-) -> RootProvider<PubSubFrontend> {
+) -> Vec<RootProvider<PubSubFrontend>> {
     let saved_configs = &eth_provider_config.0;
+    let mut providers = Vec::new();
 
     // Try each configured provider first
     for (_index, provider_config) in saved_configs.iter().enumerate() {
@@ -271,11 +283,14 @@ pub async fn connect_to_provider_from_config(
                     config: None,
                 };
 
-                if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
-                    println!("Connected to configured provider: {url}\r");
-                    return client;
-                } else {
-                    println!("Failed to connect to provider: {url}\r");
+                match ProviderBuilder::new().on_ws(ws_connect).await {
+                    Ok(client) => {
+                        println!("Connected to configured provider: {url}\r");
+                        providers.push(client);
+                    }
+                    Err(_) => {
+                        println!("Failed to connect to configured provider: {url}\r");
+                    }
                 }
             }
             lib::eth::NodeOrRpcUrl::Node { .. } => {
@@ -284,28 +299,39 @@ pub async fn connect_to_provider_from_config(
         }
     }
 
-    // Fall back to default providers if configured ones fail
-    let default_rpc_urls = ["wss://base.llamarpc.com", "wss://base-rpc.publicnode.com"];
-
-    for (_index, rpc_url) in default_rpc_urls.iter().enumerate() {
+    // Also connect to default fallback providers
+    for rpc_url in DEFAULT_RPC_URLS.iter() {
         let ws_connect = WsConnect {
             url: rpc_url.to_string(),
             auth: None,
             config: None,
         };
 
-        if let Ok(client) = ProviderBuilder::new().on_ws(ws_connect).await {
-            println!("Connected to fallback provider: {rpc_url}\r");
-            return client;
+        match ProviderBuilder::new().on_ws(ws_connect).await {
+            Ok(client) => {
+                println!("Connected to fallback provider: {rpc_url}\r");
+                providers.push(client);
+            }
+            Err(_) => {
+                println!("Failed to connect to fallback provider: {rpc_url}\r");
+            }
         }
     }
 
-    panic!(
-        "Error: runtime could not connect to configured or fallback Base ETH RPC providers\n\
-        This is necessary in order to verify node identity onchain.\n\
-        Please make sure you are using a valid WebSockets URL if using \
-        the --rpc or --rpc-config flag, and you are connected to the internet."
+    if providers.is_empty() {
+        panic!(
+            "Error: runtime could not connect to any configured or fallback Base ETH RPC providers\n\
+            This is necessary in order to verify node identity onchain.\n\
+            Please make sure you are using a valid WebSockets URL if using \
+            the --rpc or --rpc-config flag, and you are connected to the internet."
+        );
+    }
+
+    println!(
+        "Connected to {} provider(s) for registration\r",
+        providers.len()
     );
+    providers
 }
 
 async fn get_unencrypted_info(
@@ -349,7 +375,7 @@ async fn handle_boot(
     sender: Arc<RegistrationSender>,
     our: Arc<Identity>,
     networking_keypair: Arc<Vec<u8>>,
-    provider: Arc<RootProvider<PubSubFrontend>>,
+    providers: Arc<Vec<RootProvider<PubSubFrontend>>>,
 ) -> Result<impl Reply, Rejection> {
     let hypermap = EthAddress::from_str(HYPERMAP_ADDRESS).unwrap();
     let mut our = our.as_ref().clone();
@@ -424,89 +450,112 @@ async fn handle_boot(
     // this call can fail if the indexer has not caught up to the transaction
     // that just got confirmed on our frontend. for this reason, we retry
     // the call a few times before giving up.
+    //
+    // Additionally, if a provider returns Address::ZERO for the owner,
+    // it likely means that provider has stale/out-of-date data. In this case,
+    // we try all other providers before giving up on this attempt.
     let mut attempts = 0;
+
     while attempts < 5 {
-        match provider.call(&tx).await {
-            Ok(get) => {
-                let Ok(node_info) = getCall::abi_decode_returns(&get, false) else {
-                    return Ok(warp::reply::with_status(
-                        warp::reply::json(
-                            &"Failed to decode hypermap entry from return bytes".to_string(),
-                        ),
-                        StatusCode::INTERNAL_SERVER_ERROR,
+        // Try each provider in turn
+        for (provider_index, current_provider) in providers.iter().enumerate() {
+            match current_provider.call(&tx).await {
+                Ok(get) => {
+                    let Ok(node_info) = getCall::abi_decode_returns(&get, false) else {
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(
+                                &"Failed to decode hypermap entry from return bytes".to_string(),
+                            ),
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .into_response());
+                    };
+                    let owner = node_info.owner;
+
+                    // If owner is zero address, the provider likely has stale data.
+                    // Try the next provider.
+                    if owner == EthAddress::ZERO {
+                        println!(
+                            "Provider {} returned zero address for owner, trying next provider...\r",
+                            provider_index
+                        );
+                        continue;
+                    }
+
+                    let chain_id: u64 = 8453; // base
+
+                    let domain = eip712_domain! {
+                        name: "Hypermap",
+                        version: "1",
+                        chain_id: chain_id,
+                        verifying_contract: hypermap,
+                    };
+
+                    let boot = Boot {
+                        username: our.name.clone(),
+                        password_hash,
+                        timestamp: U256::from(info.timestamp),
+                        direct: info.direct,
+                        reset: info.reset,
+                        chain_id: U256::from(chain_id),
+                    };
+
+                    let hash = boot.eip712_signing_hash(&domain);
+                    let sig =
+                        Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
+
+                    let recovered_address = sig
+                        .recover_address_from_prehash(&hash)
+                        .map_err(|_| warp::reject())?;
+
+                    if recovered_address != owner {
+                        println!("recovered_address: {}\r", recovered_address);
+                        println!("owner: {}\r", owner);
+                        // Try next provider
+                        continue;
+                    }
+
+                    let decoded_keyfile = Keyfile {
+                        username: our.name.clone(),
+                        routers: our.routers().unwrap_or(&vec![]).clone(),
+                        networking_keypair: signature::Ed25519KeyPair::from_pkcs8(
+                            networking_keypair.as_ref(),
+                        )
+                        .unwrap(),
+                        jwt_secret_bytes: jwt_secret.to_vec(),
+                        file_key: keygen::generate_file_key(),
+                    };
+
+                    let encoded_keyfile = keygen::encode_keyfile(
+                        info.password_hash,
+                        decoded_keyfile.username.clone(),
+                        decoded_keyfile.routers.clone(),
+                        &networking_keypair,
+                        &decoded_keyfile.jwt_secret_bytes,
+                        &decoded_keyfile.file_key,
+                    );
+
+                    return success_response(
+                        sender,
+                        our,
+                        decoded_keyfile,
+                        encoded_keyfile,
+                        cache_source_vector,
+                        base_l2_access_source_vector,
                     )
-                    .into_response());
-                };
-                let owner = node_info.owner;
-
-                let chain_id: u64 = 8453; // base
-
-                let domain = eip712_domain! {
-                    name: "Hypermap",
-                    version: "1",
-                    chain_id: chain_id,
-                    verifying_contract: hypermap,
-                };
-
-                let boot = Boot {
-                    username: our.name.clone(),
-                    password_hash,
-                    timestamp: U256::from(info.timestamp),
-                    direct: info.direct,
-                    reset: info.reset,
-                    chain_id: U256::from(chain_id),
-                };
-
-                let hash = boot.eip712_signing_hash(&domain);
-                let sig = Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
-
-                let recovered_address = sig
-                    .recover_address_from_prehash(&hash)
-                    .map_err(|_| warp::reject())?;
-
-                if recovered_address != owner {
-                    println!("recovered_address: {}\r", recovered_address);
-                    println!("owner: {}\r", owner);
-                    attempts += 1;
-                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                    .await;
+                }
+                Err(_) => {
+                    // Try next provider
                     continue;
                 }
-
-                let decoded_keyfile = Keyfile {
-                    username: our.name.clone(),
-                    routers: our.routers().unwrap_or(&vec![]).clone(),
-                    networking_keypair: signature::Ed25519KeyPair::from_pkcs8(
-                        networking_keypair.as_ref(),
-                    )
-                    .unwrap(),
-                    jwt_secret_bytes: jwt_secret.to_vec(),
-                    file_key: keygen::generate_file_key(),
-                };
-
-                let encoded_keyfile = keygen::encode_keyfile(
-                    info.password_hash,
-                    decoded_keyfile.username.clone(),
-                    decoded_keyfile.routers.clone(),
-                    &networking_keypair,
-                    &decoded_keyfile.jwt_secret_bytes,
-                    &decoded_keyfile.file_key,
-                );
-
-                return success_response(
-                    sender,
-                    our,
-                    decoded_keyfile,
-                    encoded_keyfile,
-                    cache_source_vector,
-                    base_l2_access_source_vector,
-                )
-                .await;
-            }
-            Err(_) => {
-                attempts += 1;
-                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             }
         }
+
+        // All providers exhausted for this attempt, sleep and retry
+        println!("All providers failed or returned invalid data, retrying...\r");
+        attempts += 1;
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     }
 
     return Ok(warp::reply::with_status(
@@ -522,7 +571,7 @@ async fn handle_import_keyfile(
     ws_networking_port: (u16, bool),
     tcp_networking_port: (u16, bool),
     sender: Arc<RegistrationSender>,
-    provider: Arc<RootProvider<PubSubFrontend>>,
+    providers: Arc<Vec<RootProvider<PubSubFrontend>>>,
 ) -> Result<impl Reply, Rejection> {
     println!("received base64 keyfile: {}\r", info.keyfile);
     // if keyfile was not present in node and is present from user upload
@@ -571,8 +620,14 @@ async fn handle_import_keyfile(
             }
         };
 
-    if let Err(e) =
-        assign_routing(&mut our, provider, ws_networking_port, tcp_networking_port).await
+    // Use the first provider for assign_routing
+    if let Err(e) = assign_routing(
+        &mut our,
+        &providers[0],
+        ws_networking_port,
+        tcp_networking_port,
+    )
+    .await
     {
         return Ok(warp::reply::with_status(
             warp::reply::json(&e.to_string()),
@@ -598,7 +653,7 @@ async fn handle_login(
     tcp_networking_port: (u16, bool),
     sender: Arc<RegistrationSender>,
     encoded_keyfile: Option<Vec<u8>>,
-    provider: Arc<RootProvider<PubSubFrontend>>,
+    providers: Arc<Vec<RootProvider<PubSubFrontend>>>,
 ) -> Result<impl Reply, Rejection> {
     if encoded_keyfile.is_none() {
         return Ok(warp::reply::with_status(
@@ -663,8 +718,14 @@ async fn handle_login(
             Vec::new()
         };
 
-    if let Err(e) =
-        assign_routing(&mut our, provider, ws_networking_port, tcp_networking_port).await
+    // Use the first provider for assign_routing
+    if let Err(e) = assign_routing(
+        &mut our,
+        &providers[0],
+        ws_networking_port,
+        tcp_networking_port,
+    )
+    .await
     {
         return Ok(warp::reply::with_status(
             warp::reply::json(&e.to_string()),
@@ -685,7 +746,7 @@ async fn handle_login(
 
 pub async fn assign_routing(
     our: &mut Identity,
-    provider: Arc<RootProvider<PubSubFrontend>>,
+    provider: &RootProvider<PubSubFrontend>,
     ws_networking_port: (u16, bool),
     tcp_networking_port: (u16, bool),
 ) -> anyhow::Result<()> {
