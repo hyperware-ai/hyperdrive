@@ -1,6 +1,6 @@
 use crate::tool_providers::{ToolExecutionCommand, ToolProvider};
 use crate::types::{SpiderState, Tool};
-use hyperware_parse_wit::parse_wit_from_zip_to_resolve;
+use hyperware_parse_wit::{parse_wit_from_zip_to_resolve, to_pascal_case, to_snake_case};
 use hyperware_process_lib::{get_blob, hyperapp::send, ProcessId, ProcessIdParseError, Request};
 use serde_json::{json, Value};
 use wit_parser::Docs;
@@ -25,8 +25,8 @@ impl HyperwareToolProvider {
         Tool {
             name: "hyperware_get_api".to_string(),
             description: "Get the detailed API documentation for a specific package, including all available types and methods.".to_string(),
-            parameters: r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node' (e.g., 'weather-app-9000:foo.os')"}}}"#.to_string(),
-            input_schema_json: Some(r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node' (e.g., 'weather-app-9000:foo.os')"}}}"#.to_string()),
+            parameters: r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node'"}}}"#.to_string(),
+            input_schema_json: Some(r#"{"type":"object","required":["package_id"],"properties":{"package_id":{"type":"string","description":"The package ID in the format 'package-name:publisher-node'"}}}"#.to_string()),
         }
     }
 
@@ -34,8 +34,8 @@ impl HyperwareToolProvider {
         Tool {
             name: "hyperware_call_api".to_string(),
             description: "Call a specific API method on a Hyperware process to execute functionality.".to_string(),
-            parameters: r#"{"type":"object","required":["process_id","method","args"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'"},"method":{"type":"string","description":"The method name to call on the process. By convention UpperCamelCase"},"args":{"type":"string","description":"JSON string of arguments to pass to the method"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string(),
-            input_schema_json: Some(r#"{"type":"object","required":["process_id","method","args"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'"},"method":{"type":"string","description":"The method name to call on the process. By convention UpperCamelCase"},"args":{"type":"string","description":"JSON string of arguments to pass to the method"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string()),
+            parameters: r#"{"type":"object","required":["process_id","signature"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'. Process ID is the process prepended to the package ID. By convention the main process-name of a package shares the package-name"},"signature":{"type":"string","description":"JSON string containing the method call signature, e.g. '{\"MethodName\": [\"value1\", \"value2\"]}}' for multiple args, '{\"MethodName\": \"value1\"}}' for one arg, or '{\"MethodName\": null}' for no args"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string(),
+            input_schema_json: Some(r#"{"type":"object","required":["process_id","signature"],"properties":{"process_id":{"type":"string","description":"The process ID in the format 'process-name:package-name:publisher-node'. Process ID is the process prepended to the package ID. By convention the main process-name of a package shares the package-name"},"signature":{"type":"string","description":"JSON string containing the method call signature, e.g. '{\"MethodName\": [\"value1\", \"value2\"]}}' for multiple args, '{\"MethodName\": \"value1\"}}' for one arg, or '{\"MethodName\": null}' for no args"},"timeout":{"type":"number","description":"Optional timeout in seconds (default: 15)"}}}"#.to_string()),
         }
     }
 }
@@ -85,19 +85,13 @@ impl ToolProvider for HyperwareToolProvider {
                 let process_id = parameters
                     .get("process_id")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing package_id parameter".to_string())?
+                    .ok_or_else(|| "Missing process_id parameter".to_string())?
                     .to_string();
 
-                let method = parameters
-                    .get("method")
+                let signature = parameters
+                    .get("signature")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing method parameter".to_string())?
-                    .to_string();
-
-                let args = parameters
-                    .get("args")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing args parameter".to_string())?
+                    .ok_or_else(|| "Missing signature parameter".to_string())?
                     .to_string();
 
                 let timeout = parameters
@@ -107,8 +101,7 @@ impl ToolProvider for HyperwareToolProvider {
 
                 Ok(ToolExecutionCommand::HyperwareCallApi {
                     process_id,
-                    method,
-                    args,
+                    signature,
                     timeout,
                 })
             }
@@ -244,7 +237,7 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
                             | "response"
                             | "message"
                     ) {
-                        let rust_type_name = to_upper_camel_case(type_name);
+                        let rust_type_name = to_pascal_case(type_name);
                         if seen_types.insert(rust_type_name.clone()) {
                             let type_def = &resolve.types[*type_id];
                             let docs = extract_docs(&type_def.docs);
@@ -265,7 +258,7 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
 
             // Add types within the interface
             for (type_name, type_id) in &iface.types {
-                let type_name_camel = to_upper_camel_case(type_name);
+                let type_name_camel = to_pascal_case(type_name);
 
                 // Skip types ending with SignatureHttp or SignatureRemote
                 if type_name_camel.ends_with("SignatureHttp")
@@ -335,21 +328,17 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
     Ok(json!(types_with_definitions))
 }
 
-pub async fn call_api(
-    process_id: &str,
-    method: &str,
-    args: &str,
-    timeout: u64,
-) -> Result<Value, String> {
+pub async fn call_api(process_id: &str, signature: &str, timeout: u64) -> Result<Value, String> {
     let process_id: ProcessId = process_id
         .parse()
         .map_err(|e: ProcessIdParseError| e.to_string())?;
 
-    // Create request body with method and args
-    let request_body = serde_json::to_vec(&json!({
-        method: serde_json::from_str::<Value>(args).unwrap_or_else(|_| json!(args))
-    }))
-    .unwrap();
+    // Parse the signature JSON string and use it directly as the request body
+    let signature_value: Value =
+        serde_json::from_str(signature).map_err(|e| format!("Invalid signature JSON: {}", e))?;
+
+    let request_body = serde_json::to_vec(&signature_value)
+        .map_err(|e| format!("Failed to serialize request body: {}", e))?;
 
     // Send the request to the package
     let request = Request::to(("our", process_id))
@@ -425,24 +414,6 @@ fn extract_docs(docs: &Docs) -> Option<String> {
     docs.contents.clone()
 }
 
-// Helper function to convert snake_case to UpperCamelCase
-fn to_upper_camel_case(s: &str) -> String {
-    s.split('-')
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<String>()
-}
-
-// Helper function to convert kebab-case to snake_case
-fn to_snake_case(s: &str) -> String {
-    s.replace('-', "_")
-}
-
 // Convert a WIT type definition to a JSON schema representation
 fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Resolve) -> Value {
     use wit_parser::TypeDefKind;
@@ -475,7 +446,7 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
                         None => json!("null"),
                     };
                     json!({
-                        "name": case.name,
+                        "name": to_pascal_case(&case.name),
                         "type": case_schema
                     })
                 })
@@ -487,14 +458,14 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
             })
         }
         TypeDefKind::Enum(enum_def) => {
-            let cases = enum_def
+            let values = enum_def
                 .cases
                 .iter()
-                .map(|case| &case.name)
+                .map(|case| to_pascal_case(&case.name))
                 .collect::<Vec<_>>();
             json!({
                 "type": "enum",
-                "values": cases
+                "values": values
             })
         }
         TypeDefKind::List(ty) => {
@@ -543,7 +514,7 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
     }
 }
 
-// Convert a WIT type reference to a JSON representation
+// Convert a WIT type reference to a JSON representation with Rust type names
 fn type_ref_to_json(type_ref: &wit_parser::Type, resolve: &wit_parser::Resolve) -> Value {
     use wit_parser::Type;
 
@@ -553,20 +524,22 @@ fn type_ref_to_json(type_ref: &wit_parser::Type, resolve: &wit_parser::Resolve) 
         Type::U16 => json!("u16"),
         Type::U32 => json!("u32"),
         Type::U64 => json!("u64"),
-        Type::S8 => json!("s8"),
-        Type::S16 => json!("s16"),
-        Type::S32 => json!("s32"),
-        Type::S64 => json!("s64"),
+        // WIT signed integers map to Rust i* types
+        Type::S8 => json!("i8"),
+        Type::S16 => json!("i16"),
+        Type::S32 => json!("i32"),
+        Type::S64 => json!("i64"),
         Type::F32 => json!("f32"),
         Type::F64 => json!("f64"),
         Type::Char => json!("char"),
-        Type::String => json!("string"),
+        // WIT string maps to Rust String
+        Type::String => json!("String"),
         Type::Id(id) => {
             // Look up the referenced type
             if let Some(type_def) = resolve.types.get(*id) {
                 // If it has a name, use the name; otherwise, inline the definition
                 if let Some(name) = &type_def.name {
-                    json!(to_upper_camel_case(name))
+                    json!(to_pascal_case(name))
                 } else {
                     type_to_json_schema(type_def, resolve)
                 }
