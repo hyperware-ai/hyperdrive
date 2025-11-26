@@ -1,6 +1,6 @@
 use crate::tool_providers::{ToolExecutionCommand, ToolProvider};
 use crate::types::{SpiderState, Tool};
-use hyperware_parse_wit::parse_wit_from_zip_to_resolve;
+use hyperware_parse_wit::{parse_wit_from_zip_to_resolve, to_pascal_case, to_snake_case};
 use hyperware_process_lib::{get_blob, hyperapp::send, ProcessId, ProcessIdParseError, Request};
 use serde_json::{json, Value};
 use wit_parser::Docs;
@@ -244,7 +244,7 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
                             | "response"
                             | "message"
                     ) {
-                        let rust_type_name = to_upper_camel_case(type_name);
+                        let rust_type_name = to_pascal_case(type_name);
                         if seen_types.insert(rust_type_name.clone()) {
                             let type_def = &resolve.types[*type_id];
                             let docs = extract_docs(&type_def.docs);
@@ -265,7 +265,7 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
 
             // Add types within the interface
             for (type_name, type_id) in &iface.types {
-                let type_name_camel = to_upper_camel_case(type_name);
+                let type_name_camel = to_pascal_case(type_name);
 
                 // Skip types ending with SignatureHttp or SignatureRemote
                 if type_name_camel.ends_with("SignatureHttp")
@@ -425,23 +425,6 @@ fn extract_docs(docs: &Docs) -> Option<String> {
     docs.contents.clone()
 }
 
-// Helper function to convert snake_case to UpperCamelCase
-fn to_upper_camel_case(s: &str) -> String {
-    s.split('-')
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<String>()
-}
-
-// Helper function to convert kebab-case to snake_case
-fn to_snake_case(s: &str) -> String {
-    s.replace('-', "_")
-}
 
 // Convert a WIT type definition to a JSON schema representation
 fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Resolve) -> Value {
@@ -475,7 +458,7 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
                         None => json!("null"),
                     };
                     json!({
-                        "name": case.name,
+                        "name": to_pascal_case(&case.name),
                         "type": case_schema
                     })
                 })
@@ -487,14 +470,14 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
             })
         }
         TypeDefKind::Enum(enum_def) => {
-            let cases = enum_def
+            let values = enum_def
                 .cases
                 .iter()
-                .map(|case| &case.name)
+                .map(|case| to_pascal_case(&case.name))
                 .collect::<Vec<_>>();
             json!({
                 "type": "enum",
-                "values": cases
+                "values": values
             })
         }
         TypeDefKind::List(ty) => {
@@ -543,7 +526,7 @@ fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Res
     }
 }
 
-// Convert a WIT type reference to a JSON representation
+// Convert a WIT type reference to a JSON representation with Rust type names
 fn type_ref_to_json(type_ref: &wit_parser::Type, resolve: &wit_parser::Resolve) -> Value {
     use wit_parser::Type;
 
@@ -553,20 +536,22 @@ fn type_ref_to_json(type_ref: &wit_parser::Type, resolve: &wit_parser::Resolve) 
         Type::U16 => json!("u16"),
         Type::U32 => json!("u32"),
         Type::U64 => json!("u64"),
-        Type::S8 => json!("s8"),
-        Type::S16 => json!("s16"),
-        Type::S32 => json!("s32"),
-        Type::S64 => json!("s64"),
+        // WIT signed integers map to Rust i* types
+        Type::S8 => json!("i8"),
+        Type::S16 => json!("i16"),
+        Type::S32 => json!("i32"),
+        Type::S64 => json!("i64"),
         Type::F32 => json!("f32"),
         Type::F64 => json!("f64"),
         Type::Char => json!("char"),
-        Type::String => json!("string"),
+        // WIT string maps to Rust String
+        Type::String => json!("String"),
         Type::Id(id) => {
             // Look up the referenced type
             if let Some(type_def) = resolve.types.get(*id) {
                 // If it has a name, use the name; otherwise, inline the definition
                 if let Some(name) = &type_def.name {
-                    json!(to_upper_camel_case(name))
+                    json!(to_pascal_case(name))
                 } else {
                     type_to_json_schema(type_def, resolve)
                 }
