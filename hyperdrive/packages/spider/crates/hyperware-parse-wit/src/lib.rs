@@ -552,7 +552,14 @@ mod tests {
 
         assert_eq!(
             value_strings,
-            vec!["Backlog", "UpNext", "InProgress", "Blocked", "Review", "Done"]
+            vec![
+                "Backlog",
+                "UpNext",
+                "InProgress",
+                "Blocked",
+                "Review",
+                "Done"
+            ]
         );
     }
 

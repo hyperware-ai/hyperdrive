@@ -328,18 +328,14 @@ pub async fn get_api(package_id: &str) -> Result<Value, String> {
     Ok(json!(types_with_definitions))
 }
 
-pub async fn call_api(
-    process_id: &str,
-    signature: &str,
-    timeout: u64,
-) -> Result<Value, String> {
+pub async fn call_api(process_id: &str, signature: &str, timeout: u64) -> Result<Value, String> {
     let process_id: ProcessId = process_id
         .parse()
         .map_err(|e: ProcessIdParseError| e.to_string())?;
 
     // Parse the signature JSON string and use it directly as the request body
-    let signature_value: Value = serde_json::from_str(signature)
-        .map_err(|e| format!("Invalid signature JSON: {}", e))?;
+    let signature_value: Value =
+        serde_json::from_str(signature).map_err(|e| format!("Invalid signature JSON: {}", e))?;
 
     let request_body = serde_json::to_vec(&signature_value)
         .map_err(|e| format!("Failed to serialize request body: {}", e))?;
@@ -417,7 +413,6 @@ async fn get_package_documentation(package_id: &str) -> Result<String, String> {
 fn extract_docs(docs: &Docs) -> Option<String> {
     docs.contents.clone()
 }
-
 
 // Convert a WIT type definition to a JSON schema representation
 fn type_to_json_schema(type_def: &wit_parser::TypeDef, resolve: &wit_parser::Resolve) -> Value {
