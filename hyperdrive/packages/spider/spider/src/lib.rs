@@ -6,7 +6,6 @@ use chrono::Utc;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use hyperprocess_macro::hyperprocess;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::{
@@ -16,6 +15,8 @@ use hyperware_process_lib::{
     hyperapp::{add_response_header, source},
     our, println, Address, LazyLoadBlob, ProcessId, Request,
 };
+#[cfg(feature = "public-mode")]
+use hyperware_process_lib::hyperapp::{get_http_request, get_request_header};
 #[cfg(not(feature = "simulation-mode"))]
 use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
 
@@ -36,6 +37,8 @@ use types::{
     ToolCall, ToolExecutionResult, ToolResponseContent, ToolResponseContentItem, ToolResult,
     TrialNotification, UpdateConfigReq, WsClientMessage, WsConnection, WsServerMessage,
 };
+#[cfg(feature = "public-mode")]
+use types::RateLimitError;
 
 mod utils;
 use utils::{
@@ -67,7 +70,7 @@ const HYPERGRID: &str = "operator:hypergrid:ware.hypr";
 const TODO: &str = "todo:todo:ware.hypr";
 const TTSTT: (&str, &str, &str) = ("ttstt", "spider", "sys");
 
-#[hyperprocess(
+#[hyperapp_macro::hyperapp(
     name = "Spider",
     ui = Some(HttpBindingConfig::default()),
     endpoints = vec![
@@ -544,6 +547,12 @@ impl SpiderState {
                                 if self.validate_spider_key(&api_key)
                                     && self.validate_permission(&api_key, "write")
                                 {
+                                    // Capture IP address for rate limiting in public-mode
+                                    #[cfg(feature = "public-mode")]
+                                    let ip_address = Self::get_client_ip();
+                                    #[cfg(not(feature = "public-mode"))]
+                                    let ip_address: Option<String> = None;
+
                                     self.chat_clients.insert(
                                         channel_id,
                                         ChatClient {
@@ -551,6 +560,7 @@ impl SpiderState {
                                             api_key: api_key.clone(),
                                             conversation_id: None,
                                             connected_at: Utc::now().timestamp() as u64,
+                                            ip_address,
                                         },
                                     );
 
@@ -606,6 +616,35 @@ impl SpiderState {
                                             LazyLoadBlob::new(Some("application/json"), json),
                                         );
                                         return;
+                                    }
+
+                                    // Rate limiting for public-mode
+                                    #[cfg(feature = "public-mode")]
+                                    {
+                                        if let Some(ref ip) = client.ip_address {
+                                            if let Err(e) = self.check_rate_limit(ip) {
+                                                // Send structured error for frontend
+                                                let error = RateLimitError {
+                                                    error_type: "OutOfRequests".to_string(),
+                                                    message: e,
+                                                    retry_after_seconds: self
+                                                        .get_retry_after_seconds(ip),
+                                                };
+                                                let response = WsServerMessage::Error {
+                                                    error: serde_json::to_string(&error).unwrap(),
+                                                };
+                                                let json = serde_json::to_string(&response).unwrap();
+                                                send_ws_push(
+                                                    channel_id,
+                                                    WsMessageType::Text,
+                                                    LazyLoadBlob::new(
+                                                        Some("application/json"),
+                                                        json,
+                                                    ),
+                                                );
+                                                return;
+                                            }
+                                        }
                                     }
 
                                     // Convert WsChatPayload to ChatReq
@@ -1360,6 +1399,22 @@ impl SpiderState {
     #[local]
     #[http]
     async fn chat(&mut self, request: ChatReq) -> Result<ChatRes, String> {
+        // Rate limiting for public-mode
+        #[cfg(feature = "public-mode")]
+        {
+            if let Some(ip) = Self::get_client_ip() {
+                if let Err(e) = self.check_rate_limit(&ip) {
+                    // Return structured error for frontend
+                    let error = RateLimitError {
+                        error_type: "OutOfRequests".to_string(),
+                        message: e,
+                        retry_after_seconds: self.get_retry_after_seconds(&ip),
+                    };
+                    return Err(serde_json::to_string(&error).unwrap());
+                }
+            }
+        }
+
         // Use the shared internal chat processing logic (without WebSocket streaming)
         let source = source();
         if source.publisher() == "sys"
@@ -1534,6 +1589,76 @@ impl SpiderState {
         self.spider_api_keys
             .iter()
             .any(|k| k.key == key && k.permissions.contains(&permission.to_string()))
+    }
+
+    /// Get client IP address from request headers (proxy-aware) or socket address
+    #[cfg(feature = "public-mode")]
+    fn get_client_ip() -> Option<String> {
+        // First try X-Forwarded-For header (proxy scenario)
+        if let Some(xff) = get_request_header("X-Forwarded-For") {
+            // X-Forwarded-For can be comma-separated; take the first (original client)
+            if let Some(first_ip) = xff.split(',').next() {
+                return Some(first_ip.trim().to_string());
+            }
+        }
+
+        // Fallback to X-Real-IP header
+        if let Some(real_ip) = get_request_header("X-Real-IP") {
+            return Some(real_ip.trim().to_string());
+        }
+
+        // Final fallback to socket address
+        get_http_request()
+            .and_then(|req| req.source_socket_addr().ok())
+            .map(|addr| addr.ip().to_string())
+    }
+
+    /// Check rate limit for an IP address. Returns Ok(()) if allowed, Err with message if rate limited.
+    #[cfg(feature = "public-mode")]
+    fn check_rate_limit(&mut self, ip: &str) -> Result<(), String> {
+        const MAX_CHATS_PER_DAY: usize = 3;
+        const WINDOW_SECONDS: u64 = 24 * 60 * 60; // 24 hours
+
+        let now = Utc::now().timestamp() as u64;
+        let cutoff = now - WINDOW_SECONDS;
+
+        // Get or create entry for this IP
+        let timestamps = self
+            .ip_chat_counts
+            .entry(ip.to_string())
+            .or_insert_with(Vec::new);
+
+        // Remove expired timestamps
+        timestamps.retain(|&t| t > cutoff);
+
+        // Check if limit exceeded
+        if timestamps.len() >= MAX_CHATS_PER_DAY {
+            return Err(format!(
+                "Rate limit exceeded: {} chats allowed per 24 hours. Try again later.",
+                MAX_CHATS_PER_DAY
+            ));
+        }
+
+        // Record this chat
+        timestamps.push(now);
+        Ok(())
+    }
+
+    /// Get seconds until the oldest chat request expires (for retry_after_seconds)
+    #[cfg(feature = "public-mode")]
+    fn get_retry_after_seconds(&self, ip: &str) -> Option<u64> {
+        const WINDOW_SECONDS: u64 = 24 * 60 * 60;
+
+        if let Some(timestamps) = self.ip_chat_counts.get(ip) {
+            if let Some(&oldest) = timestamps.iter().min() {
+                let now = Utc::now().timestamp() as u64;
+                let expires_at = oldest + WINDOW_SECONDS;
+                if expires_at > now {
+                    return Some(expires_at - now);
+                }
+            }
+        }
+        None
     }
 
     fn cleanup_disconnected_build_containers(&mut self) {
