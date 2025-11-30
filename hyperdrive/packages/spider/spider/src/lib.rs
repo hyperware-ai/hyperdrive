@@ -6,6 +6,8 @@ use chrono::Utc;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+#[cfg(feature = "public-mode")]
+use hyperware_process_lib::hyperapp::{get_http_request, get_request_header};
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::{
@@ -15,8 +17,6 @@ use hyperware_process_lib::{
     hyperapp::{add_response_header, source},
     our, println, Address, LazyLoadBlob, ProcessId, Request,
 };
-#[cfg(feature = "public-mode")]
-use hyperware_process_lib::hyperapp::{get_http_request, get_request_header};
 #[cfg(not(feature = "simulation-mode"))]
 use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
 
@@ -24,6 +24,8 @@ mod provider;
 use provider::create_llm_provider;
 
 mod types;
+#[cfg(feature = "public-mode")]
+use types::RateLimitError;
 use types::{
     AddMcpServerReq, ApiKey, ApiKeyInfo, ChatClient, ChatReq, ChatRes, ConfigRes,
     ConnectMcpServerReq, Conversation, ConversationMetadata, CreateSpiderKeyReq,
@@ -37,8 +39,6 @@ use types::{
     ToolCall, ToolExecutionResult, ToolResponseContent, ToolResponseContentItem, ToolResult,
     TrialNotification, UpdateConfigReq, WsClientMessage, WsConnection, WsServerMessage,
 };
-#[cfg(feature = "public-mode")]
-use types::RateLimitError;
 
 mod utils;
 use utils::{
@@ -551,7 +551,9 @@ impl SpiderState {
                                     #[cfg(feature = "public-mode")]
                                     let ip_address = Self::get_client_ip();
                                     #[cfg(not(feature = "public-mode"))]
-                                    let ip_address: Option<String> = None;
+                                    let ip_address: Option<
+                                        String,
+                                    > = None;
 
                                     self.chat_clients.insert(
                                         channel_id,
@@ -633,7 +635,8 @@ impl SpiderState {
                                                 let response = WsServerMessage::Error {
                                                     error: serde_json::to_string(&error).unwrap(),
                                                 };
-                                                let json = serde_json::to_string(&response).unwrap();
+                                                let json =
+                                                    serde_json::to_string(&response).unwrap();
                                                 send_ws_push(
                                                     channel_id,
                                                     WsMessageType::Text,
