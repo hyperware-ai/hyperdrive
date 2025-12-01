@@ -3323,10 +3323,9 @@ impl SpiderState {
             }
             ToolExecutionCommand::HyperwareCallApi {
                 process_id,
-                method,
-                args,
+                signature,
                 timeout,
-            } => tool_providers::hyperware::call_api(&process_id, &method, &args, timeout).await,
+            } => tool_providers::hyperware::call_api(&process_id, &signature, timeout).await,
             ToolExecutionCommand::DirectResult(result) => result,
         }
     }
