@@ -501,8 +501,7 @@ async fn handle_boot(
                     };
 
                     let hash = boot.eip712_signing_hash(&domain);
-                    let sig =
-                        Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
+                    let sig = Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
 
                     let recovered_address = sig
                         .recover_address_from_prehash(&hash)
