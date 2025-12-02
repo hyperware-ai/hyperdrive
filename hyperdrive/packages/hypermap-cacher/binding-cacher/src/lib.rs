@@ -17,7 +17,9 @@ use crate::hyperware::process::binding_cacher::{
     BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
     BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
+use crate::hyperware::process::hypermap_cacher::HypermapCacherRequest;
 
+use hyperware_process_lib::hyperapp::{wait_for_process_ready, WaitClassification};
 use hyperware_process_lib::{
     await_message, bindings, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
@@ -1473,6 +1475,26 @@ fn init(our: Address) {
     info!("Bound HTTP paths: /manifest, /log-cache/*, /status");
 
     let mut state = State::load(&drive_path);
+
+    // Wait for hypermap-cacher to be ready before entering main loop
+    let cacher_addr = Address::new("our", ("hypermap-cacher", "hypermap-cacher", "sys"));
+    wait_for_process_ready(
+        cacher_addr,
+        HypermapCacherRequest::GetStatus.to_string().into_bytes(),
+        15,
+        2,
+        |body| {
+            let body_str = String::from_utf8_lossy(body);
+            if body_str.contains("IsStarting") || body_str.contains(r#""IsStarting""#) {
+                WaitClassification::Starting
+            } else if body_str.contains("GetStatus") || body_str.contains("last_cached_block") {
+                WaitClassification::Ready
+            } else {
+                WaitClassification::Unknown
+            }
+        },
+        true,
+    );
 
     loop {
         match main_loop(&our, &mut state, &hypermap_provider, &server) {
