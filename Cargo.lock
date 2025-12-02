@@ -1256,6 +1256,7 @@ dependencies = [
  "clap",
  "fs-err",
  "kit",
+ "rayon",
  "serde",
  "serde_json",
  "tokio",
@@ -3517,7 +3518,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive"
-version = "1.8.1"
+version = "1.8.3"
 dependencies = [
  "aes-gcm",
  "alloy",
@@ -3577,7 +3578,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive_lib"
-version = "1.8.1"
+version = "1.8.3"
 dependencies = [
  "lib",
 ]
@@ -4265,7 +4266,7 @@ dependencies = [
 [[package]]
 name = "kit"
 version = "3.1.1"
-source = "git+https://github.com/hyperware-ai/kit?rev=275f02c#275f02c839e239083ba656871e10be845f4d85f5"
+source = "git+https://github.com/hyperware-ai/kit?rev=0d0469e#0d0469ec89ce5ff8f25223e3d968cd5760554251"
 dependencies = [
  "alloy",
  "alloy-sol-macro",
@@ -4334,7 +4335,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib"
-version = "1.8.1"
+version = "1.8.3"
 dependencies = [
  "alloy",
  "anyhow",
