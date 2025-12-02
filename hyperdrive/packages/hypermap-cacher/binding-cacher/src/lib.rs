@@ -1478,6 +1478,10 @@ fn init(our: Address) {
 
     // Wait for hypermap-cacher to be ready before entering main loop
     let cacher_addr = Address::new("our", ("hypermap-cacher", "hypermap-cacher", "sys"));
+    info!(
+        "Waiting for hypermap-cacher at {} to report ready before starting binding-cacher...",
+        cacher_addr
+    );
     wait_for_process_ready(
         cacher_addr,
         HypermapCacherRequest::GetStatus.to_string().into_bytes(),
@@ -1495,6 +1499,7 @@ fn init(our: Address) {
         },
         true,
     );
+    info!("hypermap-cacher is ready; continuing binding-cacher startup.");
 
     loop {
         match main_loop(&our, &mut state, &hypermap_provider, &server) {
