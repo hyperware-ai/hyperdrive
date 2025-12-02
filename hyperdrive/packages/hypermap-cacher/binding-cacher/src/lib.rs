@@ -17,8 +17,6 @@ use crate::hyperware::process::binding_cacher::{
     BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
     BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
-use crate::hyperware::process::hypermap_cacher::HypermapCacherRequest;
-
 use hyperware_process_lib::hyperapp::{wait_for_process_ready, WaitClassification};
 use hyperware_process_lib::{
     await_message, bindings, call_init, eth, get_state, http, hypermap,
@@ -1484,7 +1482,7 @@ fn init(our: Address) {
     );
     wait_for_process_ready(
         cacher_addr,
-        HypermapCacherRequest::GetStatus.to_string().into_bytes(),
+        b"\"GetStatus\"".to_vec(),
         15,
         2,
         |body| {
