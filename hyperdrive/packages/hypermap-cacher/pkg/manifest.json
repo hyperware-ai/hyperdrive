@@ -11,7 +11,8 @@
             "sign:sign:sys",
             "terminal:terminal:sys",
             "timer:distro:sys",
-            "vfs:distro:sys"
+            "vfs:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
             "eth:distro:sys",
@@ -37,7 +38,8 @@
             "sign:sign:sys",
             "terminal:terminal:sys",
             "timer:distro:sys",
-            "vfs:distro:sys"
+            "vfs:distro:sys",
+            "binding-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
             "eth:distro:sys",
