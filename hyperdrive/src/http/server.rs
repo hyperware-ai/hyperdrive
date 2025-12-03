@@ -571,12 +571,17 @@ async fn ws_handler(
             .trim_start_matches('/')
     );
 
+    // Extract forwarded IP from proxy headers before upgrade
+    let forwarded_for = get_forwarded_ip(&headers);
+
     Ok(ws_connection.on_upgrade(move |ws: WebSocket| async move {
         maintain_websocket(
             ws,
             our.clone(),
             app,
             formatted_path,
+            socket_addr,
+            forwarded_for,
             ws_senders.clone(),
             send_to_loop.clone(),
             print_tx.clone(),
@@ -949,6 +954,39 @@ async fn handle_rpc_message(
     ))
 }
 
+/// Extract forwarded client IP from proxy headers (X-Forwarded-For, X-Real-IP, Cf-Connecting-Ip)
+fn get_forwarded_ip(headers: &warp::http::HeaderMap) -> Option<String> {
+    // Check X-Forwarded-For first (may contain comma-separated list, take first)
+    if let Some(xff) = headers.get("X-Forwarded-For").and_then(|v| v.to_str().ok()) {
+        if let Some(first_ip) = xff.split(',').next().map(|s| s.trim()) {
+            if !first_ip.is_empty() {
+                return Some(first_ip.to_string());
+            }
+        }
+    }
+
+    // Check X-Real-IP
+    if let Some(real_ip) = headers.get("X-Real-IP").and_then(|v| v.to_str().ok()) {
+        let trimmed = real_ip.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Check Cf-Connecting-Ip (Cloudflare)
+    if let Some(cf_ip) = headers
+        .get("Cf-Connecting-Ip")
+        .and_then(|v| v.to_str().ok())
+    {
+        let trimmed = cf_ip.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    None
+}
+
 fn make_websocket_message(
     our: String,
     app: ProcessId,
@@ -1066,6 +1104,8 @@ async fn maintain_websocket(
     our: Arc<String>,
     app: ProcessId,
     path: String,
+    socket_addr: Option<SocketAddr>,
+    forwarded_for: Option<String>,
     ws_senders: WebSocketSenders,
     send_to_loop: MessageSender,
     print_tx: PrintSender,
@@ -1092,8 +1132,13 @@ async fn maintain_websocket(
         .message(Message::Request(Request {
             inherit: false,
             expects_response: None,
-            body: serde_json::to_vec(&HttpServerRequest::WebSocketOpen { path, channel_id })
-                .unwrap(),
+            body: serde_json::to_vec(&HttpServerRequest::WebSocketOpen {
+                path,
+                channel_id,
+                source_socket_addr: socket_addr.map(|addr| addr.to_string()),
+                forwarded_for,
+            })
+            .unwrap(),
             metadata: None,
             capabilities: vec![],
         }))
