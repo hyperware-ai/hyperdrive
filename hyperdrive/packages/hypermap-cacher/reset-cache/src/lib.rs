@@ -12,12 +12,13 @@
 //!     reset:hypermap-cacher:sys                      # Reset with default nodes
 //!     reset:hypermap-cacher:sys alice.os bob.os      # Reset with custom nodes
 
+use crate::hyperware::process::binding_cacher::{BindingCacherRequest, BindingCacherResponse};
 use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use hyperware_process_lib::{await_next_message_body, call_init, println, Address, Request};
 
 wit_bindgen::generate!({
     path: "../target/wit",
-    world: "hypermap-cacher-sys-v0",
+    world: "hypermap-cacher-sys-v1",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
 });
@@ -33,13 +34,14 @@ fn init(_our: Address) {
     let parts: Vec<&str> = args.split_whitespace().collect();
 
     let custom_nodes = if parts.is_empty() {
-        println!("Resetting hypermap-cacher with default nodes...");
+        println!("Resetting cachers with default nodes...");
         None
     } else {
         let nodes: Vec<String> = parts.iter().map(|s| s.to_string()).collect();
-        println!("Resetting hypermap-cacher with custom nodes: {:?}", nodes);
+        println!("Resetting cachers with custom nodes: {:?}", nodes);
         Some(nodes)
     };
+    let binding_custom_nodes = custom_nodes.clone();
 
     let response = Request::to(("our", "hypermap-cacher", "hypermap-cacher", "sys"))
         .body(CacherRequest::Reset(custom_nodes))
@@ -51,10 +53,34 @@ fn init(_our: Address) {
                 println!("✓ {}", msg);
             }
             Ok(CacherResponse::Reset(Err(err))) => {
-                println!("✗ Failed to reset: {}", err);
+                println!("✗ Failed to reset hypermap-cacher: {}", err);
             }
             _ => {
                 println!("✗ Unexpected response from hypermap-cacher");
+            }
+        },
+        Ok(Err(err)) => {
+            println!("✗ Request failed: {:?}", err);
+        }
+        Err(err) => {
+            println!("✗ Communication error: {:?}", err);
+        }
+    }
+
+    let response = Request::to(("our", "binding-cacher", "hypermap-cacher", "sys"))
+        .body(BindingCacherRequest::Reset(binding_custom_nodes))
+        .send_and_await_response(10); // Give it more time for reset operations
+
+    match response {
+        Ok(Ok(message)) => match message.body().try_into() {
+            Ok(BindingCacherResponse::Reset(Ok(msg))) => {
+                println!("✓ {}", msg);
+            }
+            Ok(BindingCacherResponse::Reset(Err(err))) => {
+                println!("✗ Failed to reset binding-cacher: {}", err);
+            }
+            _ => {
+                println!("✗ Unexpected response from binding-cacher");
             }
         },
         Ok(Err(err)) => {
