@@ -17,13 +17,13 @@ use crate::hyperware::process::binding_cacher::{
     BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
     BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
-use hyperware_process_lib::{wait_for_process_ready, WaitClassification};
 use hyperware_process_lib::{
     await_message, bindings, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
     net::{NetAction, NetResponse},
     our, set_state, sign, timer, vfs, Address, ProcessId, Request, Response,
 };
+use hyperware_process_lib::{wait_for_process_ready, WaitClassification};
 
 wit_bindgen::generate!({
     path: "../target/wit",
