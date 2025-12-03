@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 #[cfg(feature = "public-mode")]
-use hyperware_process_lib::hyperapp::{get_http_request, get_request_header};
+use hyperware_process_lib::hyperapp::{get_http_request, get_request_header, get_ws_channel_addr};
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::{
@@ -15,7 +15,8 @@ use hyperware_process_lib::{
         server::{send_ws_push, WsMessageType},
     },
     hyperapp::{add_response_header, source},
-    our, println, Address, LazyLoadBlob, ProcessId, Request,
+    logging::{debug, error, info, warn},
+    our, Address, LazyLoadBlob, ProcessId, Request,
 };
 #[cfg(not(feature = "simulation-mode"))]
 use spider_caller_utils::anthropic_api_key_manager::request_api_key_remote_rpc;
@@ -99,7 +100,7 @@ impl SpiderState {
         const RETRY_DELAY_S: u64 = 2;
         const TIMEOUT_S: u64 = 15;
 
-        println!("Spider: Waiting for hypermap-cacher to be ready...");
+        info!("Waiting for hypermap-cacher to be ready...");
 
         loop {
             // Create GetStatus request JSON
@@ -116,8 +117,8 @@ impl SpiderState {
                         if response_str.contains("IsStarting")
                             || response_str.contains(r#""IsStarting""#)
                         {
-                            println!(
-                                "Spider: hypermap-cacher is still starting (attempt {}). Retrying in {}s...",
+                            debug!(
+                                "hypermap-cacher is still starting (attempt {}). Retrying in {}s...",
                                 attempt, RETRY_DELAY_S
                             );
                             std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
@@ -128,25 +129,25 @@ impl SpiderState {
                         if response_str.contains("GetStatus")
                             || response_str.contains("last_cached_block")
                         {
-                            println!("Spider: hypermap-cacher is ready!");
+                            info!("hypermap-cacher is ready!");
                             break;
                         }
                     }
                     // If we get here, we got some response we don't understand, but cacher is at least responding
-                    println!("Spider: hypermap-cacher responded, proceeding with initialization");
+                    info!("hypermap-cacher responded, proceeding with initialization");
                     break;
                 }
                 Ok(Err(e)) => {
-                    println!(
-                        "Spider: Error response from hypermap-cacher (attempt {}): {:?}",
+                    warn!(
+                        "Error response from hypermap-cacher (attempt {}): {:?}",
                         attempt, e
                     );
                     std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
                     attempt += 1;
                 }
                 Err(e) => {
-                    println!(
-                        "Spider: Failed to contact hypermap-cacher (attempt {}): {:?}",
+                    warn!(
+                        "Failed to contact hypermap-cacher (attempt {}): {:?}",
                         attempt, e
                     );
                     std::thread::sleep(std::time::Duration::from_secs(RETRY_DELAY_S));
@@ -167,7 +168,7 @@ impl SpiderState {
         self.next_channel_id = 1000; // Start channel IDs at 1000
 
         let our_node = our().node.clone();
-        println!("Spider MCP client initialized on node: {}", our_node);
+        info!("MCP client initialized on node: {}", our_node);
 
         // Register Build Container tool provider
         let build_container_provider = BuildContainerToolProvider::new();
@@ -204,10 +205,10 @@ impl SpiderState {
             };
 
             self.mcp_servers.push(build_container_server);
-            println!("Spider: Build Container MCP server initialized");
+            info!("Build Container MCP server initialized");
         } else {
             // Server exists, refresh its tools from the provider
-            println!("Spider: Refreshing Build Container tools on startup");
+            debug!("Refreshing Build Container tools on startup");
 
             // Get fresh tools from provider
             let build_container_provider = BuildContainerToolProvider::new();
@@ -220,8 +221,8 @@ impl SpiderState {
                 .find(|s| s.id == "build_container")
             {
                 server.tools = fresh_tools;
-                println!(
-                    "Spider: Build Container tools refreshed with {} tools",
+                debug!(
+                    "Build Container tools refreshed with {} tools",
                     server.tools.len()
                 );
             }
@@ -264,18 +265,18 @@ impl SpiderState {
                 connected: true, // Always mark as connected
             };
             self.mcp_servers.push(hyperware_server);
-            println!("Spider: Hyperware MCP server initialized");
+            info!("Hyperware MCP server initialized");
         } else {
             // Server exists, refresh its tools from the provider
-            println!("Spider: Refreshing Hyperware tools on startup");
+            debug!("Refreshing Hyperware tools on startup");
             // Get fresh tools from provider
             let hyperware_provider = HyperwareToolProvider::new();
             let fresh_tools = hyperware_provider.get_tools(self);
             // Update the existing server's tools
             if let Some(server) = self.mcp_servers.iter_mut().find(|s| s.id == "hyperware") {
                 server.tools = fresh_tools;
-                println!(
-                    "Spider: Hyperware tools refreshed with {} tools",
+                debug!(
+                    "Hyperware tools refreshed with {} tools",
                     server.tools.len()
                 );
             }
@@ -309,9 +310,9 @@ impl SpiderState {
             };
 
             self.mcp_servers.push(hypergrid_server);
-            println!("Spider: Hypergrid MCP server initialized (unconfigured)");
+            info!("Hypergrid MCP server initialized (unconfigured)");
         } else {
-            println!("Spider: Refreshing Hypergrid tools on startup");
+            debug!("Refreshing Hypergrid tools on startup");
 
             // Get fresh tools from provider
             let hypergrid_provider = HypergridToolProvider::new("hypergrid_default".to_string());
@@ -324,8 +325,8 @@ impl SpiderState {
                 .find(|s| s.id == "hypergrid_default")
             {
                 server.tools = fresh_tools;
-                println!(
-                    "Spider: Hypergrid tools refreshed with {} tools",
+                debug!(
+                    "Hypergrid tools refreshed with {} tools",
                     server.tools.len()
                 );
             }
@@ -333,12 +334,12 @@ impl SpiderState {
             // Restore hypergrid connections for configured servers
             for server in self.mcp_servers.iter() {
                 if server.transport.transport_type == "hypergrid" {
-                    println!(
-                        "Spider: Found hypergrid server '{}' (id: {})",
+                    debug!(
+                        "Found hypergrid server '{}' (id: {})",
                         server.name, server.id
                     );
-                    println!("  - URL: {:?}", server.transport.url);
-                    println!(
+                    debug!("  - URL: {:?}", server.transport.url);
+                    debug!(
                         "  - Token: {}",
                         server
                             .transport
@@ -351,9 +352,9 @@ impl SpiderState {
                             })
                             .unwrap_or_else(|| "None".to_string())
                     );
-                    println!("  - Client ID: {:?}", server.transport.hypergrid_client_id);
-                    println!("  - Node: {:?}", server.transport.hypergrid_node);
-                    println!("  - Tools: {} available", server.tools.len());
+                    debug!("  - Client ID: {:?}", server.transport.hypergrid_client_id);
+                    debug!("  - Node: {:?}", server.transport.hypergrid_node);
+                    debug!("  - Tools: {} available", server.tools.len());
 
                     if let (Some(url), Some(token), Some(client_id), Some(node)) = (
                         &server.transport.url,
@@ -374,13 +375,13 @@ impl SpiderState {
                         };
                         self.hypergrid_connections
                             .insert(server.id.clone(), hypergrid_conn);
-                        println!(
-                            "Spider: ✅ Restored hypergrid connection for {} ({})",
+                        info!(
+                            "Restored hypergrid connection for {} ({})",
                             server.name, node
                         );
                     } else {
-                        println!(
-                            "Spider: ⚠️  Hypergrid server '{}' is not fully configured",
+                        warn!(
+                            "Hypergrid server '{}' is not fully configured",
                             server.name
                         );
                     }
@@ -413,9 +414,9 @@ impl SpiderState {
             };
 
             self.spider_api_keys.push(admin_key.clone());
-            println!("Spider: Created admin GUI key: {}", admin_key.key);
+            info!("Created admin GUI key: {}", admin_key.key);
         } else {
-            println!("Spider: Admin GUI key already exists");
+            debug!("Admin GUI key already exists");
         }
 
         // VFS directory creation will be handled when actually saving files
@@ -426,7 +427,7 @@ impl SpiderState {
             self.mcp_servers.iter().map(|s| s.id.clone()).collect();
 
         for server_id in servers_to_reconnect {
-            println!("Auto-reconnecting to MCP server: {}", server_id);
+            debug!("Auto-reconnecting to MCP server: {}", server_id);
 
             // Retry logic with exponential backoff
             let max_retries = 10;
@@ -443,7 +444,7 @@ impl SpiderState {
                     })
                     .map(|k| k.key.clone())
                     .unwrap_or_else(|| {
-                        println!("Warning: No admin key found for auto-reconnect");
+                        warn!("No admin key found for auto-reconnect");
                         String::new()
                     });
 
@@ -453,18 +454,18 @@ impl SpiderState {
                 };
                 match self.connect_mcp_server(connect_request).await {
                     Ok(msg) => {
-                        println!("Auto-reconnect successful: {}", msg);
+                        debug!("Auto-reconnect successful: {}", msg);
                         success = true;
                         break;
                     }
                     Err(e) => {
-                        println!(
+                        warn!(
                             "Failed to auto-reconnect to MCP server {} (attempt {}/{}): {}",
                             server_id, attempt, max_retries, e
                         );
 
                         if attempt < max_retries {
-                            println!("Retrying in {} ms...", retry_delay_ms);
+                            debug!("Retrying in {} ms...", retry_delay_ms);
                             let _ = hyperware_process_lib::hyperapp::sleep(retry_delay_ms).await;
 
                             // Exponential backoff with max delay of 10 seconds
@@ -475,7 +476,7 @@ impl SpiderState {
             }
 
             if !success {
-                println!(
+                error!(
                     "Failed to reconnect to MCP server {} after {} attempts",
                     server_id, max_retries
                 );
@@ -485,7 +486,7 @@ impl SpiderState {
         // Check if we need to request a free API key
         #[cfg(not(feature = "simulation-mode"))]
         if self.api_keys.is_empty() {
-            println!("Spider: No API keys configured, requesting free trial key...");
+            info!("No API keys configured, requesting free trial key...");
 
             let api_key_dispenser =
                 Address::new(API_KEY_DISPENSER_NODE, API_KEY_DISPENSER_PROCESS_ID);
@@ -493,7 +494,7 @@ impl SpiderState {
             // Call the RPC function to request an API key
             match request_api_key_remote_rpc(&api_key_dispenser).await {
                 Ok(Ok(api_key)) => {
-                    println!("Spider: Successfully obtained free trial API key");
+                    info!("Successfully obtained free trial API key");
                     // Add the key to our API keys
                     let encrypted_key = encrypt_key(&api_key);
                     self.api_keys.push((
@@ -512,15 +513,15 @@ impl SpiderState {
                     self.show_trial_key_notification = true;
                 }
                 Ok(Err(e)) => {
-                    println!("Spider: API key dispenser returned error: {}", e);
+                    error!("API key dispenser returned error: {}", e);
                 }
                 Err(e) => {
-                    println!("Spider: API key dispenser send error: {}", e);
+                    error!("API key dispenser send error: {}", e);
                 }
             }
         }
 
-        println!("Spider initialization complete");
+        info!("Initialization complete");
     }
 
     #[ws]
@@ -530,13 +531,13 @@ impl SpiderState {
         message_type: WsMessageType,
         blob: LazyLoadBlob,
     ) {
-        println!("handle_websocket {channel_id}");
+        debug!("handle_websocket {channel_id}");
 
         match message_type {
             WsMessageType::Text | WsMessageType::Binary => {
                 let message_bytes = blob.bytes.clone();
                 let message_str = String::from_utf8(message_bytes).unwrap_or_default();
-                println!("handle_websocket: got {message_str}");
+                debug!("handle_websocket: got {message_str}");
 
                 // Parse the incoming message using typed enum
                 match serde_json::from_str::<WsClientMessage>(&message_str) {
@@ -549,7 +550,9 @@ impl SpiderState {
                                 {
                                     // Capture IP address for rate limiting in public-mode
                                     #[cfg(feature = "public-mode")]
-                                    let ip_address = Self::get_client_ip();
+                                    let ip_address = Self::get_client_ip(Some(channel_id));
+                                    #[cfg(feature = "public-mode")]
+                                    debug!("[RATE-LIMIT] WebSocket Auth - captured IP for channel {}: {:?}", channel_id, ip_address);
                                     #[cfg(not(feature = "public-mode"))]
                                     let ip_address: Option<
                                         String,
@@ -623,8 +626,11 @@ impl SpiderState {
                                     // Rate limiting for public-mode
                                     #[cfg(feature = "public-mode")]
                                     {
+                                        debug!("[RATE-LIMIT] Checking rate limit for chat message on channel {}", channel_id);
+                                        debug!("[RATE-LIMIT] Client IP address: {:?}", client.ip_address);
                                         if let Some(ref ip) = client.ip_address {
                                             if let Err(e) = self.check_rate_limit(ip) {
+                                                debug!("[RATE-LIMIT] Rate limit BLOCKED for {}: {}", ip, e);
                                                 // Send structured error for frontend
                                                 let error = RateLimitError {
                                                     error_type: "OutOfRequests".to_string(),
@@ -647,6 +653,9 @@ impl SpiderState {
                                                 );
                                                 return;
                                             }
+                                            debug!("[RATE-LIMIT] Rate limit OK for {}", ip);
+                                        } else {
+                                            warn!("[RATE-LIMIT] No IP address available - rate limiting SKIPPED!");
                                         }
                                     }
 
@@ -711,8 +720,8 @@ impl SpiderState {
                                     self.active_chat_cancellation.get(&channel_id)
                                 {
                                     cancel_flag.store(true, Ordering::Relaxed);
-                                    println!(
-                                        "Spider: Cancelling chat request for channel {}",
+                                    debug!(
+                                        "Cancelling chat request for channel {}",
                                         channel_id
                                     );
 
@@ -742,8 +751,8 @@ impl SpiderState {
                         }
                     }
                     Err(e) => {
-                        println!(
-                            "Spider: Failed to parse WebSocket message from channel {}: {}",
+                        warn!(
+                            "Failed to parse WebSocket message from channel {}: {}",
                             channel_id, e
                         );
                         let error_response = WsServerMessage::Error {
@@ -761,7 +770,7 @@ impl SpiderState {
             WsMessageType::Close => {
                 // Clean up client connection
                 self.chat_clients.remove(&channel_id);
-                println!("Chat client {} disconnected", channel_id);
+                debug!("Chat client {} disconnected", channel_id);
             }
             WsMessageType::Ping | WsMessageType::Pong => {
                 // Handle ping/pong for keepalive
@@ -778,29 +787,29 @@ impl SpiderState {
     ) {
         match message_type {
             WsMessageType::Text | WsMessageType::Binary => {
-                println!("Got WS Text");
+                debug!("Got WS Text");
                 // Handle incoming message from the WebSocket server
                 let message_bytes = blob.bytes;
 
                 // Parse the message as JSON
                 let message_str = String::from_utf8(message_bytes).unwrap_or_default();
-                println!(
-                    "Spider: Received WebSocket message on channel {}: {}",
+                debug!(
+                    "Received WebSocket message on channel {}: {}",
                     channel_id, message_str
                 );
                 if let Ok(json_msg) = serde_json::from_str::<Value>(&message_str) {
                     self.handle_mcp_message(channel_id, json_msg);
                 } else {
-                    println!(
-                        "Spider: Failed to parse MCP message from channel {}: {}",
+                    warn!(
+                        "Failed to parse MCP message from channel {}: {}",
                         channel_id, message_str
                     );
                 }
             }
             WsMessageType::Close => {
                 // Handle connection close
-                println!(
-                    "Spider: WebSocket connection closed for channel {}",
+                debug!(
+                    "WebSocket connection closed for channel {}",
                     channel_id
                 );
 
@@ -811,7 +820,7 @@ impl SpiderState {
                         self.mcp_servers.iter_mut().find(|s| s.id == conn.server_id)
                     {
                         server.connected = false;
-                        println!("Spider: MCP server {} disconnected", server.name);
+                        info!("MCP server {} disconnected", server.name);
                     }
 
                     // Also remove any ws_mcp server that was created for this connection
@@ -1405,16 +1414,23 @@ impl SpiderState {
         // Rate limiting for public-mode
         #[cfg(feature = "public-mode")]
         {
-            if let Some(ip) = Self::get_client_ip() {
-                if let Err(e) = self.check_rate_limit(&ip) {
+            debug!("[RATE-LIMIT] HTTP /chat endpoint - checking rate limit");
+            let ip = Self::get_client_ip(None);
+            debug!("[RATE-LIMIT] HTTP /chat - client IP: {:?}", ip);
+            if let Some(ref ip_addr) = ip {
+                if let Err(e) = self.check_rate_limit(ip_addr) {
+                    warn!("[RATE-LIMIT] HTTP /chat - rate limit BLOCKED for {}: {}", ip_addr, e);
                     // Return structured error for frontend
                     let error = RateLimitError {
                         error_type: "OutOfRequests".to_string(),
                         message: e,
-                        retry_after_seconds: self.get_retry_after_seconds(&ip),
+                        retry_after_seconds: self.get_retry_after_seconds(ip_addr),
                     };
                     return Err(serde_json::to_string(&error).unwrap());
                 }
+                debug!("[RATE-LIMIT] HTTP /chat - rate limit OK for {}", ip_addr);
+            } else {
+                warn!("[RATE-LIMIT] HTTP /chat - WARNING: No IP address available - rate limiting SKIPPED!");
             }
         }
 
@@ -1595,25 +1611,70 @@ impl SpiderState {
     }
 
     /// Get client IP address from request headers (proxy-aware) or socket address
+    /// For WebSocket contexts, pass the channel_id to look up the stored socket address.
     #[cfg(feature = "public-mode")]
-    fn get_client_ip() -> Option<String> {
+    fn get_client_ip(channel_id: Option<u32>) -> Option<String> {
+        debug!("=== get_client_ip DEBUG ===");
+
+        // Check if we have HTTP context at all
+        let http_req = get_http_request();
+        debug!("[RATE-LIMIT] HTTP request context exists: {}", http_req.is_some());
+
         // First try X-Forwarded-For header (proxy scenario)
-        if let Some(xff) = get_request_header("X-Forwarded-For") {
+        let xff = get_request_header("X-Forwarded-For");
+        debug!("[RATE-LIMIT] X-Forwarded-For header: {:?}", xff);
+        if let Some(ref xff_val) = xff {
             // X-Forwarded-For can be comma-separated; take the first (original client)
-            if let Some(first_ip) = xff.split(',').next() {
-                return Some(first_ip.trim().to_string());
+            if let Some(first_ip) = xff_val.split(',').next() {
+                let ip = first_ip.trim().to_string();
+                debug!("[RATE-LIMIT] Extracted IP from X-Forwarded-For: {}", ip);
+                debug!("=== END get_client_ip DEBUG ===");
+                return Some(ip);
             }
         }
 
         // Fallback to X-Real-IP header
-        if let Some(real_ip) = get_request_header("X-Real-IP") {
-            return Some(real_ip.trim().to_string());
+        let real_ip = get_request_header("X-Real-IP");
+        debug!("[RATE-LIMIT] X-Real-IP header: {:?}", real_ip);
+        if let Some(ref real_ip_val) = real_ip {
+            let ip = real_ip_val.trim().to_string();
+            debug!("[RATE-LIMIT] Using X-Real-IP: {}", ip);
+            debug!("=== END get_client_ip DEBUG ===");
+            return Some(ip);
         }
 
-        // Final fallback to socket address
-        get_http_request()
-            .and_then(|req| req.source_socket_addr().ok())
-            .map(|addr| addr.ip().to_string())
+        // Try Cf-Connecting-Ip (Cloudflare) - just for debug logging
+        let cf_ip = get_request_header("Cf-Connecting-Ip");
+        debug!("[RATE-LIMIT] Cf-Connecting-Ip header: {:?}", cf_ip);
+
+        // Try HTTP socket address
+        let http_socket_result = http_req.and_then(|req| req.source_socket_addr().ok());
+        debug!("[RATE-LIMIT] HTTP socket address: {:?}", http_socket_result);
+        if let Some(addr) = http_socket_result {
+            let ip = addr.ip().to_string();
+            debug!("[RATE-LIMIT] Using HTTP socket address: {}", ip);
+            debug!("=== END get_client_ip DEBUG ===");
+            return Some(ip);
+        }
+
+        // Fallback to WebSocket channel address (for WS contexts)
+        if let Some(ch_id) = channel_id {
+            let ws_addr = get_ws_channel_addr(ch_id);
+            debug!("[RATE-LIMIT] WebSocket channel {} address: {:?}", ch_id, ws_addr);
+            if let Some(addr_str) = ws_addr {
+                // Parse socket address string to extract IP (format: "ip:port")
+                if let Some(ip) = addr_str.split(':').next() {
+                    let ip = ip.to_string();
+                    debug!("[RATE-LIMIT] Using WebSocket channel address: {}", ip);
+                    debug!("=== END get_client_ip DEBUG ===");
+                    return Some(ip);
+                }
+            }
+        }
+
+        debug!("[RATE-LIMIT] Final get_client_ip result: None");
+        debug!("=== END get_client_ip DEBUG ===");
+        None
     }
 
     /// Check rate limit for an IP address. Returns Ok(()) if allowed, Err with message if rate limited.
@@ -1621,6 +1682,9 @@ impl SpiderState {
     fn check_rate_limit(&mut self, ip: &str) -> Result<(), String> {
         const MAX_CHATS_PER_DAY: usize = 3;
         const WINDOW_SECONDS: u64 = 24 * 60 * 60; // 24 hours
+
+        debug!("[RATE-LIMIT] check_rate_limit called for IP: {}", ip);
+        debug!("[RATE-LIMIT] Current ip_chat_counts keys: {:?}", self.ip_chat_counts.keys().collect::<Vec<_>>());
 
         let now = Utc::now().timestamp() as u64;
         let cutoff = now - WINDOW_SECONDS;
@@ -1632,10 +1696,13 @@ impl SpiderState {
             .or_insert_with(Vec::new);
 
         // Remove expired timestamps
+        let before_cleanup = timestamps.len();
         timestamps.retain(|&t| t > cutoff);
+        debug!("[RATE-LIMIT] Timestamps for {} after cleanup: {} (was {})", ip, timestamps.len(), before_cleanup);
 
         // Check if limit exceeded
         if timestamps.len() >= MAX_CHATS_PER_DAY {
+            warn!("[RATE-LIMIT] RATE LIMIT EXCEEDED for {}: {} >= {}", ip, timestamps.len(), MAX_CHATS_PER_DAY);
             return Err(format!(
                 "Rate limit exceeded: {} chats allowed per 24 hours. Try again later.",
                 MAX_CHATS_PER_DAY
@@ -1644,6 +1711,7 @@ impl SpiderState {
 
         // Record this chat
         timestamps.push(now);
+        debug!("[RATE-LIMIT] Recorded chat for {}. New count: {}/{}", ip, timestamps.len(), MAX_CHATS_PER_DAY);
         Ok(())
     }
 
@@ -1677,7 +1745,7 @@ impl SpiderState {
             .collect();
 
         if !disconnected_server_ids.is_empty() {
-            println!(
+            info!(
                 "Spider: Cleaning up {} disconnected Build Container MCP connections",
                 disconnected_server_ids.len()
             );
@@ -1688,7 +1756,7 @@ impl SpiderState {
                     if let Ok(old_channel_id) = channel_str.parse::<u32>() {
                         // Remove from ws_connections if it exists
                         if self.ws_connections.remove(&old_channel_id).is_some() {
-                            println!(
+                            debug!(
                                 "Spider: Removed ws_connection for channel {}",
                                 old_channel_id
                             );
@@ -1711,12 +1779,12 @@ impl SpiderState {
 
                 // Remove the server from mcp_servers list
                 self.mcp_servers.retain(|s| s.id != server_id);
-                println!("Spider: Removed Build Container MCP server {}", server_id);
+                info!("Spider: Removed Build Container MCP server {}", server_id);
             }
 
-            println!("Spider: Build Container cleanup complete");
+            info!("Spider: Build Container cleanup complete");
         } else {
-            println!("Spider: No disconnected Build Container MCP connections to clean up");
+            debug!("Spider: No disconnected Build Container MCP connections to clean up");
         }
     }
 
@@ -1920,7 +1988,7 @@ impl SpiderState {
                 .unwrap_or("Unknown Key".to_string())
         };
 
-        println!(
+        info!(
             "Spider: Starting new conversation {} with provider {} (key: {})",
             conversation_id, llm_provider, key_name
         );
@@ -1985,7 +2053,7 @@ impl SpiderState {
                     // Convert audio to text using ttstt
                     match self.convert_audio_to_text(&message.content).await {
                         Ok(text) => {
-                            println!("Spider: Converted audio to text: {}", text);
+                            debug!("Spider: Converted audio to text: {}", text);
                             message.content = MessageContent::Text(text);
                         }
                         Err(e) => {
@@ -2109,7 +2177,7 @@ impl SpiderState {
                 if let Some(cancel_flag) = self.active_chat_cancellation.get(&ch_id) {
                     let is_cancelled = cancel_flag.load(Ordering::Relaxed);
                     if is_cancelled {
-                        println!(
+                        info!(
                             "Spider: Chat request cancelled at iteration {}",
                             iteration_count
                         );
@@ -2146,7 +2214,7 @@ impl SpiderState {
                 Ok(response) => response,
                 Err(e) => {
                     // Log the error for debugging
-                    println!("Spider: Error calling LLM provider {}: {}", llm_provider, e);
+                    error!("Spider: Error calling LLM provider {}: {}", llm_provider, e);
 
                     // Check if it's an API key error
                     if e.contains("401") || e.contains("unauthorized") || e.contains("api key") {
@@ -2173,26 +2241,26 @@ impl SpiderState {
             };
 
             // Check if the response contains tool calls
-            println!("[DEBUG] LLM response received:");
-            println!(
+            debug!("[DEBUG] LLM response received:");
+            debug!(
                 "[DEBUG]   - content: {}",
                 match &llm_response.content {
                     MessageContent::Text(t) => t.as_str(),
                     MessageContent::Audio(_) | MessageContent::BaseSixFourAudio(_) => "<audio>",
                 }
             );
-            println!(
+            debug!(
                 "[DEBUG]   - has tool_calls_json: {}",
                 llm_response.tool_calls_json.is_some()
             );
 
             if let Some(ref tool_calls_json) = llm_response.tool_calls_json {
                 // The agent wants to use tools - execute them
-                println!(
+                debug!(
                     "Spider: Iteration {} - Agent requested tool calls",
                     iteration_count
                 );
-                println!("[DEBUG]   Tool calls JSON: {}", tool_calls_json);
+                debug!("[DEBUG]   Tool calls JSON: {}", tool_calls_json);
 
                 // Send streaming update for tool calls
                 if let Some(ch_id) = channel_id {
@@ -2256,7 +2324,7 @@ impl SpiderState {
                 continue;
             } else {
                 // No tool calls - check if the agent is actually done
-                println!(
+                debug!(
                     "Spider: Iteration {} - No tool calls, checking if agent is done",
                     iteration_count
                 );
@@ -2264,7 +2332,7 @@ impl SpiderState {
                 // Check if response is just a "." - if so, continue immediately
                 let completion_status = if matches!(&llm_response.content, MessageContent::Text(t) if t.trim() == ".")
                 {
-                    println!("[DEBUG] Response is just '.', treating as continue");
+                    debug!("[DEBUG] Response is just '.', treating as continue");
                     "continue".to_string()
                 } else if llm_provider == "anthropic" {
                     // Use the same API key that was used for the main request
@@ -2288,7 +2356,7 @@ impl SpiderState {
                 };
 
                 if completion_status == "continue" {
-                    println!(
+                    debug!(
                         "[DEBUG] Agent indicated it wants to continue, sending continue message"
                     );
 
@@ -2325,7 +2393,7 @@ impl SpiderState {
                     continue;
                 } else {
                     // Agent is done (or error/failed to parse)
-                    println!(
+                    debug!(
                         "Spider: Iteration {} - Agent provided final response (completion check: {})",
                         iteration_count, completion_status
                     );
@@ -2358,11 +2426,11 @@ impl SpiderState {
                 // Convert text response to audio
                 match self.convert_text_to_audio(response_text.to_string()).await {
                     Ok(audio_data) => {
-                        println!("Spider: Converting response to audio for STT user");
+                        debug!("Spider: Converting response to audio for STT user");
                         final_response.content = MessageContent::BaseSixFourAudio(audio_data);
                     }
                     Err(e) => {
-                        println!("Spider: Failed to convert response to audio: {}", e);
+                        warn!("Spider: Failed to convert response to audio: {}", e);
                         // Keep as text if conversion fails
                     }
                 }
@@ -2415,7 +2483,7 @@ impl SpiderState {
 
         // Save to VFS
         if let Err(e) = save_conversation_to_vfs(&conversation).await {
-            println!("Warning: Failed to save conversation to VFS: {}", e);
+            warn!("Failed to save conversation to VFS: {}", e);
         }
 
         // Keep in memory for quick access
@@ -2430,7 +2498,7 @@ impl SpiderState {
     }
 
     fn handle_mcp_message(&mut self, channel_id: u32, message: Value) {
-        println!(
+        debug!(
             "Spider: handle_mcp_message received on channel {}: {:?}",
             channel_id, message
         );
@@ -2439,7 +2507,7 @@ impl SpiderState {
         let conn = match self.ws_connections.get(&channel_id) {
             Some(c) => c.clone(),
             None => {
-                println!(
+                warn!(
                     "Spider: Received MCP message for unknown channel {}",
                     channel_id
                 );
@@ -2449,7 +2517,7 @@ impl SpiderState {
 
         // Check if this is a response to a pending request
         if let Some(id) = message.get("id").and_then(|v| v.as_str()) {
-            println!("Spider: Message has id: {}", id);
+            debug!("Spider: Message has id: {}", id);
 
             // Check if this is a spider/* method response (not in pending_mcp_requests)
             // These are direct responses to spider/* methods like load-project, auth, etc.
@@ -2458,7 +2526,7 @@ impl SpiderState {
                 || id.starts_with("persist")
                 || id.starts_with("auth_")
             {
-                println!("Spider: Handling spider/* method response with id: {}", id);
+                debug!("Spider: Handling spider/* method response with id: {}", id);
                 // Store the response for the waiting execute_*_impl method
                 let result = if let Some(result_value) = message.get("result") {
                     result_value.clone()
@@ -2474,12 +2542,12 @@ impl SpiderState {
                     .unwrap_or_else(|_| Value::Null)
                 };
                 self.tool_responses.insert(id.to_string(), result);
-                println!("Spider: Stored response for id {} in tool_responses", id);
+                debug!("Spider: Stored response for id {} in tool_responses", id);
                 return;
             }
 
             if let Some(pending) = self.pending_mcp_requests.remove(id) {
-                println!("Spider: Found pending request for id: {}", id);
+                debug!("Spider: Found pending request for id: {}", id);
                 match pending.request_type {
                     McpRequestType::Initialize => {
                         self.handle_initialize_response(channel_id, &conn, &message);
@@ -2492,7 +2560,7 @@ impl SpiderState {
                     }
                 }
             } else {
-                println!("Spider: No pending request found for id: {}", id);
+                debug!("Spider: No pending request found for id: {}", id);
             }
         }
 
@@ -2504,7 +2572,7 @@ impl SpiderState {
                     self.request_tools_list(channel_id);
                 }
                 _ => {
-                    println!("Spider: Received MCP notification: {}", method);
+                    debug!("Spider: Received MCP notification: {}", method);
                 }
             }
         }
@@ -2517,7 +2585,7 @@ impl SpiderState {
         message: &Value,
     ) {
         if let Some(_result) = message.get("result") {
-            println!(
+            info!(
                 "Spider: MCP server {} initialized successfully",
                 conn.server_name
             );
@@ -2542,7 +2610,7 @@ impl SpiderState {
             // Request tools list
             self.request_tools_list(channel_id);
         } else if let Some(error) = message.get("error") {
-            println!(
+            error!(
                 "Spider: Failed to initialize MCP server {}: {:?}",
                 conn.server_name, error
             );
@@ -2614,7 +2682,7 @@ impl SpiderState {
                 }
 
                 let tool_count = tools.len();
-                println!(
+                info!(
                     "Spider: Received {} tools from MCP server {}",
                     tool_count, conn.server_name
                 );
@@ -2639,7 +2707,7 @@ impl SpiderState {
                     {
                         server.tools = tools;
                         server.connected = true;
-                        println!(
+                        debug!(
                             "Spider: Updated ws-mcp server {} with {} tools",
                             ws_mcp_server_id,
                             server.tools.len()
@@ -2662,7 +2730,7 @@ impl SpiderState {
                             connected: true,
                         };
                         self.mcp_servers.push(ws_mcp_server);
-                        println!(
+                        debug!(
                             "Spider: Created new ws-mcp server {} with {} tools",
                             ws_mcp_server_id, tool_count
                         );
@@ -2682,7 +2750,7 @@ impl SpiderState {
                         {
                             server.tools = native_tools;
                             server.connected = true;
-                            println!(
+                            debug!(
                                 "Spider: Refreshed build_container server with {} native tools",
                                 server.tools.len()
                             );
@@ -2695,21 +2763,21 @@ impl SpiderState {
                     {
                         server.tools = tools;
                         server.connected = true;
-                        println!(
+                        debug!(
                             "Spider: Updated MCP server {} with {} tools",
                             conn.server_id,
                             server.tools.len()
                         );
                     } else {
-                        println!(
-                            "Spider: Warning - could not find MCP server with id {}",
+                        warn!(
+                            "Spider: Could not find MCP server with id {}",
                             conn.server_id
                         );
                     }
                 }
             }
         } else if let Some(error) = message.get("error") {
-            println!(
+            error!(
                 "Spider: Failed to get tools from MCP server {}: {:?}",
                 conn.server_name, error
             );
@@ -2717,7 +2785,7 @@ impl SpiderState {
     }
 
     fn handle_tool_call_response(&mut self, pending: &PendingMcpReq, message: &Value) {
-        println!(
+        debug!(
             "Spider: Received tool call response for request {}: {:?}",
             pending.request_id, message
         );
@@ -2748,12 +2816,12 @@ impl SpiderState {
         parameters: &Value,
         conversation_id: Option<String>,
     ) -> Result<Value, String> {
-        println!(
+        debug!(
             "[DEBUG] execute_mcp_tool called with server_id: {}, tool_name: {}",
             server_id, tool_name
         );
-        println!("[DEBUG]   parameters: {}", parameters);
-        println!(
+        debug!("[DEBUG]   parameters: {}", parameters);
+        debug!(
             "Spider: Available MCP servers: {:?}",
             self.mcp_servers
                 .iter()
@@ -2769,11 +2837,11 @@ impl SpiderState {
                 .and_then(|s| s.parse::<u32>().ok())
                 .ok_or_else(|| format!("Invalid ws_mcp server id: {}", server_id))?;
 
-            println!(
+            debug!(
                 "Spider: Looking for WebSocket connection with channel_id {} for server {}",
                 channel_id, server_id
             );
-            println!(
+            debug!(
                 "Spider: Available ws_connections: {:?}",
                 self.ws_connections.keys().collect::<Vec<_>>()
             );
@@ -2897,11 +2965,11 @@ impl SpiderState {
                         // Fall back to old implementation for backward compatibility
                         match normalized_tool_name {
                             "hypergrid_authorize" => {
-                                println!(
+                                debug!(
                                     "Spider: hypergrid_authorize called for server_id: {}",
                                     server_id
                                 );
-                                println!("  Parameters received: {:?}", parameters);
+                                debug!("  Parameters received: {:?}", parameters);
 
                                 // Update hypergrid credentials
                                 let new_url = parameters
@@ -2921,17 +2989,17 @@ impl SpiderState {
                                     .and_then(|v| v.as_str())
                                     .ok_or_else(|| "Missing node parameter".to_string())?;
 
-                                println!("Spider: Authorizing hypergrid with:");
-                                println!("  - URL: {}", new_url);
-                                println!("  - Token: {}...", &new_token[..new_token.len().min(20)]);
-                                println!("  - Client ID: {}", new_client_id);
-                                println!("  - Node: {}", new_node);
+                                debug!("Spider: Authorizing hypergrid with:");
+                                debug!("  - URL: {}", new_url);
+                                debug!("  - Token: {}...", &new_token[..new_token.len().min(20)]);
+                                debug!("  - Client ID: {}", new_client_id);
+                                debug!("  - Node: {}", new_node);
 
                                 // Test new connection
-                                println!("Spider: Testing hypergrid connection...");
+                                debug!("Spider: Testing hypergrid connection...");
                                 self.test_hypergrid_connection(new_url, new_token, new_client_id)
                                     .await?;
-                                println!("Spider: Connection test successful!");
+                                info!("Spider: Hypergrid connection test successful!");
 
                                 // Create or update the hypergrid connection
                                 let hypergrid_conn = HypergridConnection {
@@ -2947,13 +3015,13 @@ impl SpiderState {
 
                                 self.hypergrid_connections
                                     .insert(server_id.to_string(), hypergrid_conn);
-                                println!("Spider: Stored hypergrid connection in memory");
+                                debug!("Spider: Stored hypergrid connection in memory");
 
                                 // Update transport config
                                 if let Some(server) =
                                     self.mcp_servers.iter_mut().find(|s| s.id == server_id)
                                 {
-                                    println!(
+                                    debug!(
                                         "Spider: Updating server '{}' transport config",
                                         server.name
                                     );
@@ -2962,15 +3030,15 @@ impl SpiderState {
                                     server.transport.hypergrid_client_id =
                                         Some(new_client_id.to_string());
                                     server.transport.hypergrid_node = Some(new_node.to_string());
-                                    println!(
+                                    debug!(
                                         "Spider: Server transport config updated successfully"
                                     );
-                                    println!(
+                                    debug!(
                                         "Spider: State should auto-save due to SaveOptions::OnDiff"
                                     );
                                 } else {
-                                    println!(
-                                        "Spider: WARNING - Could not find server with id: {}",
+                                    warn!(
+                                        "Spider: Could not find server with id: {}",
                                         server_id
                                     );
                                 }
@@ -3137,7 +3205,7 @@ impl SpiderState {
                 );
 
                 // Send the tool call to MCP server
-                println!(
+                debug!(
                     "Spider: Sending tool call {} to MCP server {} with request_id {}",
                     tool_name, server_id, request_id
                 );
@@ -3156,8 +3224,8 @@ impl SpiderState {
                     if let Some(response) = self.tool_responses.remove(&request_id) {
                         self.pending_mcp_requests.remove(&request_id);
 
-                        println!("[DEBUG] Tool response received:");
-                        println!("[DEBUG]   - response: {}", response);
+                        debug!("[DEBUG] Tool response received:");
+                        debug!("[DEBUG]   - response: {}", response);
 
                         // Parse the MCP result
                         if let Some(content) = response.get("content") {
@@ -3166,10 +3234,10 @@ impl SpiderState {
                                 success: true,
                             })
                             .unwrap();
-                            println!("[DEBUG]   - returning content result: {}", result);
+                            debug!("[DEBUG]   - returning content result: {}", result);
                             return Ok(result);
                         } else {
-                            println!("[DEBUG]   - returning full response: {}", response);
+                            debug!("[DEBUG]   - returning full response: {}", response);
                             return Ok(response);
                         }
                     }
@@ -3212,20 +3280,20 @@ impl SpiderState {
         tool_calls_json: &str,
         conversation_id: Option<String>,
     ) -> Result<Vec<ToolResult>, String> {
-        println!("[DEBUG] process_tool_calls called");
-        println!("[DEBUG]   tool_calls_json: {}", tool_calls_json);
+        debug!("[DEBUG] process_tool_calls called");
+        debug!("[DEBUG]   tool_calls_json: {}", tool_calls_json);
 
         let tool_calls: Vec<ToolCall> = serde_json::from_str(tool_calls_json)
             .map_err(|e| format!("Failed to parse tool calls: {}", e))?;
 
-        println!("[DEBUG]   Parsed {} tool calls", tool_calls.len());
+        debug!("[DEBUG]   Parsed {} tool calls", tool_calls.len());
         let mut results = Vec::new();
 
         for tool_call in tool_calls {
-            println!("[DEBUG]   Processing tool call:");
-            println!("[DEBUG]     - id: {}", tool_call.id);
-            println!("[DEBUG]     - tool_name: {}", tool_call.tool_name);
-            println!("[DEBUG]     - parameters: {}", tool_call.parameters);
+            debug!("[DEBUG]   Processing tool call:");
+            debug!("[DEBUG]     - id: {}", tool_call.id);
+            debug!("[DEBUG]     - tool_name: {}", tool_call.tool_name);
+            debug!("[DEBUG]     - parameters: {}", tool_call.parameters);
             // Find which MCP server has this tool and get its ID
             let server_id = self
                 .mcp_servers
@@ -3234,7 +3302,7 @@ impl SpiderState {
                 .map(|s| s.id.clone());
 
             let result = if let Some(server_id) = server_id {
-                println!("[DEBUG]     Found tool in server: {}", server_id);
+                debug!("[DEBUG]     Found tool in server: {}", server_id);
                 let params: Value = serde_json::from_str(&tool_call.parameters)
                     .unwrap_or(Value::Object(serde_json::Map::new()));
                 match self
@@ -3248,12 +3316,12 @@ impl SpiderState {
                 {
                     Ok(res) => {
                         let result_str = res.to_string();
-                        println!("[DEBUG]     Tool execution successful: {}", result_str);
+                        debug!("[DEBUG]     Tool execution successful: {}", result_str);
                         result_str
                     }
                     Err(e) => {
                         let error_str = format!(r#"{{"error":"{}"}}"#, e);
-                        println!("[DEBUG]     Tool execution error: {}", error_str);
+                        error!("[DEBUG]     Tool execution error: {}", error_str);
                         error_str
                     }
                 }
@@ -3262,7 +3330,7 @@ impl SpiderState {
                     r#"{{"error":"Tool {} not found in any connected MCP server"}}"#,
                     tool_call.tool_name
                 );
-                println!("[DEBUG]     {}", error_str);
+                warn!("[DEBUG]     {}", error_str);
                 error_str
             };
 
@@ -3272,7 +3340,7 @@ impl SpiderState {
             });
         }
 
-        println!("[DEBUG]   Returning {} tool results", results.len());
+        debug!("[DEBUG]   Returning {} tool results", results.len());
         Ok(results)
     }
 
@@ -3333,7 +3401,7 @@ impl SpiderState {
         let body = serde_json::to_string(message)
             .map_err(|e| format!("Failed to serialize message: {}", e))?;
 
-        println!("Spider: Calling hypergrid API with message: {}", body);
+        debug!("Spider: Calling hypergrid API with message: {}", body);
 
         // Make HTTP request
         use hyperware_process_lib::http::client::send_request_await_response;
@@ -3361,7 +3429,7 @@ impl SpiderState {
             .unwrap_or_else(|_| "Invalid UTF-8 response".to_string());
 
         let status_code = response.status().as_u16();
-        println!(
+        debug!(
             "Spider: Hypergrid API response (status {}): {}",
             status_code, response_text
         );

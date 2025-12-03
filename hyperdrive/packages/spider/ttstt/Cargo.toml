@@ -2,7 +2,6 @@
 anyhow = "1.0"
 async-trait = "0.1"
 base64 = "0.21"
-hyperapp_macro = "0.1.1"
 process_macros = "0.1"
 serde_json = "1.0"
 wit-bindgen = "0.42.1"
@@ -11,22 +10,26 @@ wit-bindgen = "0.42.1"
 features = ["serde"]
 version = "0.4"
 
+[dependencies.hyperapp_macro]
+git = "https://github.com/hyperware-ai/hyperapp-macro"
+rev = "5c7cc7a"
+
 [dependencies.hyperware-elevenlabs-tts]
 git = "https://github.com/hyperware-ai/hyperware-elevenlabs-tts"
-rev = "f9f49c5"
+rev = "1e15f92"
 
 [dependencies.hyperware-openai-stt]
 git = "https://github.com/hyperware-ai/hyperware-openai-ttstt"
-rev = "fb6ea25"
+rev = "0887b2b"
 
 [dependencies.hyperware-openai-tts]
 git = "https://github.com/hyperware-ai/hyperware-openai-ttstt"
-rev = "fb6ea25"
+rev = "0887b2b"
 
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
-rev = "1a6ad9d"
+rev = "41f25ce"
 
 [dependencies.serde]
 features = ["derive"]
