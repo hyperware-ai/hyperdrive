@@ -202,10 +202,7 @@ impl State {
     }
 
     // Core logic for fetching logs, creating cache files, and updating the manifest.
-    fn cache_logs_and_update_manifest(
-        &mut self,
-        provider: &eth::Provider,
-    ) -> anyhow::Result<()> {
+    fn cache_logs_and_update_manifest(&mut self, provider: &eth::Provider) -> anyhow::Result<()> {
         // Ensure batch size is determined
         if self.block_batch_size == 0 {
             self.determine_batch_size(provider)?;
