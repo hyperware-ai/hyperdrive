@@ -380,10 +380,7 @@ impl SpiderState {
                             server.name, node
                         );
                     } else {
-                        warn!(
-                            "Hypergrid server '{}' is not fully configured",
-                            server.name
-                        );
+                        warn!("Hypergrid server '{}' is not fully configured", server.name);
                     }
                 }
             }
@@ -627,10 +624,16 @@ impl SpiderState {
                                     #[cfg(feature = "public-mode")]
                                     {
                                         debug!("[RATE-LIMIT] Checking rate limit for chat message on channel {}", channel_id);
-                                        debug!("[RATE-LIMIT] Client IP address: {:?}", client.ip_address);
+                                        debug!(
+                                            "[RATE-LIMIT] Client IP address: {:?}",
+                                            client.ip_address
+                                        );
                                         if let Some(ref ip) = client.ip_address {
                                             if let Err(e) = self.check_rate_limit(ip) {
-                                                debug!("[RATE-LIMIT] Rate limit BLOCKED for {}: {}", ip, e);
+                                                debug!(
+                                                    "[RATE-LIMIT] Rate limit BLOCKED for {}: {}",
+                                                    ip, e
+                                                );
                                                 // Send structured error for frontend
                                                 let error = RateLimitError {
                                                     error_type: "OutOfRequests".to_string(),
@@ -720,10 +723,7 @@ impl SpiderState {
                                     self.active_chat_cancellation.get(&channel_id)
                                 {
                                     cancel_flag.store(true, Ordering::Relaxed);
-                                    debug!(
-                                        "Cancelling chat request for channel {}",
-                                        channel_id
-                                    );
+                                    debug!("Cancelling chat request for channel {}", channel_id);
 
                                     // Send cancellation confirmation
                                     let response = WsServerMessage::Status {
@@ -808,10 +808,7 @@ impl SpiderState {
             }
             WsMessageType::Close => {
                 // Handle connection close
-                debug!(
-                    "WebSocket connection closed for channel {}",
-                    channel_id
-                );
+                debug!("WebSocket connection closed for channel {}", channel_id);
 
                 // Find and disconnect the server
                 if let Some(conn) = self.ws_connections.remove(&channel_id) {
@@ -1419,7 +1416,10 @@ impl SpiderState {
             debug!("[RATE-LIMIT] HTTP /chat - client IP: {:?}", ip);
             if let Some(ref ip_addr) = ip {
                 if let Err(e) = self.check_rate_limit(ip_addr) {
-                    warn!("[RATE-LIMIT] HTTP /chat - rate limit BLOCKED for {}: {}", ip_addr, e);
+                    warn!(
+                        "[RATE-LIMIT] HTTP /chat - rate limit BLOCKED for {}: {}",
+                        ip_addr, e
+                    );
                     // Return structured error for frontend
                     let error = RateLimitError {
                         error_type: "OutOfRequests".to_string(),
@@ -1618,7 +1618,10 @@ impl SpiderState {
 
         // Check if we have HTTP context at all
         let http_req = get_http_request();
-        debug!("[RATE-LIMIT] HTTP request context exists: {}", http_req.is_some());
+        debug!(
+            "[RATE-LIMIT] HTTP request context exists: {}",
+            http_req.is_some()
+        );
 
         // First try X-Forwarded-For header (proxy scenario)
         let xff = get_request_header("X-Forwarded-For");
@@ -1660,7 +1663,10 @@ impl SpiderState {
         // Fallback to WebSocket channel address (for WS contexts)
         if let Some(ch_id) = channel_id {
             let ws_addr = get_ws_channel_addr(ch_id);
-            debug!("[RATE-LIMIT] WebSocket channel {} address: {:?}", ch_id, ws_addr);
+            debug!(
+                "[RATE-LIMIT] WebSocket channel {} address: {:?}",
+                ch_id, ws_addr
+            );
             if let Some(addr_str) = ws_addr {
                 // Parse socket address string to extract IP (format: "ip:port")
                 if let Some(ip) = addr_str.split(':').next() {
@@ -1684,7 +1690,10 @@ impl SpiderState {
         const WINDOW_SECONDS: u64 = 24 * 60 * 60; // 24 hours
 
         debug!("[RATE-LIMIT] check_rate_limit called for IP: {}", ip);
-        debug!("[RATE-LIMIT] Current ip_chat_counts keys: {:?}", self.ip_chat_counts.keys().collect::<Vec<_>>());
+        debug!(
+            "[RATE-LIMIT] Current ip_chat_counts keys: {:?}",
+            self.ip_chat_counts.keys().collect::<Vec<_>>()
+        );
 
         let now = Utc::now().timestamp() as u64;
         let cutoff = now - WINDOW_SECONDS;
@@ -1698,11 +1707,21 @@ impl SpiderState {
         // Remove expired timestamps
         let before_cleanup = timestamps.len();
         timestamps.retain(|&t| t > cutoff);
-        debug!("[RATE-LIMIT] Timestamps for {} after cleanup: {} (was {})", ip, timestamps.len(), before_cleanup);
+        debug!(
+            "[RATE-LIMIT] Timestamps for {} after cleanup: {} (was {})",
+            ip,
+            timestamps.len(),
+            before_cleanup
+        );
 
         // Check if limit exceeded
         if timestamps.len() >= MAX_CHATS_PER_DAY {
-            warn!("[RATE-LIMIT] RATE LIMIT EXCEEDED for {}: {} >= {}", ip, timestamps.len(), MAX_CHATS_PER_DAY);
+            warn!(
+                "[RATE-LIMIT] RATE LIMIT EXCEEDED for {}: {} >= {}",
+                ip,
+                timestamps.len(),
+                MAX_CHATS_PER_DAY
+            );
             return Err(format!(
                 "Rate limit exceeded: {} chats allowed per 24 hours. Try again later.",
                 MAX_CHATS_PER_DAY
@@ -1711,7 +1730,12 @@ impl SpiderState {
 
         // Record this chat
         timestamps.push(now);
-        debug!("[RATE-LIMIT] Recorded chat for {}. New count: {}/{}", ip, timestamps.len(), MAX_CHATS_PER_DAY);
+        debug!(
+            "[RATE-LIMIT] Recorded chat for {}. New count: {}/{}",
+            ip,
+            timestamps.len(),
+            MAX_CHATS_PER_DAY
+        );
         Ok(())
     }
 
@@ -3030,17 +3054,12 @@ impl SpiderState {
                                     server.transport.hypergrid_client_id =
                                         Some(new_client_id.to_string());
                                     server.transport.hypergrid_node = Some(new_node.to_string());
-                                    debug!(
-                                        "Spider: Server transport config updated successfully"
-                                    );
+                                    debug!("Spider: Server transport config updated successfully");
                                     debug!(
                                         "Spider: State should auto-save due to SaveOptions::OnDiff"
                                     );
                                 } else {
-                                    warn!(
-                                        "Spider: Could not find server with id: {}",
-                                        server_id
-                                    );
+                                    warn!("Spider: Could not find server with id: {}", server_id);
                                 }
 
                                 Ok(serde_json::to_value(ToolResponseContent {

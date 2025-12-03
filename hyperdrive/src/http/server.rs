@@ -974,7 +974,10 @@ fn get_forwarded_ip(headers: &warp::http::HeaderMap) -> Option<String> {
     }
 
     // Check Cf-Connecting-Ip (Cloudflare)
-    if let Some(cf_ip) = headers.get("Cf-Connecting-Ip").and_then(|v| v.to_str().ok()) {
+    if let Some(cf_ip) = headers
+        .get("Cf-Connecting-Ip")
+        .and_then(|v| v.to_str().ok())
+    {
         let trimmed = cf_ip.trim();
         if !trimmed.is_empty() {
             return Some(trimmed.to_string());
