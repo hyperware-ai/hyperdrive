@@ -41,9 +41,7 @@ const DEFAULT_RPC_URLS: &[&str] = &[
 /// Check if a hypermap entry is empty (stale provider data).
 /// Returns true if all fields are zero/empty.
 fn is_hypermap_entry_empty(entry: &getReturn) -> bool {
-    entry.tba == EthAddress::ZERO
-        && entry.owner == EthAddress::ZERO
-        && entry.data.is_empty()
+    entry.tba == EthAddress::ZERO && entry.owner == EthAddress::ZERO && entry.data.is_empty()
 }
 
 type RegistrationSender = mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>;
