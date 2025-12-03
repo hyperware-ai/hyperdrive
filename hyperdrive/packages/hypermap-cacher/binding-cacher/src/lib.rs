@@ -1496,6 +1496,7 @@ fn init(our: Address) {
             }
         },
         true,
+        None,
     );
     info!("hypermap-cacher is ready; continuing binding-cacher startup.");
 
