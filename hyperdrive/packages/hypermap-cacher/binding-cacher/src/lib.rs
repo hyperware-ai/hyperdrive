@@ -17,7 +17,7 @@ use crate::hyperware::process::binding_cacher::{
     BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
     BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
-use hyperware_process_lib::hyperapp::{wait_for_process_ready, WaitClassification};
+use hyperware_process_lib::{wait_for_process_ready, WaitClassification};
 use hyperware_process_lib::{
     await_message, bindings, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
@@ -1496,6 +1496,7 @@ fn init(our: Address) {
             }
         },
         true,
+        None, // max_attempts - None means unlimited
     );
     info!("hypermap-cacher is ready; continuing binding-cacher startup.");
 
