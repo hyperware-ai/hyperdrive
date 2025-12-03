@@ -1162,21 +1162,7 @@ async fn login_with_password(
         None => (0, tcp_networking.1),
     };
 
-    // Try each provider until one succeeds
-    let mut last_error = None;
-    for provider in providers.iter() {
-        match register::assign_routing(&mut our, provider, ws_port, tcp_port).await {
-            Ok(()) => {
-                last_error = None;
-                break;
-            }
-            Err(e) => {
-                last_error = Some(e);
-                continue;
-            }
-        }
-    }
-    if let Some(e) = last_error {
+    if let Err(e) = register::assign_routing(&mut our, &providers, ws_port, tcp_port).await {
         panic!("information used to boot does not match information onchain: {e}");
     }
 
