@@ -7,6 +7,7 @@
         "request_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys",
             "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
@@ -16,6 +17,7 @@
         "grant_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys",
             "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
