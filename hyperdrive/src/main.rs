@@ -486,11 +486,11 @@ async fn main() {
         // You might want to handle this error based on your needs
     }
 
-    // Create the cache_sources file with test content
-    let data_file_path = initfiles_dir.join("cache_sources");
-
     #[cfg(not(feature = "simulation-mode"))]
     {
+        // Create the cache_sources file with test content
+        let data_file_path = initfiles_dir.join("cache_sources");
+
         // Write cache_source_vector to cache_sources as JSON
         let cache_json = serde_json::to_string_pretty(&cache_source_vector)
             .expect("Failed to serialize cache_source_vector to JSON");

@@ -39,6 +39,7 @@ pub fn add_provider_to_config(
 }
 
 /// Extract unauthenticated RPC URLs from SavedConfigs
+#[cfg(not(feature = "simulation-mode"))]
 pub fn extract_rpc_url_providers_for_default_chain(
     saved_configs: &lib::eth::SavedConfigs,
 ) -> Vec<lib::eth::NodeOrRpcUrl> {
