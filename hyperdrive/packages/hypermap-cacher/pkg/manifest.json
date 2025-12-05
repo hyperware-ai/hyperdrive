@@ -7,16 +7,17 @@
         "request_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys",
             "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
             "timer:distro:sys",
-            "vfs:distro:sys",
-            "hypermap-cacher:hypermap-cacher:sys"
+            "vfs:distro:sys"
         ],
         "grant_capabilities": [
             "eth:distro:sys",
             "http-server:distro:sys",
+            "hypermap-cacher:hypermap-cacher:sys",
             "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
@@ -32,16 +33,17 @@
         "on_exit": "Restart",
         "request_networking": true,
         "request_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "eth:distro:sys",
             "http-server:distro:sys",
             "net:distro:sys",
             "sign:sign:sys",
             "terminal:terminal:sys",
             "timer:distro:sys",
-            "vfs:distro:sys",
-            "binding-cacher:hypermap-cacher:sys"
+            "vfs:distro:sys"
         ],
         "grant_capabilities": [
+            "binding-cacher:hypermap-cacher:sys",
             "eth:distro:sys",
             "http-server:distro:sys",
             "net:distro:sys",

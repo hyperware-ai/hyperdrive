@@ -68,7 +68,7 @@ use std::{
 wit_bindgen::generate!({
     path: "../target/wit",
     generate_unused_types: true,
-    world: "app-store-sys-v1",
+    world: "app-store-sys-v2",
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
 });
 
