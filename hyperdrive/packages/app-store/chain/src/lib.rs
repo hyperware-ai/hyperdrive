@@ -792,10 +792,8 @@ fn handle_local_request(state: &mut State, req: ChainRequest) -> anyhow::Result<
             let onchain_app = listing.map(|app| {
                 // Compute binding power for this app
                 // hypermap::namehash returns a hex String, use it directly
-                let namehash = hypermap::namehash(&format!(
-                    "{}.{}",
-                    pid.package_name, pid.publisher_node
-                ));
+                let namehash =
+                    hypermap::namehash(&format!("{}.{}", pid.package_name, pid.publisher_node));
                 let power = compute_app_total_binding_power(&state.db, &namehash, now)
                     .ok()
                     .map(|p| p.to_string());
@@ -842,10 +840,8 @@ fn handle_local_request(state: &mut State, req: ChainRequest) -> anyhow::Result<
             for pid in published_list {
                 if let Some(listing) = state.db.get_listing(&pid)? {
                     // hypermap::namehash returns a hex String, use it directly
-                    let namehash = hypermap::namehash(&format!(
-                        "{}.{}",
-                        pid.package_name, pid.publisher_node
-                    ));
+                    let namehash =
+                        hypermap::namehash(&format!("{}.{}", pid.package_name, pid.publisher_node));
                     let power = compute_app_total_binding_power(&state.db, &namehash, now)
                         .unwrap_or(U256::ZERO);
                     apps_with_power
