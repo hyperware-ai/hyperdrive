@@ -148,7 +148,8 @@ impl DB {
             db.set_last_bindings_block(0)?;
             db.set_version(DB_VERSION)?;
         } else if version == Some(1) {
-            // Migrate from version 1 to 2: binding tables already created above
+            // Migrate from version 1 to 2: re-index everything to populate app_namehashes
+            db.set_last_saved_block(0)?;
             db.set_last_bindings_block(0)?;
             db.set_version(DB_VERSION)?;
         }
