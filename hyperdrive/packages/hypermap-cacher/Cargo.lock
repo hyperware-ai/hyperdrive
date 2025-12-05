@@ -818,6 +818,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "binding-cacher"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-types",
+ "anyhow",
+ "chrono",
+ "hex",
+ "hyperware_process_lib",
+ "process_macros",
+ "rand 0.8.5",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1661,9 +1680,9 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.1.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f3abd008d22c3b96ee43300c4c8dffbf1d072a680a13635b5f9da11a0ce9395"
+checksum = "abe2b6795488c3f7d3410808cf7e29404725f862ad42a3822886464b92451a21"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1673,7 +1692,6 @@ dependencies = [
  "base64",
  "bincode",
  "color-eyre",
- "hex",
  "http",
  "mime_guess",
  "rand 0.8.5",
@@ -1681,7 +1699,6 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "sha3",
  "thiserror 1.0.69",
  "tracing",
  "tracing-error",

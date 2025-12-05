@@ -13,13 +13,13 @@ wit-bindgen = "0.42.1"
 features = ["serde"]
 version = "0.4"
 
-[dependencies.hyperprocess_macro]
-git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "98fac21"
+[dependencies.hyperapp_macro]
+git = "https://github.com/hyperware-ai/hyperapp-macro"
+rev = "5c7cc7a"
 
 [dependencies.hyperware-anthropic-sdk]
 git = "https://github.com/hyperware-ai/hyperware-anthropic-sdk"
-rev = "607bbc6"
+rev = "1fc7b0c"
 
 [dependencies.hyperware-parse-wit]
 path = "../crates/hyperware-parse-wit"
@@ -27,7 +27,7 @@ path = "../crates/hyperware-parse-wit"
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
-rev = "232fe25"
+rev = "41f25ce"
 
 [dependencies.serde]
 features = ["derive"]
@@ -45,6 +45,7 @@ features = ["serde"]
 version = "0.220.0"
 
 [features]
+public-mode = []
 simulation-mode = []
 
 [lib]

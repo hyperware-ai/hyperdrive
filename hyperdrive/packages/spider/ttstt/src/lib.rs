@@ -1,7 +1,6 @@
 // TTSTT - Text-to-Speech & Speech-to-Text Wrapper
 // Provides a unified interface for multiple TTS/STT providers
 
-use hyperprocess_macro::*;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     hyperapp::SaveOptions,
@@ -229,7 +228,6 @@ pub struct TtsttState {
     storage_initialized: bool,
 }
 
-// Helper methods (outside of hyperprocess impl block)
 impl TtsttState {
     // Helper: Validate API key and check permissions
     fn validate_api_key(&self, api_key: Option<String>, require_admin: bool) -> Result<(), String> {
@@ -672,7 +670,7 @@ impl TtsttState {
     }
 }
 
-#[hyperprocess(
+#[hyperapp_macro::hyperapp(
     name = "TTSTT",
     ui = Some(HttpBindingConfig::default()),
     ui_path = "ttstt-ui",

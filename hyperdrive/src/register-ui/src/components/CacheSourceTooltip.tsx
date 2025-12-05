@@ -6,7 +6,7 @@ export const CacheSourceTooltip: React.FC = () => {
         <Tooltip
             text={`
         Cache sources are nodes that provide cached hypermap data to improve performance.
-        These nodes store and serve frequently accessed blockchain data locally.
+        These nodes store and serve frequently accessed blockchain data locally.  They must be direct nodes.
         If unchecked, the system will use default cache sources.
       `}
         />
