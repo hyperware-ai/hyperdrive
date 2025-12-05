@@ -791,13 +791,11 @@ fn handle_local_request(state: &mut State, req: ChainRequest) -> anyhow::Result<
             let listing = state.db.get_listing(&pid)?;
             let onchain_app = listing.map(|app| {
                 // Compute binding power for this app
-                let namehash = format!(
-                    "0x{}",
-                    hex::encode(hypermap::namehash(&format!(
-                        "{}.{}",
-                        pid.package_name, pid.publisher_node
-                    )))
-                );
+                // hypermap::namehash returns a hex String, use it directly
+                let namehash = hypermap::namehash(&format!(
+                    "{}.{}",
+                    pid.package_name, pid.publisher_node
+                ));
                 let power = compute_app_total_binding_power(&state.db, &namehash, now)
                     .ok()
                     .map(|p| p.to_string());
@@ -812,15 +810,20 @@ fn handle_local_request(state: &mut State, req: ChainRequest) -> anyhow::Result<
             let mut apps_with_power: Vec<(OnchainApp, U256)> = listings
                 .into_iter()
                 .map(|(pid, listing)| {
-                    let namehash = format!(
-                        "0x{}",
-                        hex::encode(hypermap::namehash(&format!(
-                            "{}.{}",
-                            pid.package_name, pid.publisher_node
-                        )))
-                    );
+                    // hypermap::namehash returns a hex String, use it directly
+                    let namehash = hypermap::namehash(&format!(
+                        "{}.{}",
+                        pid.package_name, pid.publisher_node
+                    ));
                     let power = compute_app_total_binding_power(&state.db, &namehash, now)
                         .unwrap_or(U256::ZERO);
+                    print_to_terminal(
+                        2,
+                        &format!(
+                            "[DEBUG BINDING] GetApps: {}.{}\n  computed namehash: {}\n  binding_power: {}",
+                            pid.package_name, pid.publisher_node, namehash, power
+                        ),
+                    );
                     let app = listing.to_onchain_app(&pid, Some(power.to_string()));
                     (app, power)
                 })
@@ -838,13 +841,11 @@ fn handle_local_request(state: &mut State, req: ChainRequest) -> anyhow::Result<
             let mut apps_with_power: Vec<(OnchainApp, U256)> = Vec::new();
             for pid in published_list {
                 if let Some(listing) = state.db.get_listing(&pid)? {
-                    let namehash = format!(
-                        "0x{}",
-                        hex::encode(hypermap::namehash(&format!(
-                            "{}.{}",
-                            pid.package_name, pid.publisher_node
-                        )))
-                    );
+                    // hypermap::namehash returns a hex String, use it directly
+                    let namehash = hypermap::namehash(&format!(
+                        "{}.{}",
+                        pid.package_name, pid.publisher_node
+                    ));
                     let power = compute_app_total_binding_power(&state.db, &namehash, now)
                         .unwrap_or(U256::ZERO);
                     apps_with_power
@@ -1015,6 +1016,18 @@ fn handle_eth_log(
     if log.topics().len() >= 2 {
         let parenthash = log.topics()[1];
         let namehash_str = format!("0x{}", hex::encode(parenthash));
+        // hypermap::namehash returns a hex String, use it directly
+        let computed_namehash = hypermap::namehash(&format!(
+            "{}.{}",
+            package_id.package_name, package_id.publisher_node
+        ));
+        print_to_terminal(
+            2,
+            &format!(
+                "[DEBUG BINDING] handle_eth_log: storing app namehash\n  package_id: {}\n  stored (topics[1]): {}\n  computed_namehash: {}\n  match: {}",
+                package_id, namehash_str, computed_namehash, namehash_str == computed_namehash
+            ),
+        );
         state
             .db
             .insert_app_namehash(&namehash_str, &package_id, block_number)?;
@@ -1231,6 +1244,13 @@ fn handle_binding_log(state: &mut State, log: eth::Log) -> anyhow::Result<()> {
         let parsed = decode_bind_created_log(&log)
             .map_err(|e| anyhow::anyhow!("failed to decode BindCreated: {:?}", e))?;
         let namehash_str = format!("0x{}", hex::encode(parsed.namehash));
+        print_to_terminal(
+            2,
+            &format!(
+                "[DEBUG BINDING] handle_binding_log BindCreated:\n  user: {}\n  namehash: {}\n  amount: {}\n  end_time: {}",
+                parsed.user, namehash_str, parsed.amount, parsed.end_time
+            ),
+        );
         state.db.upsert_user_bind(
             &namehash_str,
             &parsed.user.to_string(),
@@ -1308,6 +1328,22 @@ fn compute_binding_power(value: U256, remaining_duration: u64) -> U256 {
 /// Compute total binding power for an app by summing across all user binds
 fn compute_app_total_binding_power(db: &DB, namehash: &str, now: u64) -> anyhow::Result<U256> {
     let binds = db.get_all_binds_for_app(namehash)?;
+    print_to_terminal(
+        2,
+        &format!(
+            "[DEBUG BINDING] compute_app_total_binding_power:\n  query namehash: {}\n  binds found: {}\n  now: {}",
+            namehash, binds.len(), now
+        ),
+    );
+    for bind in &binds {
+        print_to_terminal(
+            2,
+            &format!(
+                "  bind: user={}, amount={}, end_time={}",
+                bind.user_address, bind.amount, bind.end_time
+            ),
+        );
+    }
     let mut total = U256::ZERO;
 
     for bind in binds {
