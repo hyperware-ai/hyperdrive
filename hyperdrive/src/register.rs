@@ -38,6 +38,12 @@ const DEFAULT_RPC_URLS: &[&str] = &[
     "wss://base.gateway.tenderly.co",
 ];
 
+/// Check if a hypermap entry is empty (stale provider data).
+/// Returns true if all fields are zero/empty.
+fn is_hypermap_entry_empty(entry: &getReturn) -> bool {
+    entry.tba == EthAddress::ZERO && entry.owner == EthAddress::ZERO && entry.data.is_empty()
+}
+
 type RegistrationSender = mpsc::Sender<(Identity, Keyfile, Vec<u8>, Vec<String>, Vec<String>)>;
 
 /// Serve the registration page and receive POSTs and PUTs from it
@@ -470,17 +476,17 @@ async fn handle_boot(
                         )
                         .into_response());
                     };
-                    let owner = node_info.owner;
-
-                    // If owner is zero address, the provider likely has stale data.
+                    // If all fields are zero/empty, the provider likely has stale data.
                     // Try the next provider.
-                    if owner == EthAddress::ZERO {
+                    if is_hypermap_entry_empty(&node_info) {
                         println!(
-                            "Provider {} returned zero address for owner, trying next provider...\r",
+                            "Provider {} returned empty hypermap entry, trying next provider...\r",
                             provider_index
                         );
                         continue;
                     }
+
+                    let owner = node_info.owner;
 
                     let chain_id: u64 = 8453; // base
 
@@ -501,8 +507,7 @@ async fn handle_boot(
                     };
 
                     let hash = boot.eip712_signing_hash(&domain);
-                    let sig =
-                        Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
+                    let sig = Signature::from_str(&info.signature).map_err(|_| warp::reject())?;
 
                     let recovered_address = sig
                         .recover_address_from_prehash(&hash)
@@ -620,10 +625,9 @@ async fn handle_import_keyfile(
             }
         };
 
-    // Use the first provider for assign_routing
     if let Err(e) = assign_routing(
         &mut our,
-        &providers[0],
+        &providers,
         ws_networking_port,
         tcp_networking_port,
     )
@@ -718,10 +722,9 @@ async fn handle_login(
             Vec::new()
         };
 
-    // Use the first provider for assign_routing
     if let Err(e) = assign_routing(
         &mut our,
-        &providers[0],
+        &providers,
         ws_networking_port,
         tcp_networking_port,
     )
@@ -746,7 +749,7 @@ async fn handle_login(
 
 pub async fn assign_routing(
     our: &mut Identity,
-    provider: &RootProvider<PubSubFrontend>,
+    providers: &[RootProvider<PubSubFrontend>],
     ws_networking_port: (u16, bool),
     tcp_networking_port: (u16, bool),
 ) -> anyhow::Result<()> {
@@ -789,72 +792,110 @@ pub async fn assign_routing(
     let tx_input = TransactionInput::new(Bytes::from(multicall_call));
     let tx = TransactionRequest::default().to(multicall).input(tx_input);
 
-    let multicall_return = match provider.call(&tx).await {
-        Ok(multicall_return) => multicall_return,
-        Err(e) => {
-            return Err(anyhow::anyhow!(
-                "Failed to fetch node IP data from hypermap: {e}"
-            ))
+    let mut last_error = None;
+
+    for (provider_index, provider) in providers.iter().enumerate() {
+        let multicall_return = match provider.call(&tx).await {
+            Ok(multicall_return) => multicall_return,
+            Err(e) => {
+                println!(
+                    "Provider {} failed to fetch node IP data, trying next provider...\r",
+                    provider_index
+                );
+                last_error = Some(anyhow::anyhow!(
+                    "Failed to fetch node IP data from hypermap: {e}"
+                ));
+                continue;
+            }
+        };
+
+        let Ok(results) = aggregateCall::abi_decode_returns(&multicall_return, false) else {
+            println!(
+                "Provider {} returned invalid multicall data, trying next provider...\r",
+                provider_index
+            );
+            last_error = Some(anyhow::anyhow!("Failed to decode hypermap multicall data"));
+            continue;
+        };
+
+        let Ok(netkey) = getCall::abi_decode_returns(&results.returnData[0], false) else {
+            println!(
+                "Provider {} returned invalid netkey data, trying next provider...\r",
+                provider_index
+            );
+            last_error = Some(anyhow::anyhow!("Failed to decode netkey data"));
+            continue;
+        };
+
+        // If all fields are zero/empty, the provider likely has stale data.
+        // Try the next provider.
+        if is_hypermap_entry_empty(&netkey) {
+            println!(
+                "Provider {} returned empty netkey entry, trying next provider...\r",
+                provider_index
+            );
+            last_error = Some(anyhow::anyhow!(
+                "Provider returned empty hypermap entry (stale data)"
+            ));
+            continue;
         }
-    };
 
-    let Ok(results) = aggregateCall::abi_decode_returns(&multicall_return, false) else {
-        return Err(anyhow::anyhow!("Failed to decode hypermap multicall data"));
-    };
+        if netkey.data.to_string() != our.networking_key {
+            return Err(anyhow::anyhow!(
+                "Networking key from PKI ({}) does not match our saved networking key ({})",
+                netkey.data.to_string(),
+                our.networking_key
+            ));
+        }
 
-    let netkey = getCall::abi_decode_returns(&results.returnData[0], false)?;
-    let ws = getCall::abi_decode_returns(&results.returnData[1], false)?;
-    let tcp = getCall::abi_decode_returns(&results.returnData[2], false)?;
-    let ip = getCall::abi_decode_returns(&results.returnData[3], false)?;
+        // Successfully validated netkey, now decode the rest
+        let ws = getCall::abi_decode_returns(&results.returnData[1], false)?;
+        let tcp = getCall::abi_decode_returns(&results.returnData[2], false)?;
+        let ip = getCall::abi_decode_returns(&results.returnData[3], false)?;
 
-    let ip = keygen::bytes_to_ip(&ip.data);
-    let ws = keygen::bytes_to_port(&ws.data);
-    let tcp = keygen::bytes_to_port(&tcp.data);
+        let ip = keygen::bytes_to_ip(&ip.data);
+        let ws = keygen::bytes_to_port(&ws.data);
+        let tcp = keygen::bytes_to_port(&tcp.data);
 
-    if netkey.data.to_string() != our.networking_key {
-        return Err(anyhow::anyhow!(
-            "Networking key from PKI ({}) does not match our saved networking key ({})",
-            netkey.data.to_string(),
-            our.networking_key
-        ));
-    }
+        if !our.is_direct() {
+            // indirect node
+            return Ok(());
+        }
 
-    if !our.is_direct() {
-        // indirect node
+        if ip.is_ok() && (ws.is_ok() || tcp.is_ok()) {
+            // direct node
+            let mut ports = std::collections::BTreeMap::new();
+            if let Ok(ws) = ws {
+                if ws_networking_port.1 && ws != ws_networking_port.0 {
+                    return Err(anyhow::anyhow!(
+                        "Binary used --ws-port flag to set port to {}, but node is using port {} onchain.",
+                        ws_networking_port.0,
+                        ws
+                    ));
+                }
+                ports.insert("ws".to_string(), ws);
+            }
+            if let Ok(tcp) = tcp {
+                if tcp_networking_port.1 && tcp != tcp_networking_port.0 {
+                    return Err(anyhow::anyhow!(
+                        "Binary used --tcp-port flag to set port to {}, but node is using port {} onchain.",
+                        tcp_networking_port.0,
+                        tcp
+                    ));
+                }
+                ports.insert("tcp".to_string(), tcp);
+            }
+            our.routing = NodeRouting::Direct {
+                ip: ip.unwrap().to_string(),
+                ports,
+            };
+        }
+        // Success - return early
         return Ok(());
     }
 
-    if ip.is_ok() && (ws.is_ok() || tcp.is_ok()) {
-        // direct node
-        let mut ports = std::collections::BTreeMap::new();
-        if let Ok(ws) = ws {
-            if ws_networking_port.1 && ws != ws_networking_port.0 {
-                return Err(anyhow::anyhow!(
-                    "Binary used --ws-port flag to set port to {}, but node is using port {} onchain.",
-                    ws_networking_port.0,
-                    ws
-                ));
-            }
-            ports.insert("ws".to_string(), ws);
-        }
-        if let Ok(tcp) = tcp {
-            if tcp_networking_port.1 && tcp != tcp_networking_port.0 {
-                return Err(anyhow::anyhow!(
-                    "Binary used --tcp-port flag to set port to {}, but node is using port {} onchain.",
-                    tcp_networking_port.0,
-                    tcp
-                ));
-            }
-            ports.insert("tcp".to_string(), tcp);
-        }
-        our.routing = NodeRouting::Direct {
-            ip: ip.unwrap().to_string(),
-            ports,
-        };
-    } else {
-        // indirect node
-    }
-    Ok(())
+    // All providers failed
+    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("No providers available")))
 }
 
 async fn success_response(

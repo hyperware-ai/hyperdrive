@@ -10,34 +10,30 @@ wit-bindgen = "0.42.1"
 features = ["serde"]
 version = "0.4"
 
-[dependencies.hyperprocess_macro]
-git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "98fac21"
+[dependencies.hyperapp_macro]
+git = "https://github.com/hyperware-ai/hyperapp-macro"
+rev = "5c7cc7a"
 
 [dependencies.hyperware-elevenlabs-tts]
 git = "https://github.com/hyperware-ai/hyperware-elevenlabs-tts"
-rev = "65899de"
+rev = "1e15f92"
 
 [dependencies.hyperware-openai-stt]
 git = "https://github.com/hyperware-ai/hyperware-openai-ttstt"
-rev = "0e6bf83"
+rev = "0887b2b"
 
 [dependencies.hyperware-openai-tts]
 git = "https://github.com/hyperware-ai/hyperware-openai-ttstt"
-rev = "0e6bf83"
+rev = "0887b2b"
 
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
-rev = "232fe25"
+rev = "41f25ce"
 
 [dependencies.serde]
 features = ["derive"]
 version = "1.0"
-
-[dependencies.spider_caller_utils]
-optional = true
-path = "../target/spider-caller-utils"
 
 [dependencies.uuid]
 features = [
@@ -47,7 +43,6 @@ features = [
 version = "1.0"
 
 [features]
-caller-utils = ["spider_caller_utils"]
 simulation-mode = []
 
 [lib]

@@ -16,6 +16,11 @@ pub enum HttpServerRequest {
     WebSocketOpen {
         path: String,
         channel_id: u32,
+        #[serde(default)]
+        source_socket_addr: Option<String>,
+        /// IP address from proxy headers (X-Forwarded-For, X-Real-IP, Cf-Connecting-Ip)
+        #[serde(default)]
+        forwarded_for: Option<String>,
     },
     /// Processes can both SEND and RECEIVE this kind of request
     /// (send as [`HttpServerAction::WebSocketPush`]).

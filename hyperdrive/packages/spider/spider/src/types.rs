@@ -48,6 +48,8 @@ pub struct SpiderState {
     pub show_trial_key_notification: bool, // Flag to show trial key notification popup
     #[serde(skip)]
     pub tool_provider_registry: ToolProviderRegistry, // Registry for modular tool providers
+    #[serde(skip)]
+    pub ip_chat_counts: HashMap<String, Vec<u64>>, // IP -> list of chat timestamps (for public-mode rate limiting)
 }
 
 #[derive(Clone, Debug)]
@@ -80,6 +82,7 @@ pub(crate) struct ChatClient {
     pub(crate) api_key: String,
     pub(crate) conversation_id: Option<String>,
     pub(crate) connected_at: u64,
+    pub(crate) ip_address: Option<String>, // Client IP for rate limiting in public-mode
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -678,6 +681,14 @@ pub(crate) struct ToolResponseContentItem {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct ErrorRes {
     pub(crate) error: Value,
+}
+
+/// Rate limit error for public-mode (frontend can detect via error_type)
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct RateLimitError {
+    pub(crate) error_type: String, // "OutOfRequests"
+    pub(crate) message: String,
+    pub(crate) retry_after_seconds: Option<u64>,
 }
 
 // OAuth request types

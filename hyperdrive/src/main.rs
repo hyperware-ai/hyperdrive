@@ -486,11 +486,11 @@ async fn main() {
         // You might want to handle this error based on your needs
     }
 
-    // Create the cache_sources file with test content
-    let data_file_path = initfiles_dir.join("cache_sources");
-
     #[cfg(not(feature = "simulation-mode"))]
     {
+        // Create the cache_sources file with test content
+        let data_file_path = initfiles_dir.join("cache_sources");
+
         // Write cache_source_vector to cache_sources as JSON
         let cache_json = serde_json::to_string_pretty(&cache_source_vector)
             .expect("Failed to serialize cache_source_vector to JSON");
@@ -1162,21 +1162,7 @@ async fn login_with_password(
         None => (0, tcp_networking.1),
     };
 
-    // Try each provider until one succeeds
-    let mut last_error = None;
-    for provider in providers.iter() {
-        match register::assign_routing(&mut our, provider, ws_port, tcp_port).await {
-            Ok(()) => {
-                last_error = None;
-                break;
-            }
-            Err(e) => {
-                last_error = Some(e);
-                continue;
-            }
-        }
-    }
-    if let Some(e) = last_error {
+    if let Err(e) = register::assign_routing(&mut our, &providers, ws_port, tcp_port).await {
         panic!("information used to boot does not match information onchain: {e}");
     }
 
