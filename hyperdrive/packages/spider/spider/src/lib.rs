@@ -73,7 +73,7 @@ const TTSTT: (&str, &str, &str) = ("ttstt", "spider", "sys");
 
 #[hyperapp_macro::hyperapp(
     name = "Spider",
-    ui = Some(HttpBindingConfig::default()),
+    ui = Some(HttpBindingConfig::new(true, false, true, None)),
     endpoints = vec![
         Binding::Http {
             path: "/api",
