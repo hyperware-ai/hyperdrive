@@ -73,7 +73,7 @@ const TTSTT: (&str, &str, &str) = ("ttstt", "spider", "sys");
 
 #[hyperapp_macro::hyperapp(
     name = "Spider",
-    ui = Some(HttpBindingConfig::default()),
+    ui = Some(HttpBindingConfig::new(true, false, true, None)),
     endpoints = vec![
         Binding::Http {
             path: "/api",
@@ -1686,7 +1686,7 @@ impl SpiderState {
     /// Check rate limit for an IP address. Returns Ok(()) if allowed, Err with message if rate limited.
     #[cfg(feature = "public-mode")]
     fn check_rate_limit(&mut self, ip: &str) -> Result<(), String> {
-        const MAX_CHATS_PER_DAY: usize = 3;
+        const MAX_CHATS_PER_DAY: usize = 9;
         const WINDOW_SECONDS: u64 = 24 * 60 * 60; // 24 hours
 
         debug!("[RATE-LIMIT] check_rate_limit called for IP: {}", ip);
