@@ -44,9 +44,6 @@ const NavBar: React.FC = () => {
             <nav className="hidden md:flex items-center gap-2 self-stretch flex-wrap">
                 {lesBoutons}
             </nav>
-            <nav className="fixed md:hidden bottom-0 left-0 right-0 p-2 bg-iris flex items-center gap-2 justify-center flex-wrap z-20">
-                {lesBoutons}
-            </nav>
         </header>
     );
 };
