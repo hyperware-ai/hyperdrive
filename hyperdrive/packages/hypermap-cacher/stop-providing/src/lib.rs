@@ -4,7 +4,7 @@ use hyperware_process_lib::{call_init, println, Address, Request};
 
 wit_bindgen::generate!({
     path: "../target/wit",
-    world: "hypermap-cacher-sys-v1",
+    world: "hypermap-cacher-sys-v2",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
 });
