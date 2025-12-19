@@ -228,7 +228,7 @@ function CommitDotOsName({
     useEffect(() => {
         if (txConfirmed) {
             console.log("confirmed commit to .os name: ", name)
-            console.log("waiting 16 seconds to make commit valid...")
+            console.log("waiting 20 seconds to make commit valid...")
             setTimeout(() => {
                 setIsConfirmed(true);
                 setHnsName(`${name}.os`);
@@ -238,7 +238,7 @@ function CommitDotOsName({
                     setRouters(routersToUse);
                 }
                 navigate("/mint-os-name");
-            }, 16000)
+            }, 20000)
         }
     }, [txConfirmed, address, name, setHnsName, navigate, specifyRouters, customRouters, setRouters]);
 
@@ -250,7 +250,7 @@ function CommitDotOsName({
                         {isPending || isConfirming || (txConfirmed && !isConfirmed) ? (
                             <Loader msg={
                                 isConfirming ? 'Pre-committing to chosen name...' :
-                                    (txConfirmed && !isConfirmed) ? 'Waiting 15s for commit to become valid...' :
+                                    (txConfirmed && !isConfirmed) ? 'Waiting 20s for commit to become valid...' :
                                         'Please confirm the transaction in your wallet'
                             } />
                         ) : (

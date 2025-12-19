@@ -172,6 +172,9 @@ interface chain {
         metadata-hash: string,
         metadata: option<onchain-metadata>,
         auto-update: bool,
+        /// Total binding power for this app (sum of all user binds)
+        /// Computed dynamically based on remaining lock/bind duration
+        binding-power: option<string>,
     }
 
     /// Metadata associated with an on-chain app
@@ -405,8 +408,8 @@ interface downloads {
     }
 }
 
-/// The app-store-sys-v1 world, which includes the main, downloads, and chain interfaces
-world app-store-sys-v1 {
+/// The app-store-sys-v2 world, which includes the main, downloads, and chain interfaces
+world app-store-sys-v2 {
     import main;
     import downloads;
     import chain;

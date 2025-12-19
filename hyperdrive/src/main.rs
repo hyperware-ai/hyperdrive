@@ -486,11 +486,11 @@ async fn main() {
         // You might want to handle this error based on your needs
     }
 
-    // Create the cache_sources file with test content
-    let data_file_path = initfiles_dir.join("cache_sources");
-
     #[cfg(not(feature = "simulation-mode"))]
     {
+        // Create the cache_sources file with test content
+        let data_file_path = initfiles_dir.join("cache_sources");
+
         // Write cache_source_vector to cache_sources as JSON
         let cache_json = serde_json::to_string_pretty(&cache_source_vector)
             .expect("Failed to serialize cache_source_vector to JSON");
@@ -1151,22 +1151,20 @@ async fn login_with_password(
         },
     };
 
-    let provider = Arc::new(register::connect_to_provider_from_config(&eth_provider_config).await);
+    let providers = register::connect_to_providers(&eth_provider_config).await;
 
-    register::assign_routing(
-        &mut our,
-        provider,
-        match ws_networking.0 {
-            Some(listener) => (listener.local_addr().unwrap().port(), ws_networking.1),
-            None => (0, ws_networking.1),
-        },
-        match tcp_networking.0 {
-            Some(listener) => (listener.local_addr().unwrap().port(), tcp_networking.1),
-            None => (0, tcp_networking.1),
-        },
-    )
-    .await
-    .expect("information used to boot does not match information onchain");
+    let ws_port = match ws_networking.0 {
+        Some(listener) => (listener.local_addr().unwrap().port(), ws_networking.1),
+        None => (0, ws_networking.1),
+    };
+    let tcp_port = match tcp_networking.0 {
+        Some(listener) => (listener.local_addr().unwrap().port(), tcp_networking.1),
+        None => (0, tcp_networking.1),
+    };
+
+    if let Err(e) = register::assign_routing(&mut our, &providers, ws_port, tcp_port).await {
+        panic!("information used to boot does not match information onchain: {e}");
+    }
 
     tokio::fs::write(home_directory_path.join(".keys"), &disk_keyfile)
         .await

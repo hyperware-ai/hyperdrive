@@ -17,13 +17,13 @@ use crate::hyperware::process::binding_cacher::{
     BindingGetLogsByRangeRequest as GetLogsByRangeRequest, BindingLogsMetadata as WitLogsMetadata,
     BindingManifest as WitManifest, BindingManifestItem as WitManifestItem,
 };
-
 use hyperware_process_lib::{
     await_message, bindings, call_init, eth, get_state, http, hypermap,
     logging::{debug, error, info, init_logging, warn, Level},
     net::{NetAction, NetResponse},
     our, set_state, sign, timer, vfs, Address, ProcessId, Request, Response,
 };
+use hyperware_process_lib::{wait_for_process_ready, WaitClassification};
 
 wit_bindgen::generate!({
     path: "../target/wit",
@@ -202,16 +202,13 @@ impl State {
     }
 
     // Core logic for fetching logs, creating cache files, and updating the manifest.
-    fn cache_logs_and_update_manifest(
-        &mut self,
-        hypermap: &hypermap::Hypermap,
-    ) -> anyhow::Result<()> {
+    fn cache_logs_and_update_manifest(&mut self, provider: &eth::Provider) -> anyhow::Result<()> {
         // Ensure batch size is determined
         if self.block_batch_size == 0 {
-            self.determine_batch_size(hypermap)?;
+            self.determine_batch_size(provider)?;
         }
 
-        let current_chain_head = match hypermap.provider.get_block_number() {
+        let current_chain_head = match provider.get_block_number() {
             Ok(block_num) => block_num,
             Err(e) => {
                 error!(
@@ -231,7 +228,7 @@ impl State {
         }
 
         while self.last_cached_block != current_chain_head {
-            self.cache_logs_and_update_manifest_step(hypermap, Some(current_chain_head))?;
+            self.cache_logs_and_update_manifest_step(provider, Some(current_chain_head))?;
 
             std::thread::sleep(std::time::Duration::from_millis(LOG_ITERATION_DELAY_MS));
         }
@@ -241,7 +238,7 @@ impl State {
 
     fn cache_logs_and_update_manifest_step(
         &mut self,
-        hypermap: &hypermap::Hypermap,
+        provider: &eth::Provider,
         to_block: Option<u64>,
     ) -> anyhow::Result<()> {
         info!(
@@ -251,7 +248,7 @@ impl State {
 
         let current_chain_head = match to_block {
             Some(b) => b,
-            None => match hypermap.provider.get_block_number() {
+            None => match provider.get_block_number() {
                 Ok(block_num) => block_num,
                 Err(e) => {
                     error!(
@@ -290,7 +287,7 @@ impl State {
         let logs = {
             let mut attempt = 0;
             loop {
-                match hypermap.provider.get_logs(&filter) {
+                match provider.get_logs(&filter) {
                     Ok(logs) => break logs,
                     Err(e) => {
                         attempt += 1;
@@ -542,7 +539,7 @@ impl State {
     }
 
     // Bootstrap state from other nodes, then fallback to RPC
-    fn bootstrap_state(&mut self, hypermap: &hypermap::Hypermap) -> anyhow::Result<()> {
+    fn bootstrap_state(&mut self, provider: &eth::Provider) -> anyhow::Result<()> {
         info!("Starting state bootstrap process...");
 
         // Try to bootstrap from other nodes first
@@ -550,7 +547,7 @@ impl State {
             info!("Successfully bootstrapped from other nodes");
         }
 
-        self.try_bootstrap_from_rpc(hypermap)?;
+        self.try_bootstrap_from_rpc(provider)?;
 
         // Mark as no longer starting
         self.is_starting = false;
@@ -871,13 +868,13 @@ impl State {
     }
 
     // Determine optimal batch size dynamically
-    fn determine_batch_size(&mut self, hypermap: &hypermap::Hypermap) -> anyhow::Result<()> {
+    fn determine_batch_size(&mut self, provider: &eth::Provider) -> anyhow::Result<()> {
         if self.block_batch_size > 0 {
             // Already determined
             return Ok(());
         }
 
-        let current_block = match hypermap.provider.get_block_number() {
+        let current_block = match provider.get_block_number() {
             Ok(block_num) => block_num,
             Err(e) => {
                 error!("Failed to get current block number: {:?}", e);
@@ -910,7 +907,7 @@ impl State {
                 .from_block(from_block)
                 .to_block(eth::BlockNumberOrTag::Number(to_block));
 
-            match hypermap.provider.get_logs(&filter) {
+            match provider.get_logs(&filter) {
                 Ok(_) => {
                     // Success! This batch size works
                     self.block_batch_size = batch_size;
@@ -934,20 +931,20 @@ impl State {
     }
 
     // Fallback to RPC bootstrap - catch up from where we left off
-    fn try_bootstrap_from_rpc(&mut self, hypermap: &hypermap::Hypermap) -> anyhow::Result<()> {
+    fn try_bootstrap_from_rpc(&mut self, provider: &eth::Provider) -> anyhow::Result<()> {
         info!(
             "Bootstrapping from RPC, starting from block {}",
             self.last_cached_block + 1
         );
 
         // Catch up remainder (or as fallback) using RPC
-        self.cache_logs_and_update_manifest(hypermap)?;
+        self.cache_logs_and_update_manifest(provider)?;
 
         // run it twice for fresh boot case:
         // - initial bootstrap takes much time
         // - in that time, the block you are updating to is no longer the head of the chain
         // - so run again to get to the head of the chain
-        self.cache_logs_and_update_manifest(hypermap)?;
+        self.cache_logs_and_update_manifest(provider)?;
 
         Ok(())
     }
@@ -1323,7 +1320,7 @@ fn handle_request(
 fn main_loop(
     our: &Address,
     state: &mut State,
-    hypermap: &hypermap::Hypermap,
+    provider: &eth::Provider,
     server: &http::server::HttpServer,
 ) -> anyhow::Result<()> {
     info!(
@@ -1342,7 +1339,7 @@ fn main_loop(
 
     // Always bootstrap on start to get latest state from other nodes or RPC
     while state.is_starting {
-        match state.bootstrap_state(hypermap) {
+        match state.bootstrap_state(provider) {
             Ok(_) => info!("Bootstrap process completed successfully."),
             Err(e) => {
                 error!("Error during bootstrap process: {:?}", e);
@@ -1404,7 +1401,7 @@ fn main_loop(
                 if message.context() == Some(b"cache_cycle") {
                     info!("Cache timer triggered.");
                     state.is_cache_timer_live = false;
-                    match state.cache_logs_and_update_manifest(hypermap) {
+                    match state.cache_logs_and_update_manifest(provider) {
                         Ok(_) => info!("Periodic cache cycle complete."),
                         Err(e) => error!("Error during periodic cache cycle: {:?}", e),
                     }
@@ -1456,7 +1453,7 @@ fn init(our: Address) {
     let bind_config = http::server::HttpBindingConfig::default().authenticated(false);
     let mut server = http::server::HttpServer::new(5);
 
-    let hypermap_provider = hypermap::Hypermap::default(60);
+    let provider = eth::Provider::new(hypermap::HYPERMAP_CHAIN_ID, 60);
 
     server
         .bind_http_path("/manifest", bind_config.clone())
@@ -1474,8 +1471,34 @@ fn init(our: Address) {
 
     let mut state = State::load(&drive_path);
 
+    // Wait for hypermap-cacher to be ready before entering main loop
+    let cacher_addr = Address::new("our", ("hypermap-cacher", "hypermap-cacher", "sys"));
+    info!(
+        "Waiting for hypermap-cacher at {} to report ready before starting binding-cacher...",
+        cacher_addr
+    );
+    wait_for_process_ready(
+        cacher_addr,
+        b"\"GetStatus\"".to_vec(),
+        15,
+        2,
+        |body| {
+            let body_str = String::from_utf8_lossy(body);
+            if body_str.contains("IsStarting") || body_str.contains(r#""IsStarting""#) {
+                WaitClassification::Starting
+            } else if body_str.contains("GetStatus") || body_str.contains("last_cached_block") {
+                WaitClassification::Ready
+            } else {
+                WaitClassification::Unknown
+            }
+        },
+        true,
+        None,
+    );
+    info!("hypermap-cacher is ready; continuing binding-cacher startup.");
+
     loop {
-        match main_loop(&our, &mut state, &hypermap_provider, &server) {
+        match main_loop(&our, &mut state, &provider, &server) {
             Ok(()) => {
                 // main_loop should not exit with Ok in normal operation as it's an infinite loop.
                 error!("main_loop exited unexpectedly with Ok. Restarting.");

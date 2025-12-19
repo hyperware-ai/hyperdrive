@@ -76,12 +76,18 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       return;
     }
 
+    // Normalize query to avoid double slashes
+    let normalizedQuery = query || '';
+    if (normalizedQuery.startsWith('/') && app.path.endsWith('/')) {
+      normalizedQuery = normalizedQuery.slice(1);
+    }
+
     // Check if we need to open in a new tab (localhost)
     const isLocalhost = window.location.host.includes("localhost");
     if (isLocalhost) {
       console.log('[homepage] opening app in new tab:', { app });
       // don't use secure subdomain for localhost
-      const path = app.path.replace(/^(https?:\/\/)(.*)localhost/, '$1localhost') + (query || '');
+      const path = app.path.replace(/^(https?:\/\/)(.*)localhost/, '$1localhost') + normalizedQuery;
       console.log({ path })
       window.open(path, '_blank');
       set({ isAppDrawerOpen: false, isRecentAppsOpen: false });
@@ -100,7 +106,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
 
     let maybeSlash = '';
 
-    if (query && query[0] && query[0] !== '?' && query[0] !== '/') {
+    if (normalizedQuery && normalizedQuery[0] !== '?' && normalizedQuery[0] !== '/') {
         // autoprepend a slash for the window history when the query type is unknown
         console.log('autoprepended / to unknown query format');
         maybeSlash = '/'
@@ -110,13 +116,13 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
     window?.history?.pushState(
       { type: 'app', appId: app.id, previousAppId: currentAppId },
       '',
-      `#app-${app.id}${maybeSlash}${query || ''}`
+      `#app-${app.id}${maybeSlash}${normalizedQuery}`
     );
 
     if (existingApp) {
       set({
         runningApps: runningApps.map(rApp => {
-            const path  = `${app.path}${query || ''}`;
+            const path  = `${app.path}${normalizedQuery}`;
             console.log(path, rApp.id, app.id);
             if (rApp.id === app.id) {
                 console.log('found rApp')
@@ -135,7 +141,7 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       set({
         runningApps: [...runningApps, {
           ...app,
-          path: `${app.path}${query || ''}`,
+          path: `${app.path}${normalizedQuery}`,
           openedAt: Date.now()
         }],
         currentAppId: app.id,

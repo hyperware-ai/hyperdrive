@@ -258,18 +258,6 @@ if (typeof document !== 'undefined') {
                     .then(data => {
                         const container = document.getElementById('latest-apps');
                         container.innerHTML = '';
-                        // Sort to ensure dial, memedeck, dartfrog are first in that order
-                        const topApps = ['dial', 'memedeck', 'dartfrog'];
-                        data.sort((a, b) => {
-                            const aIndex = topApps.indexOf(a.package_id.package_name);
-                            const bIndex = topApps.indexOf(b.package_id.package_name);
-                            if (aIndex !== -1 && bIndex !== -1) {
-                                return aIndex - bIndex;
-                            }
-                            if (aIndex !== -1) return -1;
-                            if (bIndex !== -1) return 1;
-                            return 0;
-                        });
                         data.forEach(app => {
                             if (app.metadata) {
                                 const a = document.createElement('a');

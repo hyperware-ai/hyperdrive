@@ -22,6 +22,8 @@ type EnterNameProps = {
   triggerNameCheck: boolean;
   setTba?: React.Dispatch<React.SetStateAction<string>>;
   isReset?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
 };
 
 function EnterHnsName({
@@ -34,6 +36,8 @@ function EnterHnsName({
   triggerNameCheck,
   setTba,
   isReset = false,
+  readOnly = false,
+  disabled = false,
 }: EnterNameProps) {
   const client = usePublicClient();
   const debouncer = useRef<NodeJS.Timeout | null>(null);
@@ -118,6 +122,8 @@ function EnterHnsName({
   const noSpaces = (e: any) =>
     e.target.value.indexOf(" ") === -1 && setName(e.target.value);
 
+  const isLocked = readOnly || disabled;
+
   return (
     <div className="enter-hns-name">
       <div className="flex">
@@ -128,7 +134,10 @@ function EnterHnsName({
           required
           name="hns-name"
           placeholder="node-name"
-          className="grow rounded-r-none"
+          className={`grow rounded-r-none ${isLocked ? "bg-gray-200 dark:bg-slate-800 cursor-not-allowed" : ""}`}
+          readOnly={readOnly}
+          disabled={disabled}
+          aria-readonly={readOnly || undefined}
         />
         {fixedTlz && <span
           className="rounded-r-md p-2 bg-neon text-black"

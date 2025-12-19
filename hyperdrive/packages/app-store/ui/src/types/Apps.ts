@@ -13,6 +13,7 @@ export interface AppListing {
     metadata_hash: string
     metadata?: OnchainPackageMetadata
     auto_update: boolean
+    binding_power?: string  // Total binding power (U256 as string)
 }
 
 export type DownloadItem = {

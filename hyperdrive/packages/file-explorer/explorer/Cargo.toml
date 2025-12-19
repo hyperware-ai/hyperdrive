@@ -1,20 +1,17 @@
 [dependencies]
 anyhow = "1.0"
 md5 = "0.7"
+hyperapp_macro = "0.1.1"
 process_macros = "0.1"
 serde_json = "1.0"
 serde_urlencoded = "0.7"
 tracing = "0.1.37"
 wit-bindgen = "0.42.1"
 
-[dependencies.hyperprocess_macro]
-git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "66884c0"
-
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
-rev = "4beff93"
+rev = "1a6ad9d"
 
 [dependencies.serde]
 features = ["derive"]
