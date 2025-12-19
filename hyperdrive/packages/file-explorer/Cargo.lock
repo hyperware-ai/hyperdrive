@@ -1241,8 +1241,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "file_explorer_caller_utils",
- "hyperprocess_macro",
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=4beff93)",
+ "hyperapp_macro",
+ "hyperware_process_lib 2.2.0",
  "md5",
  "process_macros",
  "serde",
@@ -1307,7 +1307,7 @@ dependencies = [
  "anyhow",
  "futures",
  "futures-util",
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=4beff93)",
+ "hyperware_process_lib 2.2.0",
  "once_cell",
  "process_macros",
  "serde",
@@ -1330,9 +1330,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.1.4"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc5a4e564e38c699f2880d3fda590bedc2e69f3f84cd48b457bd892ce61d0aa9"
+checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
 dependencies = [
  "crc32fast",
  "miniz_oxide 0.8.9",
@@ -1682,11 +1682,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyperprocess_macro"
-version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=66884c0#66884c0a22b845d1db632f0fb8985a7e5bdad3fb"
+name = "hyperapp_macro"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e694a2a3dd6c4d1ba3ec2110b054dca52834ae10d98630b39efd7a59ed4887c8"
 dependencies = [
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=b9f1ead)",
+ "hyperware_process_lib 2.3.0",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -1695,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "hyperware_process_lib"
 version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=4beff93#4beff9389598978d2f97e4cd6d1d0f74a7acac0f"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d#1a6ad9d00e98bd6b268a7d434a7e78a0bb3cce7b"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1705,6 +1706,7 @@ dependencies = [
  "base64",
  "bincode",
  "color-eyre",
+ "futures-channel",
  "futures-util",
  "http",
  "mime_guess",
@@ -1724,8 +1726,9 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=b9f1ead#b9f1ead63356bfd4b60b337a380fef1be81d81c6"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abe2b6795488c3f7d3410808cf7e29404725f862ad42a3822886464b92451a21"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1735,6 +1738,7 @@ dependencies = [
  "base64",
  "bincode",
  "color-eyre",
+ "futures-channel",
  "futures-util",
  "http",
  "mime_guess",
@@ -3082,9 +3086,9 @@ dependencies = [
 
 [[package]]
 name = "simd-adler32"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
+checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
 
 [[package]]
 name = "slab"

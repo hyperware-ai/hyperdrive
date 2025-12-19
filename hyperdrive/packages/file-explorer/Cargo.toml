@@ -6,5 +6,6 @@ panic = "abort"
 [workspace]
 members = [
     "explorer",
+    "target/file-explorer-caller-util?",
 ]
 resolver = "2"

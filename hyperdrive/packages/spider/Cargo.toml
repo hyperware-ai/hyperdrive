@@ -7,5 +7,6 @@ panic = "abort"
 members = [
     "spider",
     "ttstt",
+    "target/spider-caller-util?",
 ]
 resolver = "2"

@@ -1703,9 +1703,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyperprocess_macro"
-version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=98fac21#98fac2177df21a39a0950d48b248e1b12013f7f0"
+name = "hyperapp_macro"
+version = "0.1.2"
+source = "git+https://github.com/hyperware-ai/hyperapp-macro?rev=5c7cc7a#5c7cc7a8dfb366bdc767d9dc3e2b954dc2cc786c"
 dependencies = [
  "hyperware_process_lib",
  "proc-macro2",
@@ -1716,7 +1716,7 @@ dependencies = [
 [[package]]
 name = "hyperware-anthropic-sdk"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperware-anthropic-sdk?rev=607bbc6#607bbc6da2601b06f13729a846ebe2419e1dcf6c"
+source = "git+https://github.com/hyperware-ai/hyperware-anthropic-sdk?rev=1fc7b0c#1fc7b0c1a0a8f6e8f706cf837bea8173c3198b31"
 dependencies = [
  "hyperware_process_lib",
  "rand 0.8.5",
@@ -1729,7 +1729,7 @@ dependencies = [
 [[package]]
 name = "hyperware-elevenlabs-tts"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperware-elevenlabs-tts?rev=65899de#65899dea2b081ff982404c687040dd0bc92ed917"
+source = "git+https://github.com/hyperware-ai/hyperware-elevenlabs-tts?rev=1e15f92#1e15f9299b4c5397e770904f97d23f7db4d68cc5"
 dependencies = [
  "http",
  "hyperware_process_lib",
@@ -1742,7 +1742,7 @@ dependencies = [
 [[package]]
 name = "hyperware-openai-stt"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperware-openai-ttstt?rev=0e6bf83#0e6bf834c39ebe3ab6624829848b50c83f18201f"
+source = "git+https://github.com/hyperware-ai/hyperware-openai-ttstt?rev=0887b2b#0887b2baa619503daa45c9cf07c9bd281c5352c0"
 dependencies = [
  "base64 0.22.1",
  "http",
@@ -1757,7 +1757,7 @@ dependencies = [
 [[package]]
 name = "hyperware-openai-tts"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperware-openai-ttstt?rev=0e6bf83#0e6bf834c39ebe3ab6624829848b50c83f18201f"
+source = "git+https://github.com/hyperware-ai/hyperware-openai-ttstt?rev=0887b2b#0887b2baa619503daa45c9cf07c9bd281c5352c0"
 dependencies = [
  "http",
  "hyperware_process_lib",
@@ -1780,7 +1780,7 @@ dependencies = [
 [[package]]
 name = "hyperware_process_lib"
 version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=232fe25#232fe2526f383c88efc2ef3a289deba2e193d68f"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=41f25ce#41f25ceb30935929416137162eb90f101dc720c5"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1790,6 +1790,7 @@ dependencies = [
  "base64 0.22.1",
  "bincode",
  "color-eyre",
+ "futures-channel",
  "futures-util",
  "http",
  "mime_guess",
@@ -3179,7 +3180,7 @@ dependencies = [
  "base64 0.21.7",
  "chrono",
  "http",
- "hyperprocess_macro",
+ "hyperapp_macro",
  "hyperware-anthropic-sdk",
  "hyperware-parse-wit",
  "hyperware_process_lib",
@@ -3640,7 +3641,7 @@ dependencies = [
  "async-trait",
  "base64 0.21.7",
  "chrono",
- "hyperprocess_macro",
+ "hyperapp_macro",
  "hyperware-elevenlabs-tts",
  "hyperware-openai-stt",
  "hyperware-openai-tts",
