@@ -13,6 +13,7 @@
 //!     reset:hypermap-cacher:sys alice.os bob.os      # Reset with custom nodes
 
 use crate::hyperware::process::binding_cacher::{BindingCacherRequest, BindingCacherResponse};
+use crate::hyperware::process::dao_cacher::{DaoCacherRequest, DaoCacherResponse};
 use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use hyperware_process_lib::{await_next_message_body, call_init, println, Address, Request};
 
@@ -42,6 +43,7 @@ fn init(_our: Address) {
         Some(nodes)
     };
     let binding_custom_nodes = custom_nodes.clone();
+    let dao_custom_nodes = custom_nodes.clone();
 
     let response = Request::to(("our", "hypermap-cacher", "hypermap-cacher", "sys"))
         .body(CacherRequest::Reset(custom_nodes))
@@ -81,6 +83,30 @@ fn init(_our: Address) {
             }
             _ => {
                 println!("✗ Unexpected response from binding-cacher");
+            }
+        },
+        Ok(Err(err)) => {
+            println!("✗ Request failed: {:?}", err);
+        }
+        Err(err) => {
+            println!("✗ Communication error: {:?}", err);
+        }
+    }
+
+    let response = Request::to(("our", "dao-cacher", "hypermap-cacher", "sys"))
+        .body(DaoCacherRequest::Reset(dao_custom_nodes))
+        .send_and_await_response(10); // Give it more time for reset operations
+
+    match response {
+        Ok(Ok(message)) => match message.body().try_into() {
+            Ok(DaoCacherResponse::Reset(Ok(msg))) => {
+                println!("✓ {}", msg);
+            }
+            Ok(DaoCacherResponse::Reset(Err(err))) => {
+                println!("✗ Failed to reset dao-cacher: {}", err);
+            }
+            _ => {
+                println!("✗ Unexpected response from dao-cacher");
             }
         },
         Ok(Err(err)) => {
