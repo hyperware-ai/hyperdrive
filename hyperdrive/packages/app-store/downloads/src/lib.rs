@@ -105,6 +105,7 @@ type ManualDownloads = HashMap<(PackageId, String), ManualDownloadStatus>;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct State {
     // persisted metadata about which packages we are mirroring
+    #[serde(default)]
     mirroring: HashSet<PackageId>,
     // note, pending auto_updates are not persisted.
 }
