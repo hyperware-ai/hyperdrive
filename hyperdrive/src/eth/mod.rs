@@ -241,6 +241,8 @@ type ActiveSubscriptions = Arc<DashMap<Address, HashMap<u64, ActiveSub>>>;
 
 type ResponseChannels = Arc<DashMap<u64, ProcessMessageSender>>;
 
+type LocalToRemoteSubs = Arc<DashMap<Address, HashMap<u64, u64>>>;
+
 #[derive(Debug)]
 enum ActiveSub {
     Local((tokio::sync::mpsc::Sender<bool>, JoinHandle<()>)),
@@ -295,8 +297,12 @@ struct ModuleState {
     providers: Providers,
     /// the set of active subscriptions we are currently maintaining
     active_subscriptions: ActiveSubscriptions,
+    /// map local subscription ids to remote ids (per requester)
+    local_to_remote_subs: LocalToRemoteSubs,
     /// the set of response channels we have open for outstanding request tasks
     response_channels: ResponseChannels,
+    /// last request time per node for rate limiting
+    last_request_by_node: Arc<DashMap<String, Instant>>,
     /// our sender for kernel event loop
     send_to_loop: MessageSender,
     /// our sender for terminal prints
@@ -386,7 +392,9 @@ pub async fn provider(
         access_settings,
         providers: Arc::new(DashMap::new()),
         active_subscriptions: Arc::new(DashMap::new()),
+        local_to_remote_subs: Arc::new(DashMap::new()),
         response_channels: Arc::new(DashMap::new()),
+        last_request_by_node: Arc::new(DashMap::new()),
         send_to_loop,
         print_tx,
         request_cache: Arc::new(Mutex::new(IndexMap::new())),
@@ -703,6 +711,21 @@ async fn handle_eth_action(
         }
     }
 
+    if km.source.node != *state.our {
+        let node_name = km.source.node.clone();
+        let prev = state
+            .last_request_by_node
+            .get(&node_name)
+            .map(|entry| *entry);
+        if let Some(prev) = prev {
+            let elapsed = Instant::now().duration_since(prev);
+            if elapsed < Duration::from_secs(1) {
+                tokio::time::sleep(Duration::from_secs(1) - elapsed).await;
+            }
+        }
+        state.last_request_by_node.insert(node_name, Instant::now());
+    }
+
     verbose_print(
         &state.print_tx,
         &format!(
@@ -741,8 +764,30 @@ async fn handle_eth_action(
         }
         EthAction::UnsubscribeLogs(sub_id) => {
             // Remove the subscription from the map first, releasing the guard
+            let mut resolved_sub_id = sub_id;
+            let mut had_mapping = false;
             let sub = {
                 let Some(mut sub_map) = state.active_subscriptions.get_mut(&km.source) else {
+                    if let Some(mut map) = state.local_to_remote_subs.get_mut(&km.source) {
+                        map.remove(&sub_id);
+                        let should_remove = map.is_empty();
+                        drop(map);
+                        if should_remove {
+                            state.local_to_remote_subs.remove(&km.source);
+                        }
+                        kernel_message(
+                            &state.our,
+                            km.id,
+                            km.rsvp.unwrap_or(km.source.clone()),
+                            None,
+                            false,
+                            None,
+                            EthResponse::Ok,
+                            &state.send_to_loop,
+                        )
+                        .await;
+                        return Ok(());
+                    }
                     verbose_print(
                         &state.print_tx,
                         &format!(
@@ -761,17 +806,57 @@ async fn handle_eth_action(
                     .await;
                     return Ok(());
                 };
-                sub_map.remove(&sub_id)
+                let mut sub = sub_map.remove(&sub_id);
+                if sub.is_none() {
+                    if let Some(remote_id) = state
+                        .local_to_remote_subs
+                        .get(&km.source)
+                        .and_then(|map| map.get(&sub_id).copied())
+                    {
+                        had_mapping = true;
+                        resolved_sub_id = remote_id;
+                        sub = sub_map.remove(&remote_id);
+                    }
+                }
+                sub
             }; // Guard is released here
 
             if let Some(sub) = sub {
+                if let Some(mut map) = state.local_to_remote_subs.get_mut(&km.source) {
+                    map.remove(&sub_id);
+                    let should_remove = map.is_empty();
+                    drop(map);
+                    if should_remove {
+                        state.local_to_remote_subs.remove(&km.source);
+                    }
+                }
                 // Now we can safely call close without holding the guard
-                sub.close(sub_id, state, false).await;
+                sub.close(resolved_sub_id, state, false).await;
                 verbose_print(
                     &state.print_tx,
                     &format!("eth: closed subscription {} for {}", sub_id, km.source.node),
                 )
                 .await;
+                kernel_message(
+                    &state.our,
+                    km.id,
+                    km.rsvp.unwrap_or(km.source.clone()),
+                    None,
+                    false,
+                    None,
+                    EthResponse::Ok,
+                    &state.send_to_loop,
+                )
+                .await;
+            } else if had_mapping {
+                if let Some(mut map) = state.local_to_remote_subs.get_mut(&km.source) {
+                    map.remove(&sub_id);
+                    let should_remove = map.is_empty();
+                    drop(map);
+                    if should_remove {
+                        state.local_to_remote_subs.remove(&km.source);
+                    }
+                }
                 kernel_message(
                     &state.our,
                     km.id,
