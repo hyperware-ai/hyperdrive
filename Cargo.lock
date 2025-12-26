@@ -6,22 +6,22 @@ version = 4
 name = "add-node-provider"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "add-rpcurl-provider"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -101,10 +101,10 @@ name = "alias"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -830,7 +830,7 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "bincode",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "rand 0.8.5",
  "serde",
@@ -839,7 +839,7 @@ dependencies = [
  "sha3",
  "url",
  "urlencoding 2.1.3",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
  "zip 1.1.4",
 ]
 
@@ -1059,6 +1059,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "auditable-serde"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c7bf8143dfc3c0258df908843e169b5cc5fcf76c7718bd66135ef4a9cd558c5"
+dependencies = [
+ "semver 1.0.26",
+ "serde",
+ "serde_json",
+ "topological-sort",
+]
+
+[[package]]
 name = "auto_impl"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1171,6 +1183,25 @@ dependencies = [
  "rustc-hash 2.1.1",
  "shlex",
  "syn 2.0.104",
+]
+
+[[package]]
+name = "binding-cacher"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-types",
+ "anyhow",
+ "chrono",
+ "hex",
+ "hyperware_process_lib 2.3.0",
+ "process_macros",
+ "rand 0.8.5",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -1450,10 +1481,10 @@ name = "cat"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -1514,7 +1545,8 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "bincode",
- "hyperware_process_lib 2.1.0",
+ "hex",
+ "hyperware_process_lib 2.2.1",
  "process_macros",
  "rand 0.8.5",
  "serde",
@@ -1523,7 +1555,7 @@ dependencies = [
  "sha3",
  "url",
  "urlencoding 2.1.3",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
  "zip 1.1.4",
 ]
 
@@ -1609,10 +1641,10 @@ name = "clear-state"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -1767,11 +1799,11 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 name = "contacts"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -2445,11 +2477,11 @@ name = "download"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -2457,7 +2489,7 @@ name = "downloads"
 version = "0.5.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "rand 0.8.5",
  "serde",
@@ -2466,7 +2498,7 @@ dependencies = [
  "sha3",
  "url",
  "urlencoding 2.1.3",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
  "zip 1.1.4",
 ]
 
@@ -2512,8 +2544,8 @@ dependencies = [
 name = "echo"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
- "wit-bindgen",
+ "hyperware_process_lib 2.3.0",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -2641,15 +2673,15 @@ name = "explorer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperprocess_macro 0.1.0 (git+https://github.com/hyperware-ai/hyperprocess-macro?rev=66884c0)",
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=4beff93)",
+ "hyperapp_macro 0.1.1",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d)",
  "md5",
  "process_macros",
  "serde",
  "serde_json",
  "serde_urlencoded",
  "tracing",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -2823,13 +2855,13 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "bincode",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "rand 0.8.5",
  "serde",
  "serde_json",
  "sha2",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
  "zip 1.1.4",
 ]
 
@@ -2999,21 +3031,21 @@ dependencies = [
 name = "get-block"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "get-providers"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -3208,8 +3240,8 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 name = "help"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
- "wit-bindgen",
+ "hyperware_process_lib 2.3.0",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -3232,21 +3264,21 @@ name = "hfetch"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "hi"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -3311,13 +3343,13 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "hex",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.2.1",
  "process_macros",
  "rmp-serde",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -3326,10 +3358,10 @@ version = "0.1.2"
 dependencies = [
  "anyhow",
  "bincode",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -3517,8 +3549,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperapp_macro"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e694a2a3dd6c4d1ba3ec2110b054dca52834ae10d98630b39efd7a59ed4887c8"
+dependencies = [
+ "hyperware_process_lib 2.3.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "hyperapp_macro"
+version = "0.1.2"
+source = "git+https://github.com/hyperware-ai/hyperapp-macro?rev=5c7cc7a#5c7cc7a8dfb366bdc767d9dc3e2b954dc2cc786c"
+dependencies = [
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=41f25ce)",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
 name = "hyperdrive"
-version = "1.8.3"
+version = "1.9.2"
 dependencies = [
  "aes-gcm",
  "alloy",
@@ -3578,7 +3633,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive_lib"
-version = "1.8.3"
+version = "1.9.2"
 dependencies = [
  "lib",
 ]
@@ -3593,43 +3648,21 @@ dependencies = [
  "anyhow",
  "chrono",
  "hex",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "rand 0.8.5",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
-]
-
-[[package]]
-name = "hyperprocess_macro"
-version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=66884c0#66884c0a22b845d1db632f0fb8985a7e5bdad3fb"
-dependencies = [
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=b9f1ead)",
- "proc-macro2",
- "quote",
- "syn 2.0.104",
-]
-
-[[package]]
-name = "hyperprocess_macro"
-version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=98fac21#98fac2177df21a39a0950d48b248e1b12013f7f0"
-dependencies = [
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=232fe25)",
- "proc-macro2",
- "quote",
- "syn 2.0.104",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "hyperware-anthropic-sdk"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperware-anthropic-sdk?rev=607bbc6#607bbc6da2601b06f13729a846ebe2419e1dcf6c"
+source = "git+https://github.com/hyperware-ai/hyperware-anthropic-sdk?rev=1fc7b0c#1fc7b0c1a0a8f6e8f706cf837bea8173c3198b31"
 dependencies = [
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=232fe25)",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=41f25ce)",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -3649,9 +3682,99 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.1.0"
+version = "2.2.0"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d#1a6ad9d00e98bd6b268a7d434a7e78a0bb3cce7b"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "base64 0.22.1",
+ "bincode",
+ "color-eyre",
+ "futures-channel",
+ "futures-util",
+ "http 1.3.1",
+ "mime_guess",
+ "rand 0.8.5",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
+ "url",
+ "uuid 1.17.0",
+ "wit-bindgen 0.42.1",
+]
+
+[[package]]
+name = "hyperware_process_lib"
+version = "2.2.0"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=41f25ce#41f25ceb30935929416137162eb90f101dc720c5"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "base64 0.22.1",
+ "bincode",
+ "color-eyre",
+ "futures-channel",
+ "futures-util",
+ "http 1.3.1",
+ "mime_guess",
+ "rand 0.8.5",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
+ "url",
+ "uuid 1.17.0",
+ "wit-bindgen 0.42.1",
+]
+
+[[package]]
+name = "hyperware_process_lib"
+version = "2.2.1"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=4e91521#4e915218b382e4b3f7f93cddeec30415f02a504b"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "base64 0.22.1",
+ "bincode",
+ "color-eyre",
+ "http 1.3.1",
+ "mime_guess",
+ "rand 0.8.5",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
+ "url",
+ "wit-bindgen 0.42.1",
+]
+
+[[package]]
+name = "hyperware_process_lib"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f3abd008d22c3b96ee43300c4c8dffbf1d072a680a13635b5f9da11a0ce9395"
+checksum = "abe2b6795488c3f7d3410808cf7e29404725f862ad42a3822886464b92451a21"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -3661,36 +3784,7 @@ dependencies = [
  "base64 0.22.1",
  "bincode",
  "color-eyre",
- "hex",
- "http 1.3.1",
- "mime_guess",
- "rand 0.8.5",
- "regex",
- "rmp-serde",
- "serde",
- "serde_json",
- "sha3",
- "thiserror 1.0.69",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "url",
- "wit-bindgen",
-]
-
-[[package]]
-name = "hyperware_process_lib"
-version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=232fe25#232fe2526f383c88efc2ef3a289deba2e193d68f"
-dependencies = [
- "alloy",
- "alloy-primitives",
- "alloy-sol-macro",
- "alloy-sol-types",
- "anyhow",
- "base64 0.22.1",
- "bincode",
- "color-eyre",
+ "futures-channel",
  "futures-util",
  "http 1.3.1",
  "mime_guess",
@@ -3705,67 +3799,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid 1.17.0",
- "wit-bindgen",
-]
-
-[[package]]
-name = "hyperware_process_lib"
-version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=4beff93#4beff9389598978d2f97e4cd6d1d0f74a7acac0f"
-dependencies = [
- "alloy",
- "alloy-primitives",
- "alloy-sol-macro",
- "alloy-sol-types",
- "anyhow",
- "base64 0.22.1",
- "bincode",
- "color-eyre",
- "futures-util",
- "http 1.3.1",
- "mime_guess",
- "rand 0.8.5",
- "regex",
- "rmp-serde",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "url",
- "uuid 1.17.0",
- "wit-bindgen",
-]
-
-[[package]]
-name = "hyperware_process_lib"
-version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=b9f1ead#b9f1ead63356bfd4b60b337a380fef1be81d81c6"
-dependencies = [
- "alloy",
- "alloy-primitives",
- "alloy-sol-macro",
- "alloy-sol-types",
- "anyhow",
- "base64 0.22.1",
- "bincode",
- "color-eyre",
- "futures-util",
- "http 1.3.1",
- "mime_guess",
- "rand 0.8.5",
- "regex",
- "rmp-serde",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "url",
- "uuid 1.17.0",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -3996,11 +4030,11 @@ name = "install"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -4257,16 +4291,16 @@ name = "kill"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "kit"
 version = "3.1.1"
-source = "git+https://github.com/hyperware-ai/kit?rev=0d0469e#0d0469ec89ce5ff8f25223e3d968cd5760554251"
+source = "git+https://github.com/hyperware-ai/kit?rev=3a4d666#3a4d66602bc3edec049bfa406f09005677adcf18"
 dependencies = [
  "alloy",
  "alloy-sol-macro",
@@ -4281,7 +4315,7 @@ dependencies = [
  "fs-err",
  "git2",
  "hex",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "nix 0.27.1",
  "proc-macro2",
  "regex",
@@ -4302,7 +4336,7 @@ dependencies = [
  "tracing-error",
  "tracing-subscriber",
  "walkdir",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
  "zip 0.6.6",
 ]
 
@@ -4335,7 +4369,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib"
-version = "1.8.3"
+version = "1.9.2"
 dependencies = [
  "alloy",
  "anyhow",
@@ -4555,11 +4589,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "regex",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -4726,10 +4760,10 @@ dependencies = [
 name = "net-diagnostics"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -4769,11 +4803,11 @@ dependencies = [
 name = "node-info"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -5154,20 +5188,20 @@ dependencies = [
 name = "peer"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "peers"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -5756,11 +5790,11 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 name = "remove-provider"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -5807,22 +5841,22 @@ dependencies = [
 name = "reset"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "reset-cache"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -5830,11 +5864,11 @@ name = "reset-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6344,11 +6378,11 @@ dependencies = [
 name = "set-nodes"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6357,12 +6391,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rmp-serde",
  "serde",
  "serde_json",
  "url",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6427,12 +6461,12 @@ name = "sign"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "rmp-serde",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6564,6 +6598,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "spdx"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3e17e880bafaeb362a7b751ec46bdc5b61445a188f80e0606e68167cd540fa3"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
 name = "spider"
 version = "0.1.0"
 dependencies = [
@@ -6571,10 +6614,10 @@ dependencies = [
  "base64 0.21.7",
  "chrono",
  "http 1.3.1",
- "hyperprocess_macro 0.1.0 (git+https://github.com/hyperware-ai/hyperprocess-macro?rev=98fac21)",
+ "hyperapp_macro 0.1.2",
  "hyperware-anthropic-sdk",
  "hyperware-parse-wit",
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=232fe25)",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=41f25ce)",
  "process_macros",
  "rmp-serde",
  "serde",
@@ -6582,7 +6625,7 @@ dependencies = [
  "sha2",
  "url",
  "uuid 1.17.0",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
  "wit-parser 0.220.1",
 ]
 
@@ -6628,22 +6671,22 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 name = "start-providing"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
 name = "state"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6673,11 +6716,11 @@ dependencies = [
 name = "stop-providing"
 version = "0.1.0"
 dependencies = [
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6863,12 +6906,12 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "bincode",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "rand 0.8.5",
  "regex",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -6877,12 +6920,12 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "bincode",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -7158,11 +7201,17 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
+
+[[package]]
+name = "topological-sort"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea68304e134ecd095ac6c3574494fc62b909f416c4fca77e440530221e549d3d"
 
 [[package]]
 name = "tower"
@@ -7520,11 +7569,11 @@ name = "uninstall"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "hyperware_process_lib 2.1.0",
+ "hyperware_process_lib 2.3.0",
  "process_macros",
  "serde",
  "serde_json",
- "wit-bindgen",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -7784,6 +7833,16 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
+version = "0.227.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80bb72f02e7fbf07183443b27b0f3d4144abf8c114189f2e088ed95b696a7822"
+dependencies = [
+ "leb128fmt",
+ "wasmparser 0.227.1",
+]
+
+[[package]]
+name = "wasm-encoder"
 version = "0.229.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38ba1d491ecacb085a2552025c10a675a6fddcbd03b1fc9b36c536010ce265d2"
@@ -7814,6 +7873,25 @@ dependencies = [
 
 [[package]]
 name = "wasm-metadata"
+version = "0.227.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce1ef0faabbbba6674e97a56bee857ccddf942785a336c8b47b42373c922a91d"
+dependencies = [
+ "anyhow",
+ "auditable-serde",
+ "flate2",
+ "indexmap",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "spdx",
+ "url",
+ "wasm-encoder 0.227.1",
+ "wasmparser 0.227.1",
+]
+
+[[package]]
+name = "wasm-metadata"
 version = "0.230.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a52e010df5494f4289ccc68ce0c2a8c17555225a5e55cc41b98f5ea28d0844b"
@@ -7831,6 +7909,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d07b6a3b550fefa1a914b6d54fc175dd11c3392da11eee604e6ffc759805d25"
 dependencies = [
  "bitflags 2.9.1",
+ "indexmap",
+ "semver 1.0.26",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.227.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f51cad774fb3c9461ab9bccc9c62dfb7388397b5deda31bf40e8108ccd678b2"
+dependencies = [
+ "bitflags 2.9.1",
+ "hashbrown 0.15.4",
  "indexmap",
  "semver 1.0.26",
 ]
@@ -8678,12 +8768,33 @@ dependencies = [
 
 [[package]]
 name = "wit-bindgen"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10fb6648689b3929d56bbc7eb1acf70c9a42a29eb5358c67c10f54dbd5d695de"
+dependencies = [
+ "wit-bindgen-rt 0.41.0",
+ "wit-bindgen-rust-macro 0.41.0",
+]
+
+[[package]]
+name = "wit-bindgen"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa5b79cd8cb4b27a9be3619090c03cbb87fe7b1c6de254b4c9b4477188828af8"
 dependencies = [
  "wit-bindgen-rt 0.42.1",
- "wit-bindgen-rust-macro",
+ "wit-bindgen-rust-macro 0.42.1",
+]
+
+[[package]]
+name = "wit-bindgen-core"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92fa781d4f2ff6d3f27f3cc9b74a73327b31ca0dc4a3ef25a0ce2983e0e5af9b"
+dependencies = [
+ "anyhow",
+ "heck 0.5.0",
+ "wit-parser 0.227.1",
 ]
 
 [[package]]
@@ -8708,6 +8819,17 @@ dependencies = [
 
 [[package]]
 name = "wit-bindgen-rt"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4db52a11d4dfb0a59f194c064055794ee6564eb1ced88c25da2cf76e50c5621"
+dependencies = [
+ "bitflags 2.9.1",
+ "futures",
+ "once_cell",
+]
+
+[[package]]
+name = "wit-bindgen-rt"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "051105bab12bc78e161f8dfb3596e772dd6a01ebf9c4840988e00347e744966a"
@@ -8715,6 +8837,22 @@ dependencies = [
  "bitflags 2.9.1",
  "futures",
  "once_cell",
+]
+
+[[package]]
+name = "wit-bindgen-rust"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d0809dc5ba19e2e98661bf32fc0addc5a3ca5bf3a6a7083aa6ba484085ff3ce"
+dependencies = [
+ "anyhow",
+ "heck 0.5.0",
+ "indexmap",
+ "prettyplease",
+ "syn 2.0.104",
+ "wasm-metadata 0.227.1",
+ "wit-bindgen-core 0.41.0",
+ "wit-component 0.227.1",
 ]
 
 [[package]]
@@ -8728,9 +8866,24 @@ dependencies = [
  "indexmap",
  "prettyplease",
  "syn 2.0.104",
- "wasm-metadata",
- "wit-bindgen-core",
- "wit-component",
+ "wasm-metadata 0.230.0",
+ "wit-bindgen-core 0.42.1",
+ "wit-component 0.230.0",
+]
+
+[[package]]
+name = "wit-bindgen-rust-macro"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad19eec017904e04c60719592a803ee5da76cb51c81e3f6fbf9457f59db49799"
+dependencies = [
+ "anyhow",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+ "wit-bindgen-core 0.41.0",
+ "wit-bindgen-rust 0.41.0",
 ]
 
 [[package]]
@@ -8744,8 +8897,27 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.104",
- "wit-bindgen-core",
- "wit-bindgen-rust",
+ "wit-bindgen-core 0.42.1",
+ "wit-bindgen-rust 0.42.1",
+]
+
+[[package]]
+name = "wit-component"
+version = "0.227.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "635c3adc595422cbf2341a17fb73a319669cc8d33deed3a48368a841df86b676"
+dependencies = [
+ "anyhow",
+ "bitflags 2.9.1",
+ "indexmap",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "wasm-encoder 0.227.1",
+ "wasm-metadata 0.227.1",
+ "wasmparser 0.227.1",
+ "wit-parser 0.227.1",
 ]
 
 [[package]]
@@ -8762,7 +8934,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "wasm-encoder 0.230.0",
- "wasm-metadata",
+ "wasm-metadata 0.230.0",
  "wasmparser 0.230.0",
  "wit-parser 0.230.0",
 ]
@@ -8783,6 +8955,24 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser 0.220.1",
+]
+
+[[package]]
+name = "wit-parser"
+version = "0.227.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddf445ed5157046e4baf56f9138c124a0824d4d1657e7204d71886ad8ce2fc11"
+dependencies = [
+ "anyhow",
+ "id-arena",
+ "indexmap",
+ "log",
+ "semver 1.0.26",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "unicode-xid",
+ "wasmparser 0.227.1",
 ]
 
 [[package]]
