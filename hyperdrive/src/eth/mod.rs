@@ -143,8 +143,11 @@ fn spawn_node_worker(
     tokio::spawn(async move {
         let mut next_allowed = Instant::now();
         loop {
-            match tokio::time::timeout(Duration::from_secs(REMOTE_QUEUE_IDLE_TIMEOUT_SECS), rx.recv())
-                .await
+            match tokio::time::timeout(
+                Duration::from_secs(REMOTE_QUEUE_IDLE_TIMEOUT_SECS),
+                rx.recv(),
+            )
+            .await
             {
                 Ok(Some(km)) => {
                     let now = Instant::now();
