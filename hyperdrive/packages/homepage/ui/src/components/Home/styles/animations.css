@@ -21,3 +21,91 @@
 .animate-slide-down {
   animation: slide-down 0.3s ease-out;
 }
+
+/* App launch - scale up with subtle blur clear */
+@keyframes app-launch {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* App close - scale down and fade */
+@keyframes app-close {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+}
+
+/* Staggered grid item entrance */
+@keyframes grid-item-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal entrance */
+@keyframes modal-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal backdrop fade with blur */
+@keyframes backdrop-enter {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* OmniButton idle pulse with neon glow */
+@keyframes omni-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--neon-green-light, rgba(220, 255, 113, 0.4));
+  }
+  50% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+/* Card entrance for RecentApps */
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) rotate(-2deg) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+.animate-card-enter {
+  animation: card-enter 0.35s var(--ease-out, cubic-bezier(0.0, 0.0, 0.2, 1)) both;
+}

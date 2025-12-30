@@ -430,6 +430,7 @@ export const HomeScreen: React.FC = () => {
                 >
                   {app ? (
                     <div
+                      className="dock-icon"
                       draggable
                       onDragStart={(e) => {
                         e.dataTransfer.setData('appId', app.id);
