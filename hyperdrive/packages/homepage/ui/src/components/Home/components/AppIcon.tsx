@@ -18,6 +18,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
 }) => {
   const { openApp } = useNavigationStore();
   const [isPressed, setIsPressed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handlePress = () => {
     if (!isEditMode && app.path && app.path !== null) {
@@ -25,19 +26,30 @@ export const AppIcon: React.FC<AppIconProps> = ({
     }
   };
 
+  // Calculate scale based on state priority: pressed > hovered > default
+  const getScale = () => {
+    if (isPressed) return 'scale(0.94)';
+    if (isHovered && !isEditMode && isFloating) return 'scale(1.08)';
+    return 'scale(1)';
+  };
+
   return (
     <div
-      className={classNames('app-icon relative flex gap-1 flex-col items-center justify-center  rounded-2xl cursor-pointer select-none transition-all', {
-        'scale-95': isPressed,
-        'scale-100': !isPressed,
+      className={classNames('app-icon relative flex gap-1 flex-col items-center justify-center rounded-2xl cursor-pointer select-none', {
         'animate-wiggle': isEditMode && isFloating,
-        'hover:scale-110': !isEditMode && isFloating,
         'opacity-50': !app.path && !(app.process && app.publisher) && !app.base64_icon,
         'p-2': isUndocked,
       })}
+      style={{
+        transform: getScale(),
+        transition: 'transform var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
+      }}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
-      onMouseLeave={() => setIsPressed(false)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => { setIsPressed(false); setIsHovered(false); }}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
       onClick={handlePress}
       data-app-id={app.id}
       data-app-path={app.path}
