@@ -2,6 +2,7 @@ use alloy::providers::{Provider, RootProvider};
 use alloy::pubsub::PubSubFrontend;
 use alloy::rpc::json_rpc::RpcError;
 use anyhow::Result;
+use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 use indexmap::IndexMap;
 use lib::types::core::*;
@@ -17,6 +18,13 @@ use utils::*;
 
 mod subscription;
 mod utils;
+
+const DELAY_MS: u64 = 1_000;
+const MAX_REQUEST_CACHE_LEN: usize = 500;
+const REMOTE_QUEUE_CAPACITY: usize = 100;
+const DELAYED_QUEUE_CAPACITY: usize = 1_000;
+const REMOTE_QUEUE_IDLE_TIMEOUT_SECS: u64 = 5;
+const REMOTE_REQUEST_DELAY_MS: u64 = 200;
 
 /// meta-type for all incoming requests we need to handle
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,6 +42,12 @@ enum IncomingReq {
 
 /// mapping of chain id to ordered lists of providers
 type Providers = Arc<DashMap<u64, ActiveProviders>>;
+/// existing subscriptions held by local OR remote processes
+type ActiveSubscriptions = Arc<DashMap<Address, HashMap<u64, ActiveSub>>>;
+type ResponseChannels = Arc<DashMap<u64, ProcessMessageSender>>;
+type LocalToRemoteSubs = Arc<DashMap<Address, HashMap<u64, u64>>>;
+type PerNodeQueues = Arc<DashMap<String, tokio::sync::mpsc::Sender<KernelMessage>>>;
+type RequestCache = Arc<Mutex<IndexMap<Vec<u8>, (EthResponse, Instant)>>>;
 
 #[derive(Debug)]
 struct ActiveProviders {
@@ -66,6 +80,41 @@ struct UrlProvider {
     pub method_failures: MethodFailures,
 }
 
+#[derive(Debug)]
+enum ActiveSub {
+    Local((tokio::sync::mpsc::Sender<bool>, JoinHandle<()>)),
+    Remote {
+        provider_node: String,
+        handle: JoinHandle<()>,
+        sender: tokio::sync::mpsc::Sender<EthSubResult>,
+    },
+}
+
+struct ModuleState {
+    /// the name of this node
+    our: Arc<String>,
+    /// the home directory path
+    home_directory_path: PathBuf,
+    /// the access settings for this provider
+    access_settings: AccessSettings,
+    /// the set of providers we have available for all chains
+    providers: Providers,
+    /// the set of active subscriptions we are currently maintaining
+    active_subscriptions: ActiveSubscriptions,
+    /// map local subscription ids to remote ids (per requester)
+    local_to_remote_subs: LocalToRemoteSubs,
+    /// per-node request queues for throttling
+    per_node_queues: PerNodeQueues,
+    /// the set of response channels we have open for outstanding request tasks
+    response_channels: ResponseChannels,
+    /// our sender for kernel event loop
+    send_to_loop: MessageSender,
+    /// our sender for terminal prints
+    print_tx: PrintSender,
+    /// cache of ETH requests
+    request_cache: RequestCache,
+}
+
 #[derive(Debug, Clone)]
 struct NodeProvider {
     /// NOT CURRENTLY USED
@@ -82,6 +131,85 @@ struct NodeProvider {
     pub last_health_check: Option<Instant>,
     /// method-specific failures
     pub method_failures: MethodFailures,
+}
+
+fn spawn_node_worker(
+    node_name: String,
+    mut rx: tokio::sync::mpsc::Receiver<KernelMessage>,
+    delayed_tx: tokio::sync::mpsc::Sender<KernelMessage>,
+    queues: PerNodeQueues,
+    sender: tokio::sync::mpsc::Sender<KernelMessage>,
+) {
+    tokio::spawn(async move {
+        let mut next_allowed = Instant::now();
+        loop {
+            match tokio::time::timeout(Duration::from_secs(REMOTE_QUEUE_IDLE_TIMEOUT_SECS), rx.recv())
+                .await
+            {
+                Ok(Some(km)) => {
+                    let now = Instant::now();
+                    if now < next_allowed {
+                        tokio::time::sleep(next_allowed - now).await;
+                    }
+                    if delayed_tx.send(km).await.is_err() {
+                        break;
+                    }
+                    next_allowed = Instant::now() + Duration::from_millis(REMOTE_REQUEST_DELAY_MS);
+                }
+                Ok(None) => {
+                    if let Some(entry) = queues.get(&node_name) {
+                        if entry.same_channel(&sender) {
+                            drop(entry);
+                            queues.remove(&node_name);
+                        }
+                    }
+                    break;
+                }
+                Err(_) => {
+                    if let Some(entry) = queues.get(&node_name) {
+                        if entry.same_channel(&sender) {
+                            drop(entry);
+                            queues.remove(&node_name);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    });
+}
+
+async fn enqueue_remote_request(
+    state: &ModuleState,
+    km: KernelMessage,
+    delayed_tx: tokio::sync::mpsc::Sender<KernelMessage>,
+) -> Result<(), EthError> {
+    let node_name = km.source.node.clone();
+    let sender = match state.per_node_queues.entry(node_name.clone()) {
+        Entry::Occupied(entry) => entry.get().clone(),
+        Entry::Vacant(entry) => {
+            let (tx, rx) = tokio::sync::mpsc::channel(REMOTE_QUEUE_CAPACITY);
+            entry.insert(tx.clone());
+            spawn_node_worker(
+                node_name,
+                rx,
+                delayed_tx,
+                state.per_node_queues.clone(),
+                tx.clone(),
+            );
+            tx
+        }
+    };
+    match sender.try_send(km) {
+        Ok(()) => {}
+        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+            return Err(EthError::RateLimited);
+        }
+        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+            return Err(EthError::RpcTimeout);
+        }
+    }
+    Ok(())
 }
 
 impl MethodFailures {
@@ -236,21 +364,6 @@ impl ActiveProviders {
     }
 }
 
-/// existing subscriptions held by local OR remote processes
-type ActiveSubscriptions = Arc<DashMap<Address, HashMap<u64, ActiveSub>>>;
-
-type ResponseChannels = Arc<DashMap<u64, ProcessMessageSender>>;
-
-#[derive(Debug)]
-enum ActiveSub {
-    Local((tokio::sync::mpsc::Sender<bool>, JoinHandle<()>)),
-    Remote {
-        provider_node: String,
-        handle: JoinHandle<()>,
-        sender: tokio::sync::mpsc::Sender<EthSubResult>,
-    },
-}
-
 impl ActiveSub {
     async fn close(&self, sub_id: u64, state: &ModuleState, is_error: bool) {
         match self {
@@ -283,32 +396,6 @@ impl ActiveSub {
         }
     }
 }
-
-struct ModuleState {
-    /// the name of this node
-    our: Arc<String>,
-    /// the home directory path
-    home_directory_path: PathBuf,
-    /// the access settings for this provider
-    access_settings: AccessSettings,
-    /// the set of providers we have available for all chains
-    providers: Providers,
-    /// the set of active subscriptions we are currently maintaining
-    active_subscriptions: ActiveSubscriptions,
-    /// the set of response channels we have open for outstanding request tasks
-    response_channels: ResponseChannels,
-    /// our sender for kernel event loop
-    send_to_loop: MessageSender,
-    /// our sender for terminal prints
-    print_tx: PrintSender,
-    /// cache of ETH requests
-    request_cache: RequestCache,
-}
-
-type RequestCache = Arc<Mutex<IndexMap<Vec<u8>, (EthResponse, Instant)>>>;
-
-const DELAY_MS: u64 = 1_000;
-const MAX_REQUEST_CACHE_LEN: usize = 500;
 
 /// TODO replace with alloy abstraction
 fn valid_method(method: &str) -> Option<&'static str> {
@@ -355,6 +442,7 @@ pub async fn provider(
     caps_oracle: CapMessageSender,
     print_tx: PrintSender,
 ) -> Result<()> {
+    let (delayed_tx, mut delayed_rx) = tokio::sync::mpsc::channel(DELAYED_QUEUE_CAPACITY);
     // load access settings if they've been persisted to disk
     // this merely describes whether our provider is available to other nodes
     // and if so, which nodes are allowed to access it (public/whitelist/blacklist)
@@ -386,6 +474,8 @@ pub async fn provider(
         access_settings,
         providers: Arc::new(DashMap::new()),
         active_subscriptions: Arc::new(DashMap::new()),
+        local_to_remote_subs: Arc::new(DashMap::new()),
+        per_node_queues: Arc::new(DashMap::new()),
         response_channels: Arc::new(DashMap::new()),
         send_to_loop,
         print_tx,
@@ -416,6 +506,40 @@ pub async fn provider(
                 ).await;
             }
             Some(km) = recv_in_client.recv() => {
+                if km.source.node != *state.our {
+                    let km_id = km.id;
+                    let response_target = km.rsvp.as_ref().unwrap_or(&km.source).clone();
+                    if let Err(e) = enqueue_remote_request(&state, km, delayed_tx.clone()).await {
+                        error_message(
+                            &state.our,
+                            km_id,
+                            response_target,
+                            e,
+                            &state.send_to_loop,
+                        )
+                        .await;
+                    }
+                } else {
+                    let km_id = km.id;
+                    let response_target = km.rsvp.as_ref().unwrap_or(&km.source).clone();
+                    if let Err(e) = handle_message(
+                        &mut state,
+                        km,
+                        &caps_oracle,
+                    )
+                    .await
+                    {
+                        error_message(
+                            &state.our,
+                            km_id,
+                            response_target,
+                            e,
+                            &state.send_to_loop
+                        ).await;
+                    };
+                }
+            }
+            Some(km) = delayed_rx.recv() => {
                 let km_id = km.id;
                 let response_target = km.rsvp.as_ref().unwrap_or(&km.source).clone();
                 if let Err(e) = handle_message(
@@ -741,8 +865,30 @@ async fn handle_eth_action(
         }
         EthAction::UnsubscribeLogs(sub_id) => {
             // Remove the subscription from the map first, releasing the guard
+            let mut resolved_sub_id = sub_id;
+            let mut had_mapping = false;
             let sub = {
                 let Some(mut sub_map) = state.active_subscriptions.get_mut(&km.source) else {
+                    if let Some(mut map) = state.local_to_remote_subs.get_mut(&km.source) {
+                        map.remove(&sub_id);
+                        let should_remove = map.is_empty();
+                        drop(map);
+                        if should_remove {
+                            state.local_to_remote_subs.remove(&km.source);
+                        }
+                        kernel_message(
+                            &state.our,
+                            km.id,
+                            km.rsvp.unwrap_or(km.source.clone()),
+                            None,
+                            false,
+                            None,
+                            EthResponse::Ok,
+                            &state.send_to_loop,
+                        )
+                        .await;
+                        return Ok(());
+                    }
                     verbose_print(
                         &state.print_tx,
                         &format!(
@@ -761,17 +907,57 @@ async fn handle_eth_action(
                     .await;
                     return Ok(());
                 };
-                sub_map.remove(&sub_id)
+                let mut sub = sub_map.remove(&sub_id);
+                if sub.is_none() {
+                    if let Some(remote_id) = state
+                        .local_to_remote_subs
+                        .get(&km.source)
+                        .and_then(|map| map.get(&sub_id).copied())
+                    {
+                        had_mapping = true;
+                        resolved_sub_id = remote_id;
+                        sub = sub_map.remove(&remote_id);
+                    }
+                }
+                sub
             }; // Guard is released here
 
             if let Some(sub) = sub {
+                if let Some(mut map) = state.local_to_remote_subs.get_mut(&km.source) {
+                    map.remove(&sub_id);
+                    let should_remove = map.is_empty();
+                    drop(map);
+                    if should_remove {
+                        state.local_to_remote_subs.remove(&km.source);
+                    }
+                }
                 // Now we can safely call close without holding the guard
-                sub.close(sub_id, state, false).await;
+                sub.close(resolved_sub_id, state, false).await;
                 verbose_print(
                     &state.print_tx,
                     &format!("eth: closed subscription {} for {}", sub_id, km.source.node),
                 )
                 .await;
+                kernel_message(
+                    &state.our,
+                    km.id,
+                    km.rsvp.unwrap_or(km.source.clone()),
+                    None,
+                    false,
+                    None,
+                    EthResponse::Ok,
+                    &state.send_to_loop,
+                )
+                .await;
+            } else if had_mapping {
+                if let Some(mut map) = state.local_to_remote_subs.get_mut(&km.source) {
+                    map.remove(&sub_id);
+                    let should_remove = map.is_empty();
+                    drop(map);
+                    if should_remove {
+                        state.local_to_remote_subs.remove(&km.source);
+                    }
+                }
                 kernel_message(
                     &state.our,
                     km.id,
@@ -835,7 +1021,7 @@ async fn handle_eth_action(
                     Ok(response) => {
                         if let EthResponse::Err(EthError::RpcError(_)) = response {
                             // try one more time after 1s delay in case RPC is rate limiting
-                            std::thread::sleep(std::time::Duration::from_millis(DELAY_MS));
+                            tokio::time::sleep(std::time::Duration::from_millis(DELAY_MS)).await;
                             match tokio::time::timeout(
                                 std::time::Duration::from_secs(timeout),
                                 fulfill_request(

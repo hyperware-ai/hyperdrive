@@ -120,6 +120,8 @@ pub enum EthError {
     RpcTimeout,
     /// RPC gave garbage back
     RpcMalformedResponse,
+    /// Request was rate limited before processing
+    RateLimited,
 }
 
 /// The action type used for configuring eth:distro:sys. Only processes which have the "root"
