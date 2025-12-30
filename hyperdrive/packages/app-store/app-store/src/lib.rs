@@ -147,8 +147,13 @@ fn handle_message(
                             response.send().unwrap();
                         }
                     }
-                    http::server::HttpServerRequest::WebSocketOpen { path, channel_id } => {
-                        http_server.handle_websocket_open(&path, channel_id);
+                    http::server::HttpServerRequest::WebSocketOpen {
+                        path,
+                        channel_id,
+                        source_socket_addr,
+                        forwarded_for,
+                    } => {
+                        http_server.handle_websocket_open(&path, channel_id, source_socket_addr, forwarded_for);
                     }
                     http::server::HttpServerRequest::WebSocketClose(channel_id) => {
                         http_server.handle_websocket_close(channel_id);

@@ -346,8 +346,18 @@ async fn get_unencrypted_info(
     keyfile: Option<Vec<u8>>,
     initial_cache_sources: Arc<Option<Vec<String>>>,
     initial_base_l2_providers: Arc<Option<Vec<String>>>,
-    provider: Arc<RootProvider<PubSubFrontend>>,
+    providers: Arc<Vec<RootProvider<PubSubFrontend>>>,
 ) -> Result<impl Reply, Rejection> {
+    let provider = match providers.as_ref().first() {
+        Some(provider) => provider,
+        None => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&"no providers available".to_string()),
+                StatusCode::SERVICE_UNAVAILABLE,
+            )
+            .into_response())
+        }
+    };
     let (name, allowed_routers, status_code) = match keyfile {
         Some(encoded_keyfile) => match keygen::get_username_and_routers(&encoded_keyfile) {
             Ok(k) => (Some(k.0), Some(k.1), StatusCode::OK),

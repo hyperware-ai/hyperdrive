@@ -1426,9 +1426,9 @@ fn main_loop(
 call_init!(init);
 fn init(our: Address) {
     init_logging(Level::INFO, Level::DEBUG, None, None, None).unwrap();
-    info!("Hypermap Binding Cacher process starting...");
+    info!("Hypermap DAO Cacher process starting...");
 
-    let drive_path = vfs::create_drive(our.package_id(), "binding-cache", None).unwrap();
+    let drive_path = vfs::create_drive(our.package_id(), "dao-cache", None).unwrap();
     // Create alternate drive for initfiles and read the test data
     let alt_drive_path = vfs::create_drive(our.package_id(), "initfiles", None).unwrap();
 
