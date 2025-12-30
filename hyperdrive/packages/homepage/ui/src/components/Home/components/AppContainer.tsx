@@ -10,6 +10,14 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
+
+  // Track when the app first becomes visible to trigger entrance animation
+  useEffect(() => {
+    if (isVisible && !hasAnimatedIn) {
+      setHasAnimatedIn(true);
+    }
+  }, [isVisible, hasAnimatedIn]);
 
   // Ensure we have a valid path
   const appUrl = useMemo(() => {
@@ -29,8 +37,13 @@ export const AppContainer: React.FC<AppContainerProps> = ({ app, isVisible }) =>
 
   return (
     <div
-      className={`app-container fixed inset-0 dark:bg-black bg-white z-30 transition-transform duration-300
-        ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}
+      className={`app-container fixed inset-0 dark:bg-black bg-white z-30
+        ${isVisible
+          ? hasAnimatedIn ? 'animate-app-launch' : 'opacity-0'
+          : 'pointer-events-none opacity-0 scale-95'}`}
+      style={{
+        transition: isVisible ? 'none' : 'opacity 0.2s ease-in, transform 0.2s ease-in',
+      }}
     >
       {hasError ? (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">

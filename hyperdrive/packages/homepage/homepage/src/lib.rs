@@ -63,6 +63,65 @@ enum NotificationsResponse {
     Err(String),
 }
 
+/// WebSocket message types sent to frontend
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "kind", content = "data")]
+#[serde(rename_all = "snake_case")]
+enum WsMessage {
+    AppsUpdate(Vec<WsApp>),
+}
+
+/// App data sent over WebSocket (mirrors HomepageApp in TypeScript)
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct WsApp {
+    id: String,
+    process: String,
+    package_name: String,
+    publisher: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
+    label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    base64_icon: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    widget: Option<String>,
+    order: u32,
+    favorite: bool,
+}
+
+impl From<&homepage::App> for WsApp {
+    fn from(app: &homepage::App) -> Self {
+        WsApp {
+            id: app.id.clone(),
+            process: app.process.clone(),
+            package_name: app.package_name.clone(),
+            publisher: app.publisher.clone(),
+            path: app.path.clone(),
+            label: app.label.clone(),
+            base64_icon: app.base64_icon.clone(),
+            widget: app.widget.clone(),
+            order: app.order,
+            favorite: app.favorite,
+        }
+    }
+}
+
+/// Helper function to broadcast app updates to all WebSocket clients
+fn broadcast_apps_update(
+    http_server: &server::HttpServer,
+    app_data: &BTreeMap<String, homepage::App>,
+) {
+    let apps: Vec<WsApp> = app_data.values().map(WsApp::from).collect();
+    let message = WsMessage::AppsUpdate(apps);
+    let json = serde_json::to_string(&message).unwrap();
+
+    http_server.ws_push_all_channels(
+        "/",
+        http::server::WsMessageType::Text,
+        LazyLoadBlob::new(Some("application/json"), json.into_bytes()),
+    );
+}
+
 wit_bindgen::generate!({
     path: "../target/wit",
     world: "homepage-sys-v1",
@@ -295,6 +354,10 @@ fn init(our: Address) {
         .bind_http_path("/api/notifications/test-vapid", http_config)
         .expect("failed to bind /api/notifications/test-vapid");
 
+    http_server
+        .bind_ws_path("/", server::WsBindingConfig::default())
+        .expect("failed to bind ws path");
+
     hyperware_process_lib::homepage::add_to_homepage(
         "Clock",
         None,
@@ -319,6 +382,23 @@ fn init(our: Address) {
                 let Ok(request) = http_server.parse_request(message.body()) else {
                     continue;
                 };
+                // Handle WebSocket events
+                match &request {
+                    http::server::HttpServerRequest::WebSocketOpen { path, channel_id } => {
+                        http_server.handle_websocket_open(path, *channel_id);
+                        continue;
+                    }
+                    http::server::HttpServerRequest::WebSocketClose(channel_id) => {
+                        http_server.handle_websocket_close(*channel_id);
+                        continue;
+                    }
+                    http::server::HttpServerRequest::WebSocketPush { .. } => {
+                        continue;
+                    }
+                    http::server::HttpServerRequest::Http(_) => {
+                        // Fall through to handle_request for HTTP
+                    }
+                }
                 http_server.handle_request(
                     request,
                     |incoming| {
@@ -955,11 +1035,13 @@ fn init(our: Address) {
                                     .contains(&message.source().process.to_string().as_str()),
                             },
                         );
+                        broadcast_apps_update(&http_server, &app_data);
                     }
                     homepage::Request::Remove => {
                         let id = message.source().process.to_string();
                         app_data.remove(&id);
                         persisted_app_order.remove(&id);
+                        broadcast_apps_update(&http_server, &app_data);
                     }
                     homepage::Request::RemoveOther(id) => {
                         // caps check
@@ -973,6 +1055,7 @@ fn init(our: Address) {
                         // end caps check
                         app_data.remove(&id);
                         persisted_app_order.remove(&id);
+                        broadcast_apps_update(&http_server, &app_data);
                     }
                     homepage::Request::GetApps => {
                         let apps = app_data.values().cloned().collect::<Vec<homepage::App>>();
