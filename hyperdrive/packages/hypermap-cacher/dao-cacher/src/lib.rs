@@ -32,7 +32,11 @@ wit_bindgen::generate!({
 
 const PROTOCOL_VERSION: &str = "0";
 const DEFAULT_BLOCK_BATCH_SIZE: u64 = 10;
-const DEFAULT_CACHE_INTERVAL_S: u64 = 3_600; // 2s / block -> 1hr ~ 1800 blocks
+// Cache cadence: faster in simulation, slower on real chains.
+#[cfg(feature = "simulation-mode")]
+const DEFAULT_CACHE_INTERVAL_S: u64 = 90;
+#[cfg(not(feature = "simulation-mode"))]
+const DEFAULT_CACHE_INTERVAL_S: u64 = 3_600; // 2s / block -> ~1hr (1800 blocks)
 const MAX_LOG_RETRIES: u8 = 3;
 const RETRY_DELAY_S: u64 = 10;
 const LOG_ITERATION_DELAY_MS: u64 = 200;
