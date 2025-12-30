@@ -46,6 +46,10 @@ const DEFAULT_NODES: &[&str] = &[
 #[cfg(feature = "simulation-mode")]
 const DEFAULT_NODES: &[&str] = &["fake.os"];
 
+fn default_nodes() -> Vec<String> {
+    DEFAULT_NODES.iter().map(|s| s.to_string()).collect()
+}
+
 // Internal representation of LogsMetadata, similar to WIT but for Rust logic.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct LogsMetadataInternal {
@@ -102,7 +106,9 @@ struct State {
     block_batch_size: u64,
     is_cache_timer_live: bool,
     drive_path: String,
+    #[serde(default)]
     is_providing: bool,
+    #[serde(default = "default_nodes")]
     nodes: Vec<String>,
     #[serde(skip)]
     is_starting: bool,

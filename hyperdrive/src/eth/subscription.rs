@@ -14,6 +14,7 @@ pub async fn create_new_subscription(
     let our = state.our.clone();
     let send_to_loop = state.send_to_loop.clone();
     let active_subscriptions = state.active_subscriptions.clone();
+    let local_to_remote_subs = state.local_to_remote_subs.clone();
     let providers = state.providers.clone();
     let response_channels = state.response_channels.clone();
     let print_tx = state.print_tx.clone();
@@ -71,6 +72,7 @@ pub async fn create_new_subscription(
                 let send_to_loop = send_to_loop.clone();
                 let print_tx = print_tx.clone();
                 let active_subscriptions = active_subscriptions.clone();
+                let local_to_remote_subs = local_to_remote_subs.clone();
                 let (close_sender, close_receiver) = tokio::sync::mpsc::channel(1);
                 match maybe_raw_sub {
                     Ok((rx, _chain_id)) => {
@@ -124,6 +126,10 @@ pub async fn create_new_subscription(
                         let (keepalive_err_sender, keepalive_err_receiver) =
                             tokio::sync::mpsc::channel(1);
                         response_channels.insert(keepalive_km_id, keepalive_err_sender);
+                        local_to_remote_subs
+                            .entry(target.clone())
+                            .or_insert(HashMap::new())
+                            .insert(sub_id, remote_sub_id);
                         subs.insert(
                             remote_sub_id,
                             ActiveSub::Remote {
@@ -140,6 +146,7 @@ pub async fn create_new_subscription(
                                         &target,
                                         &send_to_loop,
                                         &active_subscriptions,
+                                        &local_to_remote_subs,
                                         &response_channels,
                                     )
                                     .await;
@@ -456,6 +463,7 @@ async fn maintain_remote_subscription(
     target: &Address,
     send_to_loop: &MessageSender,
     active_subscriptions: &ActiveSubscriptions,
+    local_to_remote_subs: &LocalToRemoteSubs,
     response_channels: &ResponseChannels,
 ) -> EthSubError {
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
@@ -547,6 +555,14 @@ async fn maintain_remote_subscription(
         .and_modify(|sub_map| {
             sub_map.remove(&remote_sub_id);
         });
+    if let Some(mut map) = local_to_remote_subs.get_mut(target) {
+        map.remove(&sub_id);
+        let should_remove = map.is_empty();
+        drop(map);
+        if should_remove {
+            local_to_remote_subs.remove(target);
+        }
+    }
     response_channels.remove(&keepalive_km_id);
     e
 }

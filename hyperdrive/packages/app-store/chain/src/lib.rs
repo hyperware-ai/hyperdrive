@@ -733,43 +733,45 @@ fn handle_message(our: &Address, state: &mut State, message: &Message) -> anyhow
     } else {
         if message.source().process == "eth:distro:sys" {
             let eth_result = serde_json::from_slice::<eth::EthSubResult>(message.body())?;
-            if let Ok(eth::EthSub { id, result }) = eth_result {
-                if let Ok(eth::SubscriptionResult::Log(ref log)) =
-                    serde_json::from_value::<eth::SubscriptionResult>(result)
-                {
-                    // Determine which subscription this is from
-                    // Note: log is Box<eth::Log>, we need to dereference it
-                    let log_ref: &eth::Log = &**log;
-                    let context = if id == SUBSCRIPTION_NUMBER {
-                        LogContext::Hypermap(log_ref.clone())
-                    } else if id == BINDINGS_SUBSCRIPTION {
-                        LogContext::Bindings(log_ref.clone())
-                    } else {
-                        return Ok(false); // Unknown subscription
-                    };
-                    // delay handling of ETH RPC subscriptions by DELAY_MS
-                    // to allow hns to have a chance to process block
-                    timer::set_timer(DELAY_MS, Some(serde_json::to_vec(&context)?));
+            match eth_result {
+                Ok(eth::EthSub { id, result }) => {
+                    if let Ok(eth::SubscriptionResult::Log(ref log)) =
+                        serde_json::from_value::<eth::SubscriptionResult>(result)
+                    {
+                        // Determine which subscription this is from
+                        // Note: log is Box<eth::Log>, we need to dereference it
+                        let log_ref: &eth::Log = &**log;
+                        let context = if id == SUBSCRIPTION_NUMBER {
+                            LogContext::Hypermap(log_ref.clone())
+                        } else if id == BINDINGS_SUBSCRIPTION {
+                            LogContext::Bindings(log_ref.clone())
+                        } else {
+                            return Ok(false); // Unknown subscription
+                        };
+                        // delay handling of ETH RPC subscriptions by DELAY_MS
+                        // to allow hns to have a chance to process block
+                        timer::set_timer(DELAY_MS, Some(serde_json::to_vec(&context)?));
+                    }
                 }
-            } else {
-                // unsubscribe to make sure we have cleaned up after ourselves;
-                //  drop Result since we don't care if no subscription exists,
-                //  just being diligent in case it does!
-                let _ = state.hypermap.provider.unsubscribe(SUBSCRIPTION_NUMBER);
-                let _ = state.bindings.provider.unsubscribe(BINDINGS_SUBSCRIPTION);
-                // re-subscribe if error
-                state.hypermap.provider.subscribe_loop(
-                    SUBSCRIPTION_NUMBER,
-                    app_store_filter(state),
-                    1,
-                    0,
-                );
-                state.bindings.provider.subscribe_loop(
-                    BINDINGS_SUBSCRIPTION,
-                    bindings_filter(&state.bindings),
-                    1,
-                    0,
-                );
+                Err(err) => {
+                    if err.id == SUBSCRIPTION_NUMBER {
+                        let _ = state.hypermap.provider.unsubscribe(SUBSCRIPTION_NUMBER);
+                        state.hypermap.provider.subscribe_loop(
+                            SUBSCRIPTION_NUMBER,
+                            app_store_filter(state),
+                            1,
+                            0,
+                        );
+                    } else if err.id == BINDINGS_SUBSCRIPTION {
+                        let _ = state.bindings.provider.unsubscribe(BINDINGS_SUBSCRIPTION);
+                        state.bindings.provider.subscribe_loop(
+                            BINDINGS_SUBSCRIPTION,
+                            bindings_filter(&state.bindings),
+                            1,
+                            0,
+                        );
+                    }
+                }
             }
         } else {
             let req = serde_json::from_slice::<ChainRequest>(message.body())?;
