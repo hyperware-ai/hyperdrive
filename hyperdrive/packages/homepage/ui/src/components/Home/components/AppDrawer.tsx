@@ -33,7 +33,7 @@ export const AppDrawer: React.FC = () => {
 
   return (
     <div
-      className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col"
+      className="app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl z-50 flex flex-col animate-modal-backdrop"
       onClick={toggleAppDrawer}
     >
       <div className="px-2 py-1 self-stretch flex items-center gap-2">
@@ -59,10 +59,11 @@ export const AppDrawer: React.FC = () => {
           'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6': filteredApps.length > 0,
           'grid-cols-2': filteredApps.length === 0,
         })}>
-          {filteredApps.map(app => (
+          {filteredApps.map((app, index) => (
             <div
               key={app.id}
-              className="relative group"
+              className="relative group animate-grid-enter"
+              style={{ '--item-index': index } as React.CSSProperties}
               data-app-id={app.id}
             >
               <div onClick={(e) => {
