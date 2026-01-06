@@ -45,12 +45,14 @@ function App() {
       try {
         const infoResponse = await fetch('/info', { method: 'GET', credentials: 'include' })
 
+        const info: InfoResponse | null = await infoResponse.json().catch(() => null)
+
         if (infoResponse.status > 399) {
           console.log('no info, unbooted')
-        } else {
-          const info: InfoResponse = await infoResponse.json()
+        }
 
-          if (initialVisit) {
+        if (info) {
+          if (infoResponse.status < 400 && initialVisit) {
             if (info.name) {
               setHnsName(info.name)
             }
@@ -64,7 +66,6 @@ function App() {
           // Set detected IP address if available
           if (info.detected_ip_address) {
             setDirectNodeIp(info.detected_ip_address)
-            console.log('IPv4 Address:', info.detected_ip_address)
           }
         }
       } catch {
@@ -88,6 +89,7 @@ function App() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => setNavigateToLogin(false), [initialVisit])
+
 
 
   // just pass all the props each time since components won't mind extras
