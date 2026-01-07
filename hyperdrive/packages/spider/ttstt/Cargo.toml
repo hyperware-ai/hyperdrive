@@ -35,6 +35,10 @@ rev = "41f25ce"
 features = ["derive"]
 version = "1.0"
 
+[dependencies.spider_caller_utils]
+optional = true
+path = "../target/spider-caller-utils"
+
 [dependencies.uuid]
 features = [
     "v4",
@@ -43,6 +47,7 @@ features = [
 version = "1.0"
 
 [features]
+caller-utils = ["spider_caller_utils"]
 simulation-mode = []
 
 [lib]

@@ -1,10 +1,11 @@
 use crate::hyperware::process::binding_cacher::{BindingCacherRequest, BindingCacherResponse};
+use crate::hyperware::process::dao_cacher::{DaoCacherRequest, DaoCacherResponse};
 use crate::hyperware::process::hypermap_cacher::{CacherRequest, CacherResponse};
 use hyperware_process_lib::{call_init, println, Address, Request};
 
 wit_bindgen::generate!({
     path: "../target/wit",
-    world: "hypermap-cacher-sys-v1",
+    world: "hypermap-cacher-sys-v2",
     generate_unused_types: true,
     additional_derives: [serde::Deserialize, serde::Serialize, process_macros::SerdeJsonInto],
 });
@@ -53,6 +54,32 @@ fn init(_our: Address) {
             }
             _ => {
                 println!("✗ Unexpected response from binding-cacher");
+            }
+        },
+        Ok(Err(err)) => {
+            println!("✗ Request failed: {:?}", err);
+        }
+        Err(err) => {
+            println!("✗ Communication error: {:?}", err);
+        }
+    }
+
+    println!("Disabling dao-cacher provider mode...");
+
+    let response = Request::to(("our", "dao-cacher", "hypermap-cacher", "sys"))
+        .body(DaoCacherRequest::StopProviding)
+        .send_and_await_response(5);
+
+    match response {
+        Ok(Ok(message)) => match message.body().try_into() {
+            Ok(DaoCacherResponse::StopProviding(Ok(msg))) => {
+                println!("✓ {}", msg);
+            }
+            Ok(DaoCacherResponse::StopProviding(Err(err))) => {
+                println!("✗ Failed to disable dao-cacher provider mode: {}", err);
+            }
+            _ => {
+                println!("✗ Unexpected response from dao-cacher");
             }
         },
         Ok(Err(err)) => {

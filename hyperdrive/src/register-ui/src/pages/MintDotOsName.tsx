@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
@@ -14,15 +13,16 @@ import { base } from 'viem/chains'
 interface RegisterOsNameProps extends PageProps { }
 
 function MintDotOsName({
-  direct,
-  hnsName,
-  setNetworkingKey,
-  setIpAddress,
-  setWsPort,
-  setTcpPort,
-  setRouters,
-  routers,
-}: RegisterOsNameProps) {
+                         direct,
+                         directNodeIp,
+                         hnsName,
+                         setNetworkingKey,
+                         setIpAddress,
+                         setWsPort,
+                         setTcpPort,
+                         setRouters,
+                         routers,
+                       }: RegisterOsNameProps) {
   let { address } = useAccount();
   let navigate = useNavigate();
   let { openConnectModal } = useConnectModal();
@@ -76,6 +76,7 @@ function MintDotOsName({
     const initCall = await generateNetworkingKeys({
       upgradable: false,
       direct,
+      directNodeIp: direct ? directNodeIp : undefined,
       our_address: address,
       label: hnsName,
       setNetworkingKey,
@@ -120,7 +121,7 @@ function MintDotOsName({
       }
       throw err;
     }
-  }, [direct, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted, routers])
+  }, [direct, directNodeIp, address, writeContract, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, openConnectModal, hnsName, hasMinted, routers])
 
   useEffect(() => {
     if (address && !isPending && !isConfirming) {

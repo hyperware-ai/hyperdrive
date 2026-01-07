@@ -67,7 +67,7 @@ p256 = { version = "0.13", features = ["ecdsa"] }
 public-ip = "0.2.2"
 rand = "0.8.4"
 regex = "1.11.0"
-reqwest = "0.12.4"
+reqwest = { version = "0.12.4", features = ["json"] }
 ring = "0.17.8"
 rmp-serde = "1.1.2"
 rocksdb = { version = "0.22.0", features = ["multi-threaded-cf"] }

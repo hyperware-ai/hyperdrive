@@ -12,6 +12,8 @@ export interface PageProps {
   setRouters: React.Dispatch<React.SetStateAction<string[]>>,
   direct: boolean,
   setDirect: React.Dispatch<React.SetStateAction<boolean>>,
+  directNodeIp: string,
+  setDirectNodeIp: React.Dispatch<React.SetStateAction<string>>,
   upgradable: boolean,
   setUpgradable: React.Dispatch<React.SetStateAction<boolean>>,
   hnsName: string,
@@ -51,6 +53,13 @@ export type InfoResponse = {
   allowed_routers?: string[];
   initial_cache_sources: string[];
   initial_base_l2_providers: string[];
+  uses_direct_networking?: boolean;
+  hns_ip_address?: string;
+  detected_ip_address?: string;
+}
+
+export type IPv4Response = {
+  ip: string;
 }
 
 export interface RpcProviderConfig {

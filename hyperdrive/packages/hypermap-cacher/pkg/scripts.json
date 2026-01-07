@@ -5,10 +5,12 @@
         "request_networking": false,
         "request_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
@@ -19,10 +21,12 @@
         "request_networking": false,
         "request_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
@@ -33,10 +37,12 @@
         "request_networking": false,
         "request_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
@@ -47,10 +53,12 @@
         "request_networking": false,
         "request_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "grant_capabilities": [
             "binding-cacher:hypermap-cacher:sys",
+            "dao-cacher:hypermap-cacher:sys",
             "hypermap-cacher:hypermap-cacher:sys"
         ],
         "wit_version": 1
