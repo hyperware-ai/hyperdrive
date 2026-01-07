@@ -3189,27 +3189,10 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "spider_caller_utils",
  "url",
  "uuid",
  "wit-bindgen 0.42.1",
  "wit-parser 0.220.1",
-]
-
-[[package]]
-name = "spider_caller_utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "futures-util",
- "hyperware_process_lib",
- "once_cell",
- "process_macros",
- "serde",
- "serde_json",
- "uuid",
- "wit-bindgen 0.41.0",
 ]
 
 [[package]]
@@ -3649,7 +3632,6 @@ dependencies = [
  "process_macros",
  "serde",
  "serde_json",
- "spider_caller_utils",
  "uuid",
  "wit-bindgen 0.42.1",
 ]

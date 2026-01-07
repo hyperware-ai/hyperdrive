@@ -1240,7 +1240,6 @@ name = "explorer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "file_explorer_caller_utils",
  "hyperapp_macro",
  "hyperware_process_lib 2.2.0",
  "md5",
@@ -1298,22 +1297,6 @@ checksum = "c0b50bfb653653f9ca9095b427bed08ab8d75a137839d9ad64eb11810d5b6393"
 dependencies = [
  "rand_core 0.6.4",
  "subtle",
-]
-
-[[package]]
-name = "file_explorer_caller_utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "futures-util",
- "hyperware_process_lib 2.2.0",
- "once_cell",
- "process_macros",
- "serde",
- "serde_json",
- "uuid",
- "wit-bindgen 0.41.0",
 ]
 
 [[package]]
