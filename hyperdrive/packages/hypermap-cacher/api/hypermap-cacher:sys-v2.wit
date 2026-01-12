@@ -43,10 +43,10 @@ interface binding-cacher {
         get-log-cache-content(string),
         get-status,
         get-logs-by-range(binding-get-logs-by-range-request),
-        reset(option<list<string>>),
         start-providing,
         stop-providing,
         set-nodes(list<string>),
+        reset(option<list<string>>),
     }
 
     // Represents the operational status of the cacher.
@@ -121,10 +121,10 @@ interface dao-cacher {
         get-log-cache-content(string),
         get-status,
         get-logs-by-range(dao-get-logs-by-range-request),
-        reset(option<list<string>>),
         start-providing,
         stop-providing,
         set-nodes(list<string>),
+        reset(option<list<string>>),
     }
 
     // Represents the operational status of the cacher.
@@ -199,10 +199,10 @@ interface hypermap-cacher {
         get-log-cache-content(string),
         get-status,
         get-logs-by-range(get-logs-by-range-request),
-        reset(option<list<string>>),
         start-providing,
         stop-providing,
         set-nodes(list<string>),
+        reset(option<list<string>>),
     }
 
     // Represents the operational status of the cacher.
