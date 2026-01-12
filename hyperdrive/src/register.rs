@@ -153,6 +153,7 @@ pub async fn register(
     let boot_providers = providers.clone();
     let login_providers = providers.clone();
     let import_providers = providers.clone();
+    let info_providers = providers.clone();
 
     let initial_cache_sources_arc = Arc::new(initial_cache_sources.clone());
     let initial_base_l2_providers_arc = Arc::new(initial_base_l2_providers.clone());
@@ -163,6 +164,7 @@ pub async fn register(
                 .and(keyfile.clone())
                 .and(warp::any().map(move || initial_cache_sources_arc.clone()))
                 .and(warp::any().map(move || initial_base_l2_providers_arc.clone()))
+                .and(warp::any().map(move || info_providers.clone()))
                 .and_then(get_unencrypted_info),
         )
         .or(warp::path("current-chain")
@@ -344,7 +346,18 @@ async fn get_unencrypted_info(
     keyfile: Option<Vec<u8>>,
     initial_cache_sources: Arc<Option<Vec<String>>>,
     initial_base_l2_providers: Arc<Option<Vec<String>>>,
+    providers: Arc<Vec<RootProvider<PubSubFrontend>>>,
 ) -> Result<impl Reply, Rejection> {
+    let provider = match providers.as_ref().first() {
+        Some(provider) => provider,
+        None => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&"no providers available".to_string()),
+                StatusCode::SERVICE_UNAVAILABLE,
+            )
+            .into_response())
+        }
+    };
     let (name, allowed_routers, status_code) = match keyfile {
         Some(encoded_keyfile) => match keygen::get_username_and_routers(&encoded_keyfile) {
             Ok(k) => (Some(k.0), Some(k.1), StatusCode::OK),
@@ -359,6 +372,32 @@ async fn get_unencrypted_info(
         None => (None, None, StatusCode::NOT_FOUND),
     };
 
+    // Use the shared helper function to detect IP
+    let detected_ip_address = detect_ipv4_address().await;
+
+    // Determine networking configuration and HNS IP from chain
+    let (uses_direct_networking, hns_ip_address) = if let Some(ref routers) = allowed_routers {
+        if routers.is_empty() {
+            // This is a direct node - query the chain for its IP
+            if let Some(ref node_name) = name {
+                match query_hns_ip(node_name, &provider).await {
+                    Ok(ip) => (true, Some(ip)),
+                    Err(e) => {
+                        println!("Failed to query HNS IP for {}: {}\r", node_name, e);
+                        (true, None)
+                    }
+                }
+            } else {
+                (true, None)
+            }
+        } else {
+            // This is an indirect node
+            (false, None)
+        }
+    } else {
+        (false, None)
+    };
+
     let response = InfoResponse {
         name,
         allowed_routers,
@@ -367,13 +406,92 @@ async fn get_unencrypted_info(
             .as_ref()
             .clone()
             .unwrap_or_default(),
+        uses_direct_networking,
+        hns_ip_address,
+        detected_ip_address,
     };
 
     return Ok(warp::reply::with_status(warp::reply::json(&response), status_code).into_response());
 }
 
+/// Query the HNS IP address for a given node name from the chain
+async fn query_hns_ip(
+    node_name: &str,
+    provider: &RootProvider<PubSubFrontend>,
+) -> anyhow::Result<String> {
+    let hypermap = EthAddress::from_str(HYPERMAP_ADDRESS)?;
+    let ip_hash = FixedBytes::<32>::from_slice(&keygen::namehash(&format!("~ip.{}", node_name)));
+
+    let get_call = getCall { namehash: ip_hash }.abi_encode();
+    let tx_input = TransactionInput::new(Bytes::from(get_call));
+    let tx = TransactionRequest::default().to(hypermap).input(tx_input);
+
+    let result = provider.call(&tx).await?;
+    let ip_data = getCall::abi_decode_returns(&result, false)?;
+
+    let ip = keygen::bytes_to_ip(&ip_data.data)?;
+    Ok(ip.to_string())
+}
+
 async fn generate_networking_info(our_temp_id: Arc<Identity>) -> Result<impl Reply, Rejection> {
     Ok(warp::reply::json(our_temp_id.as_ref()))
+}
+
+async fn detect_ipv4_address() -> String {
+    #[cfg(feature = "simulation-mode")]
+    {
+        return std::net::Ipv4Addr::LOCALHOST.to_string();
+    }
+
+    #[cfg(not(feature = "simulation-mode"))]
+    {
+        // Helper function to parse IP from JSON response
+        async fn try_hyperware_endpoint(url: &str) -> Option<String> {
+            match tokio::time::timeout(std::time::Duration::from_secs(3), reqwest::get(url)).await {
+                Ok(Ok(response)) => {
+                    if let Ok(json) = response.json::<serde_json::Value>().await {
+                        if let Some(ip) = json.get("ip").and_then(|v| v.as_str()) {
+                            // Validate it's a proper IPv4 address
+                            if let Ok(parsed_ip) = ip.parse::<std::net::Ipv4Addr>() {
+                                println!("Detected IPv4 address from {}: {}\r", url, parsed_ip);
+                                return Some(parsed_ip.to_string());
+                            }
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    println!("Failed to fetch IP from {}: {}\r", url, e);
+                }
+                Err(_) => {
+                    println!("Timeout fetching IP from {}\r", url);
+                }
+            }
+            None
+        }
+
+        // Try ip-address-2.hyperware.ai first
+        if let Some(ip) = try_hyperware_endpoint("https://ip-address-2.hyperware.ai/").await {
+            return ip;
+        }
+
+        // Try ip-address-1.hyperware.ai as fallback
+        if let Some(ip) = try_hyperware_endpoint("https://ip-address-1.hyperware.ai/").await {
+            return ip;
+        }
+
+        // Final fallback to public_ip crate
+        println!("Falling back to public_ip crate for IP detection\r");
+        match tokio::time::timeout(std::time::Duration::from_secs(5), public_ip::addr_v4()).await {
+            Ok(Some(ip)) => {
+                println!("Detected IPv4 address from public_ip crate: {}\r", ip);
+                ip.to_string()
+            }
+            _ => {
+                println!("Failed to find public IPv4 address for /info endpoint.\r");
+                std::net::Ipv4Addr::LOCALHOST.to_string()
+            }
+        }
+    }
 }
 
 async fn handle_boot(
@@ -386,12 +504,17 @@ async fn handle_boot(
     let hypermap = EthAddress::from_str(HYPERMAP_ADDRESS).unwrap();
     let mut our = our.as_ref().clone();
 
-    our.name = info.username;
-    if info.direct {
-        our.both_to_direct();
+    our.name = info.username.clone();
+
+    // Check if direct IP address is provided (Some = direct, None = routers)
+    let is_direct = info.direct.is_some();
+
+    if is_direct {
+        let ip_address = info.direct.as_ref().unwrap();
+        our.both_to_direct(ip_address);
     } else {
         // Set custom routers if provided
-        if let Some(custom_routers) = info.custom_routers {
+        if let Some(custom_routers) = info.custom_routers.clone() {
             our.routing = NodeRouting::Routers(custom_routers);
         } else {
             our.both_to_routers(); // Use defaults
@@ -497,14 +620,14 @@ async fn handle_boot(
                         verifying_contract: hypermap,
                     };
 
-                    let boot = Boot {
-                        username: our.name.clone(),
-                        password_hash,
-                        timestamp: U256::from(info.timestamp),
-                        direct: info.direct,
-                        reset: info.reset,
-                        chain_id: U256::from(chain_id),
-                    };
+                let boot = Boot {
+                    username: our.name.clone(),
+                    password_hash,
+                    timestamp: U256::from(info.timestamp),
+                    direct: is_direct, // Convert Option<String> to bool
+                    reset: info.reset,
+                    chain_id: U256::from(chain_id),
+                };
 
                     let hash = boot.eip712_signing_hash(&domain);
                     let sig = Signature::from_str(&info.signature).map_err(|_| warp::reject())?;

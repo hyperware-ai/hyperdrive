@@ -1087,6 +1087,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-cacher"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-types",
+ "anyhow",
+ "chrono",
+ "hex",
+ "hyperware_process_lib",
+ "process_macros",
+ "rand 0.8.5",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "dashmap"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1680,9 +1699,8 @@ dependencies = [
 
 [[package]]
 name = "hyperware_process_lib"
-version = "2.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abe2b6795488c3f7d3410808cf7e29404725f862ad42a3822886464b92451a21"
+version = "3.0.1"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=34b1f1d857f76fb474f7af96f089961445758edb#34b1f1d857f76fb474f7af96f089961445758edb"
 dependencies = [
  "alloy",
  "alloy-primitives",
