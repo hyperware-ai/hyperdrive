@@ -1,0 +1,16 @@
+/* Inherits from global modal styles in App.css */
+
+.modal-content form {
+  padding: 18px 20px 12px;
+}
+
+.delete-chat-button {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  width: 100%;
+  margin-top: 20px;
+}

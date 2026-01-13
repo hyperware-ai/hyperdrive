@@ -1,0 +1,109 @@
+.thread-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: var(--background);
+}
+
+.thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.thread-title {
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.thread-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.thread-parent {
+  border: 1px solid var(--border-color);
+  background: var(--background);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.thread-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.crumb-link {
+  border: none;
+  background: none;
+  color: var(--primary-color);
+  font-weight: 700;
+  padding: 0;
+}
+
+.crumb-link:disabled {
+  color: var(--text-secondary);
+}
+
+.crumb-sep {
+  color: var(--text-secondary);
+}
+
+.crumb-current {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.crumb-draft {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 15px;
+  padding-bottom: 20px;
+}
+
+.thread-empty {
+  padding: 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--text-secondary);
+}
+
+/* Root message styling - subtle left border indicator */
+.thread-root-message {
+  padding-left: 12px;
+  margin-bottom: 16px;
+  border-left: 3px solid var(--border-color, #e0e0e0);
+  position: relative;
+}
+
+/* Make the root message slightly muted to distinguish it */
+.thread-root-message .group-message {
+  opacity: 0.7;
+}
+
+/* Prevent interaction with root message actions since it's just a reference */
+.thread-root-message .group-message-actions {
+  display: none;
+}

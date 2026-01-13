@@ -1,0 +1,23 @@
+.profile-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.save-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 20px;
+}

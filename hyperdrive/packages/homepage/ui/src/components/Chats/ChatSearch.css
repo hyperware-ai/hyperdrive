@@ -1,0 +1,31 @@
+.chat-search {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 0 15px;
+  height: 40px;
+  min-height: 40px;
+  min-width: 0;
+  width: 100%;
+}
+
+.search-icon {
+  margin-right: 8px;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.search-input::placeholder {
+  color: var(--text-secondary);
+}

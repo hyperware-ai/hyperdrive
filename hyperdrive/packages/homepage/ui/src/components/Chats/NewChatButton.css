@@ -1,0 +1,29 @@
+.new-chat-button {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+
+.new-chat-button:hover {
+  background: var(--primary-hover, #0051d5);
+}
+
+.new-chat-button:active {
+  transform: scale(0.9);
+}
+
+.plus-icon {
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+}

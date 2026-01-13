@@ -1,0 +1,594 @@
+@import "tailwindcss";
+
+/* Variables */
+:root {
+  color-scheme: light dark;
+  --neon-green: #dcff71;
+  --neon-green-light: #dcff7188;
+  --neon-green-xlight: #dcff7144;
+  --iris: #004fff;
+  --iris-light: #004fff88;
+  --iris-xlight: #004fff44;
+  --stone: #353534;
+  --black: #111111;
+  --black-light: #11111188;
+  --black-xlight: #11111111;
+  --tasteful-dark: var(--black);
+  --white: #f6f6f6;
+  --white-light: #f6f6f688;
+  --white-xlight: #f6f6f611;
+  --magenta: #bf1363;
+  --orange: #dd6e42;
+  --off-white: var(--white);
+  --off-black: var(--stone);
+  --adaptive-gray: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
+
+  --primary-color: var(--neon-green);
+  --primary-light: var(--neon-green-light);
+  --primary-xlight: var(--neon-green-xlight);
+  --secondary-color: var(--iris);
+  --secondary-light: var(--iris-light);
+  --secondary-xlight: var(--iris-xlight);
+  --tertiary-color: var(--orange);
+  --quaternary-color: var(--magenta);
+
+  --link-color: light-dark(var(--secondary-color), var(--primary-color));
+
+  --font-family-main: 'Neue Haas Grotesk', monospace;
+
+  /* Add modern CSS variables */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --button-border-width: 2px;
+
+  /* Motion design system - durations */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-medium: 300ms;
+  --duration-slow: 400ms;
+  --duration-emphasis: 500ms;
+
+  /* Motion design system - easing curves */
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+
+@theme {
+  --color-iris: var(--iris);
+  --color-iris-light: var(--iris-light);
+  --color-iris-xlight: var(--iris-xlight);
+  --color-neon: var(--neon-green);
+  --color-neon-light: var(--neon-green-light);
+  --color-neon-xlight: var(--neon-green-xlight);
+  --color-stone: var(--stone);
+  --color-black: var(--black);
+  --color-black-light: var(--black-light);
+}
+
+@font-face {
+  font-family: 'chaneyextended';
+  src: url('/chaneyextended.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/ClashDisplay-Variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/NHaasGroteskTXPro-55Rg.woff') format('woff');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/NHaasGroteskTXPro-75Bd.woff') format('woff');
+  font-weight: 700;
+}
+
+html,
+body {
+  font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  margin: 0;
+  font-family: 'Clash Display', 'Neue Haas Grotesk', sans-serif;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+h4 {
+  font-size: 1.125rem;
+}
+
+h6 {
+  font-size: 0.875rem;
+}
+
+button,
+.button {
+  @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
+
+  &.clear {
+    @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
+  }
+
+  &.thin {
+    @apply px-2 py-1;
+  }
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+input {
+  @apply bg-black/10 dark:bg-white/10 border-none outline-none px-4 py-2 rounded-md;
+
+}
+
+input,
+textarea,
+select {
+  transition: all var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  @apply outline-2 outline-neon outline-offset-2;
+  animation: shine 0.4s ease-out;
+  background-size: 200% 100%;
+  background-image: linear-gradient(45deg, transparent 50%, var(--primary-xlight) 51%, var(--primary-light) 52%, transparent);
+}
+
+@keyframes shine {
+  0% {
+    background-position: 200% 0%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.display {
+  font-family: 'chaneyextended', sans-serif;
+}
+
+.prose {
+  font-family: 'Neue Haas Grotesk', sans-serif;
+}
+
+.clash {
+  font-family: 'Clash Display', sans-serif;
+}
+
+pre {
+  white-space: pre-wrap;
+}
+
+a {
+  @apply text-iris dark:text-neon hover:underline;
+}
+
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+header {
+  background-color: light-dark(var(--white), var(--tasteful-dark));
+  border-color: light-dark(var(--tasteful-dark), var(--off-white));
+}
+
+header {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 1em;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid light-dark(var(--tasteful-dark), var(--off-white));
+  border-bottom: none;
+  border-radius: 1em 1em 0px 0px;
+}
+
+header h2 {
+  flex-grow: 100;
+}
+
+header button {
+  margin-left: 4px;
+}
+
+@media (prefers-color-scheme: dark) {}
+
+.no-ui {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.widget {
+  display: flex;
+  flex-direction: column;
+  color: light-dark(var(--tasteful-dark), var(--off-white));
+  background-color: light-dark(var(--off-white), var(--tasteful-dark));
+  /* border-radius: 10px; */
+  text-align: center;
+  position: relative;
+  width: 100%;
+  height: 400px;
+  overflow: hidden;
+}
+
+.widget iframe {
+  flex-grow: 1;
+  border: none;
+  width: 100%;
+  height: 100%;
+}
+
+.widget .bottom-bar {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  border-top: 1px solid light-dark(black, white);
+  background-color: var(--secondary-color);
+  width: 100%;
+  padding: 2px;
+  flex-direction: row;
+  justify-content: space-between;
+  color: var(--off-white);
+  border-color: var(--off-white);
+}
+
+[id^="hide-widget-"] {
+  cursor: pointer;
+}
+
+[id^="hide-widget-"]:hover {
+  text-decoration: underline;
+}
+
+.widget:hover .bottom-bar {
+  display: flex;
+}
+
+.widget .bottom-bar p {
+  font-size: 0.8em;
+  cursor: default;
+  color: var(--off-white);
+}
+
+.widget-wrapper {
+  border: 1px solid light-dark(var(--off-white), var(--tasteful-dark));
+}
+
+footer {
+  text-align: center;
+  max-height: 100vh;
+  max-width: 100vw;
+}
+
+.apps-grid {
+  display: grid;
+  width: 100%;
+  color: var(--off-white);
+  border-top: 1px solid light-dark(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2));
+}
+
+/* Add side borders to the app grid based on viewport edges */
+.apps-grid {
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Remove unwanted vertical border pseudo-elements */
+
+/* Make sure the border extends to the full expanded height */
+.apps-grid.expanded::before,
+.apps-grid.expanded::after {
+  height: 100%;
+}
+
+.apps-grid.apps-count-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.expand-button {
+  width: 100%;
+  background-color: transparent;
+  border-radius: 0 0 1em 1em;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  padding: 1em;
+  color: var(--white);
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .apps-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  header {
+    flex-shrink: 0;
+    padding: 0.75em;
+    gap: 0.5em;
+    border-radius: 0;
+  }
+
+  header h2 {
+    font-size: 1.25em;
+  }
+
+  .apps-grid {
+    max-height: 50vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .apps-grid.expanded {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .expand-button {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    touch-action: manipulation;
+  }
+
+  .drag-handle {
+    display: none;
+  }
+
+  .app-wrapper,
+  .widget-wrapper {
+    touch-action: manipulation;
+  }
+
+  /* Add smooth scrolling for iOS momentum scroll */
+  *:where([class*="container"], [class*="grid"]) {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .widget {
+    width: 100%;
+    height: auto;
+    min-height: 300px;
+    margin: 0 0 1em 0;
+    border-radius: 12px;
+  }
+
+  .widget .bottom-bar {
+    display: flex;
+    position: relative;
+    padding: 8px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .widget {
+    min-height: 250px;
+    width: 100%;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  header button {
+    margin: 4px 0;
+  }
+}
+
+.app-wrapper {
+  position: relative;
+  transition: transform 0.2s ease;
+  /* Add a border that continues the pane's border */
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-right: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Remove right border for last app in a row */
+.app-wrapper.last-in-row {
+  border-right: none;
+}
+
+.widget-wrapper {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.app-wrapper:hover .drag-handle {
+  opacity: 1;
+}
+
+.widget-wrapper:hover .drag-handle {
+  opacity: 1;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  cursor: move;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: var(--white);
+  font-size: 1.2em;
+  text-shadow: -1px 1px 0px #000;
+}
+
+.dragging {
+  opacity: 0.5;
+}
+
+.drag-over {
+  transform: translateY(5px);
+}
+
+.modal .widget-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+
+.widget-settings button {
+  margin-top: 0.5em;
+}
+
+.empty-state {
+  height: 400px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state p {
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Dock hover effects */
+.dock-icon {
+  transition: transform var(--duration-fast) var(--ease-spring),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.dock-icon:hover {
+  transform: translateY(-6px) scale(1.08);
+  box-shadow: 0 10px 20px -6px rgba(0, 0, 0, 0.25);
+}
+
+.dock-icon:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* Staggered grid entrance animation - fast for snappy feel */
+.animate-grid-enter {
+  animation: grid-item-enter var(--duration-fast) var(--ease-out) both;
+  animation-delay: calc(var(--item-index, 0) * 12ms);
+}
+
+/* Modal animations */
+.animate-modal-backdrop {
+  animation: backdrop-enter var(--duration-fast) var(--ease-out) both;
+}
+
+.animate-modal-content {
+  animation: modal-enter var(--duration-medium) var(--ease-out) both;
+  animation-delay: 50ms;
+}
+
+/* OmniButton animations */
+.animate-omni-pulse {
+  animation: omni-pulse 2.5s ease-in-out infinite;
+}
+
+/* App container animations */
+.animate-app-launch {
+  animation: app-launch var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-app-close {
+  animation: app-close var(--duration-normal) var(--ease-in) both;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

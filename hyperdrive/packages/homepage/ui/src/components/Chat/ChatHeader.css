@@ -1,0 +1,85 @@
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
+  height: var(--header-height);
+}
+
+.back-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--primary-color);
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.chat-header-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.chat-header-info .chat-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-header-info.official-chat .chat-avatar-wrap {
+  filter: drop-shadow(0 0 8px rgba(45, 118, 255, 0.45));
+}
+
+.chat-header-info .official-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(45, 118, 255, 0.45),
+    0 0 14px rgba(45, 118, 255, 0.55);
+  pointer-events: none;
+}
+
+.chat-header-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-header-name .official-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2d76ff, #6dd5ff);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(45, 118, 255, 0.45);
+}
+
+.voice-call-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}

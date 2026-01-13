@@ -14,5 +14,31 @@
             "notifications:distro:sys"
         ],
         "public": false
+    },
+    {
+        "process_name": "chat",
+        "process_wasm_path": "/chat.wasm",
+        "on_exit": "Restart",
+        "request_networking": true,
+        "request_capabilities": [
+            "homepage:homepage:sys",
+            "http-server:distro:sys",
+            "kv:distro:sys",
+            "notifications:distro:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys"
+        ],
+        "grant_capabilities": [
+            "homepage:homepage:sys",
+            "http-server:distro:sys",
+            "kv:distro:sys",
+            "notifications:distro:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys",
+            "tester:tester:sys"
+        ],
+        "public": false
     }
 ]

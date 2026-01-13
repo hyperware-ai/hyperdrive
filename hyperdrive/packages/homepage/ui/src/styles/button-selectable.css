@@ -1,0 +1,43 @@
+/* Make all button text selectable for copying */
+button {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Allow text selection on button spans and inner elements */
+button * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Ensure cursor still shows as pointer for clickability */
+button {
+  cursor: pointer;
+}
+
+/* Override any specific button classes that might have user-select: none */
+.profile-button,
+.new-chat-button,
+.delete-button,
+.submit-button,
+.cancel-button,
+.save-button,
+.voice-button,
+.attachment-button,
+.back-button,
+.voice-call-button,
+.delete-chat-button,
+.scroll-to-bottom-button,
+.close-button,
+.dismiss-button,
+.stop-button,
+.message-menu button {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}

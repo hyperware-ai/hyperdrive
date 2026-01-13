@@ -1,9 +1,28 @@
+// Entry point for the React application
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import Home from './components/Home'
+import App from './App.tsx'
 import './index.css'
-import { useNotificationStore } from './stores/notificationStore'
-import { initializePushNotifications } from './utils/pushNotifications'
+import './homepage/homepage.css'
+// Auto-start hw:// protocol link handling
+import '@hyperware-ai/hw-protocol-watcher'
+import { useNotificationStore } from './homepage/stores/notificationStore'
+import { initializePushNotifications } from './homepage/utils/pushNotifications'
+
+const loadOurScript = () =>
+  new Promise<void>((resolve) => {
+    if ((window as any).our) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = '/our.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => resolve();
+    document.head.appendChild(script);
+  });
 
 // Listen for push notification messages from service worker
 if ('serviceWorker' in navigator) {
@@ -11,11 +30,9 @@ if ('serviceWorker' in navigator) {
     if (event.data && event.data.type === 'PUSH_NOTIFICATION_RECEIVED') {
       const notification = event.data.notification;
 
-      // Extract appId and appLabel from data if available
       const appId = notification.data?.appId || notification.appId || 'system';
       const appLabel = notification.data?.appLabel || notification.appLabel || 'System';
 
-      // Add to notification store
       useNotificationStore.getState().addNotification({
         appId,
         appLabel,
@@ -30,23 +47,20 @@ if ('serviceWorker' in navigator) {
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker
+      .register('/sw.js')
       .then(async (registration) => {
-
-        // Initialize push notifications
         await initializePushNotifications(registration);
 
-        // Update permission state in store
         if ('Notification' in window) {
           useNotificationStore.getState().setPermissionGranted(
             Notification.permission === 'granted'
           );
         }
 
-        // Check for updates periodically
         setInterval(() => {
           registration.update();
-        }, 60 * 60 * 1000); // Check every hour
+        }, 60 * 60 * 1000);
       })
       .catch((error) => {
         console.error('SW registration failed:', error);
@@ -54,8 +68,17 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Home />
-  </React.StrictMode>,
-)
+const renderApp = () => {
+  const nodeName = (window as any).our?.node;
+  if (nodeName) {
+    document.title = `${nodeName} - home`;
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  )
+};
+
+loadOurScript().then(renderApp);

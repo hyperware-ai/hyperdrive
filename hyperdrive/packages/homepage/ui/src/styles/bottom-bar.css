@@ -1,0 +1,92 @@
+:root {
+  --bottom-bar-height: 64px;
+}
+
+.app-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.app-main {
+  height: 100%;
+  padding-bottom: var(--bottom-bar-height);
+  transition: padding-bottom 0.2s ease;
+}
+
+.app-main--bar-hidden {
+  padding-bottom: 0;
+}
+
+.app-drawer--docked {
+  padding-bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom));
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--bottom-bar-height) + var(--safe-area-bottom));
+  padding: 8px 12px calc(8px + var(--safe-area-bottom));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border-top: 1px solid var(--border-color);
+  backdrop-filter: blur(12px);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  z-index: 45;
+}
+
+.bottom-bar--hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bottom-bar__item {
+  height: calc(var(--bottom-bar-height) - 16px);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.bottom-bar__item:active {
+  transform: translateY(1px);
+}
+
+.bottom-bar__item--active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+.bottom-bar__item--disabled {
+  color: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+  cursor: not-allowed;
+}
+
+@media (min-width: 768px) {
+  .bottom-bar {
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(540px, 100%);
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+
+  .bottom-bar--hidden {
+    transform: translate(-50%, 120%);
+  }
+}

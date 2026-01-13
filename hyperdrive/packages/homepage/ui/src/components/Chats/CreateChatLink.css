@@ -1,0 +1,106 @@
+.create-chat-link-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.create-chat-link-modal {
+  background: var(--background);
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.create-chat-link-modal h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.create-chat-link-modal p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.single-use-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.single-use-checkbox input {
+  cursor: pointer;
+}
+
+.link-display {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.link-display input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.link-display button {
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.button-group button {
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.button-group button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-group .cancel-button {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.error-message {
+  color: var(--danger-color);
+  margin-bottom: 16px;
+  padding: 8px;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: 4px;
+}
