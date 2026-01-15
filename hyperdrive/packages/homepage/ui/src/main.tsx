@@ -8,6 +8,31 @@ import './homepage/homepage.css'
 import '@hyperware-ai/hw-protocol-watcher'
 import { useNotificationStore } from './homepage/stores/notificationStore'
 import { initializePushNotifications } from './homepage/utils/pushNotifications'
+import { getChatBasePath } from './utils/chatBase'
+
+const patchChatFetch = () => {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    if (typeof input === 'string') {
+      const chatBase = getChatBasePath();
+      if (input.startsWith('//api/')) {
+        return originalFetch(`${chatBase}${input.slice(1)}`, init);
+      }
+      if (input.startsWith('/api/')) {
+        return originalFetch(`${chatBase}${input}`, init);
+      }
+      if (input.startsWith('http://api/') || input.startsWith('https://api/')) {
+        const pathStart = input.indexOf('/api/');
+        if (pathStart !== -1) {
+          return originalFetch(`${chatBase}${input.slice(pathStart)}`, init);
+        }
+      }
+    }
+    return originalFetch(input, init);
+  };
+};
+
+patchChatFetch();
 
 const loadOurScript = () =>
   new Promise<void>((resolve) => {

@@ -80,6 +80,7 @@ export default defineConfig({
       '^/chat:homepage:sys': {
         target: PROXY_URL,
         changeOrigin: true,
+        ws: true,
       },
     },
 

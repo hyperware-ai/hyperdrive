@@ -2,14 +2,29 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigationStore } from '../stores/navigationStore';
 import classNames from 'classnames';
 import { usePersistenceStore } from '../stores/persistenceStore';
+type DragStart = { x: number; y: number; buttonX: number; buttonY: number };
+
 export const OmniButton: React.FC = () => {
   const { toggleRecentApps, isRecentAppsOpen, closeAllOverlays } = useNavigationStore();
   const { omnibuttonPosition, setOmnibuttonPosition } = usePersistenceStore();
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number; buttonX: number; buttonY: number } | null>(null);
+  const [dragStart, setDragStart] = useState<DragStart | null>(null);
+  const dragStartRef = useRef<DragStart | null>(null);
+  const isDraggingRef = useRef(false);
   const dragThreshold = 5; // pixels - swipes smaller than this will be treated as taps
   const buttonRef = useRef<HTMLDivElement>(null);
+  const mouseListenersActive = useRef(false);
   const isMobile = () => window.innerWidth < 768;
+
+  const setDragging = (value: boolean) => {
+    isDraggingRef.current = value;
+    setIsDragging(value);
+  };
+
+  const setDragStartState = (value: DragStart | null) => {
+    dragStartRef.current = value;
+    setDragStart(value);
+  };
 
   // Touch handlers for drag and tap
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -17,7 +32,7 @@ export const OmniButton: React.FC = () => {
     console.log('omnibutton handleTouchStart', e);
     e.stopPropagation();
     const touch = e.touches[0];
-    setDragStart({
+    setDragStartState({
       x: touch.clientX,
       y: touch.clientY,
       buttonX: omnibuttonPosition.x,
@@ -27,22 +42,23 @@ export const OmniButton: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     console.log('omnibutton handleTouchMove', e);
-    if (!dragStart) return;
+    const currentDragStart = dragStartRef.current;
+    if (!currentDragStart) return;
     e.stopPropagation();
 
     const touch = e.touches[0];
-    const deltaX = touch.clientX - dragStart.x;
-    const deltaY = touch.clientY - dragStart.y;
+    const deltaX = touch.clientX - currentDragStart.x;
+    const deltaY = touch.clientY - currentDragStart.y;
 
     // Check if movement exceeds threshold to start dragging
-    if (!isDragging && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
-      setIsDragging(true);
+    if (!isDraggingRef.current && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+      setDragging(true);
     }
 
     // Update position if dragging
-    if (isDragging || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
-      const newX = Math.max(30, Math.min(window.innerWidth - 30, dragStart.buttonX + deltaX));
-      const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
+    if (isDraggingRef.current || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
+      const newX = Math.max(30, Math.min(window.innerWidth - 30, currentDragStart.buttonX + deltaX));
+      const newY = Math.max(30, Math.min(window.innerHeight - 30, currentDragStart.buttonY + deltaY));
       setOmnibuttonPosition({ x: newX, y: newY });
     }
   };
@@ -50,13 +66,13 @@ export const OmniButton: React.FC = () => {
   const handleTouchEnd = () => {
     if (!isMobile()) return;
     console.log('omnibutton handleTouchEnd');
-    if (!isDragging && dragStart) {
+    if (!isDraggingRef.current && dragStartRef.current) {
       // Tap - open recent apps
       if (!isRecentAppsOpen) toggleRecentApps();
       else closeAllOverlays();
     }
-    setDragStart(null);
-    setIsDragging(false);
+    setDragStartState(null);
+    setDragging(false);
   };
 
   // Mouse handlers for desktop
@@ -64,7 +80,13 @@ export const OmniButton: React.FC = () => {
     if (isMobile()) return;
     console.log('omnibutton handleMouseDown', e);
     e.stopPropagation();
-    setDragStart({
+    if (!mouseListenersActive.current) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      mouseListenersActive.current = true;
+    }
+    setDragging(false);
+    setDragStartState({
       x: e.clientX,
       y: e.clientY,
       buttonX: omnibuttonPosition.x,
@@ -76,44 +98,43 @@ export const OmniButton: React.FC = () => {
     if (isMobile()) return;
     console.log('omnibutton handleMouseMove', e);
     e.stopPropagation();
-    if (!dragStart) return;
+    const currentDragStart = dragStartRef.current;
+    if (!currentDragStart) return;
 
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
+    const deltaX = e.clientX - currentDragStart.x;
+    const deltaY = e.clientY - currentDragStart.y;
 
-    if (!isDragging && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
-      setIsDragging(true);
+    if (!isDraggingRef.current && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+      setDragging(true);
     }
 
-    if (isDragging || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
-      const newX = Math.max(30, Math.min(window.innerWidth - 30, dragStart.buttonX + deltaX));
-      const newY = Math.max(30, Math.min(window.innerHeight - 30, dragStart.buttonY + deltaY));
+    if (isDraggingRef.current || Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
+      const newX = Math.max(30, Math.min(window.innerWidth - 30, currentDragStart.buttonX + deltaX));
+      const newY = Math.max(30, Math.min(window.innerHeight - 30, currentDragStart.buttonY + deltaY));
       setOmnibuttonPosition({ x: newX, y: newY });
     }
-  }, [dragStart, isDragging, setOmnibuttonPosition]);
+  }, [setOmnibuttonPosition]);
+
+  const detachMouseListeners = () => {
+    if (!mouseListenersActive.current) return;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    mouseListenersActive.current = false;
+  };
 
   const handleMouseUp = useCallback(() => {
     if (isMobile()) return;
     console.log('omnibutton handleMouseUp');
-    if (!isDragging && dragStart) {
+    if (!isDraggingRef.current && dragStartRef.current) {
       if (!isRecentAppsOpen) toggleRecentApps();
       else closeAllOverlays();
     }
-    setDragStart(null);
-    setIsDragging(false);
-  }, [isDragging, dragStart, isRecentAppsOpen, toggleRecentApps, closeAllOverlays]);
+    setDragStartState(null);
+    setDragging(false);
+    detachMouseListeners();
+  }, [isRecentAppsOpen, toggleRecentApps, closeAllOverlays]);
 
-  // Mouse event listeners
-  useEffect(() => {
-    if (dragStart) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [dragStart, isDragging, handleMouseMove, handleMouseUp]);
+  useEffect(() => () => detachMouseListeners(), []);
 
   // Handle window resize to keep button in bounds
   useEffect(() => {
@@ -130,8 +151,8 @@ export const OmniButton: React.FC = () => {
 
   useEffect(() => {
     if (!isRecentAppsOpen) {
-      setDragStart(null);
-      setIsDragging(false);
+      setDragStartState(null);
+      setDragging(false);
     }
   }, [isRecentAppsOpen]);
 
