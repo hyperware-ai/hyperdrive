@@ -45,33 +45,45 @@
   align-self: flex-start;
 }
 
+/* Official/AI message glow - lime green for Stitch */
 .message.official-message .message-content {
-  box-shadow: 0 0 0 1px rgba(45, 118, 255, 0.35),
-    0 0 12px rgba(45, 118, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(204, 255, 0, 0.35),
+    0 0 12px rgba(204, 255, 0, 0.15);
 }
 
+/* Reply-to styling */
 .reply-to {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   padding: 6px 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   border-left: 3px solid var(--primary-color);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.reply-to:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .message.own .reply-to {
-  background: rgba(255, 255, 255, 0.15);
-  border-left-color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.15);
+  border-left-color: rgba(0, 0, 0, 0.4);
+}
+
+.message.own .reply-to:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .reply-to-label {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--primary-color);
   margin-bottom: 2px;
   font-weight: 500;
 }
 
 .message.own .reply-to-label {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .reply-to-content {
@@ -85,85 +97,87 @@
 }
 
 .message.own .reply-to-content {
-  color: white;
-  opacity: 0.9;
+  color: rgba(0, 0, 0, 0.8);
 }
 
+/* Message content bubble */
 .message-content {
-  padding: 8px 60px 18px 12px; /* Extra right padding for time, bottom for footer overlay */
+  padding: 10px 56px 20px 14px; /* Extra right padding for time, bottom for footer overlay */
   border-radius: 18px;
-  font-size: 16px;
-  line-height: 1.4;
+  font-size: 15px;
+  line-height: 1.45;
   word-wrap: break-word;
   position: relative;
   min-width: 100px; /* Ensure minimum width for short messages to prevent emoji-time overlap */
 }
 
+/* Own messages - Stitch lime green */
 .message.own .message-content {
-  background: #007aff;  /* iOS blue */
-  color: white;
+  background: var(--message-own, #ccff00);
+  color: var(--message-own-text, #000);
   border-bottom-right-radius: 4px;
 }
 
+/* Other messages - Surface dark */
 .message.other .message-content {
-  padding: 8px 50px 18px 12px; /* Less right padding for other's messages (no status icon) */
-  background: var(--message-other, #e5e5ea);
-  color: var(--text-primary);
+  padding: 10px 48px 20px 14px; /* Less right padding for other's messages (no status icon) */
+  background: var(--message-other, #0f172a);
+  color: var(--message-other-text, #fff);
   border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Dark mode overrides */
-@media (prefers-color-scheme: dark) {
-  .message.other .message-content {
-    background: #3a3a3c;  /* Dark gray for dark mode */
-    color: #ffffff;
-  }
-}
-
+/* Message footer (time and status) */
 .message-footer {
   position: absolute;
-  bottom: 2px;
-  right: 10px;
+  bottom: 4px;
+  right: 12px;
   display: flex;
+  align-items: center;
   gap: 4px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
   z-index: 1;
   white-space: nowrap; /* Keep time on single line */
 }
 
 .message.other .message-footer {
   color: var(--text-secondary);
-  opacity: 0.7;
 }
 
 .message-time {
-  opacity: 0.8;
+  font-weight: 400;
 }
 
 .message-status {
-  opacity: 0.8;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.5);
 }
 
+.message.other .message-status {
+  color: var(--primary-color);
+}
+
+/* Reactions */
 .message-reactions {
   position: absolute;
-  bottom: -8px;
+  bottom: -10px;
   left: 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 4px;
   z-index: 2;
 }
 
 .reaction {
-  padding: 1px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  font-size: 11px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   animation: reaction-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
@@ -181,16 +195,9 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .reaction {
-    background: rgba(50, 50, 50, 0.95);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-}
-
 .reaction:hover {
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border-color: var(--primary-color);
   transform: scale(1.1);
 }
@@ -201,7 +208,7 @@
 
 .reaction.reacted {
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border-color: var(--primary-color);
 }
 
@@ -212,7 +219,7 @@
 
 @keyframes highlight-pulse {
   0% {
-    background-color: rgba(255, 200, 0, 0.3);
+    background-color: rgba(204, 255, 0, 0.3);
     border-radius: 8px;
   }
   100% {
@@ -244,10 +251,11 @@
 
 /* Voice note / audio player styles */
 .dm-audio-wrapper {
-  background: #2c2c2e;
+  background: var(--surface);
   border-radius: 12px;
   padding: 8px 12px;
   margin: 2px 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .dm-audio-player {
@@ -258,4 +266,71 @@
   outline: none;
   background: transparent;
   display: block;
+}
+
+/* Image messages */
+.message-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+/* Code blocks in messages */
+.message-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.message.own .message-content pre {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.message-content code {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 13px;
+}
+
+/* Links in messages */
+.message-content a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.message.own .message-content a {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.message.other .message-content a {
+  color: var(--primary-color);
+}
+
+/* Light mode */
+@media (prefers-color-scheme: light) {
+  .message.other .message-content {
+    background: var(--message-other, #e2e8f0);
+    color: var(--message-other-text, #0f172a);
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .reply-to {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .reply-to:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .reaction {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .dm-audio-wrapper {
+    border-color: rgba(0, 0, 0, 0.05);
+  }
 }

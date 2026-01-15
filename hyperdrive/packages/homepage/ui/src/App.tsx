@@ -351,14 +351,20 @@ function App() {
           onClick={() => setActiveTab('chat')}
           type="button"
         >
-          Chat
+          <div className="bottom-bar__icon-wrap">
+            <span className="material-symbols-outlined">chat_bubble</span>
+          </div>
+          <span className="bottom-bar__label">Chats</span>
         </button>
         <button
           className={`bottom-bar__item ${activeTab === 'apps' ? 'bottom-bar__item--active' : ''}`}
           onClick={() => setActiveTab('apps')}
           type="button"
         >
-          Apps
+          <div className="bottom-bar__icon-wrap">
+            <span className="material-symbols-outlined">grid_view</span>
+          </div>
+          <span className="bottom-bar__label">Apps</span>
         </button>
         <button
           className="bottom-bar__item bottom-bar__item--disabled"
@@ -366,7 +372,11 @@ function App() {
           aria-disabled="true"
           disabled
         >
-          Wallet (coming soon)
+          <div className="bottom-bar__icon-wrap">
+            <span className="material-symbols-outlined">account_balance_wallet</span>
+            <div className="bottom-bar__notification-dot" />
+          </div>
+          <span className="bottom-bar__label">Wallet</span>
         </button>
       </nav>
 

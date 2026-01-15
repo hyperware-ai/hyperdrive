@@ -2,9 +2,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 15px;
-  background: var(--background);
-  border-bottom: 1px solid var(--border-color);
+  padding: 12px 16px;
+  margin: 0 8px;
+  background: transparent;
+  border-radius: 12px;
   cursor: pointer;
   transition: background 0.2s ease,
               transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -32,77 +33,134 @@
   transform: none;
 }
 
+.chat-list-item:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+}
+
+.chat-list-item:active {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+  transform: scale(0.98);
+}
+
+/* Avatar styling */
 .chat-avatar-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
+.chat-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+/* Official/AI chat glow effect - lime green for Stitch */
 .official-chat .chat-avatar-wrap {
-  filter: drop-shadow(0 0 8px rgba(45, 118, 255, 0.45));
+  filter: drop-shadow(0 0 8px rgba(204, 255, 0, 0.45));
 }
 
 .official-glow {
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(45, 118, 255, 0.45),
-    0 0 14px rgba(45, 118, 255, 0.55);
+  background: linear-gradient(135deg, var(--primary-color), #00d4ff);
+  opacity: 0.6;
+  filter: blur(6px);
+  animation: glow-pulse 2s ease-in-out infinite;
   pointer-events: none;
 }
 
-.chat-list-item:hover {
-  background: var(--surface);
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
 }
 
-.chat-list-item:active {
-  background: var(--surface);
-  transform: scale(0.98);
+/* Status indicator */
+.chat-status-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: 2px solid var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.chat-status-indicator .material-symbols-outlined {
+  font-size: 10px;
+  color: #000;
+  font-weight: bold;
+}
+
+/* Chat info container */
 .chat-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .chat-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
 }
 
 .chat-name {
-  font-weight: 500;
-  font-size: 16px;
+  font-weight: 600;
+  font-size: 15px;
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  line-height: 1.2;
 }
 
+/* AI/Official badge - Stitch style */
 .official-badge {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 500;
   padding: 2px 6px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #2d76ff, #6dd5ff);
-  color: #fff;
-  box-shadow: 0 0 8px rgba(45, 118, 255, 0.45);
+  border-radius: 6px;
+  background: rgba(204, 255, 0, 0.2);
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .chat-time {
   font-size: 12px;
   color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Highlighted time for new messages */
+.chat-time.highlighted {
+  color: var(--primary-color);
+  font-weight: 500;
 }
 
 .chat-preview {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .last-message {
@@ -112,28 +170,96 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  line-height: 1.4;
 }
 
+/* Sender name in preview */
+.last-message .sender-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Primary colored sender (for AI messages) */
+.last-message .sender-primary {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+/* Unread messages have bolder preview */
+.chat-list-item.has-unread .last-message {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Unread badge - Stitch lime green */
 .unread-badge {
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border-radius: 10px;
-  padding: 2px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  min-width: 20px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
   text-align: center;
-  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   animation: unread-pulse 2s ease-in-out infinite;
 }
 
 @keyframes unread-pulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4);
+    box-shadow: 0 0 0 0 rgba(204, 255, 0, 0.4);
   }
   50% {
     transform: scale(1.05);
-    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0);
+    box-shadow: 0 0 0 4px rgba(204, 255, 0, 0);
   }
+}
+
+/* Read status checkmarks */
+.message-status-icon {
+  color: var(--primary-color);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.message-status-icon.pending {
+  color: var(--text-secondary);
+}
+
+/* Pinned chat special styling */
+.chat-list-item.pinned {
+  background: var(--surface);
+  border: 1px solid rgba(204, 255, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-list-item.pinned::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(204, 255, 0, 0.1) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.chat-list-item.pinned:hover::before {
+  opacity: 1;
+}
+
+/* Divider between items (only when not last) */
+.chat-list-item:not(:last-child) .chat-info {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.chat-list-item.pinned:not(:last-child) .chat-info {
+  border-bottom: none;
+  padding-bottom: 0;
 }

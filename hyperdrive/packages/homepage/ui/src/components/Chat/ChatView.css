@@ -16,13 +16,23 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 10px 15px;
+  padding: 10px 16px;
   padding-bottom: 20px;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
   position: relative;
   /* Prevent iOS bounce when pulling down */
   overscroll-behavior-y: contain;
+}
+
+/* Hide scrollbar for cleaner look */
+.messages-container::-webkit-scrollbar {
+  display: none;
+}
+
+.messages-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Sync indicator for pull-to-refresh */
@@ -52,6 +62,7 @@
 .sync-spinner {
   animation: spin 1s linear infinite;
   font-size: 18px;
+  color: var(--primary-color);
 }
 
 @keyframes spin {
@@ -76,14 +87,16 @@
 }
 
 .offline-tooltip-content {
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: white;
   padding: 10px 15px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 13px;
   text-align: center;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 @keyframes slideDown {
@@ -97,25 +110,26 @@
   }
 }
 
-/* Scroll to bottom button */
+/* Scroll to bottom button - Stitch lime green */
 .scroll-to-bottom-button {
   position: absolute;
   bottom: 100px; /* Well above the message input to avoid overlap */
-  right: 15px;
-  width: 36px;
-  height: 36px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--primary);
-  color: white;
+  background: var(--primary-color);
+  color: #000;
   border: none;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease;
   z-index: 50;
   animation: fadeIn 0.2s ease;
 }
@@ -125,18 +139,23 @@
   .scroll-to-bottom-button {
     bottom: 120px; /* Much higher on mobile to avoid input bar overlap */
     right: 12px;
-    width: 34px;
-    height: 34px;
-    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
   }
 }
 
 .scroll-to-bottom-button:hover {
   transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(204, 255, 0, 0.4);
 }
 
 .scroll-to-bottom-button:active {
   transform: scale(0.95);
+}
+
+.scroll-to-bottom-button .material-symbols-outlined {
+  font-size: 20px;
 }
 
 @keyframes fadeIn {
@@ -150,14 +169,26 @@
   }
 }
 
-/* Light mode */
+/* Date separator */
+.date-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.date-separator-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* Light mode adjustments */
 @media (prefers-color-scheme: light) {
   .offline-tooltip-content {
-    background: rgba(50, 50, 50, 0.9);
-  }
-  
-  .scroll-to-bottom-button {
-    background: var(--primary);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    background: rgba(15, 23, 42, 0.9);
   }
 }

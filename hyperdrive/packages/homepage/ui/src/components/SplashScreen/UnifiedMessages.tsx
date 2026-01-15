@@ -296,17 +296,8 @@ const UnifiedMessages: React.FC = () => {
         <ChatSearch
           value={query}
           onChange={setQuery}
-          placeholder="Search DMs or groups..."
+          placeholder="Search Spider, apps, or chats..."
         />
-        <div className="unified-actions">
-          <button
-            className="unified-action primary"
-            onClick={() => setShowChooser(true)}
-            aria-label="New chat"
-          >
-            + New
-          </button>
-        </div>
       </div>
 
       {error && <div className="unified-error">{error}</div>}
@@ -366,6 +357,15 @@ const UnifiedMessages: React.FC = () => {
           </div>
         </section>
       </div>
+
+      {/* Floating Action Button */}
+      <button
+        className="fab-button"
+        onClick={() => setShowChooser(true)}
+        aria-label="New chat"
+      >
+        <span className="material-symbols-outlined">edit</span>
+      </button>
 
       {showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} />}
       {showCreateGroup && (

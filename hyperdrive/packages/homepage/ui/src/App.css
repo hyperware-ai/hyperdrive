@@ -1,17 +1,21 @@
-/* Root variables and reset */
+/* Root variables and reset - Stitch Design System */
 :root {
-  --primary-color: #007aff;
-  --secondary-color: #5ac8fa;
-  --danger-color: #ff3b30;
-  --success-color: #34c759;
-  --warning-color: #ffcc00;
-  --background: #ffffff;
-  --surface: #f2f2f7;
-  --text-primary: #000000;
-  --text-secondary: #8e8e93;
-  --border-color: #e5e5ea;
-  --message-own: #007aff;
-  --message-other: #e5e5ea;
+  --primary-color: #ccff00;
+  --primary-hover: #b8e600;
+  --secondary-color: #00d4ff;
+  --danger-color: #ff4444;
+  --success-color: #51cf66;
+  --warning-color: #fbbf24;
+  --background: #050a18;
+  --surface: #0f172a;
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --border-color: rgba(255, 255, 255, 0.05);
+  --message-own: #ccff00;
+  --message-own-text: #000000;
+  --message-other: #0f172a;
+  --message-other-text: #ffffff;
   --header-height: 60px;
   --tab-bar-height: 60px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0);
@@ -25,7 +29,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-family: 'Spline Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--background);
@@ -46,6 +50,7 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  background: var(--background);
 }
 
 /* Loading state */
@@ -56,6 +61,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 20px;
+  background: var(--background);
 }
 
 .spinner {
@@ -80,6 +86,7 @@ body {
   justify-content: center;
   padding: 20px;
   text-align: center;
+  background: var(--background);
 }
 
 .app-error h2 {
@@ -91,11 +98,18 @@ body {
   margin-top: 20px;
   padding: 12px 24px;
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-error button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.3);
 }
 
 /* Error banner */
@@ -141,7 +155,9 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -156,8 +172,8 @@ body {
 }
 
 .modal-content {
-  background: var(--background);
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: 16px;
   width: 90%;
   max-width: 400px;
   max-height: 80vh;
@@ -165,6 +181,8 @@ body {
   animation: slideUp 0.3s ease;
   padding: 0;
   opacity: 1;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes slideUp {
@@ -184,6 +202,7 @@ body {
 .modal-header h2,
 .modal-header h3 {
   margin: 0;
+  font-weight: 600;
 }
 
 .close-button {
@@ -198,6 +217,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.close-button:hover {
+  background: var(--surface-hover);
+  color: var(--primary-color);
 }
 
 /* Form styles */
@@ -211,32 +237,42 @@ body {
   margin-bottom: 8px;
   color: var(--text-secondary);
   font-size: 14px;
+  font-weight: 500;
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
-  padding: 12px;
+  padding: 12px 14px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 16px;
-  background: var(--surface);
+  border-radius: 12px;
+  font-size: 15px;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--text-secondary);
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(204, 255, 0, 0.15);
 }
 
 /* Button styles */
 button {
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.2s;
 }
 
 button:active {
-  opacity: 0.7;
+  transform: scale(0.98);
 }
 
 button:disabled {
@@ -246,21 +282,34 @@ button:disabled {
 
 .submit-button {
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border: none;
   padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(204, 255, 0, 0.4);
 }
 
 .cancel-button {
-  background: var(--surface);
+  background: var(--surface-hover);
   color: var(--text-primary);
-  border: none;
+  border: 1px solid var(--border-color);
   padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary-color);
 }
 
 .modal-actions {
@@ -286,11 +335,13 @@ button:disabled {
 .empty-state .empty-icon {
   font-size: 48px;
   margin-bottom: 16px;
+  opacity: 0.6;
 }
 
 .empty-state h3 {
   margin-bottom: 8px;
   color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* Responsive breakpoints */
@@ -309,14 +360,24 @@ button:disabled {
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
+/* Light mode support */
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #000000;
-    --surface: #1c1c1e;
-    --text-primary: #ffffff;
-    --text-secondary: #8e8e93;
-    --border-color: #38383a;
-    --message-other: #2c2c2e;
+    --background: #f5f6f8;
+    --surface: #ffffff;
+    --surface-hover: rgba(0, 0, 0, 0.05);
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --message-other: #e2e8f0;
+    --message-other-text: #0f172a;
+  }
+
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-content {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   }
 }

@@ -1,29 +1,58 @@
 .new-chat-button {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.3);
 }
 
 .new-chat-button:hover {
-  background: var(--primary-hover, #0051d5);
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(204, 255, 0, 0.4);
 }
 
 .new-chat-button:active {
-  transform: scale(0.9);
+  transform: scale(0.95);
 }
 
 .plus-icon {
   font-size: 24px;
-  font-weight: 300;
+  font-weight: 500;
   line-height: 1;
+}
+
+/* Material icon version */
+.new-chat-button .material-symbols-outlined {
+  font-size: 24px;
+  font-weight: 500;
+}
+
+/* FAB (Floating Action Button) variant for bottom-right positioning */
+.new-chat-button.fab {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(204, 255, 0, 0.4);
+}
+
+.new-chat-button.fab:hover {
+  box-shadow: 0 6px 24px rgba(204, 255, 0, 0.5);
+}
+
+.new-chat-button.fab .material-symbols-outlined {
+  font-size: 28px;
 }
