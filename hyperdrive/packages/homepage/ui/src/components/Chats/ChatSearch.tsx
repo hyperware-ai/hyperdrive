@@ -10,7 +10,7 @@ interface ChatSearchProps {
 const ChatSearch: React.FC<ChatSearchProps> = ({ value, onChange, placeholder }) => {
   return (
     <div className="chat-search">
-      <span className="search-icon">🔍</span>
+      <span className="material-symbols-outlined search-icon">search</span>
       <input
         type="text"
         placeholder={placeholder || 'Search chats...'}
