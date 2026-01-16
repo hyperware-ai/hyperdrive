@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { Chat } from '#caller-utils';
-import { useChatStore } from '../../store/chat';
 import Avatar from '../Common/Avatar';
 import ChatSettings from './ChatSettings';
 import './ChatHeader.css';
 
 interface ChatHeaderProps {
   chat: Chat.Chat;
+  onBack: () => void;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ chat }) => {
-  const { setActiveChat } = useChatStore();
+const ChatHeader: React.FC<ChatHeaderProps> = ({ chat, onBack }) => {
   const [showSettings, setShowSettings] = useState(false);
   const isOfficial = chat.counterparty === 'dao.hypr';
 
   return (
     <>
       <div className="chat-header">
-        <button className="back-button" onClick={() => setActiveChat(null)}>
+        <button className="back-button" onClick={onBack}>
           ←
         </button>
 

@@ -181,6 +181,9 @@ input::placeholder, textarea::placeholder {
     --border-color: rgba(0, 0, 0, 0.1);
     --message-other: #e2e8f0;
     --message-other-text: #0f172a;
+    --primary-color: #004fff;
+    --primary-hover: #0040cc;
+    --primary-glow: rgba(0, 79, 255, 0.4);
     color: var(--text-primary);
     background-color: var(--background);
   }

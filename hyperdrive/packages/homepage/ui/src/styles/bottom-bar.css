@@ -100,11 +100,11 @@
 }
 
 .bottom-bar__item--active .bottom-bar__icon-wrap {
-  background: rgba(204, 255, 0, 0.15);
+  background: rgba(0, 79, 255, 0.15);
 }
 
 .bottom-bar__item--active .bottom-bar__icon-wrap .material-symbols-outlined {
-  color: var(--primary-color);
+  color: var(--iris, #004fff);
   font-variation-settings: 'FILL' 1, 'wght' 400;
 }
 
@@ -124,8 +124,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--primary-color);
-  box-shadow: 0 0 6px rgba(204, 255, 0, 0.6);
+  background: var(--iris, #004fff);
+  box-shadow: 0 0 6px rgba(0, 79, 255, 0.6);
 }
 
 /* Disabled state */

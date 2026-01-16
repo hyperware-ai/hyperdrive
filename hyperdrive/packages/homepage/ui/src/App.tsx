@@ -322,10 +322,11 @@ function App() {
           <AppDrawer forceOpen disableBackdropClose zIndexClass="z-30" />
         ) : activeGroup ? (
           <GroupView />
-        ) : activeChat ? (
-          <ChatView />
         ) : (
-          <SplashScreen />
+          <>
+            <SplashScreen />
+            {activeChat && <ChatView />}
+          </>
         )}
       </div>
 

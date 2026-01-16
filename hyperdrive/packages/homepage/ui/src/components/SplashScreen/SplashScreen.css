@@ -11,6 +11,7 @@
   right: 0;
   bottom: 0;
   padding-bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom, 0px));
+  z-index: 1;
 }
 
 .splash-header {

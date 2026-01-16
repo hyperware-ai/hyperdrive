@@ -19,7 +19,8 @@ const ChatView: React.FC = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [swipeX, setSwipeX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
-    const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const startXRef = useRef(0);
@@ -218,6 +219,14 @@ const ChatView: React.FC = () => {
     startXRef.current = 0;
   };
 
+  // Handle back button with animation
+  const handleBack = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setActiveChat(null);
+    }, 300);
+  }, [setActiveChat]);
+
   if (!activeChat) {
     return null;
   }
@@ -225,7 +234,7 @@ const ChatView: React.FC = () => {
   return (
     <div
       ref={chatViewRef}
-      className={`chat-view ${isSwiping ? 'swiping' : ''}`}
+      className={`chat-view ${isSwiping ? 'swiping' : ''} ${isClosing ? 'closing' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -235,7 +244,7 @@ const ChatView: React.FC = () => {
         opacity: isSwiping ? 1 - (swipeX / (window.innerWidth * 1.5)) : 1
       }}
     >
-      <ChatHeader chat={activeChat} />
+      <ChatHeader chat={activeChat} onBack={handleBack} />
 
       <div
         className="messages-container"

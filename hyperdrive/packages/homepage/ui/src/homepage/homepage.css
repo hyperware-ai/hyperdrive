@@ -136,10 +136,14 @@ h6 {
 
 button,
 .button {
-  @apply cursor-pointer flex items-center gap-2 justify-center bg-neon text-black px-4 py-2 rounded-md hover:bg-black hover:text-neon transition-colors duration-200 hover:outline-2;
+  @apply cursor-pointer flex items-center gap-2 justify-center px-4 py-2 rounded-md transition-colors duration-200;
+  /* Dark mode (default): neon green background */
+  @apply bg-neon text-black hover:bg-black hover:text-neon hover:outline-2;
 
   &.clear {
-    @apply bg-transparent text-black dark:text-white border-none hover:bg-black hover:text-neon;
+    @apply bg-transparent border-none;
+    /* Dark mode: white text, hover to neon */
+    @apply text-black dark:text-white hover:bg-black hover:text-neon;
   }
 
   &.thin {
@@ -148,6 +152,19 @@ button,
 
   &:disabled {
     @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+/* Light mode button overrides */
+@media (prefers-color-scheme: light) {
+  button,
+  .button {
+    @apply bg-iris text-white hover:bg-black/10 hover:text-black hover:outline-iris;
+  }
+
+  button.clear,
+  .button.clear {
+    @apply bg-transparent text-black hover:bg-black/10 hover:text-black;
   }
 }
 

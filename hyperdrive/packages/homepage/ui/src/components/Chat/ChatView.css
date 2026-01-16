@@ -1,3 +1,21 @@
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out-to-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 .chat-view {
   display: flex;
   flex-direction: column;
@@ -10,6 +28,12 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
+  z-index: 10;
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
+.chat-view.closing {
+  animation: slide-out-to-right 0.3s ease-out forwards;
 }
 
 .messages-container {
