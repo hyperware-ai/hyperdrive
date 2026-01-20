@@ -9,11 +9,12 @@ use futures::{channel::mpsc::UnboundedReceiver, pin_mut, select, FutureExt, Stre
 use hyperapp_macro::*;
 use hyperware_crdt::yrs::{Decode, Encode, StateVector};
 use base64::{engine::general_purpose, Engine as _};
+use serde::Deserialize;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::WsMessageType,
-    hyperapp::{get_path, send, set_response_status, sleep, source, spawn, AppSendError, SaveOptions},
-    our, vfs, Address, LazyLoadBlob, ProcessId, Request,
+    hyperapp::{self, get_path, send, set_response_status, sleep, source, spawn, AppSendError, SaveOptions},
+    our, vfs, Address, LazyLoadBlob, ProcessId, Request, Request as ProcessRequest,
 };
 use std::cmp::Ordering;
 use std::collections::{hash_map::DefaultHasher, HashMap};
@@ -60,6 +61,106 @@ const OUR_PROCESS_ID: (&str, &str, &str) = ("chat", "homepage", "sys");
 // Replication RPC timeout to keep admin/test calls responsive.
 const REPL_RPC_TIMEOUT_SECS: u64 = 2;
 const ICON: &str = include_str!("./icon");
+
+#[derive(Deserialize)]
+struct SpiderConversationWire {
+    id: String,
+    messages: Vec<SpiderMessageWire>,
+    metadata: SpiderConversationMetadataWire,
+    #[serde(rename = "llmProvider")]
+    llm_provider: String,
+    #[serde(rename = "mcpServers")]
+    mcp_servers: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct SpiderMessageWire {
+    role: String,
+    content: serde_json::Value,
+    #[serde(rename = "toolCallsJson")]
+    tool_calls_json: Option<String>,
+    #[serde(rename = "toolResultsJson")]
+    tool_results_json: Option<String>,
+    timestamp: u64,
+}
+
+#[derive(Deserialize)]
+struct SpiderConversationMetadataWire {
+    #[serde(rename = "startTime")]
+    start_time: String,
+    client: String,
+    #[serde(rename = "fromStt")]
+    from_stt: bool,
+}
+
+fn convert_spider_message_content(content: serde_json::Value) -> SpiderMessageContent {
+    use serde_json::Value;
+
+    match content {
+        Value::String(text) => SpiderMessageContent {
+            text: Some(text),
+            audio: None,
+            base_six_four_audio: None,
+        },
+        Value::Object(map) => {
+            let text = map
+                .get("Text")
+                .or_else(|| map.get("text"))
+                .and_then(|value| value.as_str())
+                .map(|value| value.to_string());
+            let base_six_four_audio = map
+                .get("BaseSixFourAudio")
+                .or_else(|| map.get("base_six_four_audio"))
+                .and_then(|value| value.as_str())
+                .map(|value| value.to_string());
+            let audio = map.get("Audio").or_else(|| map.get("audio")).and_then(|value| {
+                value.as_array().map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| item.as_u64().map(|v| v as u8))
+                        .collect::<Vec<u8>>()
+                })
+            });
+
+            SpiderMessageContent {
+                text,
+                audio,
+                base_six_four_audio,
+            }
+        }
+        _ => SpiderMessageContent {
+            text: None,
+            audio: None,
+            base_six_four_audio: None,
+        },
+    }
+}
+
+fn convert_spider_conversation(wire: SpiderConversationWire) -> SpiderConversation {
+    let messages = wire
+        .messages
+        .into_iter()
+        .map(|message| SpiderMessage {
+            role: message.role,
+            content: convert_spider_message_content(message.content),
+            tool_calls_json: message.tool_calls_json,
+            tool_results_json: message.tool_results_json,
+            timestamp: message.timestamp,
+        })
+        .collect();
+
+    SpiderConversation {
+        id: wire.id,
+        messages,
+        metadata: SpiderConversationMetadata {
+            start_time: wire.metadata.start_time,
+            client: wire.metadata.client,
+            from_stt: wire.metadata.from_stt,
+        },
+        llm_provider: wire.llm_provider,
+        mcp_servers: wire.mcp_servers,
+    }
+}
 
 // Helper function to enforce one-way status transitions
 fn safe_update_message_status(current: &MessageStatus, new: MessageStatus) -> MessageStatus {
@@ -3107,6 +3208,138 @@ impl ChatState {
         Ok(SubscriberEventsRes { events })
     }
 
+    // SPIDER INTEGRATION
+
+    #[http]
+    async fn spider_connect(&mut self, force_new: Option<bool>) -> Result<SpiderConnectResult, String> {
+        const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
+
+        let should_force = force_new.unwrap_or(false);
+        log_debug!("[SPIDER] spider_connect called, force_new={:?}, should_force={}", force_new, should_force);
+        log_debug!("[SPIDER] cached key exists: {}", self.spider_api_key.is_some());
+
+        if !should_force {
+            if let Some(existing) = self.spider_api_key.clone() {
+                log_debug!("[SPIDER] Validating cached key: {}...", &existing[..8.min(existing.len())]);
+                // Validate the cached key before returning it
+                if self.validate_spider_key(&existing).await {
+                    log_debug!("[SPIDER] Cached key is valid, returning it");
+                    return Ok(SpiderConnectResult {
+                        api_key: existing,
+                    });
+                }
+                log_debug!("[SPIDER] cached spider API key is invalid, creating new one");
+            }
+        }
+
+        // Always use a unique name to ensure Spider creates a fresh key
+        let key_name = format!("homepage-{}-{}", our().node.clone(), std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis());
+
+        log_debug!("[SPIDER] Creating new key with name: {}", key_name);
+
+        let body = serde_json::json!({
+            "CreateSpiderKey": {
+                "name": key_name,
+                "permissions": vec!["read", "write", "chat"],
+                "adminKey": "",
+            }
+        });
+        log_debug!("[SPIDER] Sending CreateSpiderKey request to spider:spider:sys");
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&body)
+                    .map_err(|err| format!("failed to serialize spider key request: {err}"))?,
+            )
+            .expects_response(5);
+
+        let parsed: Result<SpiderApiKey, String> = hyperapp::send(request)
+            .await
+            .map_err(|err| {
+                log_debug!("[SPIDER] Failed to contact spider: {}", err);
+                format!("failed to contact spider: {err}")
+            })?;
+
+        match parsed {
+            Ok(key) => {
+                log_debug!("[SPIDER] Successfully created key: {}...", &key.key[..8.min(key.key.len())]);
+                self.spider_api_key = Some(key.key.clone());
+                Ok(SpiderConnectResult { api_key: key.key })
+            }
+            Err(err) => {
+                log_debug!("[SPIDER] Spider refused to create key: {}", err);
+                Err(format!("spider refused to create key: {err}"))
+            }
+        }
+    }
+
+    #[http]
+    async fn spider_status(&self) -> Result<SpiderStatusInfo, String> {
+        const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
+
+        log_debug!("[SPIDER] spider_status called");
+        let ping_body = serde_json::json!({ "Ping": null });
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&ping_body)
+                    .map_err(|err| format!("failed to serialize ping: {err}"))?,
+            )
+            .expects_response(2);
+        let ping_result = hyperapp::send::<serde_json::Value>(request).await;
+        let available = ping_result.is_ok();
+        log_debug!("[SPIDER] Ping result: {:?}, available: {}", ping_result, available);
+
+        let status = SpiderStatusInfo {
+            connected: self.spider_api_key.is_some() && available,
+            has_api_key: self.spider_api_key.is_some(),
+            spider_available: available,
+        };
+        log_debug!("[SPIDER] Returning status: connected={}, has_api_key={}, spider_available={}",
+            status.connected, status.has_api_key, status.spider_available);
+        Ok(status)
+    }
+
+    #[http]
+    async fn spider_list_conversations(
+        &mut self,
+        request: SpiderListConversationsReq,
+    ) -> Result<Vec<SpiderConversation>, String> {
+        const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
+
+        let api_key = match self.spider_api_key.clone() {
+            Some(key) => key,
+            None => self.spider_connect(Some(false)).await?.api_key,
+        };
+
+        let body = serde_json::json!({
+            "ListConversations": {
+                "limit": request.limit,
+                "offset": request.offset,
+                "client": request.client,
+                "authKey": api_key,
+            }
+        });
+
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&body)
+                    .map_err(|err| format!("failed to serialize list conversations: {err}"))?,
+            )
+            .expects_response(5);
+
+        let parsed: Result<Vec<SpiderConversationWire>, String> = hyperapp::send(request)
+            .await
+            .map_err(|err| format!("failed to contact spider: {err}"))?;
+
+        let wire_conversations = parsed?;
+        Ok(wire_conversations
+            .into_iter()
+            .map(convert_spider_conversation)
+            .collect())
+    }
+
     // WEBSOCKET HANDLERS
 
     #[ws]
@@ -4503,6 +4736,52 @@ impl ChatState {
         CUUserProfile {
             name: profile.name.clone(),
             profile_pic: profile.profile_pic.clone(),
+        }
+    }
+
+    /// Validates a Spider API key by making a lightweight test request
+    async fn validate_spider_key(&self, api_key: &str) -> bool {
+        const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
+
+        log_debug!("[SPIDER] validate_spider_key called for key: {}...", &api_key[..8.min(api_key.len())]);
+
+        let body = serde_json::json!({
+            "ListMcpServers": {
+                "authKey": api_key,
+            }
+        });
+
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(match serde_json::to_vec(&body) {
+                Ok(b) => b,
+                Err(e) => {
+                    log_debug!("[SPIDER] Failed to serialize validation request: {}", e);
+                    return false;
+                }
+            })
+            .expects_response(5);
+
+        let result: Result<serde_json::Value, _> = hyperapp::send(request).await;
+        log_debug!("[SPIDER] Validation result: {:?}", result);
+
+        match result {
+            Ok(json_body) => {
+                // Check if response is an error
+                if let Some(err) = json_body.get("Err") {
+                    let err_str = err.as_str().unwrap_or("");
+                    let is_valid = !err_str.contains("Unauthorized") && !err_str.contains("Invalid API key");
+                    log_debug!("[SPIDER] Validation response has Err: {}, is_valid: {}", err_str, is_valid);
+                    // If unauthorized or invalid key, return false
+                    is_valid
+                } else {
+                    log_debug!("[SPIDER] Validation successful (no Err in response)");
+                    true
+                }
+            }
+            Err(e) => {
+                log_debug!("[SPIDER] Validation request failed: {:?}", e);
+                false
+            }
         }
     }
 }

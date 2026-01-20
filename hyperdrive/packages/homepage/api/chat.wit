@@ -354,6 +354,22 @@ use standard.{address};
         reply-to: option<string>
     }
 
+    record spider-connect-result {
+        api-key: string
+    }
+
+    record spider-list-conversations-req {
+        limit: option<u32>,
+        offset: option<u32>,
+        client: option<string>
+    }
+
+    record spider-status-info {
+        connected: bool,
+        has-api-key: bool,
+        spider-available: bool
+    }
+
     record subscriber-events-req {
         take: option<u64>,
         clear: bool
@@ -662,6 +678,34 @@ use standard.{address};
         label: string,
         permissions: group-permissions,
         tier: group-tier
+    }
+
+    record spider-conversation {
+        id: string,
+        messages: list<spider-message>,
+        metadata: spider-conversation-metadata,
+        llm-provider: string,
+        mcp-servers: list<string>
+    }
+
+    record spider-conversation-metadata {
+        start-time: string,
+        client: string,
+        from-stt: bool
+    }
+
+    record spider-message {
+        role: string,
+        content: spider-message-content,
+        tool-calls-json: option<string>,
+        tool-results-json: option<string>,
+        timestamp: u64
+    }
+
+    record spider-message-content {
+        text: option<string>,
+        audio: option<list<u8>>,
+        base-six-four-audio: option<string>
     }
 
     record subscriber-sync-state {
@@ -1382,6 +1426,32 @@ use standard.{address};
     record serve-public-chat-signature-http {
         target: string,
         returning: result<string, string>
+    }
+
+    // Function signature for: spider-connect (http)
+    // HTTP: POST /api/spider-connect
+    // args: (force-new: option<bool>)
+    record spider-connect-signature-http {
+        target: string,
+        arg-types: tuple<option<bool>>,
+        returning: result<spider-connect-result, string>
+    }
+
+    // Function signature for: spider-list-conversations (http)
+    // HTTP: POST /api/spider-list-conversations
+    // args: (request: spider-list-conversations-req)
+    record spider-list-conversations-signature-http {
+        target: string,
+        arg-types: tuple<spider-list-conversations-req>,
+        returning: result<list<spider-conversation>, string>
+    }
+
+    // Function signature for: spider-status (http)
+    // HTTP: POST /api/spider-status
+    // args: none
+    record spider-status-signature-http {
+        target: string,
+        returning: result<spider-status-info, string>
     }
 
     // Function signature for: update-chat-settings (http)

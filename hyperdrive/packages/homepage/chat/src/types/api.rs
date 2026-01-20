@@ -574,3 +574,66 @@ impl fmt::Display for MembershipActionError {
 }
 
 impl std::error::Error for MembershipActionError {}
+
+// Spider Integration Types
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderApiKey {
+    pub key: String,
+    pub name: String,
+    pub permissions: Vec<String>,
+    #[serde(rename = "createdAt")]
+    pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderConnectResult {
+    pub api_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderStatusInfo {
+    pub connected: bool,
+    pub has_api_key: bool,
+    #[serde(rename = "spider_available")]
+    pub spider_available: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderMessageContent {
+    pub text: Option<String>,
+    pub audio: Option<Vec<u8>>,
+    pub base_six_four_audio: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderMessage {
+    pub role: String,
+    pub content: SpiderMessageContent,
+    pub tool_calls_json: Option<String>,
+    pub tool_results_json: Option<String>,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderConversationMetadata {
+    pub start_time: String,
+    pub client: String,
+    pub from_stt: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderConversation {
+    pub id: String,
+    pub messages: Vec<SpiderMessage>,
+    pub metadata: SpiderConversationMetadata,
+    pub llm_provider: String,
+    pub mcp_servers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderListConversationsReq {
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+    pub client: Option<String>,
+}

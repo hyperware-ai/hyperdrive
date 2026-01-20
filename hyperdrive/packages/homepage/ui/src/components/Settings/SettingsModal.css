@@ -27,16 +27,24 @@
   padding: 12px;
   background: none;
   border: none;
+  border-bottom: 2px solid transparent;
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color 0.2s, border-color 0.2s;
 }
 
 .settings-tab.active {
   color: var(--primary-color);
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+@media (prefers-color-scheme: light) {
+  .settings-tab.active {
+    color: #004fff;
+    border-bottom-color: #004fff;
+  }
 }
 
 .settings-tab.disabled {

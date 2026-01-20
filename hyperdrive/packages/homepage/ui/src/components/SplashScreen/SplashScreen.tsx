@@ -4,7 +4,15 @@ import SettingsModal from '../Settings/SettingsModal';
 import UnifiedMessages from './UnifiedMessages';
 import './SplashScreen.css';
 
-const SplashScreen: React.FC = () => {
+interface SplashScreenProps {
+  showSpiderChat: boolean;
+  setShowSpiderChat: (show: boolean) => void;
+}
+
+const SplashScreen: React.FC<SplashScreenProps> = ({
+  showSpiderChat,
+  setShowSpiderChat,
+}) => {
   const [showSettings, setShowSettings] = useState(false);
 
   return (
@@ -18,7 +26,10 @@ const SplashScreen: React.FC = () => {
       </div>
 
       <div className="splash-content">
-        <UnifiedMessages />
+        <UnifiedMessages
+          showSpiderChat={showSpiderChat}
+          setShowSpiderChat={setShowSpiderChat}
+        />
       </div>
 
       {showSettings && (

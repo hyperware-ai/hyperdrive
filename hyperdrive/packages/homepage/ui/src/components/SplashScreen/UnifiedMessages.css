@@ -343,3 +343,92 @@
   color: #ff6b6b;
   border: 1px solid rgba(255, 68, 68, 0.35);
 }
+
+/* Spider avatar styling */
+.unified-avatar.spider-avatar {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  font-family: 'Space Grotesk', monospace;
+  font-weight: 700;
+}
+
+/* Pin badge */
+.pin-badge {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* Spider chat overlay */
+.spider-chat-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background);
+  z-index: 100;
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Chat item menu confirmation dialog */
+.message-menu.chat-item-confirm {
+  padding: 16px;
+  min-width: 240px;
+}
+
+.message-menu.chat-item-confirm .confirm-header {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.message-menu.chat-item-confirm .confirm-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.message-menu.chat-item-confirm .confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.message-menu.chat-item-confirm .cancel-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.message-menu.chat-item-confirm .danger-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.message-menu button.danger {
+  color: #ef4444;
+}

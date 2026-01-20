@@ -6,6 +6,7 @@ import './homepage/styles/animations.css';
 import { useChatStore } from './store/chat';
 import SplashScreen from './components/SplashScreen/SplashScreen';
 import ChatView from './components/Chat/ChatView';
+import SpiderChat from './components/Spider/SpiderChat';
 import { useGroupStore } from './store/groups';
 import GroupView from './components/Groups/GroupView';
 import GroupJoinModal from './components/Groups/GroupJoinModal';
@@ -42,6 +43,7 @@ function App() {
   const { activeGroup, loadGroups, fetchReplicationState } = useGroupStore();
   const [pendingJoin, setPendingJoin] = useState<GroupJoinTarget | null>(null);
   const [activeTab, setActiveTab] = useState<MainTab>('chat');
+  const [showSpiderChat, setShowSpiderChat] = useState(false);
 
   const { apps, setApps } = useAppStore();
   const {
@@ -281,7 +283,7 @@ function App() {
   }, []);
 
   const isChatDetail = activeTab === 'chat' && Boolean(activeChat || activeGroup);
-  const isBottomBarHidden = isChatDetail || Boolean(currentAppId);
+  const isBottomBarHidden = isChatDetail || Boolean(currentAppId) || showSpiderChat;
   const shouldShowOmniButton = runningApps.length > 0;
   const showAppsView = activeTab === 'apps' && !currentAppId;
 
@@ -324,8 +326,14 @@ function App() {
           <GroupView />
         ) : (
           <>
-            <SplashScreen />
+            <SplashScreen
+              showSpiderChat={showSpiderChat}
+              setShowSpiderChat={setShowSpiderChat}
+            />
             {activeChat && <ChatView />}
+            {showSpiderChat && (
+              <SpiderChat onBack={() => setShowSpiderChat(false)} />
+            )}
           </>
         )}
       </div>

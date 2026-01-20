@@ -1,25 +1,42 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chat as api } from '#caller-utils';
 import { useChatStore } from '../../store/chat';
 import { useGroupStore } from '../../store/groups';
+import { useSpiderStore } from '../../store/spider';
 import ChatSearch from '../Chats/ChatSearch';
 import NewChatModal from '../Chats/NewChatModal';
 import GroupCreateModal from '../Groups/GroupCreateModal';
+import ChatItemMenu from './ChatItemMenu';
 import './UnifiedMessages.css';
 
 type UnifiedItem = {
   id: string;
-  kind: 'dm' | 'group';
+  kind: 'dm' | 'group' | 'spider';
   title: string;
   subtitle: string;
   threadPath: string | null;
   lastActivity: number;
   unread: number;
+  isPinned?: boolean;
   onClick: () => void;
+  // For context menu actions
+  chatId?: string;
+  groupId?: string;
 };
 
-const UnifiedMessages: React.FC = () => {
-  const { chats, searchIndex, connectionStatus, setActiveChat, setJumpToMessageId } = useChatStore();
+// LocalStorage key for pinned items
+const PINNED_ITEMS_KEY = 'hyperdrive-pinned-chats';
+
+interface UnifiedMessagesProps {
+  showSpiderChat: boolean;
+  setShowSpiderChat: (show: boolean) => void;
+}
+
+const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
+  showSpiderChat,
+  setShowSpiderChat,
+}) => {
+  const { chats, searchIndex, connectionStatus, setActiveChat, setJumpToMessageId, deleteChat } = useChatStore();
   const {
     groups,
     groupPreviews,
@@ -31,7 +48,10 @@ const UnifiedMessages: React.FC = () => {
     setJumpToMessageId: setGroupJumpToMessageId,
     isLoading,
     error,
+    leaveGroup,
   } = useGroupStore();
+
+  const { messages: spiderMessages, checkStatus } = useSpiderStore();
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<api.SearchResultItem[] | null>(null);
@@ -39,6 +59,41 @@ const UnifiedMessages: React.FC = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showChooser, setShowChooser] = useState(false);
   const chooserOpenedAtRef = useRef(0);
+
+  // Context menu state
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [menuItem, setMenuItem] = useState<UnifiedItem | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Pinned items state
+  const [pinnedItems, setPinnedItems] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(PINNED_ITEMS_KEY);
+      return stored ? JSON.parse(stored) : ['spider'];
+    } catch {
+      return ['spider'];
+    }
+  });
+
+  // Save pinned items to localStorage
+  useEffect(() => {
+    localStorage.setItem(PINNED_ITEMS_KEY, JSON.stringify(pinnedItems));
+  }, [pinnedItems]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Check Spider availability on mount
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
 
   // Keep group data fresh when we land on the unified view
   useEffect(() => {
@@ -166,32 +221,34 @@ const UnifiedMessages: React.FC = () => {
       return items;
     }
 
-    const dmItems = chats.map((chat) => {
+    const dmItems: UnifiedItem[] = chats.map((chat) => {
       const lastMessage = chat.messages[chat.messages.length - 1];
       const lastActivity = chat.last_activity || lastMessage?.timestamp || 0;
       const preview = lastMessage?.content || 'No messages yet';
+      const itemId = `dm-${chat.id}`;
       return {
-        id: `dm-${chat.id}`,
+        id: itemId,
         kind: 'dm' as const,
         title: chat.counterparty || 'Direct message',
         subtitle: preview,
-        threadPath: null as string | null,
+        threadPath: null,
         lastActivity,
         unread: chat.unread_count,
-        isOfficial: chat.counterparty === 'dao.hypr',
-        meta: undefined,
+        isPinned: pinnedItems.includes(itemId),
         onClick: () => setActiveChat(chat),
+        chatId: chat.id,
       };
     });
 
-    const groupItems = groups.map((group) => {
+    const groupItems: UnifiedItem[] = groups.map((group) => {
       const preview = groupPreviews[group.group_id];
       const lastActivity =
         preview?.timestamp || group.metadata?.updated_at || Math.floor(Date.now() / 1000);
       const subtitle = preview?.text || 'No messages yet';
       const threadPath = preview?.threadPath || null;
+      const itemId = `group-${group.group_id}`;
       return {
-        id: `group-${group.group_id}`,
+        id: itemId,
         kind: 'group' as const,
         title: group.metadata?.name || 'Untitled group',
         subtitle,
@@ -199,12 +256,40 @@ const UnifiedMessages: React.FC = () => {
         lastActivity,
         onClick: () => openGroup(group.group_id),
         unread: groupUnread[group.group_id] || 0,
+        isPinned: pinnedItems.includes(itemId),
+        groupId: group.group_id,
       };
     });
 
-    return [...dmItems, ...groupItems].sort(
-      (a, b) => (b.lastActivity || 0) - (a.lastActivity || 0)
-    );
+    // Create Spider item (always pinned at top)
+    const lastSpiderMessage = spiderMessages[spiderMessages.length - 1];
+    const spiderItem: UnifiedItem = {
+      id: 'spider',
+      kind: 'spider' as const,
+      title: 'Spider',
+      subtitle: lastSpiderMessage?.content?.text?.slice(0, 50) || 'AI Assistant - Ask anything!',
+      threadPath: null,
+      lastActivity: lastSpiderMessage?.timestamp || 0,
+      unread: 0,
+      isPinned: pinnedItems.includes('spider'),
+      onClick: () => setShowSpiderChat(true),
+    };
+
+    // Sort: pinned items first, then by lastActivity
+    const allItems = [spiderItem, ...dmItems, ...groupItems];
+    const pinnedList = allItems.filter(item => item.isPinned);
+    const unpinnedList = allItems.filter(item => !item.isPinned);
+
+    pinnedList.sort((a, b) => {
+      // Spider always first among pinned
+      if (a.id === 'spider') return -1;
+      if (b.id === 'spider') return 1;
+      return (b.lastActivity || 0) - (a.lastActivity || 0);
+    });
+
+    unpinnedList.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
+
+    return [...pinnedList, ...unpinnedList];
   }, [
     searchResults,
     chats,
@@ -214,6 +299,8 @@ const UnifiedMessages: React.FC = () => {
     openGroup,
     setActiveChat,
     setActiveThread,
+    spiderMessages,
+    pinnedItems,
   ]);
 
   const formatTime = (timestamp?: number | null) => {
@@ -248,6 +335,98 @@ const UnifiedMessages: React.FC = () => {
     }
     setShowChooser(false);
   };
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, item: UnifiedItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuPosition({ x: e.clientX, y: e.clientY });
+    setMenuItem(item);
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent, item: UnifiedItem) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = setTimeout(() => {
+      setMenuPosition({ x: touch.clientX, y: touch.clientY });
+      setMenuItem(item);
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+      }
+    }, 500);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+    if (deltaX > 10 || deltaY > 10) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartRef.current = null;
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setMenuPosition(null);
+    setMenuItem(null);
+  }, []);
+
+  // Pin/unpin handler
+  const handleTogglePin = useCallback((itemId: string) => {
+    setPinnedItems(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(id => id !== itemId);
+      } else {
+        return [...prev, itemId];
+      }
+    });
+  }, []);
+
+  // Delete chat handler
+  const handleDeleteChat = useCallback(async (chatId: string) => {
+    try {
+      await deleteChat(chatId);
+    } catch (err) {
+      console.error('Failed to delete chat:', err);
+    }
+  }, [deleteChat]);
+
+  // Leave group handler
+  const handleLeaveGroup = useCallback(async (groupId: string) => {
+    try {
+      // Open the group first to set activeGroupId, then leave
+      await openGroup(groupId);
+      await leaveGroup();
+    } catch (err) {
+      console.error('Failed to leave group:', err);
+    }
+  }, [openGroup, leaveGroup]);
+
+  // Mark as unread handler (local only)
+  const handleMarkUnread = useCallback((item: UnifiedItem) => {
+    // This is a local-only feature - just a visual indicator
+    // In a full implementation, you'd update the store to show unread badge
+    console.log('Mark as unread:', item.id);
+    // For now, we'll just close the menu - full implementation would need store changes
+  }, []);
 
   const NewChatChooser = () => (
     <div className="modal-overlay" onClick={handleChooserOverlayClick}>
@@ -311,19 +490,25 @@ const UnifiedMessages: React.FC = () => {
               unifiedItems.map((item) => (
                 <button
                   key={item.id}
-                  className={`unified-item ${item.kind} ${'isOfficial' in item && item.isOfficial ? 'official-chat' : ''}`}
+                  className={`unified-item ${item.kind} ${item.isPinned ? 'pinned' : ''}`}
                   onClick={item.onClick}
+                  onContextMenu={(e) => handleContextMenu(e, item)}
+                  onTouchStart={(e) => handleTouchStart(e, item)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                 >
-                  <div className="unified-avatar" aria-hidden="true">
-                    {item.title.slice(0, 2).toUpperCase()}
+                  <div className={`unified-avatar ${item.kind === 'spider' ? 'spider-avatar' : ''}`} aria-hidden="true">
+                    {item.kind === 'spider' ? 'S' : item.title.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="unified-item-body">
                     <div className="unified-item-row">
                       <div className="unified-item-title">
                         {item.title}
-                        {'isOfficial' in item && item.isOfficial ? (
-                          <span className="official-badge">official</span>
-                        ) : null}
+                        {item.isPinned && (
+                          <span className="pin-badge" title="Pinned">
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>push_pin</span>
+                          </span>
+                        )}
                       </div>
                       <div className="unified-item-meta">
                         {item.lastActivity ? (
@@ -340,7 +525,7 @@ const UnifiedMessages: React.FC = () => {
                         )}
                         {item.subtitle}
                       </div>
-                      {'unread' in item && item.unread ? (
+                      {item.unread ? (
                         <span className="unified-unread">{item.unread}</span>
                       ) : null}
                     </div>
@@ -372,6 +557,21 @@ const UnifiedMessages: React.FC = () => {
         <GroupCreateModal onClose={() => setShowCreateGroup(false)} />
       )}
       {showChooser && <NewChatChooser />}
+
+      {/* Context menu */}
+      {menuPosition && menuItem && (
+        <ChatItemMenu
+          itemKind={menuItem.kind}
+          itemTitle={menuItem.title}
+          position={menuPosition}
+          onClose={closeMenu}
+          onDelete={menuItem.chatId ? () => handleDeleteChat(menuItem.chatId!) : undefined}
+          onLeave={menuItem.groupId ? () => handleLeaveGroup(menuItem.groupId!) : undefined}
+          onMarkUnread={() => handleMarkUnread(menuItem)}
+          onTogglePin={() => handleTogglePin(menuItem.id)}
+          isPinned={menuItem.isPinned ?? false}
+        />
+      )}
     </div>
   );
 };
