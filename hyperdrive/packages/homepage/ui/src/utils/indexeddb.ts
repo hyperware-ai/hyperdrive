@@ -1,11 +1,13 @@
 import { Chat } from '#caller-utils';
+import { SpiderMessage } from '../types/spider';
 export type Chat = Chat.Chat;
 export type ChatMessage = Chat.ChatMessage;
 
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const CHATS_STORE = 'chats';
 const MESSAGES_STORE = 'messages';
 const METADATA_STORE = 'metadata';
+const SPIDER_MESSAGES_STORE = 'spider_messages';
 
 // Get node-scoped DB name for localhost isolation
 function getDBName(): string {
@@ -56,6 +58,11 @@ class IndexedDBStorage {
         // Create metadata store for sync timestamps and active chat
         if (!db.objectStoreNames.contains(METADATA_STORE)) {
           db.createObjectStore(METADATA_STORE, { keyPath: 'key' });
+        }
+
+        if (!db.objectStoreNames.contains(SPIDER_MESSAGES_STORE)) {
+          const spiderStore = db.createObjectStore(SPIDER_MESSAGES_STORE, { keyPath: 'id' });
+          spiderStore.createIndex('timestamp', 'timestamp', { unique: false });
         }
 
         console.log('[IDB] Database schema upgraded');
@@ -251,11 +258,15 @@ class IndexedDBStorage {
   async clearAll(): Promise<void> {
     console.log('[IDB] Clearing all data...');
     const db = await this.ensureDB();
-    const transaction = db.transaction([CHATS_STORE, MESSAGES_STORE, METADATA_STORE], 'readwrite');
+    const transaction = db.transaction(
+      [CHATS_STORE, MESSAGES_STORE, METADATA_STORE, SPIDER_MESSAGES_STORE],
+      'readwrite'
+    );
     
     await this.promisifyRequest(transaction.objectStore(CHATS_STORE).clear());
     await this.promisifyRequest(transaction.objectStore(MESSAGES_STORE).clear());
     await this.promisifyRequest(transaction.objectStore(METADATA_STORE).clear());
+    await this.promisifyRequest(transaction.objectStore(SPIDER_MESSAGES_STORE).clear());
     
     console.log('[IDB] All data cleared');
   }
@@ -278,6 +289,26 @@ class IndexedDBStorage {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
+  }
+
+  async saveSpiderMessages(messages: SpiderMessage[]): Promise<void> {
+    const db = await this.ensureDB();
+    const transaction = db.transaction([SPIDER_MESSAGES_STORE], 'readwrite');
+    const store = transaction.objectStore(SPIDER_MESSAGES_STORE);
+
+    await this.promisifyRequest(store.clear());
+    for (const message of messages) {
+      if (!message.id) continue;
+      await this.promisifyRequest(store.put(message));
+    }
+  }
+
+  async loadSpiderMessages(): Promise<SpiderMessage[]> {
+    const db = await this.ensureDB();
+    const transaction = db.transaction([SPIDER_MESSAGES_STORE], 'readonly');
+    const store = transaction.objectStore(SPIDER_MESSAGES_STORE);
+    const messages = (await this.promisifyRequest(store.getAll())) as SpiderMessage[];
+    return messages.sort((a, b) => a.timestamp - b.timestamp);
   }
 }
 

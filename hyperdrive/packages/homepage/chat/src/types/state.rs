@@ -320,6 +320,8 @@ pub struct ChatState {
     #[serde(default)]
     pub spider_api_key: Option<String>,
     #[serde(default)]
+    pub spider_history: Vec<SpiderMessage>,
+    #[serde(default)]
     pub message_sequence_counters: HashMap<String, u64>,
     #[serde(skip)]
     pub delivery_tx: DeliveryTx,
@@ -392,6 +394,7 @@ impl Default for ChatState {
             group_join_keys: HashMap::new(),
             settings: Settings::default(),
             spider_api_key: None,
+            spider_history: Vec::new(),
             message_sequence_counters: HashMap::new(),
             delivery_tx,
             // represents "still available" versus "already consumed"
@@ -455,6 +458,8 @@ impl<'de> Deserialize<'de> for ChatState {
             settings: Settings,
             #[serde(default)]
             spider_api_key: Option<String>,
+            #[serde(default)]
+            spider_history: Vec<SpiderMessage>,
             #[serde(default)]
             message_sequence_counters: HashMap<String, u64>,
             #[serde(default)]
@@ -523,6 +528,7 @@ impl<'de> Deserialize<'de> for ChatState {
             group_join_keys,
             settings,
             spider_api_key,
+            spider_history,
             message_sequence_counters,
             groups,
             group_unread,
@@ -537,6 +543,7 @@ impl<'de> Deserialize<'de> for ChatState {
                     data.group_join_keys,
                     data.settings,
                     data.spider_api_key,
+                    data.spider_history,
                     data.message_sequence_counters,
                     data.groups,
                     data.group_unread,
@@ -550,6 +557,7 @@ impl<'de> Deserialize<'de> for ChatState {
                     HashMap::new(),
                     data.settings,
                     None,
+                    Vec::new(),
                     data.message_sequence_counters,
                     data.groups,
                     data.group_unread,
@@ -563,6 +571,7 @@ impl<'de> Deserialize<'de> for ChatState {
                     HashMap::new(),
                     data.settings,
                     None,
+                    Vec::new(),
                     HashMap::new(),
                     HashMap::new(),
                     HashMap::new(),
@@ -581,6 +590,7 @@ impl<'de> Deserialize<'de> for ChatState {
             group_join_keys,
             settings,
             spider_api_key,
+            spider_history,
             message_sequence_counters,
             delivery_tx,
             delivery_rx: Some(delivery_rx),

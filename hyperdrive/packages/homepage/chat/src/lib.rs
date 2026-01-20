@@ -9,7 +9,6 @@ use futures::{channel::mpsc::UnboundedReceiver, pin_mut, select, FutureExt, Stre
 use hyperapp_macro::*;
 use hyperware_crdt::yrs::{Decode, Encode, StateVector};
 use base64::{engine::general_purpose, Engine as _};
-use serde::Deserialize;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::WsMessageType,
@@ -62,105 +61,6 @@ const OUR_PROCESS_ID: (&str, &str, &str) = ("chat", "homepage", "sys");
 const REPL_RPC_TIMEOUT_SECS: u64 = 2;
 const ICON: &str = include_str!("./icon");
 
-#[derive(Deserialize)]
-struct SpiderConversationWire {
-    id: String,
-    messages: Vec<SpiderMessageWire>,
-    metadata: SpiderConversationMetadataWire,
-    #[serde(rename = "llmProvider")]
-    llm_provider: String,
-    #[serde(rename = "mcpServers")]
-    mcp_servers: Vec<String>,
-}
-
-#[derive(Deserialize)]
-struct SpiderMessageWire {
-    role: String,
-    content: serde_json::Value,
-    #[serde(rename = "toolCallsJson")]
-    tool_calls_json: Option<String>,
-    #[serde(rename = "toolResultsJson")]
-    tool_results_json: Option<String>,
-    timestamp: u64,
-}
-
-#[derive(Deserialize)]
-struct SpiderConversationMetadataWire {
-    #[serde(rename = "startTime")]
-    start_time: String,
-    client: String,
-    #[serde(rename = "fromStt")]
-    from_stt: bool,
-}
-
-fn convert_spider_message_content(content: serde_json::Value) -> SpiderMessageContent {
-    use serde_json::Value;
-
-    match content {
-        Value::String(text) => SpiderMessageContent {
-            text: Some(text),
-            audio: None,
-            base_six_four_audio: None,
-        },
-        Value::Object(map) => {
-            let text = map
-                .get("Text")
-                .or_else(|| map.get("text"))
-                .and_then(|value| value.as_str())
-                .map(|value| value.to_string());
-            let base_six_four_audio = map
-                .get("BaseSixFourAudio")
-                .or_else(|| map.get("base_six_four_audio"))
-                .and_then(|value| value.as_str())
-                .map(|value| value.to_string());
-            let audio = map.get("Audio").or_else(|| map.get("audio")).and_then(|value| {
-                value.as_array().map(|items| {
-                    items
-                        .iter()
-                        .filter_map(|item| item.as_u64().map(|v| v as u8))
-                        .collect::<Vec<u8>>()
-                })
-            });
-
-            SpiderMessageContent {
-                text,
-                audio,
-                base_six_four_audio,
-            }
-        }
-        _ => SpiderMessageContent {
-            text: None,
-            audio: None,
-            base_six_four_audio: None,
-        },
-    }
-}
-
-fn convert_spider_conversation(wire: SpiderConversationWire) -> SpiderConversation {
-    let messages = wire
-        .messages
-        .into_iter()
-        .map(|message| SpiderMessage {
-            role: message.role,
-            content: convert_spider_message_content(message.content),
-            tool_calls_json: message.tool_calls_json,
-            tool_results_json: message.tool_results_json,
-            timestamp: message.timestamp,
-        })
-        .collect();
-
-    SpiderConversation {
-        id: wire.id,
-        messages,
-        metadata: SpiderConversationMetadata {
-            start_time: wire.metadata.start_time,
-            client: wire.metadata.client,
-            from_stt: wire.metadata.from_stt,
-        },
-        llm_provider: wire.llm_provider,
-        mcp_servers: wire.mcp_servers,
-    }
-}
 
 // Helper function to enforce one-way status transitions
 fn safe_update_message_status(current: &MessageStatus, new: MessageStatus) -> MessageStatus {
@@ -3302,42 +3202,16 @@ impl ChatState {
     }
 
     #[http]
-    async fn spider_list_conversations(
-        &mut self,
-        request: SpiderListConversationsReq,
-    ) -> Result<Vec<SpiderConversation>, String> {
-        const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
+    async fn spider_get_history(&self) -> Result<SpiderHistory, String> {
+        Ok(SpiderHistory {
+            messages: self.spider_history.clone(),
+        })
+    }
 
-        let api_key = match self.spider_api_key.clone() {
-            Some(key) => key,
-            None => self.spider_connect(Some(false)).await?.api_key,
-        };
-
-        let body = serde_json::json!({
-            "ListConversations": {
-                "limit": request.limit,
-                "offset": request.offset,
-                "client": request.client,
-                "authKey": api_key,
-            }
-        });
-
-        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
-            .body(
-                serde_json::to_vec(&body)
-                    .map_err(|err| format!("failed to serialize list conversations: {err}"))?,
-            )
-            .expects_response(5);
-
-        let parsed: Result<Vec<SpiderConversationWire>, String> = hyperapp::send(request)
-            .await
-            .map_err(|err| format!("failed to contact spider: {err}"))?;
-
-        let wire_conversations = parsed?;
-        Ok(wire_conversations
-            .into_iter()
-            .map(convert_spider_conversation)
-            .collect())
+    #[http]
+    async fn spider_set_history(&mut self, request: SpiderSetHistoryReq) -> Result<(), String> {
+        self.spider_history = request.messages;
+        Ok(())
     }
 
     // WEBSOCKET HANDLERS

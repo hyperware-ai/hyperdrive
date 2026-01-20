@@ -358,10 +358,12 @@ use standard.{address};
         api-key: string
     }
 
-    record spider-list-conversations-req {
-        limit: option<u32>,
-        offset: option<u32>,
-        client: option<string>
+    record spider-history {
+        messages: list<spider-message>
+    }
+
+    record spider-set-history-req {
+        messages: list<spider-message>
     }
 
     record spider-status-info {
@@ -678,20 +680,6 @@ use standard.{address};
         label: string,
         permissions: group-permissions,
         tier: group-tier
-    }
-
-    record spider-conversation {
-        id: string,
-        messages: list<spider-message>,
-        metadata: spider-conversation-metadata,
-        llm-provider: string,
-        mcp-servers: list<string>
-    }
-
-    record spider-conversation-metadata {
-        start-time: string,
-        client: string,
-        from-stt: bool
     }
 
     record spider-message {
@@ -1437,13 +1425,21 @@ use standard.{address};
         returning: result<spider-connect-result, string>
     }
 
-    // Function signature for: spider-list-conversations (http)
-    // HTTP: POST /api/spider-list-conversations
-    // args: (request: spider-list-conversations-req)
-    record spider-list-conversations-signature-http {
+    // Function signature for: spider-get-history (http)
+    // HTTP: POST /api/spider-get-history
+    // args: none
+    record spider-get-history-signature-http {
         target: string,
-        arg-types: tuple<spider-list-conversations-req>,
-        returning: result<list<spider-conversation>, string>
+        returning: result<spider-history, string>
+    }
+
+    // Function signature for: spider-set-history (http)
+    // HTTP: POST /api/spider-set-history
+    // args: (request: spider-set-history-req)
+    record spider-set-history-signature-http {
+        target: string,
+        arg-types: tuple<spider-set-history-req>,
+        returning: result<_, string>
     }
 
     // Function signature for: spider-status (http)

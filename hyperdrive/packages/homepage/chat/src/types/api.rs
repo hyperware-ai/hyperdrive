@@ -601,8 +601,11 @@ pub struct SpiderStatusInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpiderMessageContent {
+    #[serde(default)]
     pub text: Option<String>,
+    #[serde(default)]
     pub audio: Option<Vec<u8>>,
+    #[serde(rename = "base-six-four-audio", default)]
     pub base_six_four_audio: Option<String>,
 }
 
@@ -610,30 +613,19 @@ pub struct SpiderMessageContent {
 pub struct SpiderMessage {
     pub role: String,
     pub content: SpiderMessageContent,
+    #[serde(rename = "tool-calls-json", default)]
     pub tool_calls_json: Option<String>,
+    #[serde(rename = "tool-results-json", default)]
     pub tool_results_json: Option<String>,
     pub timestamp: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpiderConversationMetadata {
-    pub start_time: String,
-    pub client: String,
-    pub from_stt: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpiderConversation {
-    pub id: String,
+pub struct SpiderHistory {
     pub messages: Vec<SpiderMessage>,
-    pub metadata: SpiderConversationMetadata,
-    pub llm_provider: String,
-    pub mcp_servers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpiderListConversationsReq {
-    pub limit: Option<u32>,
-    pub offset: Option<u32>,
-    pub client: Option<String>,
+pub struct SpiderSetHistoryReq {
+    pub messages: Vec<SpiderMessage>,
 }

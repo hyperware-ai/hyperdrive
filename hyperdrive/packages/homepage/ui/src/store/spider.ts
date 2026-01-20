@@ -6,6 +6,7 @@ import {
   SpiderConversationMetadata,
   WsServerMessage,
 } from '../types/spider';
+import { idbStorage } from '../utils/indexeddb';
 
 // Debug logging
 const DEBUG = true;
@@ -38,15 +39,51 @@ const normalizeContent = (content: SpiderMessage['content'] | unknown): SpiderMe
   };
 };
 
-const normalizeMessage = (message: SpiderMessage, overrides: Partial<SpiderMessage> = {}) => {
-  const id = overrides.id ?? message.id ?? generateMessageId();
-  const replyTo = overrides.replyTo ?? message.replyTo ?? null;
+const toLocalMessage = (message: SpiderMessage | api.SpiderMessage): SpiderMessage => {
+  const raw = message as SpiderMessage;
+  const toolCallsJson =
+    'tool_calls_json' in message ? message.tool_calls_json : raw.toolCallsJson ?? null;
+  const toolResultsJson =
+    'tool_results_json' in message ? message.tool_results_json : raw.toolResultsJson ?? null;
+
   return {
-    ...message,
+    id: raw.id,
+    role: message.role,
+    content: normalizeContent((message as SpiderMessage).content),
+    replyTo: raw.replyTo ?? null,
+    toolCallsJson,
+    toolResultsJson,
+    timestamp: message.timestamp,
+    preservedText: raw.preservedText,
+    hidden: raw.hidden,
+  };
+};
+
+const toApiMessage = (message: SpiderMessage): api.SpiderMessage => ({
+  role: message.role,
+  content: {
+    text: message.content.text ?? null,
+    audio: message.content.audio ?? null,
+    base_six_four_audio: message.content.base_six_four_audio ?? null,
+  },
+  tool_calls_json: message.toolCallsJson ?? null,
+  tool_results_json: message.toolResultsJson ?? null,
+  timestamp: message.timestamp,
+});
+
+const normalizeMessage = (
+  message: SpiderMessage | api.SpiderMessage,
+  overrides: Partial<SpiderMessage> = {},
+) => {
+  const localMessage = toLocalMessage(message);
+  const id = overrides.id ?? localMessage.id ?? generateMessageId();
+  const replyTo = overrides.replyTo ?? localMessage.replyTo ?? null;
+  return {
+    ...localMessage,
     ...overrides,
     id,
     replyTo,
-    content: normalizeContent(overrides.content ?? message.content),
+    content: normalizeContent(overrides.content ?? localMessage.content),
   };
 };
 
@@ -93,6 +130,7 @@ interface SpiderStore {
   pendingConversationRootId: string | null;
   pendingReplyToId: string | null;
   isHistoryLoaded: boolean;
+  isHistorySaving: boolean;
 
   // Actions
   connect: () => Promise<void>;
@@ -104,6 +142,7 @@ interface SpiderStore {
   setError: (error: string | null) => void;
   setReplyingTo: (message: SpiderMessage | null) => void;
   loadHistory: () => Promise<void>;
+  persistHistory: () => Promise<void>;
 }
 
 export const useSpiderStore = create<SpiderStore>((set, get) => ({
@@ -121,6 +160,7 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
   pendingConversationRootId: null,
   pendingReplyToId: null,
   isHistoryLoaded: false,
+  isHistorySaving: false,
 
   checkStatus: async () => {
     log('Checking Spider status...');
@@ -226,6 +266,7 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
       streamingMessage: '',
       pendingReplyToId: userMessage.id ?? null,
     }));
+    get().persistHistory().catch(() => null);
 
     // Build metadata
     const metadata: SpiderConversationMetadata = {
@@ -294,6 +335,7 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
       pendingReplyToId: null,
       isHistoryLoaded: false,
     });
+    get().persistHistory().catch(() => null);
   },
 
   setError: (error: string | null) => set({ error }),
@@ -305,50 +347,51 @@ export const useSpiderStore = create<SpiderStore>((set, get) => ({
     }
 
     try {
-      const rawConversations = await api.spider_list_conversations({
-        limit: 50,
-        offset: 0,
-        client: 'homepage-chat',
-      });
+      const cachedMessages = await idbStorage.loadSpiderMessages();
+      if (cachedMessages.length > 0) {
+        set({
+          messages: cachedMessages.map((message) => normalizeMessage(message)),
+          isHistoryLoaded: true,
+        });
+      }
 
-      const conversations = Array.isArray(rawConversations)
-        ? rawConversations
-        : (rawConversations as { Ok?: unknown }).Ok;
-
-      if (!Array.isArray(conversations)) {
+      const history = await api.spider_get_history();
+      if (!history || !Array.isArray(history.messages) || history.messages.length === 0) {
         set({ isHistoryLoaded: true });
         return;
       }
 
-      if (!conversations || conversations.length === 0) {
-        set({ isHistoryLoaded: true });
-        return;
-      }
-
-      const latest = [...conversations].sort((a, b) => {
-        const aTime = Date.parse(a.metadata.start_time);
-        const bTime = Date.parse(b.metadata.start_time);
-        return (bTime || 0) - (aTime || 0);
-      })[0];
-
-      const normalizedMessages = latest.messages.map((msg: SpiderMessage) =>
-        normalizeMessage({ ...msg, replyTo: null }),
+      const normalizedMessages = history.messages.map((msg) =>
+        normalizeMessage(msg, { replyTo: null }),
       );
-      const rootId = normalizedMessages[0]?.id ?? null;
-
-      set((state) => ({
+      await idbStorage.saveSpiderMessages(normalizedMessages);
+      set({
         messages: normalizedMessages,
-        conversationIdByRoot: rootId
-          ? { ...state.conversationIdByRoot, [rootId]: latest.id }
-          : state.conversationIdByRoot,
         isHistoryLoaded: true,
-      }));
+      });
     } catch (error) {
       console.error('[Spider] Failed to load conversation history:', error);
       set({
         isHistoryLoaded: true,
         error: error instanceof Error ? error.message : 'Failed to load conversation history',
       });
+    }
+  },
+  persistHistory: async () => {
+    const state = get();
+    if (state.isHistorySaving) {
+      return;
+    }
+
+    const payloadMessages = state.messages.map(toApiMessage);
+    set({ isHistorySaving: true });
+    try {
+      await api.spider_set_history({ messages: payloadMessages });
+      await idbStorage.saveSpiderMessages(state.messages);
+    } catch (error) {
+      console.error('[Spider] Failed to persist conversation history:', error);
+    } finally {
+      set({ isHistorySaving: false });
     }
   },
 }));
@@ -390,6 +433,7 @@ function handleSpiderMessage(
         messages: [...state.messages, assistantMessage],
         streamingMessage: null,
       }));
+      get().persistHistory().catch(() => null);
       break;
 
     case 'chat_complete':
@@ -425,6 +469,7 @@ function handleSpiderMessage(
         }
         return { messages: [...state.messages, responseMessage] };
       });
+      get().persistHistory().catch(() => null);
       break;
 
     case 'error':
