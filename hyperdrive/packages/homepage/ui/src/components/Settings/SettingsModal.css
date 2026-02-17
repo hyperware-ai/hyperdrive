@@ -7,6 +7,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  align-self: flex-start;
+  margin-top: 10vh;
 }
 
 .settings-header {

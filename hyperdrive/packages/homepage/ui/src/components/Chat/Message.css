@@ -21,6 +21,25 @@
   }
 }
 
+/* Own message "rise from input" animation */
+@keyframes message-send {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.message.own:not(.no-animate) {
+  animation: message-send 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 /* Disable animation for messages already in view on load */
 .message.no-animate {
   animation: none;

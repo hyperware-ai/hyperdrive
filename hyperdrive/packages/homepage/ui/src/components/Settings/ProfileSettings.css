@@ -12,7 +12,7 @@
 
 .save-button {
   background: var(--primary-color);
-  color: white;
+  color: #000;
   border: none;
   padding: 12px 24px;
   border-radius: 8px;

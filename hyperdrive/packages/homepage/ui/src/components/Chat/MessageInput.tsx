@@ -16,6 +16,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
   const [showVoiceNote, setShowVoiceNote] = useState(false);
   const { sendMessage, replyingTo, setReplyingTo, editingMessage, setEditingMessage, editMessage } = useChatStore();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Detect if user is on mobile device (avoid touch-enabled laptops)
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -55,6 +56,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
         setReplyingTo(null);
         await sendMessage(chatId, messageText, replyToId);
         onSendMessage?.();
+        // Trigger send pulse animation on input container
+        if (containerRef.current) {
+          containerRef.current.classList.add('just-sent');
+          setTimeout(() => containerRef.current?.classList.remove('just-sent'), 350);
+        }
       }
       inputRef.current?.focus();
     }
@@ -119,7 +125,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
         </div>
       )}
 
-      <div className={`message-input-container ${editingMessage ? 'editing' : ''}`}>
+      <div ref={containerRef} className={`message-input-container ${editingMessage ? 'editing' : ''}`}>
         {!editingMessage && (
           <div className="message-actions">
             <button

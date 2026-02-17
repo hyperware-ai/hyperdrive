@@ -4,7 +4,7 @@ import { useAppStore } from '../stores/appStore';
 import { useNavigationStore } from '../stores/navigationStore';
 import { usePersistenceStore } from '../stores/persistenceStore';
 import { AppIcon } from './AppIcon';
-import { BsSearch, BsX } from 'react-icons/bs';
+import ChatSearch from '../../components/Chats/ChatSearch';
 import classNames from 'classnames';
 
 interface AppDrawerProps {
@@ -56,22 +56,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
       className={`app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl ${zIndexClass} ${dockedClass} flex flex-col animate-modal-backdrop`}
       onClick={handleBackdropClick}
     >
-      <div className="px-2 py-1 self-stretch flex items-center gap-2">
-        <h2 className="prose">My Apps</h2>
-        <div className="bg-black/10 dark:bg-white/10 flex items-center gap-2 ml-auto max-w-sm grow self-stretch rounded-lg pl-2">
-          <BsSearch className="opacity-50" />
-          <input
-            type="text"
-            placeholder="Search apps..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="grow self-stretch !bg-transparent !p-0"
-            autoFocus={!isMobile}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-16 px-6">
         <div className={classNames(`
           grid
           gap-4 md:gap-6 lg:gap-8
@@ -98,7 +83,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
               {!homeScreenApps.includes(app.id) && (
                 <button
                   onClick={() => handleAddToHome(app)}
-                  className="absolute -top-3 -right-3 w-8 h-8 rounded-full thin"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full thin text-xs"
                 >
                   +
                 </button>
@@ -124,6 +109,14 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      <div className="px-4 py-4 flex-shrink-0">
+        <ChatSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search apps..."
+        />
       </div>
     </div>
   );

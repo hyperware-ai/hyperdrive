@@ -20,9 +20,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
       <div className="splash-header">
         <ProfileButton onClick={() => setShowSettings(true)} />
         <h1 className="app-title">Chats</h1>
-        <button className="header-action" aria-label="New chat">
-          <span className="material-symbols-outlined">edit_square</span>
-        </button>
+        <div style={{ width: 40 }} />
       </div>
 
       <div className="splash-content">
