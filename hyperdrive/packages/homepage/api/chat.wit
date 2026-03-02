@@ -1,0 +1,1572 @@
+interface chat {
+use standard.{address};
+
+    // Arbitrary JSON value; encoded as string for WIT 1.0 (TS: unknown, Rust: serde_json::Value)
+    type value = string;
+
+    record add-group-reaction-req {
+        group-id: group-id,
+        message-id: message-id,
+        emoji: string
+    }
+
+    record add-reaction-req {
+        chat-id: string,
+        message-id: string,
+        emoji: string
+    }
+
+    record admin-replication-state-req {
+        group-id: option<group-id>
+    }
+
+    record admin-replication-state-res {
+        metrics: replication-metrics,
+        groups: list<group-replication-state>
+    }
+
+    record admin-whitelist-req {
+        group-id: group-id
+    }
+
+    record admin-whitelist-res {
+        group-id: group-id,
+        version: u64,
+        entries: list<whitelist-entry-debug>
+    }
+
+    record approve-group-membership-req {
+        group-id: group-id,
+        proposal-id: string
+    }
+
+    record crdt-apply-res {
+        applied: bool
+    }
+
+    record crdt-group-apply-req {
+        group-id: group-id,
+        update-payload: string,
+        acl-version: option<u64>
+    }
+
+    record crdt-group-snapshot-req {
+        group-id: group-id
+    }
+
+    record crdt-group-state-vector-req {
+        group-id: group-id
+    }
+
+    record crdt-group-update-req {
+        group-id: group-id,
+        state-vector: option<string>
+    }
+
+    record crdt-state-vector-res {
+        state-vector: string
+    }
+
+    record crdt-update-res {
+        doc-id: string,
+        update-payload: string
+    }
+
+    record create-chat-link-req {
+        chat-id: string,
+        single-use: bool
+    }
+
+    record create-chat-req {
+        counterparty: string
+    }
+
+    record create-group-join-link-req {
+        group-id: group-id
+    }
+
+    record create-group-join-link-res {
+        link: string
+    }
+
+    record create-group-req {
+        group-id: option<group-id>,
+        name: string,
+        description: option<string>,
+        avatar: option<string>,
+        visibility: option<group-visibility>,
+        default-role-label: option<string>,
+        membership-rules: list<membership-rule-config>,
+        root-thread-title: option<string>
+    }
+
+    record create-group-res {
+        group-id: group-id
+    }
+
+    record create-group-thread-req {
+        group-id: group-id,
+        parent-thread-id: option<thread-id>,
+        title: option<string>,
+        root-message-id: option<message-id>
+    }
+
+    record create-group-thread-res {
+        thread-id: thread-id
+    }
+
+    record delete-chat-req {
+        chat-id: string
+    }
+
+    record delete-group-message-req {
+        group-id: group-id,
+        message-id: message-id,
+        delete-for-both: option<bool>
+    }
+
+    record delete-message-req {
+        chat-id: string,
+        message-id: string,
+        delete-for-both: option<bool>
+    }
+
+    record download-file-req {
+        chat-id: string,
+        file-id: string
+    }
+
+    record download-group-file-req {
+        group-id: group-id,
+        attachment-id: string
+    }
+
+    record edit-group-message-req {
+        group-id: group-id,
+        message-id: message-id,
+        new-content: string
+    }
+
+    record edit-message-req {
+        chat-id: string,
+        message-id: string,
+        new-content: string
+    }
+
+    record fetch-group-file-req {
+        group-id: group-id,
+        attachment-id: string
+    }
+
+    record forward-message-req {
+        from-chat-id: string,
+        message-id: string,
+        to-chat-id: string
+    }
+
+    record get-chat-req {
+        chat-id: string
+    }
+
+    record get-group-req {
+        group-id: group-id
+    }
+
+    record get-group-res {
+        group: option<group>
+    }
+
+    record get-messages-req {
+        chat-id: string,
+        before-timestamp: option<u64>,
+        limit: option<u64>
+    }
+
+    record get-sync-hash-req {
+        chat-id: string
+    }
+
+    record group-replication-state {
+        group-id: group-id,
+        pending-bootstrap: bool,
+        routing: group-routing-config,
+        hubs: list<node-id>,
+        subscribers: list<node-id>,
+        hub-cursors: list<tuple<node-id, delivery-cursor>>,
+        subscriber-cursors: list<tuple<node-id, delivery-cursor>>,
+        whitelist-version: option<u64>,
+        subscriber-lag-secs: option<u64>,
+        hub-lag-secs: option<u64>
+    }
+
+    record invite-group-member-req {
+        group-id: group-id,
+        candidate: node-id,
+        role-id: string
+    }
+
+    record join-group-link-remote-req {
+        key: string
+    }
+
+    record join-group-link-req {
+        host: node-id,
+        key: string
+    }
+
+    record join-group-link-res {
+        group-id: group-id
+    }
+
+    record list-groups-res {
+        groups: list<group-summary>
+    }
+
+    record membership-decision-res {
+        decision: membership-decision
+    }
+
+    record push-snapshot-to-peer-req {
+        group-id: group-id,
+        peer: string
+    }
+
+    record record-payment-req {
+        chat-id: string,
+        tx-hash: string,
+        amount: string,
+        coin-name: string,
+        from-address: string,
+        to-address: string
+    }
+
+    record remove-group-member-req {
+        group-id: group-id,
+        member: node-id
+    }
+
+    record remove-group-reaction-req {
+        group-id: group-id,
+        message-id: message-id,
+        emoji: string
+    }
+
+    record remove-reaction-req {
+        chat-id: string,
+        message-id: string,
+        emoji: string
+    }
+
+    record replication-metrics {
+        acl-skips: u64,
+        retries: u64,
+        drops: u64,
+        stale-replays: u64,
+        last-lag-secs: u64,
+        last-subscriber-lag-secs: u64,
+        acl-drifts: u64
+    }
+
+    record revoke-chat-key-req {
+        key: string
+    }
+
+    record chat-key {
+        key: string,
+        user-name: string,
+        created-at: u64,
+        is-revoked: bool,
+        chat-id: string
+    }
+
+    record search-chats-req {
+        query: string
+    }
+
+    record search-index-req {
+        query: string,
+        scope: search-scope,
+        limit: option<u64>
+    }
+
+    record search-index-res {
+        results: list<search-result-item>
+    }
+
+    record search-result-item {
+        kind: search-result-kind,
+        chat-id: option<string>,
+        group-id: option<group-id>,
+        message-id: option<message-id>,
+        thread-id: option<thread-id>,
+        title: string,
+        snippet: option<string>,
+        timestamp: option<u64>
+    }
+
+    enum search-result-kind {
+        chat-summary,
+        chat-message,
+        group-summary,
+        group-message
+    }
+
+    record group-summary {
+        group-id: group-id,
+        metadata: option<group-metadata>,
+        member-count: u64,
+        thread-count: u64,
+        unread-count: u32,
+        notify: bool
+    }
+
+    enum search-scope {
+        chats,
+        groups,
+        messages,
+        all
+    }
+
+    record send-group-message-req {
+        group-id: group-id,
+        thread-id: option<thread-id>,
+        content: string,
+        message-type: message-type,
+        reply-to: option<message-id>,
+        attachments: list<attachment-descriptor>
+    }
+
+    record send-group-message-res {
+        message: message-meta
+    }
+
+    record send-group-voice-note-req {
+        group-id: group-id,
+        thread-id: option<thread-id>,
+        reply-to: option<message-id>,
+        audio-data: string,
+        duration: u32,
+        mime-type: string
+    }
+
+    record send-message-req {
+        chat-id: string,
+        content: string,
+        reply-to: option<string>,
+        file-info: option<file-info>
+    }
+
+    record send-voice-note-req {
+        chat-id: string,
+        audio-data: string,
+        duration: u32,
+        reply-to: option<string>
+    }
+
+    record spider-connect-result {
+        api-key: string
+    }
+
+    record spider-history {
+        messages: list<spider-message>
+    }
+
+    record spider-set-history-req {
+        messages: list<spider-message>
+    }
+
+    record spider-status-info {
+        connected: bool,
+        has-api-key: bool,
+        spider-available: bool
+    }
+
+    record subscriber-events-req {
+        take: option<u64>,
+        clear: bool
+    }
+
+    record subscriber-events-res {
+        events: list<subscriber-delivery-event>
+    }
+
+    record subscriber-delivery-event {
+        group-id: group-id,
+        topic: string,
+        offset: u64,
+        kind: replication-kind,
+        age-secs: u64,
+        recorded-at: u64
+    }
+
+    enum replication-kind {
+        push-delta,
+        push-snapshot,
+        pull-snapshot,
+        pull-delta
+    }
+
+    record sync-hash-info {
+        chat-id: string,
+        message-count: u32,
+        last-message-id: option<string>,
+        last-message-timestamp: option<u64>,
+        hash: string
+    }
+
+    record update-chat-settings-req {
+        chat-id: string,
+        notify: option<bool>
+    }
+
+    record update-group-settings-req {
+        group-id: group-id,
+        notify: option<bool>
+    }
+
+    record settings {
+        show-images: bool,
+        show-profile-pics: bool,
+        combine-chats-groups: bool,
+        notify-chats: bool,
+        notify-groups: bool,
+        notify-calls: bool,
+        allow-browser-chats: bool,
+        stt-enabled: bool,
+        stt-api-key: option<string>,
+        max-file-size-mb: u64
+    }
+
+    record upload-file-req {
+        chat-id: string,
+        filename: string,
+        mime-type: string,
+        data: string,
+        reply-to: option<string>
+    }
+
+    record upload-group-file-req {
+        group-id: group-id,
+        thread-id: option<thread-id>,
+        reply-to: option<message-id>,
+        filename: string,
+        mime-type: string,
+        data: string
+    }
+
+    record upload-profile-picture-req {
+        mime-type: string,
+        data: string
+    }
+
+    record whitelist-entry-debug {
+        node: string,
+        publish: list<string>,
+        subscribe: list<string>,
+        audiences: list<string>,
+        features: list<string>,
+        expires-at: option<u64>
+    }
+
+    record attachment-descriptor {
+        attachment-id: string,
+        filename: string,
+        mime-type: string,
+        size-bytes: u64,
+        checksum: option<string>,
+        uri: option<string>
+    }
+
+    record chat {
+        id: string,
+        counterparty: string,
+        messages: list<chat-message>,
+        last-activity: u64,
+        unread-count: u32,
+        is-blocked: bool,
+        notify: bool,
+        counterparty-profile: option<user-profile>
+    }
+
+    record chat-message {
+        id: string,
+        sender: string,
+        content: string,
+        timestamp: u64,
+        sequence: option<u64>,
+        status: message-status,
+        reply-to: option<string>,
+        reactions: list<message-reaction>,
+        message-type: message-type,
+        file-info: option<file-info>,
+        payment-info: option<payment-info>
+    }
+
+    record delivery-cursor {
+        queue-id: string,
+        last-offset: u64,
+        updated-at: u64
+    }
+
+    record file-info {
+        filename: string,
+        mime-type: string,
+        size: u64,
+        url: string
+    }
+
+    record group {
+        metadata: option<group-metadata>,
+        roles: list<tuple<string, role>>,
+        members: list<tuple<node-id, group-member>>,
+        hubs: group-hub-set,
+        subscribers: group-subscriber-set,
+        routing: group-routing-config,
+        delivery: group-delivery-state,
+        membership-rules: list<membership-rule-config>,
+        membership-proposals: list<tuple<string, membership-proposal>>,
+        threads: list<tuple<thread-id, thread>>,
+        messages: list<tuple<message-id, message-meta>>,
+        counters: group-counters
+    }
+
+    record group-counters {
+        next-thread: u64,
+        next-message: u64
+    }
+
+    record group-delivery-state {
+        hub-cursors: list<tuple<node-id, delivery-cursor>>,
+        subscriber-cursors: list<tuple<node-id, delivery-cursor>>,
+        attempt-seeds: list<tuple<string, u64>>
+    }
+
+    record group-hub-set {
+        active: list<node-id>,
+        pending: list<node-id>,
+        sync: list<tuple<node-id, hub-sync-state>>
+    }
+
+    type group-id = string;
+
+    record group-member {
+        node-id: node-id,
+        role-id: string,
+        status: membership-status,
+        last-activity: u64
+    }
+
+    record group-metadata {
+        name: string,
+        description: option<string>,
+        avatar: option<string>,
+        creator-id: string,
+        created-at: u64,
+        updated-at: u64,
+        visibility: group-visibility,
+        default-role-id: string,
+        root-thread-id: thread-id
+    }
+
+    type group-permissions = u64;
+
+    record group-routing-config {
+        hub-topic: string,
+        subscriber-topic: string,
+        snapshot-interval-secs: u64
+    }
+
+    record group-subscriber-set {
+        entries: list<tuple<node-id, subscriber-sync-state>>
+    }
+
+    enum group-tier {
+        hub,
+        subscriber
+    }
+
+    enum group-visibility {
+        private,
+        public
+    }
+
+    record hub-sync-state {
+        last-state-vector: option<list<u8>>,
+        last-snapshot-digest: option<string>,
+        pending-snapshot-id: option<string>,
+        last-seen-ts: u64,
+        last-ack-seq: u64
+    }
+
+    enum membership-action-kind {
+        invite,
+        remove
+    }
+
+    record membership-decision {
+        status: membership-decision-status,
+        missing-signatures: list<node-id>,
+        reason: option<string>
+    }
+
+    enum membership-decision-status {
+        pending,
+        approved,
+        rejected
+    }
+
+    record membership-proposal {
+        proposal-id: string,
+        candidate: node-id,
+        requested-role: string,
+        proposer: node-id,
+        action: membership-action-kind,
+        approvals: list<node-id>,
+        rejections: list<node-id>,
+        eligible-voters: u32,
+        token-support: string,
+        token-opposition: string
+    }
+
+    record membership-rule-config {
+        rule-id: membership-rule-id,
+        params: value
+    }
+
+    type membership-rule-id = string;
+
+    enum membership-status {
+        pending,
+        active,
+        removed
+    }
+
+    type message-id = string;
+
+    record message-meta {
+        message-id: message-id,
+        thread-id: thread-id,
+        group-id: group-id,
+        sender: node-id,
+        timestamp: u64,
+        message-type: message-type,
+        body: string,
+        reply-to: option<message-id>,
+        reply-in-thread: option<message-id>,
+        reactions: list<message-reaction-meta>,
+        attachments: list<attachment-descriptor>
+    }
+
+    record message-reaction {
+        emoji: string,
+        user: string,
+        timestamp: u64
+    }
+
+    record message-reaction-meta {
+        node-id: node-id,
+        emoji: string,
+        timestamp: u64
+    }
+
+    enum message-status {
+        sending,
+        sent,
+        delivered,
+        failed
+    }
+
+    enum message-type {
+        text,
+        image,
+        file,
+        voice-note,
+        payment
+    }
+
+    type node-id = string;
+
+    record payment-info {
+        tx-hash: string,
+        amount: string,
+        coin-name: string,
+        from-address: string,
+        to-address: string,
+        explorer-url: string
+    }
+
+    record role {
+        id: string,
+        label: string,
+        permissions: group-permissions,
+        tier: group-tier
+    }
+
+    record spider-message {
+        role: string,
+        content: spider-message-content,
+        tool-calls-json: option<string>,
+        tool-results-json: option<string>,
+        timestamp: u64
+    }
+
+    record spider-message-content {
+        text: option<string>,
+        audio: option<list<u8>>,
+        base-six-four-audio: option<string>
+    }
+
+    record subscriber-sync-state {
+        last-state-vector: option<list<u8>>,
+        last-snapshot-digest: option<string>,
+        last-seen-ts: u64
+    }
+
+    record thread {
+        id: thread-id,
+        group-id: group-id,
+        depth: u32,
+        parent: thread-parent-ref,
+        child-threads: list<thread-id>,
+        created-at: u64,
+        created-by: node-id,
+        root-message-id: option<message-id>,
+        summary: thread-summary,
+        title: option<string>,
+        archived: bool
+    }
+
+    type thread-id = string;
+
+    variant thread-parent-ref {
+        root(group-id),
+        thread(thread-id)
+    }
+
+    record thread-summary {
+        message-count: u64,
+        last-message-id: option<message-id>,
+        last-activity: u64,
+        last-sender: option<node-id>
+    }
+
+    record user-profile {
+        name: string,
+        profile-pic: option<string>,
+        base-address: option<string>
+    }
+
+    // Function signature for: add-group-reaction (http)
+    // HTTP: POST /api/add-group-reaction
+    // args: (req: add-group-reaction-req)
+    record add-group-reaction-signature-http {
+        target: string,
+        arg-types: tuple<add-group-reaction-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: add-reaction (http)
+    // HTTP: POST /api/add-reaction
+    // args: (req: add-reaction-req)
+    record add-reaction-signature-http {
+        target: string,
+        arg-types: tuple<add-reaction-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: admin-replication-state (http)
+    // HTTP: POST /api/admin-replication-state
+    // args: (req: admin-replication-state-req)
+    record admin-replication-state-signature-http {
+        target: string,
+        arg-types: tuple<admin-replication-state-req>,
+        returning: result<admin-replication-state-res, string>
+    }
+
+    // Function signature for: admin-replication-state (local)
+    // args: (req: admin-replication-state-req)
+    // json fmt: {"AdminReplicationState": req}
+    record admin-replication-state-signature-local {
+        target: address,
+        arg-types: tuple<admin-replication-state-req>,
+        returning: result<admin-replication-state-res, string>
+    }
+
+    // Function signature for: admin-subscriber-events (http)
+    // HTTP: POST /api/admin-subscriber-events
+    // args: (req: subscriber-events-req)
+    record admin-subscriber-events-signature-http {
+        target: string,
+        arg-types: tuple<subscriber-events-req>,
+        returning: result<subscriber-events-res, string>
+    }
+
+    // Function signature for: admin-subscriber-events (local)
+    // args: (req: subscriber-events-req)
+    // json fmt: {"AdminSubscriberEvents": req}
+    record admin-subscriber-events-signature-local {
+        target: address,
+        arg-types: tuple<subscriber-events-req>,
+        returning: result<subscriber-events-res, string>
+    }
+
+    // Function signature for: admin-whitelist (http)
+    // HTTP: POST /api/admin-whitelist
+    // args: (req: admin-whitelist-req)
+    record admin-whitelist-signature-http {
+        target: string,
+        arg-types: tuple<admin-whitelist-req>,
+        returning: result<admin-whitelist-res, string>
+    }
+
+    // Function signature for: admin-whitelist (local)
+    // args: (req: admin-whitelist-req)
+    // json fmt: {"AdminWhitelist": req}
+    record admin-whitelist-signature-local {
+        target: address,
+        arg-types: tuple<admin-whitelist-req>,
+        returning: result<admin-whitelist-res, string>
+    }
+
+    // Function signature for: approve-group-membership (http)
+    // HTTP: POST /api/approve-group-membership
+    // args: (req: approve-group-membership-req)
+    record approve-group-membership-signature-http {
+        target: string,
+        arg-types: tuple<approve-group-membership-req>,
+        returning: result<membership-decision-res, string>
+    }
+
+    // Function signature for: crdt-group-apply-update (http)
+    // HTTP: POST /api/crdt-group-apply-update
+    // args: (req: crdt-group-apply-req)
+    record crdt-group-apply-update-signature-http {
+        target: string,
+        arg-types: tuple<crdt-group-apply-req>,
+        returning: result<crdt-apply-res, string>
+    }
+
+    // Function signature for: crdt-group-apply-update (local)
+    // args: (req: crdt-group-apply-req)
+    // json fmt: {"CrdtGroupApplyUpdate": req}
+    record crdt-group-apply-update-signature-local {
+        target: address,
+        arg-types: tuple<crdt-group-apply-req>,
+        returning: result<crdt-apply-res, string>
+    }
+
+    // Function signature for: crdt-group-apply-update (remote)
+    // args: (req: crdt-group-apply-req)
+    // json fmt: {"CrdtGroupApplyUpdate": req}
+    record crdt-group-apply-update-signature-remote {
+        target: address,
+        arg-types: tuple<crdt-group-apply-req>,
+        returning: result<crdt-apply-res, string>
+    }
+
+    // Function signature for: crdt-group-snapshot (http)
+    // HTTP: POST /api/crdt-group-snapshot
+    // args: (req: crdt-group-snapshot-req)
+    record crdt-group-snapshot-signature-http {
+        target: string,
+        arg-types: tuple<crdt-group-snapshot-req>,
+        returning: result<crdt-update-res, string>
+    }
+
+    // Function signature for: crdt-group-snapshot (local)
+    // args: (req: crdt-group-snapshot-req)
+    // json fmt: {"CrdtGroupSnapshot": req}
+    record crdt-group-snapshot-signature-local {
+        target: address,
+        arg-types: tuple<crdt-group-snapshot-req>,
+        returning: result<crdt-update-res, string>
+    }
+
+    // Function signature for: crdt-group-snapshot (remote)
+    // args: (req: crdt-group-snapshot-req)
+    // json fmt: {"CrdtGroupSnapshot": req}
+    record crdt-group-snapshot-signature-remote {
+        target: address,
+        arg-types: tuple<crdt-group-snapshot-req>,
+        returning: result<crdt-update-res, string>
+    }
+
+    // Function signature for: crdt-group-state-vector (http)
+    // HTTP: POST /api/crdt-group-state-vector
+    // args: (req: crdt-group-state-vector-req)
+    record crdt-group-state-vector-signature-http {
+        target: string,
+        arg-types: tuple<crdt-group-state-vector-req>,
+        returning: result<crdt-state-vector-res, string>
+    }
+
+    // Function signature for: crdt-group-state-vector (local)
+    // args: (req: crdt-group-state-vector-req)
+    // json fmt: {"CrdtGroupStateVector": req}
+    record crdt-group-state-vector-signature-local {
+        target: address,
+        arg-types: tuple<crdt-group-state-vector-req>,
+        returning: result<crdt-state-vector-res, string>
+    }
+
+    // Function signature for: crdt-group-update (http)
+    // HTTP: POST /api/crdt-group-update
+    // args: (req: crdt-group-update-req)
+    record crdt-group-update-signature-http {
+        target: string,
+        arg-types: tuple<crdt-group-update-req>,
+        returning: result<crdt-update-res, string>
+    }
+
+    // Function signature for: crdt-group-update (local)
+    // args: (req: crdt-group-update-req)
+    // json fmt: {"CrdtGroupUpdate": req}
+    record crdt-group-update-signature-local {
+        target: address,
+        arg-types: tuple<crdt-group-update-req>,
+        returning: result<crdt-update-res, string>
+    }
+
+    // Function signature for: crdt-group-update (remote)
+    // args: (req: crdt-group-update-req)
+    // json fmt: {"CrdtGroupUpdate": req}
+    record crdt-group-update-signature-remote {
+        target: address,
+        arg-types: tuple<crdt-group-update-req>,
+        returning: result<crdt-update-res, string>
+    }
+
+    // Function signature for: create-chat (http)
+    // HTTP: POST /api/create-chat
+    // args: (req: create-chat-req)
+    record create-chat-signature-http {
+        target: string,
+        arg-types: tuple<create-chat-req>,
+        returning: result<chat, string>
+    }
+
+    // Function signature for: create-chat (local)
+    // args: (req: create-chat-req)
+    // json fmt: {"CreateChat": req}
+    record create-chat-signature-local {
+        target: address,
+        arg-types: tuple<create-chat-req>,
+        returning: result<chat, string>
+    }
+
+    // Function signature for: create-chat-link (http)
+    // HTTP: POST /api/create-chat-link
+    // args: (req: create-chat-link-req)
+    record create-chat-link-signature-http {
+        target: string,
+        arg-types: tuple<create-chat-link-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: create-group (http)
+    // HTTP: POST /api/create-group
+    // args: (req: create-group-req)
+    record create-group-signature-http {
+        target: string,
+        arg-types: tuple<create-group-req>,
+        returning: result<create-group-res, string>
+    }
+
+    // Function signature for: create-group-join-link (http)
+    // HTTP: POST /api/create-group-join-link
+    // args: (req: create-group-join-link-req)
+    record create-group-join-link-signature-http {
+        target: string,
+        arg-types: tuple<create-group-join-link-req>,
+        returning: result<create-group-join-link-res, string>
+    }
+
+    // Function signature for: create-group-thread (http)
+    // HTTP: POST /api/create-group-thread
+    // args: (req: create-group-thread-req)
+    record create-group-thread-signature-http {
+        target: string,
+        arg-types: tuple<create-group-thread-req>,
+        returning: result<create-group-thread-res, string>
+    }
+
+    // Function signature for: delete-chat (http)
+    // HTTP: POST /api/delete-chat
+    // args: (req: delete-chat-req)
+    record delete-chat-signature-http {
+        target: string,
+        arg-types: tuple<delete-chat-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: delete-group-message (http)
+    // HTTP: POST /api/delete-group-message
+    // args: (req: delete-group-message-req)
+    record delete-group-message-signature-http {
+        target: string,
+        arg-types: tuple<delete-group-message-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: delete-message (http)
+    // HTTP: POST /api/delete-message
+    // args: (req: delete-message-req)
+    record delete-message-signature-http {
+        target: string,
+        arg-types: tuple<delete-message-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: download-file (http)
+    // HTTP: POST /api/download-file
+    // args: (req: download-file-req)
+    record download-file-signature-http {
+        target: string,
+        arg-types: tuple<download-file-req>,
+        returning: result<list<u8>, string>
+    }
+
+    // Function signature for: download-group-file (http)
+    // HTTP: POST /api/download-group-file
+    // args: (req: download-group-file-req)
+    record download-group-file-signature-http {
+        target: string,
+        arg-types: tuple<download-group-file-req>,
+        returning: result<list<u8>, string>
+    }
+
+    // Function signature for: edit-group-message (http)
+    // HTTP: POST /api/edit-group-message
+    // args: (req: edit-group-message-req)
+    record edit-group-message-signature-http {
+        target: string,
+        arg-types: tuple<edit-group-message-req>,
+        returning: result<send-group-message-res, string>
+    }
+
+    // Function signature for: edit-message (http)
+    // HTTP: POST /api/edit-message
+    // args: (req: edit-message-req)
+    record edit-message-signature-http {
+        target: string,
+        arg-types: tuple<edit-message-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: fetch-group-file (remote)
+    // args: (req: fetch-group-file-req)
+    // json fmt: {"FetchGroupFile": req}
+    record fetch-group-file-signature-remote {
+        target: address,
+        arg-types: tuple<fetch-group-file-req>,
+        returning: result<list<u8>, string>
+    }
+
+    // Function signature for: forward-message (http)
+    // HTTP: POST /api/forward-message
+    // args: (req: forward-message-req)
+    record forward-message-signature-http {
+        target: string,
+        arg-types: tuple<forward-message-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: get-all-sync-hashes (http)
+    // HTTP: POST /api/get-all-sync-hashes
+    // args: none
+    record get-all-sync-hashes-signature-http {
+        target: string,
+        returning: result<list<sync-hash-info>, string>
+    }
+
+    // Function signature for: get-chat (http)
+    // HTTP: POST /api/get-chat
+    // args: (req: get-chat-req)
+    record get-chat-signature-http {
+        target: string,
+        arg-types: tuple<get-chat-req>,
+        returning: result<chat, string>
+    }
+
+    // Function signature for: get-chat (local)
+    // args: (req: get-chat-req)
+    // json fmt: {"GetChat": req}
+    record get-chat-signature-local {
+        target: address,
+        arg-types: tuple<get-chat-req>,
+        returning: result<chat, string>
+    }
+
+    // Function signature for: get-chat-keys (http)
+    // HTTP: POST /api/get-chat-keys
+    // args: none
+    record get-chat-keys-signature-http {
+        target: string,
+        returning: result<list<chat-key>, string>
+    }
+
+    // Function signature for: get-chats (http)
+    // HTTP: POST /api/get-chats
+    // args: none
+    record get-chats-signature-http {
+        target: string,
+        returning: result<list<chat>, string>
+    }
+
+    // Function signature for: get-chats (local)
+    // args: none
+    // json fmt: {"GetChats": null}
+    record get-chats-signature-local {
+        target: address,
+        returning: result<list<chat>, string>
+    }
+
+    // Function signature for: get-group (http)
+    // HTTP: POST /api/get-group
+    // args: (req: get-group-req)
+    record get-group-signature-http {
+        target: string,
+        arg-types: tuple<get-group-req>,
+        returning: result<get-group-res, string>
+    }
+
+    // Function signature for: get-messages (http)
+    // HTTP: POST /api/get-messages
+    // args: (req: get-messages-req)
+    record get-messages-signature-http {
+        target: string,
+        arg-types: tuple<get-messages-req>,
+        returning: result<list<chat-message>, string>
+    }
+
+    // Function signature for: get-messages (local)
+    // args: (req: get-messages-req)
+    // json fmt: {"GetMessages": req}
+    record get-messages-signature-local {
+        target: address,
+        arg-types: tuple<get-messages-req>,
+        returning: result<list<chat-message>, string>
+    }
+
+    // Function signature for: get-profile (http)
+    // HTTP: POST /api/get-profile
+    // args: none
+    record get-profile-signature-http {
+        target: string,
+        returning: result<user-profile, string>
+    }
+
+    // Function signature for: get-settings (http)
+    // HTTP: POST /api/get-settings
+    // args: none
+    record get-settings-signature-http {
+        target: string,
+        returning: result<settings, string>
+    }
+
+    // Function signature for: get-sync-hash (http)
+    // HTTP: POST /api/get-sync-hash
+    // args: (req: get-sync-hash-req)
+    record get-sync-hash-signature-http {
+        target: string,
+        arg-types: tuple<get-sync-hash-req>,
+        returning: result<sync-hash-info, string>
+    }
+
+    // Function signature for: invite-group-member (http)
+    // HTTP: POST /api/invite-group-member
+    // args: (req: invite-group-member-req)
+    record invite-group-member-signature-http {
+        target: string,
+        arg-types: tuple<invite-group-member-req>,
+        returning: result<membership-decision-res, string>
+    }
+
+    // Function signature for: join-group-link (http)
+    // HTTP: POST /api/join-group-link
+    // args: (req: join-group-link-req)
+    record join-group-link-signature-http {
+        target: string,
+        arg-types: tuple<join-group-link-req>,
+        returning: result<join-group-link-res, string>
+    }
+
+    // Function signature for: join-group-link-remote (remote)
+    // args: (req: join-group-link-remote-req)
+    // json fmt: {"JoinGroupLinkRemote": req}
+    record join-group-link-remote-signature-remote {
+        target: address,
+        arg-types: tuple<join-group-link-remote-req>,
+        returning: result<join-group-link-res, string>
+    }
+
+    // Function signature for: list-groups (http)
+    // HTTP: POST /api/list-groups
+    // args: none
+    record list-groups-signature-http {
+        target: string,
+        returning: result<list-groups-res, string>
+    }
+
+    // Function signature for: push-snapshot-to-peer (http)
+    // HTTP: POST /api/push-snapshot-to-peer
+    // args: (req: push-snapshot-to-peer-req)
+    record push-snapshot-to-peer-signature-http {
+        target: string,
+        arg-types: tuple<push-snapshot-to-peer-req>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: push-snapshot-to-peer (local)
+    // args: (req: push-snapshot-to-peer-req)
+    // json fmt: {"PushSnapshotToPeer": req}
+    record push-snapshot-to-peer-signature-local {
+        target: address,
+        arg-types: tuple<push-snapshot-to-peer-req>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-chat-creation (remote)
+    // args: (counterparty: string)
+    // json fmt: {"ReceiveChatCreation": counterparty}
+    record receive-chat-creation-signature-remote {
+        target: address,
+        arg-types: tuple<string>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-message (remote)
+    // args: (message: chat-message)
+    // json fmt: {"ReceiveMessage": message}
+    record receive-message-signature-remote {
+        target: address,
+        arg-types: tuple<chat-message>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-message-ack (remote)
+    // args: (message-id: string)
+    // json fmt: {"ReceiveMessageAck": message_id}
+    record receive-message-ack-signature-remote {
+        target: address,
+        arg-types: tuple<string>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-message-deletion (remote)
+    // args: (message-id: string, chat-id: string)
+    // json fmt: {"ReceiveMessageDeletion": [message_id, chat_id]}
+    record receive-message-deletion-signature-remote {
+        target: address,
+        arg-types: tuple<string, string>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-message-edit (remote)
+    // args: (chat-id: string, message-id: string, new-content: string)
+    // json fmt: {"ReceiveMessageEdit": [chat_id, message_id, new_content]}
+    record receive-message-edit-signature-remote {
+        target: address,
+        arg-types: tuple<string, string, string>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-profile-update (remote)
+    // args: (node: string, profile: user-profile)
+    // json fmt: {"ReceiveProfileUpdate": [node, profile]}
+    record receive-profile-update-signature-remote {
+        target: address,
+        arg-types: tuple<string, user-profile>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-reaction (remote)
+    // args: (message-id: string, emoji: string, user: string)
+    // json fmt: {"ReceiveReaction": [message_id, emoji, user]}
+    record receive-reaction-signature-remote {
+        target: address,
+        arg-types: tuple<string, string, string>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: receive-reaction-remove (remote)
+    // args: (message-id: string, emoji: string, user: string)
+    // json fmt: {"ReceiveReactionRemove": [message_id, emoji, user]}
+    record receive-reaction-remove-signature-remote {
+        target: address,
+        arg-types: tuple<string, string, string>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: record-payment (http)
+    // HTTP: POST /api/record-payment
+    // args: (req: record-payment-req)
+    record record-payment-signature-http {
+        target: string,
+        arg-types: tuple<record-payment-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: record-payment (local)
+    // args: (req: record-payment-req)
+    // json fmt: {"RecordPayment": req}
+    record record-payment-signature-local {
+        target: address,
+        arg-types: tuple<record-payment-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: remove-group-member (http)
+    // HTTP: POST /api/remove-group-member
+    // args: (req: remove-group-member-req)
+    record remove-group-member-signature-http {
+        target: string,
+        arg-types: tuple<remove-group-member-req>,
+        returning: result<membership-decision-res, string>
+    }
+
+    // Function signature for: remove-group-reaction (http)
+    // HTTP: POST /api/remove-group-reaction
+    // args: (req: remove-group-reaction-req)
+    record remove-group-reaction-signature-http {
+        target: string,
+        arg-types: tuple<remove-group-reaction-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: remove-reaction (http)
+    // HTTP: POST /api/remove-reaction
+    // args: (req: remove-reaction-req)
+    record remove-reaction-signature-http {
+        target: string,
+        arg-types: tuple<remove-reaction-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: replication-work (http)
+    // HTTP: POST /api/replication-work
+    // args: none
+    record replication-work-signature-http {
+        target: string,
+        returning: result<_, string>
+    }
+
+    // Function signature for: replication-work (local)
+    // args: none
+    // json fmt: {"ReplicationWork": null}
+    record replication-work-signature-local {
+        target: address,
+        returning: result<_, string>
+    }
+
+    // Function signature for: revoke-chat-key (http)
+    // HTTP: POST /api/revoke-chat-key
+    // args: (req: revoke-chat-key-req)
+    record revoke-chat-key-signature-http {
+        target: string,
+        arg-types: tuple<revoke-chat-key-req>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: search-chats (http)
+    // HTTP: POST /api/search-chats
+    // args: (req: search-chats-req)
+    record search-chats-signature-http {
+        target: string,
+        arg-types: tuple<search-chats-req>,
+        returning: result<list<chat>, string>
+    }
+
+    // Function signature for: search-index (http)
+    // HTTP: POST /api/search-index
+    // args: (req: search-index-req)
+    record search-index-signature-http {
+        target: string,
+        arg-types: tuple<search-index-req>,
+        returning: result<search-index-res, string>
+    }
+
+    // Function signature for: send-group-message (http)
+    // HTTP: POST /api/send-group-message
+    // args: (req: send-group-message-req)
+    record send-group-message-signature-http {
+        target: string,
+        arg-types: tuple<send-group-message-req>,
+        returning: result<send-group-message-res, string>
+    }
+
+    // Function signature for: send-group-voice-note (http)
+    // HTTP: POST /api/send-group-voice-note
+    // args: (req: send-group-voice-note-req)
+    record send-group-voice-note-signature-http {
+        target: string,
+        arg-types: tuple<send-group-voice-note-req>,
+        returning: result<send-group-message-res, string>
+    }
+
+    // Function signature for: send-message (http)
+    // HTTP: POST /api/send-message
+    // args: (req: send-message-req)
+    record send-message-signature-http {
+        target: string,
+        arg-types: tuple<send-message-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: send-message (local)
+    // args: (req: send-message-req)
+    // json fmt: {"SendMessage": req}
+    record send-message-signature-local {
+        target: address,
+        arg-types: tuple<send-message-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: send-voice-note (http)
+    // HTTP: POST /api/send-voice-note
+    // args: (req: send-voice-note-req)
+    record send-voice-note-signature-http {
+        target: string,
+        arg-types: tuple<send-voice-note-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: serve-file (http)
+    // HTTP: GET /files/*
+    // args: none
+    record serve-file-signature-http {
+        target: string,
+        returning: result<list<u8>, string>
+    }
+
+    // Function signature for: serve-join-link (http)
+    // HTTP: POST /public/join-*
+    // args: none
+    record serve-join-link-signature-http {
+        target: string,
+        returning: result<string, string>
+    }
+
+    // Function signature for: serve-public-chat (http)
+    // HTTP: POST /public
+    // args: none
+    record serve-public-chat-signature-http {
+        target: string,
+        returning: result<string, string>
+    }
+
+    // Function signature for: spider-connect (http)
+    // HTTP: POST /api/spider-connect
+    // args: (force-new: option<bool>)
+    record spider-connect-signature-http {
+        target: string,
+        arg-types: tuple<option<bool>>,
+        returning: result<spider-connect-result, string>
+    }
+
+    // Function signature for: spider-get-history (http)
+    // HTTP: POST /api/spider-get-history
+    // args: none
+    record spider-get-history-signature-http {
+        target: string,
+        returning: result<spider-history, string>
+    }
+
+    // Function signature for: spider-set-history (http)
+    // HTTP: POST /api/spider-set-history
+    // args: (request: spider-set-history-req)
+    record spider-set-history-signature-http {
+        target: string,
+        arg-types: tuple<spider-set-history-req>,
+        returning: result<_, string>
+    }
+
+    // Function signature for: spider-status (http)
+    // HTTP: POST /api/spider-status
+    // args: none
+    record spider-status-signature-http {
+        target: string,
+        returning: result<spider-status-info, string>
+    }
+
+    // Function signature for: update-chat-settings (http)
+    // HTTP: POST /api/update-chat-settings
+    // args: (req: update-chat-settings-req)
+    record update-chat-settings-signature-http {
+        target: string,
+        arg-types: tuple<update-chat-settings-req>,
+        returning: result<chat, string>
+    }
+
+    // Function signature for: update-chat-settings (local)
+    // args: (req: update-chat-settings-req)
+    // json fmt: {"UpdateChatSettings": req}
+    record update-chat-settings-signature-local {
+        target: address,
+        arg-types: tuple<update-chat-settings-req>,
+        returning: result<chat, string>
+    }
+
+    // Function signature for: update-group-settings (http)
+    // HTTP: POST /api/update-group-settings
+    // args: (req: update-group-settings-req)
+    record update-group-settings-signature-http {
+        target: string,
+        arg-types: tuple<update-group-settings-req>,
+        returning: result<group-summary, string>
+    }
+
+    // Function signature for: update-group-settings (local)
+    // args: (req: update-group-settings-req)
+    // json fmt: {"UpdateGroupSettings": req}
+    record update-group-settings-signature-local {
+        target: address,
+        arg-types: tuple<update-group-settings-req>,
+        returning: result<group-summary, string>
+    }
+
+    // Function signature for: update-profile (http)
+    // HTTP: POST /api/update-profile
+    // args: (profile: user-profile)
+    record update-profile-signature-http {
+        target: string,
+        arg-types: tuple<user-profile>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: update-settings (http)
+    // HTTP: POST /api/update-settings
+    // args: (settings: settings)
+    record update-settings-signature-http {
+        target: string,
+        arg-types: tuple<settings>,
+        returning: result<string, string>
+    }
+
+    // Function signature for: upload-file (http)
+    // HTTP: POST /api/upload-file
+    // args: (req: upload-file-req)
+    record upload-file-signature-http {
+        target: string,
+        arg-types: tuple<upload-file-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: upload-group-file (http)
+    // HTTP: POST /api/upload-group-file
+    // args: (req: upload-group-file-req)
+    record upload-group-file-signature-http {
+        target: string,
+        arg-types: tuple<upload-group-file-req>,
+        returning: result<send-group-message-res, string>
+    }
+
+    // Function signature for: upload-profile-picture (http)
+    // HTTP: POST /api/upload-profile-picture
+    // args: (req: upload-profile-picture-req)
+    record upload-profile-picture-signature-http {
+        target: string,
+        arg-types: tuple<upload-profile-picture-req>,
+        returning: result<string, string>
+    }
+}

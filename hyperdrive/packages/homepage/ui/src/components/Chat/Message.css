@@ -1,0 +1,489 @@
+.message {
+  max-width: 75%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  animation: message-enter 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+}
+
+/* Telegram-style message entrance */
+@keyframes message-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Own message "rise from input" animation */
+@keyframes message-send {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.message.own:not(.no-animate) {
+  animation: message-send 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Disable animation for messages already in view on load */
+.message.no-animate {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* Time-based spacing */
+.message.spacing-tight {
+  margin-top: 2px;
+}
+
+.message.spacing-wide {
+  margin-top: 6px;
+}
+
+.message.own {
+  align-self: flex-end;
+}
+
+.message.other {
+  align-self: flex-start;
+}
+
+/* Official/AI message glow - lime green for Stitch */
+.message.official-message .message-content {
+  box-shadow: 0 0 0 1px rgba(204, 255, 0, 0.35),
+    0 0 12px rgba(204, 255, 0, 0.15);
+}
+
+/* Reply-to styling */
+.reply-to {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--primary-color);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.reply-to:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.message.own .reply-to {
+  background: rgba(0, 0, 0, 0.15);
+  border-left-color: rgba(0, 0, 0, 0.4);
+}
+
+.message.own .reply-to:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.reply-to-label {
+  font-size: 11px;
+  color: var(--primary-color);
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
+.message.own .reply-to-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.reply-to-content {
+  font-size: 13px;
+  color: var(--text-primary);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.message.own .reply-to-content {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* Message content bubble */
+.message-content {
+  padding: 10px 56px 20px 14px; /* Extra right padding for time, bottom for footer overlay */
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.45;
+  word-wrap: break-word;
+  position: relative;
+  min-width: 100px; /* Ensure minimum width for short messages to prevent emoji-time overlap */
+}
+
+/* Own messages - Stitch lime green */
+.message.own .message-content {
+  background: var(--message-own, #004fff);
+  color: var(--message-own-text, #000);
+  border-bottom-right-radius: 4px;
+}
+
+/* Other messages - Surface dark */
+.message.other .message-content {
+  padding: 10px 48px 20px 14px; /* Less right padding for other's messages (no status icon) */
+  background: var(--message-other, #0f172a);
+  color: var(--message-other-text, #fff);
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Payment events are rendered as an explicit system card */
+.message.payment-event {
+  max-width: min(88%, 460px);
+}
+
+.message.payment-event .message-content {
+  padding: 0;
+  min-width: 0;
+  background: transparent;
+  border: none;
+}
+
+.payment-event-card,
+.message.own .message-content .payment-event-card,
+.message.other .message-content .payment-event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  background: linear-gradient(145deg, rgba(25, 38, 69, 0.96), rgba(13, 20, 39, 0.96));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+.message.own .payment-event-card {
+  background: linear-gradient(145deg, rgba(34, 52, 88, 0.96), rgba(18, 28, 48, 0.96));
+}
+
+.payment-event-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+}
+
+.payment-event-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #06111d;
+  background: linear-gradient(135deg, #75f3ff, #4f6fff);
+}
+
+.payment-event-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.payment-event-main strong {
+  font-weight: 700;
+}
+
+.payment-event-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.payment-event-hash {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  letter-spacing: 0.01em;
+}
+
+.payment-event-link {
+  color: #7ad6ff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.message.payment-event .message-footer {
+  position: static;
+  margin-top: 6px;
+  padding-right: 4px;
+  justify-content: flex-end;
+}
+
+/* Message footer (time and status) */
+.message-footer {
+  position: absolute;
+  bottom: 4px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+  white-space: nowrap; /* Keep time on single line */
+}
+
+.message.other .message-footer {
+  color: var(--text-secondary);
+}
+
+.message-time {
+  font-weight: 400;
+}
+
+.message-status {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.message.other .message-status {
+  color: var(--primary-color);
+}
+
+/* Reactions */
+.message-reactions {
+  position: absolute;
+  bottom: -10px;
+  left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  z-index: 2;
+}
+
+.reaction {
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: reaction-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes reaction-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.reaction:hover {
+  background: var(--primary-color);
+  color: #000;
+  border-color: var(--primary-color);
+  transform: scale(1.1);
+}
+
+.reaction:active {
+  transform: scale(0.95);
+}
+
+.reaction.reacted {
+  background: var(--primary-color);
+  color: #000;
+  border-color: var(--primary-color);
+}
+
+/* Highlight animation for scrolled-to messages */
+.message.highlight {
+  animation: highlight-pulse 2s ease-out;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    background-color: var(--primary-glow, rgba(204, 255, 0, 0.3));
+    border-radius: 8px;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Swipe to reply styles */
+.message.swiping {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.message.reply-triggered {
+  animation: reply-feedback 0.3s ease-out;
+}
+
+@keyframes reply-feedback {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Voice note / audio player styles */
+.message.audio-message {
+  max-width: min(86%, 360px);
+}
+
+.message-content.message-content--audio {
+  min-width: 240px;
+  padding: 8px 56px 18px 10px;
+}
+
+.message.other .message-content.message-content--audio {
+  padding: 8px 48px 18px 10px;
+}
+
+.dm-audio-player {
+  width: 100%;
+  min-width: 220px;
+  max-width: 320px;
+  height: 32px;
+  border: none;
+  outline: none;
+  background: transparent;
+  display: block;
+}
+
+.dm-audio-loading {
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 2px 0;
+}
+
+@media (max-width: 420px) {
+  .message-content.message-content--audio {
+    min-width: 220px;
+  }
+
+  .dm-audio-player {
+    min-width: 200px;
+  }
+}
+
+/* Image messages */
+.message-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+/* Code blocks in messages */
+.message-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.message.own .message-content pre {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.message-content code {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 13px;
+}
+
+/* Links in messages */
+.message-content a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.message.own .message-content a {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.message.other .message-content a {
+  color: var(--primary-color);
+}
+
+/* Light mode */
+@media (prefers-color-scheme: light) {
+  .message.own .message-content {
+    background: var(--message-own, #004fff);
+    color: var(--message-own-text, #ffffff);
+  }
+
+  .message.official-message .message-content {
+    box-shadow: 0 0 0 1px rgba(0, 79, 255, 0.3),
+      0 0 12px rgba(0, 79, 255, 0.14);
+  }
+
+  .message.other .message-content {
+    background: var(--message-other, #e2e8f0);
+    color: var(--message-other-text, #0f172a);
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .reply-to {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .reply-to:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .reaction {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .payment-event-card,
+  .message.own .message-content .payment-event-card,
+  .message.other .message-content .payment-event-card {
+    color: #0f172a;
+    border-color: rgba(0, 0, 0, 0.1);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(236, 243, 255, 0.98));
+  }
+
+  .payment-event-meta {
+    color: rgba(20, 30, 52, 0.72);
+  }
+
+  .payment-event-pill {
+    color: #ffffff;
+    background: linear-gradient(135deg, #3a67ff, #00a9ff);
+  }
+}

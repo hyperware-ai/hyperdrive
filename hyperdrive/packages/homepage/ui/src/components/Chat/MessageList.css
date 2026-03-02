@@ -1,0 +1,18 @@
+.message-list {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.date-separator {
+  text-align: center;
+  margin: 20px 0 10px;
+}
+
+.date-separator span {
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+}

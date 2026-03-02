@@ -6,7 +6,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
-import { PageProps, UnencryptedIdentity } from "../lib/types";
+import { PageProps, InfoResponse } from "../lib/types";
 import { MULTICALL, mechAbi } from "../abis";
 import { generateNetworkingKeys } from "../abis/helpers";
 import DirectNodeCheckbox from "../components/DirectCheckbox";
@@ -24,9 +24,14 @@ interface ResetProps extends PageProps { }
 // Regex for valid router names (domain format)
 const ROUTER_NAME_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/;
 
+// IPv4 validation regex
+const IPV4_REGEX = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
 function ResetHnsName({
                           direct,
                           setDirect,
+                          directNodeIp,
+                          setDirectNodeIp,
                           setReset,
                           hnsName,
                           setHnsName,
@@ -67,11 +72,90 @@ function ResetHnsName({
     const [initiallyDirect, setInitiallyDirect] = useState<boolean | undefined>(undefined);
     const [initiallySpecifyRouters, setInitiallySpecifyRouters] = useState<boolean | undefined>(undefined);
 
+    // Track the initial IPv4 value to determine if it was auto-detected
+    const [initialDirectNodeIp, setInitialDirectNodeIp] = useState<string>('')
+
+    // Fetch current node info on mount
+    useEffect(() => {
+        document.title = "Reset";
+
+        (async () => {
+            try {
+                // Fetch current node info which includes detected IP address
+                const infoData = (await fetch("/info", { method: "GET", credentials: 'include' }).then((res) =>
+                    res.json()
+                )) as InfoResponse;
+
+                // Set detected IP if available
+                if (infoData.detected_ip_address) {
+                    setInitialDirectNodeIp(infoData.detected_ip_address);
+                }
+
+                // Determine if node has specified routers (indirect node)
+                const hasRouters = infoData.allowed_routers && infoData.allowed_routers.length > 0;
+
+                // If allowed_routers is empty, the node is direct; if it has routers, it's indirect
+                const isDirect = !hasRouters;
+
+                // Set initial states for checkbox help text
+                setInitiallyDirect(isDirect);
+                setInitiallySpecifyRouters(hasRouters);
+
+                // Set the current state to match the node's current configuration
+                setDirect(isDirect);
+
+                // Set IP address: if direct node and detected IP is available, use it
+                if (isDirect && infoData.detected_ip_address) {
+                    setDirectNodeIp(infoData.detected_ip_address);
+                }
+
+                // Prepopulate customRouters if this is an indirect node with existing routers
+                if (hasRouters) {
+                    const routersText = infoData.allowed_routers.join('\n');
+                    setCustomRouters(routersText);
+                    setSpecifyRouters(true); // Auto-enable the checkbox
+                }
+            } catch (error) {
+                console.log("Could not fetch node info:", error);
+            }
+        })();
+    }, [setDirect, setDirectNodeIp]);
+
+    // Validation function for IPv4
+    const isValidIPv4 = (ip: string): boolean => {
+        return IPV4_REGEX.test(ip);
+    };
+
+    // Check if direct node configuration is valid
+    const isDirectNodeValid = (): boolean => {
+        if (!direct) return true; // Not required if checkbox is unchecked
+        return directNodeIp.trim() !== '' && isValidIPv4(directNodeIp.trim());
+    };
+
+    // Determine the appropriate label for the Direct Node IP field
+    const getDirectNodeIpLabel = (): string => {
+        const hasValidInitialIp = initialDirectNodeIp && isValidIPv4(initialDirectNodeIp);
+
+        if (!hasValidInitialIp) {
+            return "Direct Node IP Address (IPv4)";
+        }
+
+        if (directNodeIp === initialDirectNodeIp) {
+            return "Direct Node IP Address (as detected)";
+        }
+
+        return "Direct Node IP Address (overridden by user)";
+    };
+
     // Modified setDirect function - no longer clears custom routers
     const handleSetDirect = (value: boolean) => {
         setDirect(value);
         if (value) {
             setSpecifyRouters(false);
+            // Only set detected IP if directNodeIp is empty (not if user has entered something)
+            if (!directNodeIp && initialDirectNodeIp) {
+                setDirectNodeIp(initialDirectNodeIp);
+            }
         }
     };
 
@@ -215,6 +299,7 @@ function ResetHnsName({
                 const data = await generateNetworkingKeys({
                     upgradable: false,
                     direct,
+                    directNodeIp: direct ? directNodeIp : undefined,
                     label: name,
                     our_address: address,
                     setNetworkingKey,
@@ -242,7 +327,7 @@ function ResetHnsName({
                 console.error("An error occurred:", error);
             }
         },
-        [address, direct, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal, getValidCustomRouters, setHnsName]
+        [address, direct, directNodeIp, specifyRouters, customRouters, name, tba, setNetworkingKey, setIpAddress, setWsPort, setTcpPort, setRouters, writeContract, openConnectModal, getValidCustomRouters, setHnsName]
     );
 
     useEffect(() => {
@@ -303,6 +388,35 @@ function ResetHnsName({
                                             setDirect={handleSetDirect}
                                             initiallyChecked={initiallyDirect}
                                         />
+                                        {direct && (
+                                            <div className="flex flex-col gap-2 ml-6">
+                                                <label htmlFor="direct-node-ip" className="text-sm font-medium">
+                                                    {getDirectNodeIpLabel()}: <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="direct-node-ip"
+                                                    value={directNodeIp}
+                                                    onChange={(e) => setDirectNodeIp(e.target.value)}
+                                                    placeholder="e.g., 192.168.1.100"
+                                                    className={`input ${
+                                                        direct && !isDirectNodeValid()
+                                                            ? 'border-red-500 focus:border-red-500'
+                                                            : ''
+                                                    }`}
+                                                />
+                                                {direct && directNodeIp.trim() && !isValidIPv4(directNodeIp.trim()) && (
+                                                    <span className="text-xs text-red-500">
+                                                        Please enter a valid IPv4 address
+                                                    </span>
+                                                )}
+                                                {direct && !directNodeIp.trim() && (
+                                                    <span className="text-xs text-red-500">
+                                                        IP address is required for direct nodes
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                         <SpecifyRoutersCheckbox
                                             specifyRouters={specifyRouters}
                                             setSpecifyRouters={handleSetSpecifyRouters}
@@ -336,11 +450,11 @@ function ResetHnsName({
                                                     <span className={`text-xs ${
                                                         !isCustomRoutersValid() ? 'text-red-500' : 'text-gray-500'
                                                     }`}>
-                                    {!isCustomRoutersValid()
-                                        ? 'At least one valid router name is required'
-                                        : 'Enter one router name per line. These routers will be used for your indirect node.'
-                                    }
-                                  </span>
+                                                        {!isCustomRoutersValid()
+                                                            ? 'At least one valid router name is required'
+                                                            : 'Enter one router name per line. These routers will be used for your indirect node.'
+                                                        }
+                                                    </span>
                                                 )}
                                             </div>
                                         )}
@@ -377,6 +491,7 @@ function ResetHnsName({
                                         isPending ||
                                         isConfirming ||
                                         nameValidities.length !== 0 ||
+                                        (direct && !isDirectNodeValid()) ||
                                         (specifyRouters && !isCustomRoutersValid())
                                     }
                                 >

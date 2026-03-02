@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/chat-256.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat</title>
+    <style>
+        :root {
+            --primary: #007aff;
+            --surface: #f2f2f7;
+            --background: #ffffff;
+            --text-primary: #000000;
+            --text-secondary: #8e8e93;
+            --border: #e5e5ea;
+            --message-own: #007aff;
+            --message-other: #e5e5ea;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .chat-header {
+            background: var(--surface);
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .chat-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+        
+        .message.own {
+            align-self: flex-end;
+            background: var(--message-own);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.other {
+            align-self: flex-start;
+            background: var(--message-other);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 16px;
+            outline: none;
+            background: var(--background);
+        }
+        
+        .message-input:focus {
+            border-color: var(--primary);
+        }
+        
+        .send-button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .auth-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .auth-container h1 {
+            margin-bottom: 10px;
+        }
+        
+        .auth-container p {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+        
+        .auth-button {
+            padding: 12px 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .error {
+            background: #ff3b30;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #000000;
+                --surface: #1c1c1e;
+                --text-primary: #ffffff;
+                --text-secondary: #8e8e93;
+                --border: #38383a;
+                --message-other: #2c2c2e;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    
+    <script>
+        class BrowserChat {
+            constructor() {
+                this.ws = null;
+                this.chatKey = null;
+                this.chatId = null;
+                this.messages = [];
+                this.userName = 'Guest';
+                this.init();
+            }
+            
+            init() {
+                // Check for existing chat key in localStorage
+                this.chatKey = localStorage.getItem('chatKey');
+                
+                // Get chat key from URL if present
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlKey = urlParams.get('key');
+                if (urlKey) {
+                    this.chatKey = urlKey;
+                    localStorage.setItem('chatKey', urlKey);
+                }
+                
+                // Check if this is a join link
+                const path = window.location.pathname;
+                if (path.includes('/join-')) {
+                    const key = path.split('/join-')[1];
+                    if (key) {
+                        this.chatKey = key;
+                        localStorage.setItem('chatKey', key);
+                    }
+                }
+                
+                if (this.chatKey) {
+                    this.connect();
+                } else {
+                    this.showAuthScreen();
+                }
+            }
+            
+            showAuthScreen() {
+                const app = document.getElementById('app');
+                app.innerHTML = `
+                    <div class="auth-container">
+                        <h1>Welcome to Chat</h1>
+                        <p>You need a chat key to join this conversation.</p>
+                        <p>Please ask the host for an invitation link.</p>
+                    </div>
+                `;
+            }
+            
+            showChatScreen() {
+                const app = document.getElementById('app');
+                app.innerHTML = `
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <h2>Chat</h2>
+                        </div>
+                        <div class="messages" id="messages"></div>
+                        <div class="input-container">
+                            <input 
+                                type="text" 
+                                class="message-input" 
+                                id="messageInput" 
+                                placeholder="Type a message..."
+                                onkeypress="if(event.key === 'Enter') chat.sendMessage()"
+                            >
+                            <button class="send-button" onclick="chat.sendMessage()">Send</button>
+                        </div>
+                    </div>
+                `;
+                this.renderMessages();
+            }
+            
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host;
+                const basePath = '/chat:homepage:sys';
+                this.ws = new WebSocket(`${protocol}//${host}${basePath}/ws`);
+                
+                this.ws.onopen = () => {
+                    console.log('Connected to chat');
+                    // Authenticate with chat key
+                    this.ws.send(JSON.stringify({
+                        AuthWithKey: { chat_key: this.chatKey }
+                    }));
+                };
+                
+                this.ws.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+                    this.handleMessage(msg);
+                };
+                
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                
+                this.ws.onclose = () => {
+                    console.log('Disconnected from chat');
+                    setTimeout(() => this.connect(), 3000);
+                };
+            }
+            
+            handleMessage(msg) {
+                if (msg.AuthSuccess) {
+                    this.chatId = msg.AuthSuccess.chat_id;
+                    this.messages = msg.AuthSuccess.history || [];
+                    this.showChatScreen();
+                } else if (msg.AuthFailed) {
+                    localStorage.removeItem('chatKey');
+                    this.chatKey = null;
+                    this.showAuthScreen();
+                    alert(msg.AuthFailed.reason);
+                } else if (msg.NewMessage) {
+                    this.messages.push(msg.NewMessage);
+                    this.renderMessages();
+                } else if (msg.Heartbeat) {
+                    // Send heartbeat back
+                    this.ws.send(JSON.stringify({ Heartbeat: {} }));
+                }
+            }
+            
+            renderMessages() {
+                const container = document.getElementById('messages');
+                if (!container) return;
+                
+                container.innerHTML = this.messages.map(msg => {
+                    const isOwn = msg.sender === this.userName || msg.sender.includes('Guest');
+                    const time = new Date(msg.timestamp * 1000).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    return `
+                        <div class="message ${isOwn ? 'own' : 'other'}">
+                            <div>${msg.content}</div>
+                            <div class="message-time">${time}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.scrollTop = container.scrollHeight;
+            }
+            
+            sendMessage() {
+                const input = document.getElementById('messageInput');
+                const content = input.value.trim();
+                
+                if (!content || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                    return;
+                }
+                
+                this.ws.send(JSON.stringify({
+                    BrowserMessage: { content }
+                }));
+                
+                input.value = '';
+            }
+        }
+        
+        const chat = new BrowserChat();
+    </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.delete-modal {
+  background: var(--background-secondary, #1a1a1a);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.delete-modal h3 {
+  margin: 0 0 12px 0;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.delete-modal p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.delete-modal-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.delete-button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.delete-button.delete-locally {
+  background: var(--button-secondary, #333);
+  color: var(--text-primary);
+}
+
+.delete-button.delete-locally:hover {
+  background: var(--button-secondary-hover, #444);
+}
+
+.delete-button.delete-both {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-button.delete-both:hover {
+  background: #c82333;
+}
+
+.delete-button.cancel {
+  background: transparent;
+  color: var(--text-secondary, #999);
+  border: 1px solid var(--border-color, #333);
+}
+
+.delete-button.cancel:hover {
+  background: var(--background-tertiary, rgba(255,255,255,0.05));
+}

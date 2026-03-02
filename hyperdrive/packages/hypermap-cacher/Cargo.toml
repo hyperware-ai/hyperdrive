@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "binding-cacher",
+    "dao-cacher",
     "hypermap-cacher",
     "reset-cache",
     "set-nodes",

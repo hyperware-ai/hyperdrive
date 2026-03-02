@@ -11,6 +11,7 @@ import { InfoResponse } from "../lib/types";
 
 type SetPasswordProps = {
   direct: boolean;
+  directNodeIp: string;
   pw: string;
   reset: boolean;
   hnsName: string;
@@ -32,6 +33,7 @@ const validateWebSocketUrl = (url: string): boolean => {
 function SetPassword({
                        hnsName,
                        direct,
+                       directNodeIp,
                        pw,
                        reset,
                        setPw,
@@ -203,6 +205,9 @@ function SetPassword({
             console.log("Custom Base L2 access providers:", baseL2AccessProvidersToUse);
           }
 
+          // Determine the direct value: IP address string if direct is true, null otherwise
+          const directValue = direct ? directNodeIp : null;
+
           // salt is either node name (if node name is longer than 8 characters)
           //  or node name repeated enough times to be longer than 8 characters
           const minSaltL = 8;
@@ -261,7 +266,7 @@ function SetPassword({
                   password_hash: hashed_password_hex,
                   reset,
                   username: hnsName,
-                  direct,
+                  direct: directValue,
                   owner,
                   timestamp,
                   signature,
@@ -286,7 +291,7 @@ function SetPassword({
           });
         }, 500);
       },
-      [direct, pw, pw2, reset, hnsName, routers, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, rpcProviders, address, chainId, signTypedDataAsync]
+      [direct, directNodeIp, pw, pw2, reset, hnsName, routers, specifyCacheSources, customCacheSources, specifyBaseL2AccessProviders, rpcProviders, address, chainId, signTypedDataAsync]
   );
 
   // Validation for the submit button

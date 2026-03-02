@@ -1,0 +1,4 @@
+world chat-ware-dot-hypr-v0 {
+    import chat;
+    include process-v1;
+}

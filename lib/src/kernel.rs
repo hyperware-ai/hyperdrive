@@ -45,7 +45,7 @@ pub struct BootInfo {
     pub password_hash: String,
     pub username: String,
     pub reset: bool,
-    pub direct: bool,
+    pub direct: Option<String>,
     pub owner: String,
     pub signature: String,
     pub timestamp: u64,
@@ -150,16 +150,15 @@ impl Identity {
             NodeRouting::Direct { .. } => None,
         }
     }
-    pub fn both_to_direct(&mut self) {
-        if let NodeRouting::Both {
-            ip,
-            ports,
-            routers: _,
-        } = self.routing.clone()
-        {
-            self.routing = NodeRouting::Direct { ip, ports };
+    pub fn both_to_direct(&mut self, ip: &str) {
+        if let NodeRouting::Both { ports, .. } = &self.routing {
+            self.routing = NodeRouting::Direct {
+                ip: ip.to_string(),
+                ports: ports.clone(),
+            };
         }
     }
+
     pub fn both_to_routers(&mut self) {
         if let NodeRouting::Both {
             ip: _,
@@ -184,6 +183,9 @@ pub struct InfoResponse {
     pub allowed_routers: Option<Vec<String>>,
     pub initial_cache_sources: Vec<String>,
     pub initial_base_l2_providers: Vec<String>,
+    pub uses_direct_networking: bool,
+    pub hns_ip_address: Option<String>,
+    pub detected_ip_address: String,
 }
 
 //
