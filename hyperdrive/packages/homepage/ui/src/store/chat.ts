@@ -34,6 +34,12 @@ interface ChatStore {
   loadSettings: () => Promise<void>;
   createChat: (counterparty: string) => Promise<void>;
   sendMessage: (chatId: string, content: string, replyTo?: string) => Promise<void>;
+  sendVoiceNote: (
+    chatId: string,
+    audioData: string,
+    duration: number,
+    replyTo?: string | null,
+  ) => Promise<void>;
   recordPayment: (req: api.RecordPaymentReq) => Promise<void>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
@@ -750,6 +756,91 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           : state.activeChat,
         error: 'Failed to send message'
       }));
+    }
+  },
+
+  sendVoiceNote: async (
+    chatId: string,
+    audioData: string,
+    duration: number,
+    replyTo?: string | null,
+  ) => {
+    try {
+      const voiceMessage = await api.send_voice_note({
+        chat_id: chatId,
+        audio_data: audioData,
+        duration,
+        reply_to: replyTo ?? null,
+      });
+      const stagedVoiceMessage: api.ChatMessage = {
+        ...voiceMessage,
+        status:
+          voiceMessage.status === api.MessageStatus.Sending
+            ? api.MessageStatus.Sent
+            : voiceMessage.status,
+      };
+
+      set((state) => {
+        const appendIfMissing = (chat: api.Chat): api.Chat => {
+          if (chat.id !== chatId) return chat;
+          if (chat.messages.some((message) => message.id === stagedVoiceMessage.id)) return chat;
+          return {
+            ...chat,
+            messages: [...chat.messages, stagedVoiceMessage],
+            last_activity: stagedVoiceMessage.timestamp,
+          };
+        };
+
+        const chats = state.chats.map(appendIfMissing);
+        const activeChat =
+          state.activeChat?.id === chatId ? appendIfMissing(state.activeChat) : state.activeChat;
+
+        const changed = chats.find((chat) => chat.id === chatId);
+        if (changed) {
+          idbStorage.saveChat(changed).catch((err) =>
+            console.error('[IDB] Failed to save chat after sendVoiceNote:', changed.id, err),
+          );
+        }
+
+        return { chats, activeChat };
+      });
+
+      window.setTimeout(() => {
+        set((state) => {
+          const updateDelivered = (chat: api.Chat): api.Chat => {
+            if (chat.id !== chatId) return chat;
+            return {
+              ...chat,
+              messages: chat.messages.map((message) => {
+                if (message.id !== stagedVoiceMessage.id) return message;
+                if (
+                  message.status === api.MessageStatus.Delivered ||
+                  message.status === api.MessageStatus.Failed
+                ) {
+                  return message;
+                }
+                return { ...message, status: api.MessageStatus.Delivered };
+              }),
+            };
+          };
+
+          const chats = state.chats.map(updateDelivered);
+          const activeChat =
+            state.activeChat?.id === chatId ? updateDelivered(state.activeChat) : state.activeChat;
+
+          const changed = chats.find((chat) => chat.id === chatId);
+          if (changed) {
+            idbStorage.saveChat(changed).catch((err) =>
+              console.error('[IDB] Failed to save chat after voice-note delivery:', changed.id, err),
+            );
+          }
+
+          return { chats, activeChat };
+        });
+      }, 1200);
+    } catch (error) {
+      set({ error: 'Failed to send voice note' });
+      throw error;
     }
   },
 

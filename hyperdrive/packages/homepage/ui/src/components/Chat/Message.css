@@ -358,22 +358,44 @@
 }
 
 /* Voice note / audio player styles */
-.dm-audio-wrapper {
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin: 2px 0;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.message.audio-message {
+  max-width: min(86%, 360px);
+}
+
+.message-content.message-content--audio {
+  min-width: 240px;
+  padding: 8px 56px 18px 10px;
+}
+
+.message.other .message-content.message-content--audio {
+  padding: 8px 48px 18px 10px;
 }
 
 .dm-audio-player {
   width: 100%;
   min-width: 220px;
+  max-width: 320px;
   height: 32px;
   border: none;
   outline: none;
   background: transparent;
   display: block;
+}
+
+.dm-audio-loading {
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 2px 0;
+}
+
+@media (max-width: 420px) {
+  .message-content.message-content--audio {
+    min-width: 220px;
+  }
+
+  .dm-audio-player {
+    min-width: 200px;
+  }
 }
 
 /* Image messages */
@@ -446,10 +468,6 @@
   .reaction {
     background: #fff;
     border-color: rgba(0, 0, 0, 0.1);
-  }
-
-  .dm-audio-wrapper {
-    border-color: rgba(0, 0, 0, 0.05);
   }
 
   .payment-event-card,

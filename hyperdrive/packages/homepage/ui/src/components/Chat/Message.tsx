@@ -591,7 +591,7 @@ const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide'
       <div 
         ref={messageRef}
         id={`message-${message.id}`}
-        className={`message ${isOwn ? 'own' : 'other'} ${isOfficial ? 'official-message' : ''} ${isPaymentEvent ? 'payment-event' : ''} ${isSwiping ? 'swiping' : ''} spacing-${spacingClass}`}
+        className={`message ${isOwn ? 'own' : 'other'} ${isAudioMessage ? 'audio-message' : ''} ${isOfficial ? 'official-message' : ''} ${isPaymentEvent ? 'payment-event' : ''} ${isSwiping ? 'swiping' : ''} spacing-${spacingClass}`}
         onContextMenu={handleLongPress}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -623,7 +623,7 @@ const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide'
           </div>
         )}
 
-        <div className="message-content">
+        <div className={`message-content ${isAudioMessage ? 'message-content--audio' : ''}`}>
           {/* If this is a file/image message with file info, show it specially */}
           {isPaymentEvent && paymentInfo ? (
             <a
@@ -646,17 +646,15 @@ const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide'
               </div>
             </a>
           ) : isAudioMessage && message.file_info ? (
-            <div className="dm-audio-wrapper">
-              {audioUrl ? (
-                <audio
-                  controls
-                  src={audioUrl}
-                  className="dm-audio-player"
-                />
-              ) : (
-                <div style={{ fontSize: '12px', opacity: 0.7 }}>Loading audio…</div>
-              )}
-            </div>
+            audioUrl ? (
+              <audio
+                controls
+                src={audioUrl}
+                className="dm-audio-player"
+              />
+            ) : (
+              <div className="dm-audio-loading">Loading audio…</div>
+            )
           ) : message.file_info && message.message_type === 'Image' && settings?.show_images ? (
             <div>
               <img 

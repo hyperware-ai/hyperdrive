@@ -8,17 +8,30 @@
   display: flex;
   align-items: flex-end;
   z-index: 1000;
+  opacity: 0;
+  animation: file-upload-overlay-in 220ms ease forwards;
+}
+
+.file-upload-overlay.closing {
+  animation: file-upload-overlay-out 220ms ease forwards;
 }
 
 .file-upload-menu {
   background: var(--background);
+  color: var(--text-primary);
   width: 100%;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  padding: 20px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 10px;
+  transform: translateY(100%);
+  animation: file-upload-menu-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+
+.file-upload-overlay.closing .file-upload-menu {
+  animation: file-upload-menu-out 220ms cubic-bezier(0.4, 0.0, 1, 1) forwards;
 }
 
 .upload-option {
@@ -29,6 +42,8 @@
   font-size: 16px;
   cursor: pointer;
   transition: background 0.2s;
+  color: var(--text-primary);
+  text-align: left;
 }
 
 .upload-option:active {
@@ -41,6 +56,7 @@
   gap: 8px;
   width: 100%;
   cursor: pointer;
+  color: inherit;
 }
 
 .upload-option .material-symbols-outlined {
@@ -101,4 +117,51 @@
   font-size: 12px;
   color: #ff4d4d;
   margin-top: 4px;
+}
+
+@keyframes file-upload-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes file-upload-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes file-upload-menu-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0%);
+  }
+}
+
+@keyframes file-upload-menu-out {
+  from {
+    transform: translateY(0%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-upload-overlay,
+  .file-upload-menu,
+  .file-upload-overlay.closing,
+  .file-upload-overlay.closing .file-upload-menu {
+    animation: none;
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import './FileUpload.css';
 import { useChatStore } from '../../store/chat';
 import * as Caller from '#caller-utils';
@@ -13,12 +13,31 @@ interface UploadStatus {
 }
 
 const { upload_file } = Caller.Chat;
+const CLOSE_ANIMATION_MS = 220;
 
 const FileUpload: React.FC<FileUploadProps> = ({ onClose }) => {
   const { activeChat, settings } = useChatStore();
   const [isUploading, setIsUploading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ [filename: string]: UploadStatus }>({});
   const pendingUploadsRef = useRef(0);
+  const closeTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const requestClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimeoutRef.current = window.setTimeout(() => {
+      onClose();
+    }, CLOSE_ANIMATION_MS);
+  }, [isClosing, onClose]);
 
   const readFileAsBase64 = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -111,14 +130,26 @@ const FileUpload: React.FC<FileUploadProps> = ({ onClose }) => {
       // Check if all uploads succeeded (no errors)
       const hasErrors = Object.values(uploadStatus).some(s => s.error);
       if (!hasErrors) {
-        onClose();
+        requestClose();
       }
     }, 1000);
   };
 
+  const handleMenuClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const isActionClick = Boolean(target.closest('button, label, input'));
+    e.stopPropagation();
+    if (!isActionClick) {
+      requestClose();
+    }
+  };
+
   return (
-    <div className="file-upload-overlay" onClick={onClose}>
-      <div className="file-upload-menu" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`file-upload-overlay ${isClosing ? 'closing' : ''}`}
+      onClick={requestClose}
+    >
+      <div className="file-upload-menu" onClick={handleMenuClick}>
         {/* Show upload progress if uploading */}
         {Object.keys(uploadStatus).length > 0 && (
           <div className="upload-progress-container">
@@ -176,7 +207,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onClose }) => {
                 />
               </label>
             </button>
-            <button className="upload-option" onClick={onClose}>
+            <button className="upload-option" onClick={requestClose}>
               Cancel
             </button>
           </>

@@ -463,8 +463,6 @@ async fn send_push_notification_for_group_message(
 impl ChatState {
     #[init]
     async fn initialize(&mut self) {
-        add_to_homepage("Chat", Some(ICON), Some("/"), None);
-
         // Initialize with default profile
         if self.profile.name == "User" {
             let our_node = our().node.clone();

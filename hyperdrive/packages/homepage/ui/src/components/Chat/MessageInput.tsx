@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as Caller from '#caller-utils';
 import { useChatStore } from '../../store/chat';
 import FileUpload from './FileUpload';
 import VoiceNote from './VoiceNote';
@@ -14,7 +13,15 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
   const [message, setMessage] = useState('');
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [showVoiceNote, setShowVoiceNote] = useState(false);
-  const { sendMessage, replyingTo, setReplyingTo, editingMessage, setEditingMessage, editMessage } = useChatStore();
+  const {
+    sendMessage,
+    sendVoiceNote,
+    replyingTo,
+    setReplyingTo,
+    editingMessage,
+    setEditingMessage,
+    editMessage,
+  } = useChatStore();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -83,12 +90,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
   const handleSendVoiceNote = async (payload: { base64: string; duration: number; mimeType: string }) => {
     const replyToId = replyingTo?.id || null;
     setReplyingTo(null);
-    await Caller.Chat.send_voice_note({
-      chat_id: chatId,
-      audio_data: payload.base64,
-      duration: payload.duration,
-      reply_to: replyToId,
-    });
+    await sendVoiceNote(chatId, payload.base64, payload.duration, replyToId);
     onSendMessage?.();
   };
 

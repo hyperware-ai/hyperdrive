@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import '../Chat/FileUpload.css';
 import { useGroupStore } from '../../store/groups';
 import { getChatBasePath } from '../../utils/chatBase';
@@ -39,6 +39,7 @@ const parseApiResponse = <T,>(response: any): T => {
   }
   return response as T;
 };
+const CLOSE_ANIMATION_MS = 220;
 
 const GroupFileUpload: React.FC<GroupFileUploadProps> = ({ onClose }) => {
   const {
@@ -54,7 +55,25 @@ const GroupFileUpload: React.FC<GroupFileUploadProps> = ({ onClose }) => {
   } = useGroupStore();
   const { settings } = useChatStore();
   const [isUploading, setIsUploading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<string, UploadStatus>>({});
+  const closeTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const requestClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimeoutRef.current = window.setTimeout(() => {
+      onClose();
+    }, CLOSE_ANIMATION_MS);
+  }, [isClosing, onClose]);
 
   const readFileAsBase64 = useCallback((file: File, fileKey: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -251,14 +270,26 @@ const GroupFileUpload: React.FC<GroupFileUploadProps> = ({ onClose }) => {
     setTimeout(() => {
       setIsUploading(false);
       if (!hasErrors) {
-        onClose();
+        requestClose();
       }
     }, 1000);
   };
 
+  const handleMenuClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const isActionClick = Boolean(target.closest('button, label, input'));
+    e.stopPropagation();
+    if (!isActionClick) {
+      requestClose();
+    }
+  };
+
   return (
-    <div className="file-upload-overlay" onClick={onClose}>
-      <div className="file-upload-menu" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`file-upload-overlay ${isClosing ? 'closing' : ''}`}
+      onClick={requestClose}
+    >
+      <div className="file-upload-menu" onClick={handleMenuClick}>
         {Object.keys(uploadStatus).length > 0 && (
           <div className="upload-progress-container">
             {Object.entries(uploadStatus).map(([fileKey, status]) => (
@@ -308,7 +339,7 @@ const GroupFileUpload: React.FC<GroupFileUploadProps> = ({ onClose }) => {
                 />
               </label>
             </button>
-            <button className="upload-option" onClick={onClose}>
+            <button className="upload-option" onClick={requestClose}>
               Cancel
             </button>
           </>

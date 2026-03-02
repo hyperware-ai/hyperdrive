@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import fixWebmDuration from 'fix-webm-duration';
 import { useChatStore } from '../../store/chat';
 import './VoiceNote.css';
@@ -8,16 +9,21 @@ interface VoiceNoteProps {
   onSend: (payload: { base64: string; duration: number; mimeType: string }) => Promise<void>;
 }
 
+const CLOSE_ANIMATION_MS = 220;
+
 const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
   const { settings } = useChatStore();
+  const [isStarting, setIsStarting] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const mimeTypeRef = useRef<string>('audio/webm');
   const maxSizeBytes = (settings?.max_file_size_mb || 10) * 1024 * 1024;
@@ -60,8 +66,17 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
     streamRef.current = null;
   };
 
-  const startRecording = async () => {
+  const requestClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimeoutRef.current = window.setTimeout(() => {
+      onClose();
+    }, CLOSE_ANIMATION_MS);
+  }, [isClosing, onClose]);
+
+  const startRecording = useCallback(async () => {
     setError(null);
+    setIsStarting(true);
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       if (!window.isSecureContext) {
@@ -69,6 +84,7 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
       } else {
         setError('Audio recording is not supported in this browser.');
       }
+      setIsStarting(false);
       return;
     }
 
@@ -79,6 +95,7 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
       if (!mimeType) {
         setError('Audio recording requires WebM support.');
         stopTracks();
+        setIsStarting(false);
         return;
       }
       mimeTypeRef.current = mimeType;
@@ -104,20 +121,22 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
         setRecordingTime(elapsed);
       }, 1000);
+      setIsStarting(false);
     } catch (err) {
       console.error('Failed to start recording:', err);
       setError('Microphone permission denied.');
       stopTracks();
+      setIsStarting(false);
     }
-  };
+  }, []);
 
-  const finishRecording = async (shouldSend: boolean) => {
+  const finishRecording = useCallback(async (shouldSend: boolean): Promise<boolean> => {
     const recorder = mediaRecorderRef.current;
     if (!recorder) {
       setIsRecording(false);
       clearTimer();
       stopTracks();
-      return;
+      return !shouldSend;
     }
 
     const stopped = new Promise<Blob>((resolve) => {
@@ -139,17 +158,17 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
 
     const blob = await stopped;
     if (!shouldSend) {
-      return;
+      return true;
     }
 
     if (!blob.size) {
       setError('No audio captured.');
-      return;
+      return false;
     }
     if (blob.size > maxSizeBytes) {
       const maxMb = Math.round(maxSizeBytes / (1024 * 1024));
       setError(`Voice note exceeds ${maxMb}MB limit.`);
-      return;
+      return false;
     }
 
     try {
@@ -163,66 +182,80 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
       const base64 = await blobToBase64(fixedBlob);
       const mimeType = (blob.type || mimeTypeRef.current || 'audio/webm').split(';')[0];
       await onSend({ base64, duration, mimeType });
-      onClose();
+      return true;
     } catch (err) {
       console.error('Failed to send voice note:', err);
       setError('Failed to send voice note.');
+      return false;
     } finally {
       setIsSending(false);
     }
-  };
+  }, [maxSizeBytes, onSend]);
 
-  const stopRecording = async () => {
-    await finishRecording(true);
-  };
+  const sendRecording = useCallback(async () => {
+    if (isSending || isClosing) return;
+    if (!isRecording) {
+      return;
+    }
+    const sent = await finishRecording(true);
+    if (sent) {
+      requestClose();
+    }
+  }, [finishRecording, isClosing, isRecording, isSending, requestClose]);
 
-  const cancelRecording = async () => {
+  const cancelRecording = useCallback(async () => {
+    if (isSending || isClosing) return;
     await finishRecording(false);
-    onClose();
-  };
+    requestClose();
+  }, [finishRecording, isClosing, isSending, requestClose]);
 
   useEffect(() => {
+    startRecording();
     return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
       clearTimer();
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
       stopTracks();
     };
-  }, []);
+  }, [startRecording]);
 
-  return (
-    <div className="voice-note-overlay" onClick={onClose}>
-      <div className="voice-note-modal" onClick={(e) => e.stopPropagation()}>
-        {isRecording ? (
-          <>
-            <div className="recording-indicator">
-              <span className="recording-dot"></span>
-              Recording... {recordingTime}s
-            </div>
-            {error && <div className="voice-note-error">{error}</div>}
-            <button className="stop-button" onClick={stopRecording} disabled={isSending}>
-              {isSending ? 'Sending…' : 'Stop & Send'}
-            </button>
-          </>
-        ) : (
-          <>
-            <p>Tap to record a voice note</p>
-            {error && <div className="voice-note-error">{error}</div>}
-            <button className="record-button" onClick={startRecording} disabled={isSending}>
-              <span className="material-symbols-outlined" aria-hidden="true">
-                mic
-              </span>
-              <span>Start Recording</span>
-            </button>
-          </>
-        )}
-        <button className="cancel-button" onClick={isRecording ? cancelRecording : onClose}>
+  const sheet = (
+    <div
+      className={`voice-note-overlay ${isClosing ? 'closing' : ''}`}
+      onClick={sendRecording}
+    >
+      <div className="voice-note-sheet">
+        <div className="recording-indicator">
+          <span className="recording-dot"></span>
+          {isSending ? 'Sending…' : `Recording ${recordingTime}s`}
+        </div>
+        <p className="voice-note-instruction">
+          {isStarting ? 'Preparing microphone…' : 'Recording, tap anywhere to send'}
+        </p>
+        {error && <div className="voice-note-error">{error}</div>}
+        <button
+          className="cancel-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            void cancelRecording();
+          }}
+          disabled={isSending}
+        >
           Cancel
         </button>
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(sheet, document.body);
 };
 
 export default VoiceNote;

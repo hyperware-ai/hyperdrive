@@ -1,85 +1,138 @@
 .voice-note-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  inset: 0;
   z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  animation: voice-note-overlay-in 220ms ease forwards;
 }
 
-.voice-note-modal {
+.voice-note-overlay.closing {
+  animation: voice-note-overlay-out 220ms ease forwards;
+}
+
+.voice-note-sheet {
+  width: 100%;
   background: var(--background);
-  border-radius: 12px;
-  padding: 30px;
-  text-align: center;
+  color: var(--text-primary);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  padding: 20px 20px calc(18px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-width: 300px;
+  gap: 12px;
+  transform: translateY(100%);
+  animation: voice-note-sheet-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+
+.voice-note-overlay.closing .voice-note-sheet {
+  animation: voice-note-sheet-out 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 .recording-indicator {
-  font-size: 18px;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .recording-dot {
-  width: 12px;
-  height: 12px;
-  background: red;
-  border-radius: 50%;
-  animation: pulse 1s infinite;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ff4d4d;
+  animation: voice-note-pulse 1s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.record-button,
-.stop-button {
-  padding: 15px 30px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.record-button:disabled,
-.stop-button:disabled {
-  opacity: 0.7;
-  cursor: default;
+.voice-note-instruction {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .cancel-button {
-  padding: 10px 20px;
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 15px;
   background: var(--surface);
   color: var(--text-primary);
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
+}
+
+.cancel-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .voice-note-error {
-  color: #b00020;
+  color: #ff6b6b;
   font-size: 13px;
 }
 
-.record-button .material-symbols-outlined,
-.stop-button .material-symbols-outlined {
-  font-size: 18px;
+@keyframes voice-note-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes voice-note-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes voice-note-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0%);
+  }
+}
+
+@keyframes voice-note-sheet-out {
+  from {
+    transform: translateY(0%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes voice-note-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-note-overlay,
+  .voice-note-overlay.closing,
+  .voice-note-sheet,
+  .voice-note-overlay.closing .voice-note-sheet,
+  .recording-dot {
+    animation: none;
+  }
+
+  .voice-note-overlay {
+    opacity: 1;
+  }
+
+  .voice-note-sheet {
+    transform: translateY(0);
+  }
 }
