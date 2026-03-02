@@ -8,10 +8,6 @@ serde_urlencoded = "0.7"
 tracing = "0.1.37"
 wit-bindgen = "0.42.1"
 
-[dependencies.file_explorer_caller_utils]
-optional = true
-path = "../target/file-explorer-caller-utils"
-
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
@@ -20,9 +16,6 @@ rev = "1a6ad9d"
 [dependencies.serde]
 features = ["derive"]
 version = "1.0"
-
-[features]
-caller-utils = ["file_explorer_caller_utils"]
 
 [lib]
 crate-type = ["cdylib"]

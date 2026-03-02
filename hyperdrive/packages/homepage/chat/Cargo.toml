@@ -8,10 +8,6 @@ rand = "0.8"
 serde_json = "1.0"
 wit-bindgen = "0.42.1"
 
-[dependencies.homepage_caller_utils]
-optional = true
-path = "../target/homepage-caller-utils"
-
 [dependencies.hyperapp_macro]
 version = "0.2.0"
 
@@ -38,7 +34,6 @@ version = "1.0"
 rmp-serde = "1"
 
 [features]
-caller-utils = ["homepage_caller_utils"]
 disable-notifications = []
 simulation-mode = []
 test-helpers = []
