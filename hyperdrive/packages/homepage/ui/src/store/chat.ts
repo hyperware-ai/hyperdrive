@@ -281,19 +281,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         // Load cached chats from IndexedDB
         console.log('[INIT] Loading chats from IndexedDB...');
         const cachedChats = await idbStorage.loadChats();
-        const activeChatId = await idbStorage.loadMetadata('activeChatId');
         const lastSync = await idbStorage.loadMetadata('lastSyncTimestamp');
+        void idbStorage
+          .saveMetadata('activeChatId', null)
+          .catch((err) => console.error('[IDB] Failed to clear active chat metadata on init:', err));
         
         if (cachedChats.length > 0) {
           console.log('[INIT] Loaded', cachedChats.length, 'chats from IndexedDB');
           
-          // Restore active chat
-          let activeChat = null;
-          if (activeChatId) {
-            activeChat = cachedChats.find(c => c.id === activeChatId) || null;
-          }
-
-          const collapsedCached = collapseAliasDmChats(cachedChats, our.node, activeChat);
+          const collapsedCached = collapseAliasDmChats(cachedChats, our.node, null);
           if (collapsedCached.aliasChatIds.length > 0) {
             idbStorage.saveChats(collapsedCached.chats).catch((err) =>
               console.error('[IDB] Failed to rewrite cache after DM alias collapse:', err),
@@ -302,7 +298,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           
           set({ 
             chats: collapsedCached.chats,
-            activeChat: collapsedCached.activeChat,
+            activeChat: null,
             isLoading: false // Don't show loading since we have cached data
           });
           

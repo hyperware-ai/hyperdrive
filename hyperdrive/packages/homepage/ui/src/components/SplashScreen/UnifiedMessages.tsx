@@ -145,6 +145,12 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
     return `Thread ${suffix}`;
   };
 
+  const getLatestChatActivity = useCallback((chat: api.Chat) => {
+    const lastMessageTimestamp =
+      chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].timestamp || 0 : 0;
+    return Math.max(chat.last_activity || 0, lastMessageTimestamp);
+  }, []);
+
   const unifiedItems = useMemo(() => {
     if (searchResults) {
       const chatById = new Map(chats.map((chat) => [chat.id, chat]));
@@ -161,8 +167,7 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
             const lastMessage = chat.messages[chat.messages.length - 1];
             const subtitle =
               result.snippet ?? lastMessage?.content ?? 'No messages yet';
-            const lastActivity =
-              result.timestamp ?? chat.last_activity ?? lastMessage?.timestamp ?? 0;
+            const lastActivity = result.timestamp ?? getLatestChatActivity(chat);
             acc.push({
               id: result.message_id ? `dm-msg-${result.message_id}` : `dm-${chat.id}-${idx}`,
               kind: 'dm' as const,
@@ -232,7 +237,7 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
 
     const dmItems: UnifiedItem[] = chats.map((chat) => {
       const lastMessage = chat.messages[chat.messages.length - 1];
-      const lastActivity = chat.last_activity || lastMessage?.timestamp || 0;
+      const lastActivity = getLatestChatActivity(chat);
       const preview = lastMessage?.content || 'No messages yet';
       const itemId = `dm-${chat.id}`;
       return {
@@ -310,6 +315,7 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
     setActiveThread,
     spiderMessages,
     pinnedItems,
+    getLatestChatActivity,
   ]);
 
   const formatTime = (timestamp?: number | null) => {
