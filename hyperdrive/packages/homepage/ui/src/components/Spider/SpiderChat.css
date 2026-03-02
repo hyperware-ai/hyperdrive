@@ -87,6 +87,10 @@
   background: var(--surface-hover, rgba(255, 255, 255, 0.05));
 }
 
+.spider-back-button .material-symbols-outlined {
+  font-size: 24px;
+}
+
 /* Header info section */
 .spider-header-info {
   flex: 1;
@@ -204,6 +208,10 @@
 .spider-clear-button:hover {
   background: var(--surface-hover, rgba(255, 255, 255, 0.05));
   color: var(--primary-color);
+}
+
+.spider-clear-button .material-symbols-outlined {
+  font-size: 22px;
 }
 
 /* Error banner */
@@ -445,6 +453,10 @@
   font-size: 14px;
 }
 
+.spider-cancel-reply .material-symbols-outlined {
+  font-size: 18px;
+}
+
 .spider-replying-content {
   font-size: 13px;
   color: var(--text-primary);
@@ -504,6 +516,10 @@
 
 .spider-action-button:active {
   transform: scale(0.92);
+}
+
+.spider-action-button .material-symbols-outlined {
+  font-size: 20px;
 }
 
 /* Text input - matches .message-input */
@@ -577,6 +593,10 @@
 
 .spider-send-button.cancel:hover {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.spider-send-button .material-symbols-outlined {
+  font-size: 22px;
 }
 
 @media (prefers-color-scheme: light) {

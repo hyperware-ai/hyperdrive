@@ -132,6 +132,7 @@ impl ChatState {
                             reactions: Vec::new(),
                             message_type: MessageType::Text,
                             file_info: None,
+                            payment_info: None,
                         };
 
                         self.assign_sequence_to_message(&chat_id, &mut message);

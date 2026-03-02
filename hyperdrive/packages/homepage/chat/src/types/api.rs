@@ -64,6 +64,16 @@ pub struct SendMessageReq {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct RecordPaymentReq {
+    pub chat_id: String,
+    pub tx_hash: String,
+    pub amount: String,
+    pub coin_name: String,
+    pub from_address: String,
+    pub to_address: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EditMessageReq {
     pub chat_id: String,
     pub message_id: String,

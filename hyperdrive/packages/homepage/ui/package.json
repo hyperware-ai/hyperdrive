@@ -13,8 +13,10 @@
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",
     "@hyperware-ai/hw-protocol-watcher": "^1.0.1",
-    "@types/mdast": "^4.0.4",
+    "@rainbow-me/rainbowkit": "^2.2.10",
     "@tailwindcss/vite": "^4.1.11",
+    "@tanstack/react-query": "^5.90.21",
+    "@types/mdast": "^4.0.4",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
     "fix-webm-duration": "^1.0.6",
@@ -29,6 +31,8 @@
     "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.1.11",
     "unist-util-visit": "^5.0.0",
+    "viem": "^2.46.3",
+    "wagmi": "^2.19.5",
     "zustand": "^4.5.2"
   },
   "devDependencies": {

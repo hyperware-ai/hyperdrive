@@ -40,7 +40,8 @@ class BrowserStorage {
             ...msg.file_info,
             // Don't store base64 data or large URLs
             url: msg.file_info.url.length > 100 ? '' : msg.file_info.url
-          } : null
+          } : null,
+          payment_info: msg.payment_info ?? null,
         } as ChatMessage))
       }));
 
@@ -71,7 +72,8 @@ class BrowserStorage {
             reply_to: null,
             reactions: [],
             message_type: msg.message_type,
-            file_info: null
+            file_info: null,
+            payment_info: null,
           }))
         }));
         

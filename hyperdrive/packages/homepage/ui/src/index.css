@@ -25,7 +25,7 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
+  color-scheme: light dark;
   color: var(--text-primary);
   background-color: var(--background);
 
@@ -108,7 +108,7 @@ input, textarea {
 input:focus, textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(204, 255, 0, 0.15);
+  box-shadow: 0 0 0 3px var(--primary-glow, rgba(204, 255, 0, 0.15));
 }
 
 input::placeholder, textarea::placeholder {
@@ -142,7 +142,7 @@ input::placeholder, textarea::placeholder {
 
 /* Text gradient utility */
 .text-gradient {
-  background: linear-gradient(to right, #fff, #ccff00);
+  background: linear-gradient(to right, #fff, var(--primary-color));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -181,6 +181,8 @@ input::placeholder, textarea::placeholder {
     --border-color: rgba(0, 0, 0, 0.1);
     --message-other: #e2e8f0;
     --message-other-text: #0f172a;
+    --message-own: #004fff;
+    --message-own-text: #ffffff;
     --primary-color: #004fff;
     --primary-hover: #0040cc;
     --primary-glow: rgba(0, 79, 255, 0.4);

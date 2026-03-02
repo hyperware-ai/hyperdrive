@@ -34,6 +34,7 @@ interface ChatStore {
   loadSettings: () => Promise<void>;
   createChat: (counterparty: string) => Promise<void>;
   sendMessage: (chatId: string, content: string, replyTo?: string) => Promise<void>;
+  recordPayment: (req: api.RecordPaymentReq) => Promise<void>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   deleteMessageLocally: (messageId: string) => void;
@@ -71,6 +72,122 @@ function generateMessageHash(content: string, sender: string, timestamp: number)
   // Use 5-second buckets for timestamp to handle minor time differences
   const timeBucket = Math.floor(timestamp / 5);
   return `${sender}-${timeBucket}-${content.substring(0, 100)}`;
+}
+
+function normalizeDmChatId(nodeA?: string | null, nodeB?: string | null): string | null {
+  const left = (nodeA || '').trim();
+  const right = (nodeB || '').trim();
+  if (!left || !right) return null;
+  return left < right ? `${left}:${right}` : `${right}:${left}`;
+}
+
+function collapseAliasDmChats(
+  chats: api.Chat[],
+  ourNode?: string | null,
+  activeChat?: api.Chat | null,
+): { chats: api.Chat[]; activeChat: api.Chat | null; aliasChatIds: string[] } {
+  const localNode = (ourNode || '').trim();
+  if (!localNode || chats.length === 0) {
+    return { chats, activeChat: activeChat || null, aliasChatIds: [] };
+  }
+
+  const dmGroups = new Map<string, api.Chat[]>();
+  chats.forEach((chat) => {
+    if (chat.id.startsWith('system:') || chat.id.startsWith('browser:')) return;
+    const canonicalId = normalizeDmChatId(localNode, chat.counterparty);
+    if (!canonicalId) return;
+    const group = dmGroups.get(canonicalId) || [];
+    group.push(chat);
+    dmGroups.set(canonicalId, group);
+  });
+
+  const mergedByCanonicalId = new Map<string, api.Chat>();
+  const aliasChatIds = new Set<string>();
+
+  dmGroups.forEach((group, canonicalId) => {
+    if (group.length < 2) return;
+
+    const canonicalChat = group.find((chat) => chat.id === canonicalId);
+    const baseChat = canonicalChat || group[0];
+
+    const seenMessageIds = new Set<string>();
+    const mergedMessages: api.ChatMessage[] = [];
+    group.forEach((chat) => {
+      chat.messages.forEach((message) => {
+        if (seenMessageIds.has(message.id)) return;
+        seenMessageIds.add(message.id);
+        mergedMessages.push(message);
+      });
+    });
+    mergedMessages.sort((left, right) => left.timestamp - right.timestamp);
+
+    const profileSource = group.find((chat) => !!chat.counterparty_profile) || baseChat;
+    const mergedChat: api.Chat = {
+      ...baseChat,
+      counterparty_profile: profileSource.counterparty_profile,
+      messages: mergedMessages,
+      last_activity: Math.max(...group.map((chat) => chat.last_activity || 0)),
+      unread_count: Math.max(...group.map((chat) => chat.unread_count || 0)),
+    };
+
+    mergedByCanonicalId.set(canonicalId, mergedChat);
+    group.forEach((chat) => {
+      if (chat.id !== mergedChat.id) aliasChatIds.add(chat.id);
+    });
+  });
+
+  if (aliasChatIds.size === 0) {
+    return { chats, activeChat: activeChat || null, aliasChatIds: [] };
+  }
+
+  const emittedCanonicalIds = new Set<string>();
+  const collapsedChats: api.Chat[] = [];
+
+  chats.forEach((chat) => {
+    if (chat.id.startsWith('system:') || chat.id.startsWith('browser:')) {
+      collapsedChats.push(chat);
+      return;
+    }
+
+    const canonicalId = normalizeDmChatId(localNode, chat.counterparty);
+    if (!canonicalId) {
+      collapsedChats.push(chat);
+      return;
+    }
+
+    if (emittedCanonicalIds.has(canonicalId)) return;
+    emittedCanonicalIds.add(canonicalId);
+
+    const mergedChat = mergedByCanonicalId.get(canonicalId);
+    collapsedChats.push(mergedChat || chat);
+  });
+
+  let collapsedActiveChat = activeChat || null;
+  if (collapsedActiveChat) {
+    const canonicalId = normalizeDmChatId(localNode, collapsedActiveChat.counterparty);
+    if (canonicalId) {
+      const mergedChat = mergedByCanonicalId.get(canonicalId);
+      if (mergedChat) {
+        collapsedActiveChat = mergedChat;
+      } else if (!collapsedChats.some((chat) => chat.id === collapsedActiveChat?.id)) {
+        collapsedActiveChat =
+          collapsedChats.find(
+            (chat) =>
+              !chat.id.startsWith('system:') &&
+              !chat.id.startsWith('browser:') &&
+              chat.counterparty === activeChat?.counterparty,
+          ) || null;
+      }
+    } else if (!collapsedChats.some((chat) => chat.id === collapsedActiveChat?.id)) {
+      collapsedActiveChat = null;
+    }
+  }
+
+  return {
+    chats: collapsedChats,
+    activeChat: collapsedActiveChat,
+    aliasChatIds: Array.from(aliasChatIds),
+  };
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -169,10 +286,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           if (activeChatId) {
             activeChat = cachedChats.find(c => c.id === activeChatId) || null;
           }
+
+          const collapsedCached = collapseAliasDmChats(cachedChats, our.node, activeChat);
+          if (collapsedCached.aliasChatIds.length > 0) {
+            idbStorage.saveChats(collapsedCached.chats).catch((err) =>
+              console.error('[IDB] Failed to rewrite cache after DM alias collapse:', err),
+            );
+          }
           
           set({ 
-            chats: cachedChats,
-            activeChat,
+            chats: collapsedCached.chats,
+            activeChat: collapsedCached.activeChat,
             isLoading: false // Don't show loading since we have cached data
           });
           
@@ -232,16 +356,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       console.log('[SYNC] Loading chats from server...');
       const chats = await api.get_chats();
       console.log('[SYNC] Loaded', chats.length, 'chats from server');
-      
-      set({ chats });
+
+      const state = get();
+      const collapsed = collapseAliasDmChats(
+        chats,
+        state.nodeId || (window as any).our?.node,
+        state.activeChat,
+      );
+
+      set({ chats: collapsed.chats, activeChat: collapsed.activeChat });
       
       // Save complete data to IndexedDB
-      await idbStorage.saveChats(chats);
+      await idbStorage.saveChats(collapsed.chats);
       
       // Save active chat ID if we have one
-      const state = get();
-      if (state.activeChat) {
-        await idbStorage.saveMetadata('activeChatId', state.activeChat.id);
+      const nextState = get();
+      if (nextState.activeChat) {
+        await idbStorage.saveMetadata('activeChatId', nextState.activeChat.id);
       }
       
       console.log('[SYNC] Saved chats to IndexedDB');
@@ -259,22 +390,29 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // Fetch all chats from server (complete history)
       const serverChats = await api.get_chats();
       console.log('[SYNC] Got', serverChats.length, 'chats from server');
-      
+
+      const state = get();
+      const collapsed = collapseAliasDmChats(
+        serverChats,
+        state.nodeId || (window as any).our?.node,
+        state.activeChat,
+      );
+
       // Update state with server data
-      set({ chats: serverChats });
+      set({ chats: collapsed.chats, activeChat: collapsed.activeChat });
       
       // Save everything to IndexedDB
-      await idbStorage.saveChats(serverChats);
+      await idbStorage.saveChats(collapsed.chats);
       
       // Update metadata
-      const state = get();
-      if (state.activeChat) {
+      const nextState = get();
+      if (nextState.activeChat) {
         // Update activeChat with fresh data
-        const updatedActiveChat = serverChats.find(c => c.id === state.activeChat?.id);
+        const updatedActiveChat = collapsed.chats.find(c => c.id === nextState.activeChat?.id);
         if (updatedActiveChat) {
           set({ activeChat: updatedActiveChat });
         }
-        await idbStorage.saveMetadata('activeChatId', state.activeChat.id);
+        await idbStorage.saveMetadata('activeChatId', nextState.activeChat.id);
       }
       
       console.log('[SYNC] Sync complete, saved to IndexedDB');
@@ -413,11 +551,42 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     try {
       set({ isLoading: true });
       const chat = await api.create_chat({ counterparty });
-      
-      set(state => ({
-        chats: [chat, ...state.chats],
-        activeChat: chat,
-      }));
+
+      let aliasChatIds: string[] = [];
+      let selectedChat: api.Chat | null = chat;
+
+      set((state) => {
+        const collapsed = collapseAliasDmChats(
+          [chat, ...state.chats],
+          state.nodeId || (window as any).our?.node,
+          chat,
+        );
+
+        aliasChatIds = collapsed.aliasChatIds;
+        selectedChat =
+          collapsed.activeChat ||
+          collapsed.chats.find((existingChat) => existingChat.counterparty === chat.counterparty) ||
+          chat;
+
+        return {
+          chats: collapsed.chats,
+          activeChat: selectedChat,
+        };
+      });
+
+      if (selectedChat) {
+        await idbStorage.saveChat(selectedChat);
+        await idbStorage.saveMetadata('activeChatId', selectedChat.id);
+      }
+      if (aliasChatIds.length > 0) {
+        await Promise.all(
+          aliasChatIds.map((chatId) =>
+            idbStorage
+              .deleteChat(chatId)
+              .catch((err) => console.error('[IDB] Failed to delete DM alias chat:', chatId, err)),
+          ),
+        );
+      }
     } catch (error) {
       set({ error: 'Failed to create chat' });
     } finally {
@@ -442,6 +611,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       reactions: [],
       message_type: api.MessageType.Text,
       file_info: null,
+      payment_info: null,
     };
     
     // Generate hash for this message to detect duplicates
@@ -580,6 +750,42 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           : state.activeChat,
         error: 'Failed to send message'
       }));
+    }
+  },
+
+  // Record a blockchain payment as a non-spoofable system message
+  recordPayment: async (req: api.RecordPaymentReq) => {
+    try {
+      const paymentMessage = await api.record_payment(req);
+      set(state => {
+        const appendIfMissing = (chat: api.Chat): api.Chat => {
+          if (chat.id !== req.chat_id) return chat;
+          if (chat.messages.some((m) => m.id === paymentMessage.id)) return chat;
+          return {
+            ...chat,
+            messages: [...chat.messages, paymentMessage],
+            last_activity: paymentMessage.timestamp,
+          };
+        };
+
+        const chats = state.chats.map(appendIfMissing);
+        const activeChat =
+          state.activeChat?.id === req.chat_id
+            ? appendIfMissing(state.activeChat)
+            : state.activeChat;
+
+        const changed = chats.find((chat) => chat.id === req.chat_id);
+        if (changed) {
+          idbStorage.saveChat(changed).catch((err) =>
+            console.error('[IDB] Failed to save chat after recordPayment:', changed.id, err),
+          );
+        }
+
+        return { chats, activeChat };
+      });
+    } catch (error) {
+      set({ error: 'Failed to record payment event' });
+      throw error;
     }
   },
 
@@ -933,9 +1139,31 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             updatedActiveChat = mergedChat;
           }
         }
+
+        const collapsed = collapseAliasDmChats(
+          newChats,
+          (window as any).our?.node as string | undefined,
+          updatedActiveChat,
+        );
+        newChats = collapsed.chats;
+        updatedActiveChat = collapsed.activeChat;
+        if (collapsed.aliasChatIds.length > 0) {
+          collapsed.aliasChatIds.forEach((chatId) => {
+            idbStorage
+              .deleteChat(chatId)
+              .catch((err) => console.error('[IDB] Failed to delete DM alias after ChatUpdate:', chatId, err));
+          });
+        }
         
         // Save updated chat to IndexedDB
-        const changedChat = newChats.find(c => c.id === serverChat.id);
+        const changedChat =
+          newChats.find((chat) => chat.id === serverChat.id) ||
+          newChats.find(
+            (chat) =>
+              !chat.id.startsWith('system:') &&
+              !chat.id.startsWith('browser:') &&
+              chat.counterparty === serverChat.counterparty,
+          );
         if (changedChat) {
           idbStorage.saveChat(changedChat).catch(err =>
             console.error('[IDB] Failed to save chat after ChatUpdate:', changedChat.id, err)
@@ -966,68 +1194,69 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       if (newMsg.sender !== our?.node) {
         console.log('[WS] Adding message from other node');
         set(state => {
-          let foundChat = false;
-          const updatedChats = state.chats.map(chat => {
-            // Find the chat this message belongs to
-            const isRelevantChat = chat.counterparty === newMsg.sender || 
-                                  chat.id.includes(newMsg.sender);
-            if (isRelevantChat) {
-              foundChat = true;
-              console.log('[WS] Found chat for message:', chat.id);
-              // Check if message already exists to prevent duplicates
-              const messageExists = chat.messages.some(m => m.id === newMsg.id);
-              if (!messageExists) {
-                console.log('[WS] Adding new message to chat');
-                return {
-                  ...chat,
-                  messages: [...chat.messages, newMsg],
-                  last_activity: newMsg.timestamp,
-                  unread_count: chat.id !== state.activeChat?.id ? chat.unread_count + 1 : chat.unread_count
-                };
-              } else {
-                console.log('[WS] Message already exists, skipping');
-              }
-            }
-            return chat;
-          });
-          
-          if (!foundChat) {
+          const expectedChatId = normalizeDmChatId(our?.node, newMsg.sender);
+          const exactChat = expectedChatId
+            ? state.chats.find((chat) => chat.id === expectedChatId)
+            : undefined;
+          const fallbackChat = exactChat
+            ? undefined
+            : state.chats.find((chat) => chat.counterparty === newMsg.sender);
+          const targetChatId = exactChat?.id || fallbackChat?.id || null;
+
+          if (!targetChatId) {
             console.log('[WS] Warning: Could not find chat for message from:', newMsg.sender);
+            return {
+              chats: state.chats,
+              activeChat: state.activeChat,
+            };
           }
-          
-          // Also update activeChat if it's the same chat
+
+          let foundChat = false;
+          const updatedChats = state.chats.map((chat) => {
+            if (chat.id !== targetChatId) return chat;
+            foundChat = true;
+            console.log('[WS] Found chat for message:', chat.id);
+            const messageExists = chat.messages.some((message) => message.id === newMsg.id);
+            if (messageExists) {
+              console.log('[WS] Message already exists, skipping');
+              return chat;
+            }
+            console.log('[WS] Adding new message to chat');
+            return {
+              ...chat,
+              messages: [...chat.messages, newMsg],
+              last_activity: newMsg.timestamp,
+              unread_count:
+                chat.id !== state.activeChat?.id ? chat.unread_count + 1 : chat.unread_count,
+            };
+          });
+
           let updatedActiveChat = state.activeChat;
-          if (state.activeChat && (state.activeChat.counterparty === newMsg.sender || 
-                                   state.activeChat.id.includes(newMsg.sender))) {
-            const messageExists = state.activeChat.messages.some(m => m.id === newMsg.id);
+          if (state.activeChat?.id === targetChatId) {
+            const messageExists = state.activeChat.messages.some((message) => message.id === newMsg.id);
             if (!messageExists) {
               console.log('[WS] Updating activeChat with new message');
               updatedActiveChat = {
                 ...state.activeChat,
                 messages: [...state.activeChat.messages, newMsg],
-                last_activity: newMsg.timestamp
+                last_activity: newMsg.timestamp,
               };
             }
           }
-          
+
           console.log('[WS] Updated chats after NewMessage. Found:', foundChat);
           console.log('[WS] ActiveChat updated:', updatedActiveChat !== state.activeChat);
-          
-          // Save updated chat to IndexedDB
-          if (foundChat) {
-            const chatToSave = updatedChats.find(c =>
-              c.counterparty === newMsg.sender || c.id.includes(newMsg.sender)
+
+          const chatToSave = updatedChats.find((chat) => chat.id === targetChatId);
+          if (chatToSave) {
+            idbStorage.saveChat(chatToSave).catch((err) =>
+              console.error('[IDB] Failed to save chat after NewMessage:', chatToSave.id, err),
             );
-            if (chatToSave) {
-              idbStorage.saveChat(chatToSave).catch(err =>
-                console.error('[IDB] Failed to save chat after NewMessage:', chatToSave.id, err)
-              );
-            }
           }
-          
+
           return {
             chats: updatedChats,
-            activeChat: updatedActiveChat
+            activeChat: updatedActiveChat,
           };
         });
       }

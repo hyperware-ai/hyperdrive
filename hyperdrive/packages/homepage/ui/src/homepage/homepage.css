@@ -23,9 +23,9 @@
   --off-black: var(--stone);
   --adaptive-gray: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.05));
 
-  --primary-color: var(--neon-green);
-  --primary-light: var(--neon-green-light);
-  --primary-xlight: var(--neon-green-xlight);
+  --primary-color: light-dark(var(--iris), var(--neon-green));
+  --primary-light: light-dark(var(--iris-light), var(--neon-green-light));
+  --primary-xlight: light-dark(var(--iris-xlight), var(--neon-green-xlight));
   --secondary-color: var(--iris);
   --secondary-light: var(--iris-light);
   --secondary-xlight: var(--iris-xlight);

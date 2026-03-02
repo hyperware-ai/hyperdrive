@@ -213,7 +213,9 @@ const GroupMessageInput: React.FC<GroupMessageInputProps> = ({
               onClick={handleCancelEdit}
               aria-label="Cancel edit"
             >
-              ✕
+              <span className="material-symbols-outlined" aria-hidden="true">
+                close
+              </span>
             </button>
           </div>
           <div className="group-edit-content">{editingMessage.content}</div>
@@ -228,7 +230,9 @@ const GroupMessageInput: React.FC<GroupMessageInputProps> = ({
               onClick={onCancelReply}
               aria-label="Cancel reply"
             >
-              ✕
+              <span className="material-symbols-outlined" aria-hidden="true">
+                close
+              </span>
             </button>
           </div>
           <div className="group-reply-content">{replyingTo.content}</div>
@@ -247,7 +251,9 @@ const GroupMessageInput: React.FC<GroupMessageInputProps> = ({
               disabled={disabled}
               aria-label="Attach file"
             >
-              📎
+              <span className="material-symbols-outlined" aria-hidden="true">
+                attach_file
+              </span>
             </button>
             <button
               className="group-action-button"
@@ -256,7 +262,9 @@ const GroupMessageInput: React.FC<GroupMessageInputProps> = ({
               disabled={disabled}
               aria-label="Record voice note"
             >
-              🎤
+              <span className="material-symbols-outlined" aria-hidden="true">
+                mic
+              </span>
             </button>
           </div>
         )}
@@ -275,7 +283,9 @@ const GroupMessageInput: React.FC<GroupMessageInputProps> = ({
           disabled={disabled || message.trim().length === 0}
           aria-label={editingMessage ? 'Save edit' : 'Send message'}
         >
-          {editingMessage ? '✓' : '➤'}
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {editingMessage ? 'check' : 'send'}
+          </span>
         </button>
       </div>
       {showFileUpload && <GroupFileUpload onClose={() => setShowFileUpload(false)} />}

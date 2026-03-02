@@ -2,6 +2,7 @@ import React from 'react';
 import { Chat } from '#caller-utils';
 import { useChatStore } from '../../store/chat';
 import Avatar from '../Common/Avatar';
+import { getChatDisplayName, getChatNodeSubtitle } from '../../utils/chatDisplay';
 import './ChatListItem.css';
 
 interface ChatListItemProps {
@@ -12,6 +13,8 @@ interface ChatListItemProps {
 const ChatListItem: React.FC<ChatListItemProps> = ({ chat, index = 0 }) => {
   const { setActiveChat } = useChatStore();
   const isOfficial = chat.counterparty === 'dao.hypr';
+  const displayName = getChatDisplayName(chat);
+  const nodeSubtitle = getChatNodeSubtitle(chat);
   
   const getLastMessage = () => {
     if (chat.messages.length === 0) return 'No messages yet';
@@ -44,7 +47,7 @@ const ChatListItem: React.FC<ChatListItemProps> = ({ chat, index = 0 }) => {
     >
       <div className="chat-avatar-wrap">
         <Avatar
-          name={chat.counterparty}
+          name={displayName}
           profilePic={chat.counterparty_profile?.profile_pic}
         />
         {isOfficial && <span className="official-glow" aria-hidden="true" />}
@@ -52,10 +55,13 @@ const ChatListItem: React.FC<ChatListItemProps> = ({ chat, index = 0 }) => {
       
       <div className="chat-info">
         <div className="chat-header">
-          <span className="chat-name">
-            {chat.counterparty}
-            {isOfficial && <span className="official-badge">official</span>}
-          </span>
+          <div className="chat-title-stack">
+            <span className="chat-name">
+              {displayName}
+              {isOfficial && <span className="official-badge">official</span>}
+            </span>
+            <span className="chat-node-subtitle">{nodeSubtitle}</span>
+          </div>
           <span className="chat-time">{formatTime(chat.last_activity)}</span>
         </div>
         <div className="chat-preview">

@@ -13,7 +13,9 @@ const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
         className={`tab-item ${activeTab === 'chats' ? 'active' : ''}`}
         onClick={() => onTabChange('chats')}
       >
-        <span className="tab-icon">💬</span>
+        <span className="tab-icon material-symbols-outlined" aria-hidden="true">
+          chat
+        </span>
         <span className="tab-label">Chats</span>
       </button>
 
@@ -21,7 +23,9 @@ const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
         className={`tab-item ${activeTab === 'calls' ? 'active' : ''}`}
         onClick={() => onTabChange('calls')}
       >
-        <span className="tab-icon">📞</span>
+        <span className="tab-icon material-symbols-outlined" aria-hidden="true">
+          call
+        </span>
         <span className="tab-label">Calls</span>
       </button>
     </div>

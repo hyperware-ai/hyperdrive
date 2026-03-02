@@ -119,7 +119,15 @@
 .chat-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chat-title-stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .chat-name {
@@ -130,6 +138,15 @@
   align-items: center;
   gap: 6px;
   line-height: 1.2;
+}
+
+.chat-node-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* AI/Official badge - Stitch style */
@@ -212,11 +229,11 @@
 @keyframes unread-pulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(204, 255, 0, 0.4);
+    box-shadow: 0 0 0 0 var(--primary-glow, rgba(204, 255, 0, 0.4));
   }
   50% {
     transform: scale(1.05);
-    box-shadow: 0 0 0 4px rgba(204, 255, 0, 0);
+    box-shadow: 0 0 0 4px transparent;
   }
 }
 
@@ -262,4 +279,29 @@
 .chat-list-item.pinned:not(:last-child) .chat-info {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+@media (prefers-color-scheme: light) {
+  .official-chat .chat-avatar-wrap {
+    filter: drop-shadow(0 0 8px rgba(0, 79, 255, 0.35));
+  }
+
+  .official-badge {
+    background: rgba(0, 79, 255, 0.16);
+    color: #004fff;
+  }
+
+  .chat-status-indicator .material-symbols-outlined,
+  .unread-badge {
+    color: #ffffff;
+  }
+
+  .chat-list-item.pinned {
+    border-color: rgba(0, 79, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 79, 255, 0.08);
+  }
+
+  .chat-list-item.pinned::before {
+    background: linear-gradient(90deg, rgba(0, 79, 255, 0.1) 0%, transparent 100%);
+  }
 }

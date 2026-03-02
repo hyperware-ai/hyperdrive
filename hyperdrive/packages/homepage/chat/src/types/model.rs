@@ -189,6 +189,8 @@ pub struct ChatMessage {
     pub reactions: Vec<MessageReaction>,
     pub message_type: MessageType,
     pub file_info: Option<FileInfo>,
+    #[serde(default)]
+    pub payment_info: Option<PaymentInfo>,
 }
 
 impl<'de> Deserialize<'de> for ChatMessage {
@@ -209,6 +211,8 @@ impl<'de> Deserialize<'de> for ChatMessage {
             reactions: Vec<MessageReaction>,
             message_type: MessageType,
             file_info: Option<FileInfo>,
+            #[serde(default)]
+            payment_info: Option<PaymentInfo>,
         }
 
         #[derive(Deserialize)]
@@ -222,6 +226,8 @@ impl<'de> Deserialize<'de> for ChatMessage {
             reactions: Vec<MessageReaction>,
             message_type: MessageType,
             file_info: Option<FileInfo>,
+            #[serde(default)]
+            payment_info: Option<PaymentInfo>,
         }
 
         #[derive(Deserialize)]
@@ -243,6 +249,7 @@ impl<'de> Deserialize<'de> for ChatMessage {
                 reactions: msg.reactions,
                 message_type: msg.message_type,
                 file_info: msg.file_info,
+                payment_info: msg.payment_info,
             }),
             ChatMessageCompat::V1(msg) => Ok(ChatMessage {
                 id: msg.id,
@@ -255,6 +262,7 @@ impl<'de> Deserialize<'de> for ChatMessage {
                 reactions: msg.reactions,
                 message_type: msg.message_type,
                 file_info: msg.file_info,
+                payment_info: msg.payment_info,
             }),
         }
     }
@@ -273,6 +281,17 @@ pub enum MessageType {
     Image,
     File,
     VoiceNote,
+    Payment,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PaymentInfo {
+    pub tx_hash: String,
+    pub amount: String,
+    pub coin_name: String,
+    pub from_address: String,
+    pub to_address: String,
+    pub explorer_url: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -355,6 +374,8 @@ pub struct GroupJoinKey {
 pub struct UserProfile {
     pub name: String,
     pub profile_pic: Option<String>,
+    #[serde(default)]
+    pub base_address: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

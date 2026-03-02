@@ -36,9 +36,15 @@
 }
 
 .upload-option label {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   cursor: pointer;
+}
+
+.upload-option .material-symbols-outlined {
+  font-size: 18px;
 }
 
 /* Upload progress styles */

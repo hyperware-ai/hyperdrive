@@ -103,7 +103,9 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
               onClick={handleCancelEdit}
               aria-label="Cancel edit"
             >
-              ✕
+              <span className="material-symbols-outlined" aria-hidden="true">
+                close
+              </span>
             </button>
           </div>
           <div className="edit-content">{editingMessage.content}</div>
@@ -118,7 +120,9 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
               onClick={() => setReplyingTo(null)}
               aria-label="Cancel reply"
             >
-              ✕
+              <span className="material-symbols-outlined" aria-hidden="true">
+                close
+              </span>
             </button>
           </div>
           <div className="reply-content">{replyingTo.content}</div>
@@ -134,7 +138,9 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
               onClick={() => setShowFileUpload(true)}
               aria-label="Attach file"
             >
-              📎
+              <span className="material-symbols-outlined" aria-hidden="true">
+                attach_file
+              </span>
             </button>
             <button
               className="message-action-button"
@@ -142,7 +148,9 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
               onClick={() => setShowVoiceNote(true)}
               aria-label="Record voice note"
             >
-              🎤
+              <span className="material-symbols-outlined" aria-hidden="true">
+                mic
+              </span>
             </button>
           </div>
         )}
@@ -161,7 +169,9 @@ const MessageInput: React.FC<MessageInputProps> = ({ chatId, onSendMessage }) =>
           disabled={!message.trim()}
           aria-label={editingMessage ? 'Save edit' : 'Send message'}
         >
-          {editingMessage ? '✓' : '➤'}
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {editingMessage ? 'check' : 'send'}
+          </span>
         </button>
       </div>
       {showFileUpload && <FileUpload onClose={() => setShowFileUpload(false)} />}

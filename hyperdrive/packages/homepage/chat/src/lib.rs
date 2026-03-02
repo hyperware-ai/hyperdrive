@@ -13,10 +13,10 @@ use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::WsMessageType,
     hyperapp::{self, get_path, send, set_response_status, sleep, source, spawn, AppSendError, SaveOptions},
-    our, vfs, Address, LazyLoadBlob, ProcessId, Request, Request as ProcessRequest,
+    our, vfs, Address, Capability, LazyLoadBlob, ProcessId, Request, Request as ProcessRequest,
 };
 use std::cmp::Ordering;
-use std::collections::{hash_map::DefaultHasher, HashMap};
+use std::collections::{hash_map::DefaultHasher, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Write};
 use std::sync::atomic::Ordering as AtomicOrdering;
@@ -57,6 +57,9 @@ use crate::crdt::{
 };
 
 const OUR_PROCESS_ID: (&str, &str, &str) = ("chat", "homepage", "sys");
+const CONTACTS_PROCESS_ID: (&str, &str, &str) = ("contacts", "contacts", "sys");
+const CONTACTS_FIELD_NICKNAME: &str = "nickname";
+const CONTACTS_FIELD_BASE_ADDRESS: &str = "base_address";
 // Replication RPC timeout to keep admin/test calls responsive.
 const REPL_RPC_TIMEOUT_SECS: u64 = 2;
 const ICON: &str = include_str!("./icon");
@@ -500,6 +503,7 @@ impl ChatState {
                     reactions: Vec::new(),
                     message_type: MessageType::Text,
                     file_info: None,
+                    payment_info: None,
                 }],
                 last_activity: timestamp,
                 unread_count: 0,
@@ -510,6 +514,26 @@ impl ChatState {
 
             self.chats
                 .insert("system:welcome".to_string(), welcome_chat);
+        }
+
+        // Reconcile any legacy duplicate DM chats into canonical node-based IDs.
+        let mut reconcile_nodes: HashSet<String> = HashSet::new();
+        for chat in self.chats.values() {
+            if !chat.id.starts_with("system:")
+                && !chat.id.starts_with("browser:")
+                && !chat.counterparty.is_empty()
+                && chat.counterparty != our().node
+            {
+                reconcile_nodes.insert(chat.counterparty.clone());
+            }
+            for message in &chat.messages {
+                if message.sender != our().node && message.sender != "System" {
+                    reconcile_nodes.insert(message.sender.clone());
+                }
+            }
+        }
+        for node in reconcile_nodes {
+            self.reconcile_dm_chats_for_counterparty(&node);
         }
 
         let existing_chat_ids: Vec<String> = self.chats.keys().cloned().collect();
@@ -554,6 +578,8 @@ impl ChatState {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
+
+        self.reconcile_dm_chats_for_counterparty(&req.counterparty);
 
         // Get counterparty profile if we have it
         let counterparty_profile = self.node_profiles.get(&req.counterparty).cloned();
@@ -1044,6 +1070,91 @@ impl ChatState {
         self.send_message_internal(&req.chat_id, req.content, req.reply_to, None)
     }
 
+    #[local]
+    #[http]
+    async fn record_payment(&mut self, req: RecordPaymentReq) -> Result<ChatMessage, String> {
+        if !self.chats.contains_key(&req.chat_id) {
+            return Err("Chat not found".to_string());
+        }
+
+        let tx_hash = req.tx_hash.trim().to_string();
+        if !Self::is_valid_tx_hash(&tx_hash) {
+            return Err("Invalid transaction hash".to_string());
+        }
+
+        let amount = req.amount.trim().to_string();
+        if amount.is_empty() {
+            return Err("Amount is required".to_string());
+        }
+        let parsed_amount = amount
+            .parse::<f64>()
+            .map_err(|_| "Amount must be a valid number".to_string())?;
+        if parsed_amount <= 0.0 {
+            return Err("Amount must be greater than zero".to_string());
+        }
+
+        let coin_name = if req.coin_name.trim().is_empty() {
+            "ETH".to_string()
+        } else {
+            req.coin_name.trim().to_uppercase()
+        };
+
+        let from_address = req.from_address.trim().to_string();
+        if !Self::is_valid_evm_address(&from_address) {
+            return Err("Invalid sender address".to_string());
+        }
+
+        let to_address = req.to_address.trim().to_string();
+        if !Self::is_valid_evm_address(&to_address) {
+            return Err("Invalid recipient address".to_string());
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let message_id = format!("payment:{}:{}", timestamp, rand::random::<u32>());
+        let explorer_url = format!("https://basescan.org/tx/{tx_hash}");
+
+        let message = ChatMessage {
+            id: message_id,
+            sender: our().node.clone(),
+            content: format!(
+                "{} sent {} {} to {}",
+                our().node, amount, coin_name, to_address
+            ),
+            timestamp,
+            sequence: None,
+            status: MessageStatus::Sending,
+            reply_to: None,
+            reactions: Vec::new(),
+            message_type: MessageType::Payment,
+            file_info: None,
+            payment_info: Some(PaymentInfo {
+                tx_hash,
+                amount,
+                coin_name,
+                from_address,
+                to_address,
+                explorer_url,
+            }),
+        };
+
+        let (counterparty, stored_message) = self.stage_outgoing_message(&req.chat_id, message, None);
+        self.dispatch_outgoing_message(counterparty, stored_message.clone());
+
+        Ok(self
+            .chats
+            .get(&req.chat_id)
+            .and_then(|chat| {
+                chat.messages
+                    .iter()
+                    .find(|m| m.id == stored_message.id)
+                    .cloned()
+            })
+            .unwrap_or(stored_message))
+    }
+
     // uncomment #[remote] for tests
     // #[remote]
     #[http]
@@ -1056,6 +1167,9 @@ impl ChatState {
             if let Some(message) = chat.messages.iter_mut().find(|m| m.id == req.message_id) {
                 if message.sender != our().node {
                     return Ok("Ignoring edit for remote message".to_string());
+                }
+                if message.message_type == MessageType::Payment {
+                    return Err("Payment events cannot be edited".to_string());
                 }
                 message.content = req.new_content.clone();
                 needs_rebuild = true;
@@ -1112,6 +1226,9 @@ impl ChatState {
 
         if let Some(chat) = self.chats.get_mut(&req.chat_id) {
             if let Some(pos) = chat.messages.iter().position(|m| m.id == req.message_id) {
+                if chat.messages[pos].message_type == MessageType::Payment {
+                    return Err("Payment events cannot be deleted".to_string());
+                }
                 let counterparty = chat.counterparty.clone();
                 let message_id = req.message_id.clone();
                 let chat_id = req.chat_id.clone();
@@ -1220,6 +1337,9 @@ impl ChatState {
             .cloned();
 
         let original_message = message_to_forward.ok_or_else(|| "Message not found".to_string())?;
+        if original_message.message_type == MessageType::Payment {
+            return Err("Payment events cannot be forwarded".to_string());
+        }
 
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -1239,6 +1359,7 @@ impl ChatState {
             reactions: Vec::new(),
             message_type: original_message.message_type.clone(),
             file_info: original_message.file_info.clone(),
+            payment_info: original_message.payment_info.clone(),
         };
 
         self.assign_sequence_to_message(&chat_id, &mut forwarded_message);
@@ -1417,7 +1538,36 @@ impl ChatState {
     // uncomment #[remote] for tests
     // #[remote]
     #[http]
-    async fn update_profile(&mut self, profile: UserProfile) -> Result<String, String> {
+    async fn update_profile(&mut self, mut profile: UserProfile) -> Result<String, String> {
+        let nickname = profile.name.trim();
+        if nickname.is_empty() {
+            profile.name = our()
+                .node
+                .split('.')
+                .next()
+                .unwrap_or("User")
+                .to_string();
+        } else {
+            profile.name = nickname.to_string();
+        }
+
+        profile.base_address = profile
+            .base_address
+            .and_then(|addr| {
+                let trimmed = addr.trim().to_string();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
+            });
+
+        if let Some(address) = profile.base_address.as_ref() {
+            if !Self::is_valid_evm_address(address) {
+                return Err("Base address must be a valid 0x Ethereum address".to_string());
+            }
+        }
+
         self.profile = profile.clone();
 
         // Notify all chat counterparties about the profile update
@@ -1602,6 +1752,7 @@ impl ChatState {
             reactions: Vec::new(),
             message_type: message_type.clone(),
             file_info: Some(file_info),
+            payment_info: None,
         };
 
         let (counterparty, stored_message) = self.stage_outgoing_message(&chat_id, message, None);
@@ -1961,6 +2112,7 @@ impl ChatState {
             reactions: Vec::new(),
             message_type: MessageType::VoiceNote,
             file_info: Some(file_info),
+            payment_info: None,
         };
 
         let (counterparty, stored_message) = self.stage_outgoing_message(&chat_id, message, None);
@@ -1992,6 +2144,8 @@ impl ChatState {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
+
+        self.reconcile_dm_chats_for_counterparty(&counterparty);
 
         // Check if chat already exists
         let chat_exists = self.chats.contains_key(&chat_id);
@@ -2066,6 +2220,7 @@ impl ChatState {
             }
             message.sender = caller_node;
         }
+        self.reconcile_dm_chats_for_counterparty(&message.sender);
         // Find or create chat for this message - normalize the ID
         let chat_id = Self::normalize_chat_id(&message.sender, &our().node);
         let is_new_chat = !self.chats.contains_key(&chat_id);
@@ -2452,6 +2607,9 @@ impl ChatState {
                     );
                     return Err("receive_message_edit rejected unauthorized edit".to_string());
                 }
+                if message.message_type == MessageType::Payment {
+                    return Err("receive_message_edit rejected payment message edit".to_string());
+                }
                 message.content = new_content;
                 needs_rebuild = true;
                 chat_update = Some(WsServerMessage::ChatUpdate(chat.clone()));
@@ -2558,6 +2716,9 @@ impl ChatState {
                     );
                     return Err("receive_message_deletion rejected unauthorized delete".to_string());
                 }
+                if chat.messages[pos].message_type == MessageType::Payment {
+                    return Err("receive_message_deletion rejected payment message delete".to_string());
+                }
                 chat.messages.remove(pos);
                 needs_rebuild = true;
                 log_debug!("Deleted message {} from chat {}", message_id, chat_id);
@@ -2598,14 +2759,23 @@ impl ChatState {
 
         // Store the profile
         self.node_profiles.insert(node.clone(), profile.clone());
+        if node != our().node {
+            self.reconcile_dm_chats_for_counterparty(&node);
+            Self::sync_contact_profile_fields(node.clone(), profile.clone());
+        }
 
         // Update all chats with this counterparty
         let mut updates = Vec::new();
+        let mut updated_chat_ids = Vec::new();
         for chat in self.chats.values_mut() {
             if chat.counterparty == node {
                 chat.counterparty_profile = Some(profile.clone());
+                updated_chat_ids.push(chat.id.clone());
                 updates.push(WsServerMessage::ChatUpdate(chat.clone()));
             }
+        }
+        for chat_id in updated_chat_ids {
+            self.rebuild_chat_search(&chat_id);
         }
         for update in updates {
             self.broadcast_ws_message(&update);
@@ -2691,6 +2861,11 @@ impl ChatState {
             .values()
             .filter(|chat| {
                 chat.counterparty.to_lowercase().contains(&query)
+                    || chat
+                        .counterparty_profile
+                        .as_ref()
+                        .map(|profile| profile.name.to_lowercase().contains(&query))
+                        .unwrap_or(false)
                     || chat
                         .messages
                         .iter()
@@ -3436,6 +3611,7 @@ impl ChatState {
             reactions: Vec::new(),
             message_type: MessageType::Text,
             file_info: None,
+            payment_info: None,
         };
 
         let (counterparty, stored_message) =
@@ -4319,6 +4495,205 @@ impl ChatState {
         }
     }
 
+    fn reconcile_dm_chats_for_counterparty(&mut self, counterparty_node: &str) -> bool {
+        if counterparty_node.is_empty() || counterparty_node == our().node {
+            return false;
+        }
+
+        let canonical_chat_id = Self::normalize_chat_id(counterparty_node, &our().node);
+        let mut candidate_ids: Vec<String> = self
+            .chats
+            .iter()
+            .filter_map(|(chat_id, chat)| {
+                if chat_id.starts_with("system:") || chat_id.starts_with("browser:") {
+                    return None;
+                }
+
+                let inferred_counterparty =
+                    Self::infer_counterparty_from_chat_id(chat_id, &our().node);
+                let has_messages_from_counterparty =
+                    chat.messages.iter().any(|message| message.sender == counterparty_node);
+
+                if chat_id == &canonical_chat_id
+                    || chat.counterparty == counterparty_node
+                    || inferred_counterparty == counterparty_node
+                    || has_messages_from_counterparty
+                {
+                    Some(chat_id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if candidate_ids.is_empty() {
+            return false;
+        }
+
+        candidate_ids.sort();
+        candidate_ids.dedup();
+
+        if candidate_ids.len() == 1 && candidate_ids[0] == canonical_chat_id {
+            let mut changed = false;
+            if let Some(chat) = self.chats.get_mut(&canonical_chat_id) {
+                if chat.counterparty != counterparty_node {
+                    chat.counterparty = counterparty_node.to_string();
+                    changed = true;
+                }
+                if let Some(profile) = self.node_profiles.get(counterparty_node).cloned() {
+                    if chat.counterparty_profile.as_ref() != Some(&profile) {
+                        chat.counterparty_profile = Some(profile);
+                        changed = true;
+                    }
+                }
+            }
+            if changed {
+                self.rebuild_chat_search(&canonical_chat_id);
+            }
+            return changed;
+        }
+
+        let mut removed_chat_ids: Vec<String> = Vec::new();
+        let mut merged_chat = if let Some(chat) = self.chats.remove(&canonical_chat_id) {
+            removed_chat_ids.push(canonical_chat_id.clone());
+            chat
+        } else {
+            Chat {
+                id: canonical_chat_id.clone(),
+                counterparty: counterparty_node.to_string(),
+                messages: Vec::new(),
+                last_activity: 0,
+                unread_count: 0,
+                is_blocked: false,
+                notify: true,
+                counterparty_profile: self.node_profiles.get(counterparty_node).cloned(),
+            }
+        };
+
+        let mut seen_message_ids: HashSet<String> = merged_chat
+            .messages
+            .iter()
+            .map(|message| message.id.clone())
+            .collect();
+
+        for chat_id in candidate_ids {
+            if chat_id == canonical_chat_id {
+                continue;
+            }
+
+            if let Some(alias_chat) = self.chats.remove(&chat_id) {
+                removed_chat_ids.push(chat_id.clone());
+                self.message_sequence_counters.remove(&chat_id);
+
+                merged_chat.last_activity = merged_chat.last_activity.max(alias_chat.last_activity);
+                merged_chat.unread_count = merged_chat.unread_count.max(alias_chat.unread_count);
+                merged_chat.is_blocked = merged_chat.is_blocked || alias_chat.is_blocked;
+                merged_chat.notify = merged_chat.notify && alias_chat.notify;
+                if merged_chat.counterparty_profile.is_none() {
+                    merged_chat.counterparty_profile = alias_chat.counterparty_profile.clone();
+                }
+
+                for message in alias_chat.messages {
+                    if seen_message_ids.insert(message.id.clone()) {
+                        merged_chat.messages.push(message);
+                    }
+                }
+            }
+        }
+
+        merged_chat.id = canonical_chat_id.clone();
+        merged_chat.counterparty = counterparty_node.to_string();
+        if let Some(profile) = self.node_profiles.get(counterparty_node).cloned() {
+            merged_chat.counterparty_profile = Some(profile);
+        }
+        merged_chat.messages.sort_by(|a, b| {
+            a.timestamp
+                .cmp(&b.timestamp)
+                .then_with(|| a.sequence.unwrap_or(u64::MAX).cmp(&b.sequence.unwrap_or(u64::MAX)))
+                .then_with(|| a.id.cmp(&b.id))
+        });
+
+        self.chats.insert(canonical_chat_id.clone(), merged_chat);
+        self.message_sequence_counters.remove(&canonical_chat_id);
+        self.ensure_sequence_state(&canonical_chat_id);
+
+        for removed_chat_id in removed_chat_ids {
+            self.search_index.remove_chat(&removed_chat_id);
+        }
+        self.rebuild_chat_search(&canonical_chat_id);
+
+        true
+    }
+
+    fn is_hex(s: &str) -> bool {
+        s.chars().all(|ch| ch.is_ascii_hexdigit())
+    }
+
+    fn is_valid_tx_hash(tx_hash: &str) -> bool {
+        let Some(hash) = tx_hash.strip_prefix("0x") else {
+            return false;
+        };
+        hash.len() == 64 && Self::is_hex(hash)
+    }
+
+    fn is_valid_evm_address(address: &str) -> bool {
+        let Some(hex) = address.strip_prefix("0x") else {
+            return false;
+        };
+        hex.len() == 40 && Self::is_hex(hex)
+    }
+
+    fn contacts_process_address() -> Address {
+        Address::from((our().node.as_str(), CONTACTS_PROCESS_ID))
+    }
+
+    fn contacts_capability(params: &str) -> Capability {
+        Capability::new(&Self::contacts_process_address(), format!("\"{params}\""))
+    }
+
+    fn sync_contact_profile_fields(node: String, profile: UserProfile) {
+        let contacts_process = Self::contacts_process_address();
+        spawn(async move {
+            let add_cap = Self::contacts_capability("Add");
+            let remove_cap = Self::contacts_capability("Remove");
+            let caps = vec![add_cap, remove_cap];
+
+            let nickname_value = serde_json::Value::String(profile.name);
+            let nickname_body = serde_json::json!({
+                "AddField": [node.clone(), CONTACTS_FIELD_NICKNAME, nickname_value.to_string()]
+            });
+            if let Ok(body) = serde_json::to_vec(&nickname_body) {
+                let _ = Request::to(&contacts_process)
+                    .body(body)
+                    .capabilities(caps.clone())
+                    .send_and_await_response(5);
+            }
+
+            if let Some(base_address) = profile.base_address {
+                let base_value = serde_json::Value::String(base_address);
+                let base_body = serde_json::json!({
+                    "AddField": [node.clone(), CONTACTS_FIELD_BASE_ADDRESS, base_value.to_string()]
+                });
+                if let Ok(body) = serde_json::to_vec(&base_body) {
+                    let _ = Request::to(&contacts_process)
+                        .body(body)
+                        .capabilities(caps)
+                        .send_and_await_response(5);
+                }
+            } else {
+                let remove_body = serde_json::json!({
+                    "RemoveField": [node, CONTACTS_FIELD_BASE_ADDRESS]
+                });
+                if let Ok(body) = serde_json::to_vec(&remove_body) {
+                    let _ = Request::to(&contacts_process)
+                        .body(body)
+                        .capabilities(caps)
+                        .send_and_await_response(5);
+                }
+            }
+        });
+    }
+
     fn get_or_create_chat<'a>(
         &'a mut self,
         chat_id: &str,
@@ -4610,6 +4985,7 @@ impl ChatState {
         CUUserProfile {
             name: profile.name.clone(),
             profile_pic: profile.profile_pic.clone(),
+            base_address: profile.base_address.clone(),
         }
     }
 

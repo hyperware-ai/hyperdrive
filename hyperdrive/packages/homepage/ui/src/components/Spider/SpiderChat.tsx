@@ -229,7 +229,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
     >
       <div className="spider-chat-header">
         <button className="spider-back-button" onClick={handleBack}>
-          ←
+          <span className="material-symbols-outlined" aria-hidden="true">
+            arrow_back
+          </span>
         </button>
         <div className="spider-header-info">
           <div className="spider-avatar-wrap">
@@ -253,7 +255,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
           onClick={clearMessages}
           title="Clear conversation"
         >
-          🗑️
+          <span className="material-symbols-outlined" aria-hidden="true">
+            delete
+          </span>
         </button>
       </div>
 
@@ -341,7 +345,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
                 onClick={() => setReplyingTo(null)}
                 aria-label="Cancel reply"
               >
-                ✕
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  close
+                </span>
               </button>
             </div>
             <div className="spider-replying-content">{getMessageText(replyingTo)}</div>
@@ -355,7 +361,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
               onClick={() => {/* TODO: file upload */}}
               aria-label="Attach file"
             >
-              📎
+              <span className="material-symbols-outlined" aria-hidden="true">
+                attach_file
+              </span>
             </button>
             <button
               className="spider-action-button"
@@ -363,7 +371,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
               onClick={() => {/* TODO: voice note */}}
               aria-label="Record voice note"
             >
-              🎤
+              <span className="material-symbols-outlined" aria-hidden="true">
+                mic
+              </span>
             </button>
           </div>
           <textarea
@@ -383,7 +393,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
               onClick={cancelRequest}
               title="Cancel"
             >
-              ⏹
+              <span className="material-symbols-outlined" aria-hidden="true">
+                stop
+              </span>
             </button>
           ) : (
             <button
@@ -392,7 +404,9 @@ const SpiderChat: React.FC<SpiderChatProps> = ({ onBack }) => {
               disabled={!inputValue.trim()}
               title="Send"
             >
-              ➤
+              <span className="material-symbols-outlined" aria-hidden="true">
+                send
+              </span>
             </button>
           )}
         </form>

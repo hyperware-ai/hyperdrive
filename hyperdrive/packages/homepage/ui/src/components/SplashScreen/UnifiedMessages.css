@@ -75,6 +75,12 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+.unified-item:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px var(--primary-glow, rgba(204, 255, 0, 0.35));
+}
+
 @media (prefers-color-scheme: light) {
   .unified-item:hover {
     background: rgba(0, 0, 0, 0.05);
@@ -187,7 +193,7 @@
   font-weight: 500;
   padding: 2px 6px;
   border-radius: 6px;
-  background: rgba(204, 255, 0, 0.2);
+  background: var(--primary-glow, rgba(204, 255, 0, 0.2));
   color: var(--primary-color);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -254,7 +260,7 @@
   background: var(--primary-color);
   color: #000;
   border: none;
-  box-shadow: 0 4px 16px rgba(204, 255, 0, 0.4);
+  box-shadow: 0 4px 16px var(--primary-glow, rgba(204, 255, 0, 0.4));
   z-index: 40;
   cursor: pointer;
   display: flex;
@@ -266,7 +272,7 @@
 
 .fab-button:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 24px rgba(204, 255, 0, 0.5);
+  box-shadow: 0 6px 24px var(--primary-glow, rgba(204, 255, 0, 0.5));
 }
 
 .fab-button:active {
@@ -280,6 +286,50 @@
 /* Modal chooser */
 .modal-content.chooser {
   max-width: 420px;
+}
+
+.modal-content.chooser.chooser-flow {
+  width: min(420px, calc(100vw - 24px));
+  min-height: 400px;
+  max-height: min(86vh, 560px);
+  display: flex;
+  flex-direction: column;
+  animation: chooser-modal-in 0.2s ease;
+}
+
+@keyframes chooser-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chooser-flow-body {
+  position: relative;
+  flex: 1;
+  min-height: 330px;
+  overflow: hidden;
+}
+
+.chooser-panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateX(14px);
+  pointer-events: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transition: opacity 0.22s ease, transform 0.24s ease;
+}
+
+.chooser-panel.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 .chooser-actions {
@@ -329,6 +379,66 @@
   color: var(--text-secondary);
 }
 
+.chooser-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 22px;
+}
+
+.chooser-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chooser-form-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.chooser-form-fields input,
+.chooser-form-fields textarea,
+.chooser-form-fields select {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.chooser-form-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.chooser-form-actions .secondary {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.chooser-form-actions .primary {
+  background: linear-gradient(135deg, #007aff, #5ac8fa);
+  color: white;
+  border: none;
+}
+
+.chooser-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  color: #b71b1c;
+  font-size: 14px;
+}
+
 .unified-empty {
   padding: 40px 20px;
   text-align: center;
@@ -357,6 +467,38 @@
   align-items: center;
   color: var(--text-secondary);
   opacity: 0.7;
+}
+
+@media (prefers-color-scheme: light) {
+  .unified-item:active {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .unified-item-title .official-badge {
+    background: rgba(0, 79, 255, 0.16);
+    color: #004fff;
+  }
+
+  .unified-unread,
+  .fab-button {
+    color: #ffffff;
+  }
+
+  .fab-button {
+    box-shadow: 0 4px 16px rgba(0, 79, 255, 0.4);
+  }
+
+  .fab-button:hover {
+    box-shadow: 0 6px 24px rgba(0, 79, 255, 0.5);
+  }
+
+  .chooser-action:hover {
+    background: rgba(0, 79, 255, 0.08);
+  }
+
+  .chooser-icon {
+    background: rgba(0, 79, 255, 0.08);
+  }
 }
 
 /* Spider chat overlay */

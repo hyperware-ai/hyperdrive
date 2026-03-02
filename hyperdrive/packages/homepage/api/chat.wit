@@ -231,6 +231,15 @@ use standard.{address};
         peer: string
     }
 
+    record record-payment-req {
+        chat-id: string,
+        tx-hash: string,
+        amount: string,
+        coin-name: string,
+        from-address: string,
+        to-address: string
+    }
+
     record remove-group-member-req {
         group-id: group-id,
         member: node-id
@@ -489,7 +498,8 @@ use standard.{address};
         reply-to: option<string>,
         reactions: list<message-reaction>,
         message-type: message-type,
-        file-info: option<file-info>
+        file-info: option<file-info>,
+        payment-info: option<payment-info>
     }
 
     record delivery-cursor {
@@ -670,10 +680,20 @@ use standard.{address};
         text,
         image,
         file,
-        voice-note
+        voice-note,
+        payment
     }
 
     type node-id = string;
+
+    record payment-info {
+        tx-hash: string,
+        amount: string,
+        coin-name: string,
+        from-address: string,
+        to-address: string,
+        explorer-url: string
+    }
 
     record role {
         id: string,
@@ -732,7 +752,8 @@ use standard.{address};
 
     record user-profile {
         name: string,
-        profile-pic: option<string>
+        profile-pic: option<string>,
+        base-address: option<string>
     }
 
     // Function signature for: add-group-reaction (http)
@@ -1275,6 +1296,24 @@ use standard.{address};
         target: address,
         arg-types: tuple<string, string, string>,
         returning: result<_, string>
+    }
+
+    // Function signature for: record-payment (http)
+    // HTTP: POST /api/record-payment
+    // args: (req: record-payment-req)
+    record record-payment-signature-http {
+        target: string,
+        arg-types: tuple<record-payment-req>,
+        returning: result<chat-message, string>
+    }
+
+    // Function signature for: record-payment (local)
+    // args: (req: record-payment-req)
+    // json fmt: {"RecordPayment": req}
+    record record-payment-signature-local {
+        target: address,
+        arg-types: tuple<record-payment-req>,
+        returning: result<chat-message, string>
     }
 
     // Function signature for: remove-group-member (http)

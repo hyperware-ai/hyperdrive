@@ -22,6 +22,15 @@
         "request_networking": true,
         "request_capabilities": [
             "homepage:homepage:sys",
+            "contacts:contacts:sys",
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Add"
+            },
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Remove"
+            },
             "http-client:distro:sys",
             "http-server:distro:sys",
             "kv:distro:sys",
@@ -33,6 +42,15 @@
         ],
         "grant_capabilities": [
             "homepage:homepage:sys",
+            "contacts:contacts:sys",
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Add"
+            },
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Remove"
+            },
             "http-client:distro:sys",
             "http-server:distro:sys",
             "kv:distro:sys",

@@ -71,6 +71,7 @@ mod tests {
             UserProfile {
                 name: "bob".into(),
                 profile_pic: None,
+                base_address: None,
             },
         );
 
@@ -162,12 +163,14 @@ mod tests {
             counterparty_profile: Some(UserProfile {
                 name: "bob".to_string(),
                 profile_pic: None,
+                base_address: None,
             }),
         };
         let legacy = LegacyChatState {
             profile: UserProfile {
                 name: "alice".to_string(),
                 profile_pic: None,
+                base_address: None,
             },
             chats: HashMap::from([(chat.id.clone(), chat)]),
             chat_keys: HashMap::new(),
@@ -183,7 +186,8 @@ mod tests {
                 UserProfile {
                     name: "bob".to_string(),
                     profile_pic: None,
-                },
+                base_address: None,
+            },
             )]),
         };
 
@@ -274,6 +278,7 @@ mod tests {
             profile: UserProfile {
                 name: "alice".to_string(),
                 profile_pic: None,
+                base_address: None,
             },
             chats: HashMap::new(),
             chat_keys: HashMap::new(),

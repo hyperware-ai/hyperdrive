@@ -178,14 +178,18 @@ const GroupView: React.FC = () => {
     <div className="group-view">
       <header className="group-header">
         <button className="group-back" onClick={clearActiveGroup}>
-          ←
+          <span className="material-symbols-outlined" aria-hidden="true">
+            arrow_back
+          </span>
         </button>
         <div className="group-header-info">
           <div className="group-header-name">{activeGroup.metadata.name}</div>
         </div>
         <div className="group-menu-wrapper">
           <button className="group-menu-btn" onClick={() => setShowMenu(!showMenu)} aria-label="Group menu">
-            ⚙️
+            <span className="material-symbols-outlined" aria-hidden="true">
+              settings
+            </span>
           </button>
           {showMenu && (
             <>

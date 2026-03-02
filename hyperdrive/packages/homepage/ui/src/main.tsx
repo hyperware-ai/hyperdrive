@@ -4,11 +4,28 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import './homepage/homepage.css'
+import '@rainbow-me/rainbowkit/styles.css'
 // Auto-start hw:// protocol link handling
 import '@hyperware-ai/hw-protocol-watcher'
 import { useNotificationStore } from './homepage/stores/notificationStore'
 import { initializePushNotifications } from './homepage/utils/pushNotifications'
 import { getChatBasePath } from './utils/chatBase'
+import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit'
+import { WagmiProvider, http } from 'wagmi'
+import { base } from 'wagmi/chains'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+
+const walletConfig = getDefaultConfig({
+  appName: 'Hyperware Homepage',
+  projectId: '1307513d16d359871023f1f78ac03361',
+  chains: [base],
+  ssr: false,
+  transports: {
+    [base.id]: http(),
+  },
+})
+
+const walletQueryClient = new QueryClient()
 
 const patchChatFetch = () => {
   const originalFetch = window.fetch.bind(window);
@@ -101,7 +118,13 @@ const renderApp = () => {
 
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <App />
+      <WagmiProvider config={walletConfig}>
+        <QueryClientProvider client={walletQueryClient}>
+          <RainbowKitProvider initialChain={base.id} modalSize="compact" showRecentTransactions={true}>
+            <App />
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
     </React.StrictMode>,
   )
 };

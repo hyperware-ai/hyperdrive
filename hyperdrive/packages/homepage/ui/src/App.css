@@ -2,6 +2,7 @@
 :root {
   --primary-color: #ccff00;
   --primary-hover: #b8e600;
+  --primary-glow: rgba(204, 255, 0, 0.3);
   --secondary-color: #00d4ff;
   --danger-color: #ff4444;
   --success-color: #51cf66;
@@ -109,7 +110,7 @@ body {
 
 .app-error button:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.3);
+  box-shadow: 0 4px 12px var(--primary-glow, rgba(204, 255, 0, 0.3));
 }
 
 /* Error banner */
@@ -262,7 +263,7 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(204, 255, 0, 0.15);
+  box-shadow: 0 0 0 3px var(--primary-glow, rgba(204, 255, 0, 0.15));
 }
 
 /* Button styles */
@@ -288,13 +289,13 @@ button:disabled {
   border-radius: 12px;
   font-size: 15px;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(204, 255, 0, 0.3);
+  box-shadow: 0 4px 12px var(--primary-glow, rgba(204, 255, 0, 0.3));
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .submit-button:hover:not(:disabled) {
   transform: scale(1.02);
-  box-shadow: 0 6px 16px rgba(204, 255, 0, 0.4);
+  box-shadow: 0 6px 16px var(--primary-glow, rgba(204, 255, 0, 0.4));
 }
 
 .cancel-button {
@@ -373,6 +374,7 @@ button:disabled {
     --message-other-text: #0f172a;
     --primary-color: #004fff;
     --primary-hover: #0040cc;
+    --primary-glow: rgba(0, 79, 255, 0.3);
     --message-own: #004fff;
     --message-own-text: #ffffff;
   }

@@ -309,7 +309,17 @@ impl SearchIndex {
 }
 
 fn build_chat_summary_doc(chat: &Chat) -> Option<SearchDoc> {
-    let last_message = chat.messages.last().map(|msg| msg.content.clone()).unwrap_or_default();
+    let last_message = chat
+        .messages
+        .last()
+        .map(|msg| msg.content.clone())
+        .unwrap_or_default();
+    let display_name = chat_display_name(chat);
+    let body = if last_message.is_empty() {
+        chat.counterparty.clone()
+    } else {
+        format!("{} {}", chat.counterparty, last_message)
+    };
     SearchDoc::new(
         format!("chat:{}:summary", chat.id),
         SearchResultKind::ChatSummary,
@@ -317,13 +327,15 @@ fn build_chat_summary_doc(chat: &Chat) -> Option<SearchDoc> {
         None,
         None,
         None,
-        chat.counterparty.clone(),
-        truncate_text(&last_message, MAX_BODY_LEN),
+        display_name,
+        truncate_text(&body, MAX_BODY_LEN),
         Some(chat.last_activity),
     )
 }
 
 fn build_chat_message_doc(chat: &Chat, msg: &ChatMessage) -> Option<SearchDoc> {
+    let display_name = chat_display_name(chat);
+    let body = format!("{} {}", chat.counterparty, msg.content);
     SearchDoc::new(
         format!("chat:{}:msg:{}", chat.id, msg.id),
         SearchResultKind::ChatMessage,
@@ -331,10 +343,18 @@ fn build_chat_message_doc(chat: &Chat, msg: &ChatMessage) -> Option<SearchDoc> {
         None,
         Some(msg.id.clone()),
         None,
-        chat.counterparty.clone(),
-        truncate_text(&msg.content, MAX_BODY_LEN),
+        display_name,
+        truncate_text(&body, MAX_BODY_LEN),
         Some(msg.timestamp),
     )
+}
+
+fn chat_display_name(chat: &Chat) -> String {
+    chat.counterparty_profile
+        .as_ref()
+        .map(|profile| profile.name.trim().to_string())
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| chat.counterparty.clone())
 }
 
 fn build_group_summary_doc(group_id: &GroupId, group: &Group) -> Option<SearchDoc> {

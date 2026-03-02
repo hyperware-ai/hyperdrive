@@ -215,4 +215,13 @@
   .offline-tooltip-content {
     background: rgba(15, 23, 42, 0.9);
   }
+
+  .scroll-to-bottom-button {
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 79, 255, 0.3);
+  }
+
+  .scroll-to-bottom-button:hover {
+    box-shadow: 0 6px 16px rgba(0, 79, 255, 0.4);
+  }
 }

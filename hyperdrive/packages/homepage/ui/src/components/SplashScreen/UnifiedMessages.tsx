@@ -4,9 +4,8 @@ import { useChatStore } from '../../store/chat';
 import { useGroupStore } from '../../store/groups';
 import { useSpiderStore } from '../../store/spider';
 import ChatSearch from '../Chats/ChatSearch';
-import NewChatModal from '../Chats/NewChatModal';
-import GroupCreateModal from '../Groups/GroupCreateModal';
 import ChatItemMenu from './ChatItemMenu';
+import { getChatDisplayName, getChatNodeSubtitle } from '../../utils/chatDisplay';
 import './UnifiedMessages.css';
 
 type UnifiedItem = {
@@ -26,6 +25,7 @@ type UnifiedItem = {
 
 // LocalStorage key for pinned items
 const PINNED_ITEMS_KEY = 'hyperdrive-pinned-chats';
+type ChooserStep = 'chooser' | 'dm' | 'group';
 
 interface UnifiedMessagesProps {
   showSpiderChat: boolean;
@@ -36,7 +36,7 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
   showSpiderChat,
   setShowSpiderChat,
 }) => {
-  const { chats, searchIndex, connectionStatus, setActiveChat, setJumpToMessageId, deleteChat } = useChatStore();
+  const { chats, searchIndex, connectionStatus, setActiveChat, setJumpToMessageId, deleteChat, createChat } = useChatStore();
   const {
     groups,
     groupPreviews,
@@ -49,15 +49,24 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
     isLoading,
     error,
     leaveGroup,
+    createGroup,
   } = useGroupStore();
 
   const { messages: spiderMessages, checkStatus } = useSpiderStore();
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<api.SearchResultItem[] | null>(null);
-  const [showNewChat, setShowNewChat] = useState(false);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showChooser, setShowChooser] = useState(false);
+  const [chooserStep, setChooserStep] = useState<ChooserStep>('chooser');
+  const [chooserError, setChooserError] = useState<string | null>(null);
+  const [dmCounterparty, setDmCounterparty] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [groupDescription, setGroupDescription] = useState('');
+  const [groupVisibility, setGroupVisibility] = useState<api.GroupVisibility>(
+    api.GroupVisibility.Private,
+  );
+  const [isSubmittingDm, setIsSubmittingDm] = useState(false);
+  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const chooserOpenedAtRef = useRef(0);
 
   // Context menu state
@@ -157,9 +166,9 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
             acc.push({
               id: result.message_id ? `dm-msg-${result.message_id}` : `dm-${chat.id}-${idx}`,
               kind: 'dm' as const,
-              title: chat.counterparty || result.title || 'Direct message',
+              title: getChatDisplayName(chat) || result.title || 'Direct message',
               subtitle,
-              threadPath: null as string | null,
+              threadPath: getChatNodeSubtitle(chat),
               lastActivity,
               unread: chat.unread_count,
               onClick: () => {
@@ -229,9 +238,9 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
       return {
         id: itemId,
         kind: 'dm' as const,
-        title: chat.counterparty || 'Direct message',
+        title: getChatDisplayName(chat) || 'Direct message',
         subtitle: preview,
-        threadPath: null,
+        threadPath: getChatNodeSubtitle(chat),
         lastActivity,
         unread: chat.unread_count,
         isPinned: pinnedItems.includes(itemId),
@@ -327,13 +336,94 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
     }
   }, [showChooser]);
 
+  const resetChooserState = useCallback(() => {
+    setChooserStep('chooser');
+    setChooserError(null);
+    setDmCounterparty('');
+    setGroupName('');
+    setGroupDescription('');
+    setGroupVisibility(api.GroupVisibility.Private);
+    setIsSubmittingDm(false);
+    setIsSubmittingGroup(false);
+  }, []);
+
+  const openChooser = useCallback(() => {
+    resetChooserState();
+    setShowChooser(true);
+  }, [resetChooserState]);
+
+  const closeChooser = useCallback(() => {
+    setShowChooser(false);
+    resetChooserState();
+  }, [resetChooserState]);
+
+  const handleChooserStep = useCallback((step: ChooserStep) => {
+    setChooserError(null);
+    setChooserStep(step);
+  }, []);
+
+  const handleDmSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const counterparty = dmCounterparty.trim();
+      if (!counterparty) {
+        setChooserError('Node address is required.');
+        return;
+      }
+
+      try {
+        setChooserError(null);
+        setIsSubmittingDm(true);
+        await createChat(counterparty);
+        closeChooser();
+      } catch (err) {
+        setChooserError('Failed to start chat.');
+      } finally {
+        setIsSubmittingDm(false);
+      }
+    },
+    [closeChooser, createChat, dmCounterparty],
+  );
+
+  const handleGroupSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const name = groupName.trim();
+      if (!name) {
+        setChooserError('Group name is required.');
+        return;
+      }
+
+      try {
+        setChooserError(null);
+        setIsSubmittingGroup(true);
+        const groupId = await createGroup({
+          name,
+          description: groupDescription.trim() || undefined,
+          visibility: groupVisibility,
+          rootThreadTitle: null,
+        });
+        if (groupId) {
+          closeChooser();
+          return;
+        }
+        setChooserError('Failed to create group.');
+      } catch (err) {
+        setChooserError('Failed to create group.');
+      } finally {
+        setIsSubmittingGroup(false);
+      }
+    },
+    [closeChooser, createGroup, groupDescription, groupName, groupVisibility],
+  );
+
   const handleChooserOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
     // Ignore the delayed click that can land on the overlay right after opening on Android.
     if (Date.now() - chooserOpenedAtRef.current < 350) {
       event.stopPropagation();
       return;
     }
-    setShowChooser(false);
+    closeChooser();
   };
 
   // Context menu handlers
@@ -428,47 +518,6 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
     // For now, we'll just close the menu - full implementation would need store changes
   }, []);
 
-  const NewChatChooser = () => (
-    <div className="modal-overlay" onClick={handleChooserOverlayClick}>
-      <div className="modal-content chooser" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>New chat</h3>
-          <button className="close-button" onClick={() => setShowChooser(false)}>
-            ×
-          </button>
-        </div>
-        <div className="chooser-actions">
-          <button
-            className="chooser-action"
-            onClick={() => {
-              setShowChooser(false);
-              setShowCreateGroup(true);
-            }}
-          >
-            <span className="chooser-icon">👥</span>
-            <div>
-              <div className="chooser-title">Create Group Chat</div>
-              <div className="chooser-subtitle">Name it and invite members</div>
-            </div>
-          </button>
-          <button
-            className="chooser-action"
-            onClick={() => {
-              setShowChooser(false);
-              setShowNewChat(true);
-            }}
-          >
-            <span className="chooser-icon">💬</span>
-            <div>
-              <div className="chooser-title">Start One-on-One</div>
-              <div className="chooser-subtitle">Message a single user</div>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="unified-messages">
       <div className="unified-toolbar">
@@ -546,17 +595,129 @@ const UnifiedMessages: React.FC<UnifiedMessagesProps> = ({
       {/* Floating Action Button */}
       <button
         className="fab-button"
-        onClick={() => setShowChooser(true)}
+        onClick={openChooser}
         aria-label="New chat"
       >
         <span className="material-symbols-outlined">edit</span>
       </button>
 
-      {showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} />}
-      {showCreateGroup && (
-        <GroupCreateModal onClose={() => setShowCreateGroup(false)} />
+      {showChooser && (
+        <div className="modal-overlay" onClick={handleChooserOverlayClick}>
+          <div className="modal-content chooser chooser-flow" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>New chat</h3>
+              <button className="close-button" onClick={closeChooser}>
+                ×
+              </button>
+            </div>
+            <div className="chooser-flow-body">
+              <div className={`chooser-panel ${chooserStep === 'chooser' ? 'active' : ''}`}>
+                <div className="chooser-actions">
+                  <button
+                    className="chooser-action"
+                    onClick={() => handleChooserStep('group')}
+                  >
+                    <span className="chooser-icon material-symbols-outlined" aria-hidden="true">
+                      groups
+                    </span>
+                    <div>
+                      <div className="chooser-title">Create Group Chat</div>
+                      <div className="chooser-subtitle">Name it and invite members</div>
+                    </div>
+                  </button>
+                  <button
+                    className="chooser-action"
+                    onClick={() => handleChooserStep('dm')}
+                  >
+                    <span className="chooser-icon material-symbols-outlined" aria-hidden="true">
+                      chat
+                    </span>
+                    <div>
+                      <div className="chooser-title">Start One-on-One</div>
+                      <div className="chooser-subtitle">Message a single user</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <form
+                className={`chooser-panel chooser-form ${chooserStep === 'dm' ? 'active' : ''}`}
+                onSubmit={handleDmSubmit}
+              >
+                <div className="chooser-form-fields">
+                  <label>
+                    <span>Node address</span>
+                    <input
+                      type="text"
+                      placeholder="e.g., alice.os"
+                      value={dmCounterparty}
+                      onChange={(e) => setDmCounterparty(e.target.value)}
+                      autoFocus={showChooser && chooserStep === 'dm'}
+                    />
+                  </label>
+                </div>
+                {chooserError && chooserStep === 'dm' && <div className="chooser-error">{chooserError}</div>}
+                <div className="chooser-form-actions">
+                  <button type="button" className="secondary" onClick={() => handleChooserStep('chooser')}>
+                    Back
+                  </button>
+                  <button type="submit" className="primary" disabled={!dmCounterparty.trim() || isSubmittingDm}>
+                    {isSubmittingDm ? 'Starting…' : 'Start Chat'}
+                  </button>
+                </div>
+              </form>
+
+              <form
+                className={`chooser-panel chooser-form ${chooserStep === 'group' ? 'active' : ''}`}
+                onSubmit={handleGroupSubmit}
+              >
+                <div className="chooser-form-fields">
+                  <label>
+                    <span>Group name</span>
+                    <input
+                      type="text"
+                      placeholder="Team updates"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      autoFocus={showChooser && chooserStep === 'group'}
+                    />
+                  </label>
+                  <label>
+                    <span>Description</span>
+                    <textarea
+                      placeholder="What is this group for? (optional)"
+                      rows={3}
+                      value={groupDescription}
+                      onChange={(e) => setGroupDescription(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Visibility</span>
+                    <select
+                      value={groupVisibility}
+                      onChange={(e) =>
+                        setGroupVisibility(e.target.value as unknown as api.GroupVisibility)
+                      }
+                    >
+                      <option value={api.GroupVisibility.Private}>Private</option>
+                      <option value={api.GroupVisibility.Public}>Public</option>
+                    </select>
+                  </label>
+                </div>
+                {chooserError && chooserStep === 'group' && <div className="chooser-error">{chooserError}</div>}
+                <div className="chooser-form-actions">
+                  <button type="button" className="secondary" onClick={() => handleChooserStep('chooser')}>
+                    Back
+                  </button>
+                  <button type="submit" className="primary" disabled={!groupName.trim() || isSubmittingGroup}>
+                    {isSubmittingGroup ? 'Creating…' : 'Create Group'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
-      {showChooser && <NewChatChooser />}
 
       {/* Context menu */}
       {menuPosition && menuItem && (

@@ -88,6 +88,11 @@ class IndexedDBStorage {
     const chatsStore = transaction.objectStore(CHATS_STORE);
     const messagesStore = transaction.objectStore(MESSAGES_STORE);
 
+    // Replace cached snapshot completely so deleted backend chats/messages
+    // do not flash back in from stale IndexedDB rows.
+    await this.promisifyRequest(chatsStore.clear());
+    await this.promisifyRequest(messagesStore.clear());
+
     // Save each chat and its messages
     for (const chat of chats) {
       // Save chat metadata (without messages)

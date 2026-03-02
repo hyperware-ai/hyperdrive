@@ -39,6 +39,9 @@
   padding: 8px 10px;
   border-radius: 10px;
   color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .group-menu-wrapper {
@@ -48,15 +51,22 @@
 .group-menu-btn {
   background: transparent;
   border: none;
-  font-size: 20px;
   padding: 8px;
   cursor: pointer;
   border-radius: 8px;
   transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .group-menu-btn:hover {
   background: rgba(128, 128, 128, 0.12);
+}
+
+.group-back .material-symbols-outlined,
+.group-menu-btn .material-symbols-outlined {
+  font-size: 22px;
 }
 
 .group-menu-overlay {

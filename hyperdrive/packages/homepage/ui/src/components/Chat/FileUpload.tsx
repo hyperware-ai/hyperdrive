@@ -148,7 +148,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onClose }) => {
           <>
             <button className="upload-option">
               <label htmlFor="file-input">
-                📎 Choose File
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  attach_file
+                </span>
+                <span>Choose File</span>
                 <input
                   id="file-input"
                   type="file"
@@ -160,7 +163,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onClose }) => {
             </button>
             <button className="upload-option">
               <label htmlFor="image-input">
-                🖼️ Choose Image
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  image
+                </span>
+                <span>Choose Image</span>
                 <input
                   id="image-input"
                   type="file"

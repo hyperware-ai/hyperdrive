@@ -210,7 +210,10 @@ const VoiceNote: React.FC<VoiceNoteProps> = ({ onClose, onSend }) => {
             <p>Tap to record a voice note</p>
             {error && <div className="voice-note-error">{error}</div>}
             <button className="record-button" onClick={startRecording} disabled={isSending}>
-              🎤 Start Recording
+              <span className="material-symbols-outlined" aria-hidden="true">
+                mic
+              </span>
+              <span>Start Recording</span>
             </button>
           </>
         )}

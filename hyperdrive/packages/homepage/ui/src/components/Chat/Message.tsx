@@ -18,6 +18,8 @@ interface MessageProps {
 }
 
 const { add_reaction, remove_reaction } = Caller.Chat;
+const truncateAddress = (value: string, head = 6, tail = 4): string =>
+  value.length <= head + tail + 3 ? value : `${value.slice(0, head)}...${value.slice(-tail)}`;
 
 const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide' }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -29,6 +31,8 @@ const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide'
   const { activeChat, settings, setReplyingTo } = useChatStore();
   const messageRef = useRef<HTMLDivElement>(null);
   const isOfficial = message.sender === 'dao.hypr';
+  const paymentInfo = message.payment_info;
+  const isPaymentEvent = message.message_type === Chat.MessageType.Payment && Boolean(paymentInfo);
   const startXRef = useRef(0);
   const startYRef = useRef(0);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -587,7 +591,7 @@ const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide'
       <div 
         ref={messageRef}
         id={`message-${message.id}`}
-        className={`message ${isOwn ? 'own' : 'other'} ${isOfficial ? 'official-message' : ''} ${isSwiping ? 'swiping' : ''} spacing-${spacingClass}`}
+        className={`message ${isOwn ? 'own' : 'other'} ${isOfficial ? 'official-message' : ''} ${isPaymentEvent ? 'payment-event' : ''} ${isSwiping ? 'swiping' : ''} spacing-${spacingClass}`}
         onContextMenu={handleLongPress}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -621,7 +625,27 @@ const Message: React.FC<MessageProps> = ({ message, isOwn, spacingClass = 'wide'
 
         <div className="message-content">
           {/* If this is a file/image message with file info, show it specially */}
-          {isAudioMessage && message.file_info ? (
+          {isPaymentEvent && paymentInfo ? (
+            <a
+              className="payment-event-card"
+              href={paymentInfo.explorer_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open transaction on BaseScan"
+            >
+              <div className="payment-event-pill">Payment Event</div>
+              <div className="payment-event-main">
+                <strong>{isOwn ? 'You' : activeChat?.counterparty_profile?.name || message.sender}</strong>
+                <span>sent</span>
+                <strong>{paymentInfo.amount} {paymentInfo.coin_name}</strong>
+                <span>to {truncateAddress(paymentInfo.to_address)}</span>
+              </div>
+              <div className="payment-event-meta">
+                <span className="payment-event-hash">{truncateAddress(paymentInfo.tx_hash, 10, 8)}</span>
+                <span className="payment-event-link">View on BaseScan ↗</span>
+              </div>
+            </a>
+          ) : isAudioMessage && message.file_info ? (
             <div className="dm-audio-wrapper">
               {audioUrl ? (
                 <audio

@@ -64,6 +64,11 @@
   color: var(--text-primary);
 }
 
+.group-cancel-reply .material-symbols-outlined,
+.group-cancel-edit .material-symbols-outlined {
+  font-size: 18px;
+}
+
 .group-reply-content,
 .group-edit-content {
   font-size: 13px;
@@ -134,6 +139,10 @@
   transform: scale(1);
 }
 
+.group-action-button .material-symbols-outlined {
+  font-size: 18px;
+}
+
 .group-input-row textarea {
   flex: 1;
   resize: none;
@@ -172,6 +181,12 @@
 .group-send:disabled {
   opacity: 0.5;
   transform: scale(1);
+}
+
+.group-send .material-symbols-outlined {
+  font-size: 18px;
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 .group-input-row.disabled {

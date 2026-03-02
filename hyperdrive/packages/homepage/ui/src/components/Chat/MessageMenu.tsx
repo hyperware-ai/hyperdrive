@@ -18,6 +18,8 @@ const MessageMenu: React.FC<MessageMenuProps> = ({ message, isOwn, position, onC
   const { deleteMessage, deleteMessageLocally, activeChat, setEditingMessage } = useChatStore();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const isPaymentEvent = message.message_type === Chat.MessageType.Payment;
+  const canEditOrDelete = isOwn && !isPaymentEvent;
 
   const commonEmojis = ['👍', '❤️', '😂', '😮', '😢', '😡', '👎', '⚡', '🔥', '💯'];
 
@@ -67,7 +69,7 @@ const MessageMenu: React.FC<MessageMenuProps> = ({ message, isOwn, position, onC
 
   // Calculate position to keep menu on screen
   const menuStyle = React.useMemo(() => {
-    const menuHeight = isOwn ? 240 : 180; // Approximate menu height
+    const menuHeight = canEditOrDelete ? 240 : 180; // Approximate menu height
     const menuWidth = 150; // Approximate menu width
     const padding = 10;
     
@@ -91,7 +93,7 @@ const MessageMenu: React.FC<MessageMenuProps> = ({ message, isOwn, position, onC
     left = Math.max(padding, left);
     
     return { top, left };
-  }, [position, isOwn]);
+  }, [position, canEditOrDelete]);
 
   return (
     <>
@@ -143,8 +145,8 @@ const MessageMenu: React.FC<MessageMenuProps> = ({ message, isOwn, position, onC
           <button onClick={handleReply}>Reply</button>
           <button onClick={handleCopy}>Copy</button>
           <button onClick={() => setShowEmojiPicker(true)}>React</button>
-          {isOwn && <button onClick={handleEdit}>Edit</button>}
-          {isOwn && <button onClick={handleDelete}>Delete</button>}
+          {canEditOrDelete && <button onClick={handleEdit}>Edit</button>}
+          {canEditOrDelete && <button onClick={handleDelete}>Delete</button>}
         </div>
       )}
     </>
