@@ -7,6 +7,5 @@ panic = "abort"
 members = [
     "homepage",
     "chat",
-    "target/homepage-caller-util?",
 ]
 resolver = "2"

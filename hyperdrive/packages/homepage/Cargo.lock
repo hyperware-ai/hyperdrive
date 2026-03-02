@@ -954,7 +954,6 @@ dependencies = [
  "base64 0.21.7",
  "flate2",
  "futures",
- "homepage_caller_utils",
  "hyperapp_macro",
  "hyperware-crdt",
  "hyperware-pubsub-core",
@@ -1569,22 +1568,6 @@ dependencies = [
  "serde",
  "serde_json",
  "wit-bindgen 0.42.1",
-]
-
-[[package]]
-name = "homepage_caller_utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "futures-util",
- "hyperware_process_lib",
- "once_cell",
- "process_macros",
- "serde",
- "serde_json",
- "uuid",
- "wit-bindgen 0.41.0",
 ]
 
 [[package]]
