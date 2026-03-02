@@ -2673,7 +2673,6 @@ name = "explorer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "file_explorer_caller_utils",
  "hyperapp_macro 0.1.1",
  "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d)",
  "md5",
@@ -2770,22 +2769,6 @@ name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
-
-[[package]]
-name = "file_explorer_caller_utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "futures-util",
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d)",
- "once_cell",
- "process_macros",
- "serde",
- "serde_json",
- "uuid 1.17.0",
- "wit-bindgen 0.41.0",
-]
 
 [[package]]
 name = "fixed-hash"
@@ -6672,27 +6655,10 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "spider_caller_utils",
  "url",
  "uuid 1.17.0",
  "wit-bindgen 0.42.1",
  "wit-parser 0.220.1",
-]
-
-[[package]]
-name = "spider_caller_utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "futures-util",
- "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=41f25ce)",
- "once_cell",
- "process_macros",
- "serde",
- "serde_json",
- "uuid 1.17.0",
- "wit-bindgen 0.41.0",
 ]
 
 [[package]]
