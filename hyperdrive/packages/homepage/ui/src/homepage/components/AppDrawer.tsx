@@ -42,8 +42,6 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   const isVisible = forceOpen || isAppDrawerOpen;
   if (!isVisible) return null;
 
-  const isMobile = window.innerWidth < 768;
-
   const handleBackdropClick = () => {
     if (forceOpen || disableBackdropClose) return;
     toggleAppDrawer();
@@ -56,22 +54,27 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
       className={`app-drawer fixed inset-0 bg-gradient-to-b from-gray-100/20 to-white/20 dark:from-gray-900/20 dark:to-black/20 backdrop-blur-xl ${zIndexClass} ${dockedClass} flex flex-col animate-modal-backdrop`}
       onClick={handleBackdropClick}
     >
-      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-16 px-6">
-        <div className={classNames(`
-          grid
-          gap-4 md:gap-6 lg:gap-8
-          `, {
-          'grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6': filteredApps.length > 0,
-          'grid-cols-2': filteredApps.length === 0,
-        })}>
+      <div
+        className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4"
+        style={{ paddingTop: 'calc(var(--safe-area-top, 0px) + 1rem)' }}
+      >
+        <div className="mx-auto w-full max-w-md md:max-w-none">
+          <div className={classNames(`
+            grid
+            gap-3 sm:gap-4 md:gap-6 lg:gap-8
+            justify-items-center
+            `, {
+            'grid-cols-3 md:[grid-template-columns:repeat(auto-fit,minmax(7rem,1fr))]': filteredApps.length > 0,
+            'grid-cols-2': filteredApps.length === 0,
+          })}>
           {filteredApps.map((app, index) => (
             <div
               key={app.id}
-              className="relative group animate-grid-enter"
+              className="relative group animate-grid-enter min-w-0 mx-auto w-full max-w-[7rem] md:max-w-[8rem]"
               style={{ '--item-index': index } as React.CSSProperties}
               data-app-id={app.id}
             >
-              <div onClick={(e) => {
+              <div className="w-full" onClick={(e) => {
                 e.stopPropagation();
                 if (app.path === null) {
                   return;
@@ -83,7 +86,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
               {!homeScreenApps.includes(app.id) && (
                 <button
                   onClick={() => handleAddToHome(app)}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full thin text-xs"
+                  className="absolute top-0 right-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full thin text-xs p-0 leading-none flex items-center justify-center"
                 >
                   +
                 </button>
@@ -108,15 +111,18 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
               </span>
             </div>
           )}
+          </div>
         </div>
       </div>
 
-      <div className="px-4 py-4 flex-shrink-0">
-        <ChatSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search apps..."
-        />
+      <div className="px-3 sm:px-4 py-4 flex-shrink-0">
+        <div className="mx-auto w-full max-w-md md:max-w-none">
+          <ChatSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search apps..."
+          />
+        </div>
       </div>
     </div>
   );
