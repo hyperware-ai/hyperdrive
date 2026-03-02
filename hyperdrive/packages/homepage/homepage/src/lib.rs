@@ -384,8 +384,18 @@ fn init(our: Address) {
                 };
                 // Handle WebSocket events
                 match &request {
-                    http::server::HttpServerRequest::WebSocketOpen { path, channel_id } => {
-                        http_server.handle_websocket_open(path, *channel_id);
+                    http::server::HttpServerRequest::WebSocketOpen {
+                        path,
+                        channel_id,
+                        source_socket_addr,
+                        forwarded_for,
+                    } => {
+                        http_server.handle_websocket_open(
+                            path,
+                            *channel_id,
+                            source_socket_addr.clone(),
+                            forwarded_for.clone(),
+                        );
                         continue;
                     }
                     http::server::HttpServerRequest::WebSocketClose(channel_id) => {

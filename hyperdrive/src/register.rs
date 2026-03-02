@@ -620,14 +620,14 @@ async fn handle_boot(
                         verifying_contract: hypermap,
                     };
 
-                let boot = Boot {
-                    username: our.name.clone(),
-                    password_hash,
-                    timestamp: U256::from(info.timestamp),
-                    direct: is_direct, // Convert Option<String> to bool
-                    reset: info.reset,
-                    chain_id: U256::from(chain_id),
-                };
+                    let boot = Boot {
+                        username: our.name.clone(),
+                        password_hash,
+                        timestamp: U256::from(info.timestamp),
+                        direct: is_direct, // Convert Option<String> to bool
+                        reset: info.reset,
+                        chain_id: U256::from(chain_id),
+                    };
 
                     let hash = boot.eip712_signing_hash(&domain);
                     let sig = Signature::from_str(&info.signature).map_err(|_| warp::reject())?;

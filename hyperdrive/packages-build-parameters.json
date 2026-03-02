@@ -10,6 +10,12 @@
         "caller-utils"
     ]
   },
+  "homepage": {
+    "is_hyperapp": true,
+    "features": [
+        "caller-utils"
+    ]
+  },
   "spider": {
     "is_hyperapp": true,
     "local_dependencies": [

@@ -14,5 +14,53 @@
             "notifications:distro:sys"
         ],
         "public": false
+    },
+    {
+        "process_name": "chat",
+        "process_wasm_path": "/chat.wasm",
+        "on_exit": "Restart",
+        "request_networking": true,
+        "request_capabilities": [
+            "homepage:homepage:sys",
+            "contacts:contacts:sys",
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Add"
+            },
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Remove"
+            },
+            "http-client:distro:sys",
+            "http-server:distro:sys",
+            "kv:distro:sys",
+            "notifications:distro:sys",
+            "spider:spider:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys"
+        ],
+        "grant_capabilities": [
+            "homepage:homepage:sys",
+            "contacts:contacts:sys",
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Add"
+            },
+            {
+                "process": "contacts:contacts:sys",
+                "params": "Remove"
+            },
+            "http-client:distro:sys",
+            "http-server:distro:sys",
+            "kv:distro:sys",
+            "notifications:distro:sys",
+            "spider:spider:sys",
+            "terminal:terminal:sys",
+            "timer:distro:sys",
+            "vfs:distro:sys",
+            "tester:tester:sys"
+        ],
+        "public": false
     }
 ]

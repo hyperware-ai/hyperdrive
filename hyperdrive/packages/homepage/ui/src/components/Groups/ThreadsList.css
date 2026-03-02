@@ -1,0 +1,45 @@
+.threads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 15px;
+}
+
+.thread-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.thread-row.active {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.thread-row-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.thread-row-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.thread-row-depth {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.threads-empty {
+  padding: 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--text-secondary);
+}

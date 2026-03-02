@@ -16,6 +16,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "#caller-utils": ["../target/ui/caller-utils.ts"]
+    },
     /* Linting */
     "strict": true,
     "noFallthroughCasesInSwitch": true
