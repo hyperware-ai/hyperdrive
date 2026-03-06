@@ -1,0 +1,49 @@
+.group-join-modal {
+  max-width: 420px;
+}
+
+.group-join-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px 20px;
+}
+
+.group-join-text {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.group-join-host {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.group-join-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.group-join-actions .secondary {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.group-join-actions .primary {
+  background: linear-gradient(135deg, #007aff, #5ac8fa);
+  color: white;
+  border: none;
+}
+
+.group-join-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  color: #b71b1c;
+  font-size: 13px;
+}

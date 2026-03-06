@@ -1,0 +1,212 @@
+@import '../../styles/message-bubble.css';
+
+.group-message {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
+  animation: message-enter 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+}
+
+/* Telegram-style message entrance */
+@keyframes message-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Disable animation for messages already in view on load */
+.group-message.no-animate {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* Time-based spacing */
+.group-message.spacing-tight {
+  margin-top: 2px;
+}
+
+.group-message.spacing-wide {
+  margin-top: 6px;
+}
+
+.group-message.mine {
+  flex-direction: row-reverse;
+}
+
+.group-message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  max-width: 75%;
+}
+
+.group-message.mine .group-message-content {
+  align-items: flex-end;
+}
+
+/* Avatar - shows on last message of group */
+.group-message-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  align-self: flex-end;
+}
+
+/* Spacer when no avatar - keeps messages aligned */
+.group-message-avatar-spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+/* Sender name - shows on first message of group */
+.group-message-sender {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding-left: 2px;
+  margin-bottom: 2px;
+}
+
+/* Bubble - extends shared .message-bubble styles */
+.group-message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-message-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.group-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-attachment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: visible;
+}
+
+.group-attachment-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  display: block;
+}
+
+.group-attachment-loading {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.group-attachment-size {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.group-message-status {
+  font-weight: 600;
+}
+
+.group-message-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.group-message-actions .link {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  padding: 0;
+  cursor: pointer;
+}
+
+.group-message-actions .link:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+/* Highlight animation */
+.group-message.highlight {
+  animation: message-highlight-pulse 2s ease-out;
+}
+
+/* Thread indicator (group-specific) */
+.group-message-thread-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px dashed var(--border-color, #ccc);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-message-thread-indicator:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-style: solid;
+}
+
+.group-message-thread-indicator.has-thread {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  color: var(--primary-color, #007aff);
+}
+
+.group-message-thread-indicator.has-thread:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.group-message.mine .group-message-thread-indicator {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.group-message.mine .group-message-thread-indicator:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.group-message.mine .group-message-thread-indicator.has-thread {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+}
+
+.group-message.mine .group-message-thread-indicator.has-thread:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.thread-icon {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.thread-label {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
