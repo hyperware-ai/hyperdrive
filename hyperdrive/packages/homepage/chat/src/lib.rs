@@ -2,17 +2,19 @@
 // A mobile-first chat application for the Hyperware platform
 // Supporting 1:1 DMs, Group chats (TODO), and Voice calls (TODO)
 
+use base64::{engine::general_purpose, Engine as _};
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use futures::{channel::mpsc::UnboundedReceiver, pin_mut, select, FutureExt, StreamExt};
 use hyperapp_macro::*;
 use hyperware_crdt::yrs::{Decode, Encode, StateVector};
-use base64::{engine::general_purpose, Engine as _};
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::WsMessageType,
-    hyperapp::{self, get_path, send, set_response_status, sleep, source, spawn, AppSendError, SaveOptions},
+    hyperapp::{
+        self, get_path, send, set_response_status, sleep, source, spawn, AppSendError, SaveOptions,
+    },
     our, vfs, Address, Capability, LazyLoadBlob, ProcessId, Request, Request as ProcessRequest,
 };
 use std::cmp::Ordering;
@@ -24,7 +26,6 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 // Import generated RPC functions from caller-utils
-use homepage_caller_utils as chat_caller_utils;
 use chat_caller_utils::chat::{
     receive_chat_creation_remote_rpc, receive_message_ack_remote_rpc,
     receive_message_deletion_remote_rpc, receive_message_edit_remote_rpc,
@@ -33,6 +34,7 @@ use chat_caller_utils::chat::{
 };
 use chat_caller_utils::ChatMessage as CUChatMessage;
 use chat_caller_utils::UserProfile as CUUserProfile;
+use homepage_caller_utils as chat_caller_utils;
 
 mod crdt;
 mod groups;
@@ -63,7 +65,6 @@ const CONTACTS_FIELD_BASE_ADDRESS: &str = "base_address";
 // Replication RPC timeout to keep admin/test calls responsive.
 const REPL_RPC_TIMEOUT_SECS: u64 = 2;
 const ICON: &str = include_str!("./icon");
-
 
 // Helper function to enforce one-way status transitions
 fn safe_update_message_status(current: &MessageStatus, new: MessageStatus) -> MessageStatus {
@@ -99,7 +100,8 @@ fn safe_update_message_status(current: &MessageStatus, new: MessageStatus) -> Me
         _ => {
             log_debug!(
                 "WARNING: Attempted invalid status transition from {:?} to {:?}",
-                current, new
+                current,
+                new
             );
             current.clone()
         }
@@ -206,11 +208,16 @@ pub(crate) fn log_crdt_event(
     match update_len {
         Some(len) => log_debug!(
             "[CRDT][{}] context={} state_vector_len={} update_bytes={}",
-            doc_id, context, sv_len, len
+            doc_id,
+            context,
+            sv_len,
+            len
         ),
         None => log_debug!(
             "[CRDT][{}] context={} state_vector_len={}",
-            doc_id, context, sv_len
+            doc_id,
+            context,
+            sv_len
         ),
     }
 }
@@ -302,7 +309,8 @@ async fn send_push_notification_for_message(sender: &str, content: &str, chat_id
                                     .expects_response(5);
                                 log_debug!(
                                     "[NOTIFY] removing invalid endpoint {} via {}",
-                                    endpoint, notifications_address
+                                    endpoint,
+                                    notifications_address
                                 );
 
                                 // Fire and forget the removal request
@@ -353,7 +361,9 @@ async fn send_push_notification_for_group_message(
     group_name: &str,
 ) {
     if cfg!(feature = "disable-notifications") {
-        log_debug!("[NOTIFY] skipping group push notification (disable-notifications feature enabled)");
+        log_debug!(
+            "[NOTIFY] skipping group push notification (disable-notifications feature enabled)"
+        );
         return;
     }
     let notify_started = Instant::now();
@@ -799,10 +809,7 @@ impl ChatState {
 
     #[local]
     #[http]
-    async fn update_chat_settings(
-        &mut self,
-        req: UpdateChatSettingsReq,
-    ) -> Result<Chat, String> {
+    async fn update_chat_settings(&mut self, req: UpdateChatSettingsReq) -> Result<Chat, String> {
         let chat = self
             .chats
             .get_mut(&req.chat_id)
@@ -853,7 +860,11 @@ impl ChatState {
             member_count: group.members.len(),
             thread_count: group.threads.len(),
             unread_count: self.group_unread.get(&req.group_id).copied().unwrap_or(0),
-            notify: self.group_notify.get(&req.group_id).copied().unwrap_or(true),
+            notify: self
+                .group_notify
+                .get(&req.group_id)
+                .copied()
+                .unwrap_or(true),
         })
     }
 
@@ -1119,7 +1130,10 @@ impl ChatState {
             sender: our().node.clone(),
             content: format!(
                 "{} sent {} {} to {}",
-                our().node, amount, coin_name, to_address
+                our().node,
+                amount,
+                coin_name,
+                to_address
             ),
             timestamp,
             sequence: None,
@@ -1138,7 +1152,8 @@ impl ChatState {
             }),
         };
 
-        let (counterparty, stored_message) = self.stage_outgoing_message(&req.chat_id, message, None);
+        let (counterparty, stored_message) =
+            self.stage_outgoing_message(&req.chat_id, message, None);
         self.dispatch_outgoing_message(counterparty, stored_message.clone());
 
         Ok(self
@@ -1198,7 +1213,8 @@ impl ChatState {
                     Ok(Ok(())) => {}
                     Ok(Err(err)) => log_debug!(
                         "Counterparty {} rejected message edit: {}",
-                        counterparty, err
+                        counterparty,
+                        err
                     ),
                     Err(err) => {
                         log_debug!("Failed to send message edit to {}: {:?}", counterparty, err)
@@ -1456,7 +1472,9 @@ impl ChatState {
                 let target = Address::new(&target_node, OUR_PROCESS_ID.clone());
                 match receive_reaction_remove_remote_rpc(&target, msg_id, emoji, user).await {
                     Ok(_) => log_debug!("Successfully sent reaction removal to counterparty"),
-                    Err(e) => log_debug!("Failed to send reaction removal to counterparty: {:?}", e),
+                    Err(e) => {
+                        log_debug!("Failed to send reaction removal to counterparty: {:?}", e)
+                    }
                 }
             });
 
@@ -1539,26 +1557,19 @@ impl ChatState {
     async fn update_profile(&mut self, mut profile: UserProfile) -> Result<String, String> {
         let nickname = profile.name.trim();
         if nickname.is_empty() {
-            profile.name = our()
-                .node
-                .split('.')
-                .next()
-                .unwrap_or("User")
-                .to_string();
+            profile.name = our().node.split('.').next().unwrap_or("User").to_string();
         } else {
             profile.name = nickname.to_string();
         }
 
-        profile.base_address = profile
-            .base_address
-            .and_then(|addr| {
-                let trimmed = addr.trim().to_string();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(trimmed)
-                }
-            });
+        profile.base_address = profile.base_address.and_then(|addr| {
+            let trimmed = addr.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        });
 
         if let Some(address) = profile.base_address.as_ref() {
             if !Self::is_valid_evm_address(address) {
@@ -1644,7 +1655,8 @@ impl ChatState {
                     Ok(_) => log_debug!("Notified {} about profile pic update", counterparty),
                     Err(e) => log_debug!(
                         "Failed to notify {} about profile pic update: {:?}",
-                        counterparty, e
+                        counterparty,
+                        e
                     ),
                 }
             });
@@ -1967,7 +1979,9 @@ impl ChatState {
     // #[remote]
     #[http(method = "POST", path = "/api/download-group-file")]
     async fn download_group_file(&mut self, req: DownloadGroupFileReq) -> Result<Vec<u8>, String> {
-        if req.group_id.contains('/') || req.group_id.contains("..") || req.attachment_id.contains('/')
+        if req.group_id.contains('/')
+            || req.group_id.contains("..")
+            || req.attachment_id.contains('/')
         {
             set_response_status(hyperware_process_lib::http::StatusCode::BAD_REQUEST);
             return Err("Invalid file path".to_string());
@@ -2047,7 +2061,10 @@ impl ChatState {
         self.require_subscriber_access(&req.group_id, &caller)
             .map_err(|err| format!("unauthorized: {}", err))?;
 
-        if req.group_id.contains('/') || req.group_id.contains("..") || req.attachment_id.contains('/') {
+        if req.group_id.contains('/')
+            || req.group_id.contains("..")
+            || req.attachment_id.contains('/')
+        {
             return Err("Invalid file path".to_string());
         }
 
@@ -2066,11 +2083,10 @@ impl ChatState {
     // #[remote]
     #[http]
     async fn send_voice_note(&mut self, req: SendVoiceNoteReq) -> Result<ChatMessage, String> {
-        let audio_bytes = base64_decode(&req.audio_data)
-            .map_err(|e| {
-                set_response_status(hyperware_process_lib::http::StatusCode::BAD_REQUEST);
-                format!("Failed to decode base64: {}", e)
-            })?;
+        let audio_bytes = base64_decode(&req.audio_data).map_err(|e| {
+            set_response_status(hyperware_process_lib::http::StatusCode::BAD_REQUEST);
+            format!("Failed to decode base64: {}", e)
+        })?;
         let audio_size_mb = (audio_bytes.len() as u64) / (1024 * 1024);
         if audio_size_mb > self.settings.max_file_size_mb {
             set_response_status(hyperware_process_lib::http::StatusCode::PAYLOAD_TOO_LARGE);
@@ -2128,7 +2144,8 @@ impl ChatState {
             if counterparty != caller_node {
                 log_debug!(
                     "[SEC] receive_chat_creation rejected spoofed counterparty={} source={}",
-                    counterparty, caller_node
+                    counterparty,
+                    caller_node
                 );
                 return Err("receive_chat_creation rejected spoofed counterparty".to_string());
             }
@@ -2212,7 +2229,8 @@ impl ChatState {
             if message.sender != caller_node {
                 log_debug!(
                     "[SEC] receive_message rejected spoofed sender={} source={}",
-                    message.sender, caller_node
+                    message.sender,
+                    caller_node
                 );
                 return Err("receive_message rejected spoofed sender".to_string());
             }
@@ -2303,7 +2321,8 @@ impl ChatState {
                     let _ = file.write(&file_data);
                     log_debug!(
                         "Saved received file {} to VFS at {}",
-                        file_info.filename, vfs_path
+                        file_info.filename,
+                        vfs_path
                     );
 
                     // For images, keep the data URL for inline display
@@ -2447,7 +2466,8 @@ impl ChatState {
             if user != caller_node {
                 log_debug!(
                     "[SEC] receive_reaction rejected spoofed user={} source={}",
-                    user, caller_node
+                    user,
+                    caller_node
                 );
                 return Err("receive_reaction rejected spoofed user".to_string());
             }
@@ -2455,7 +2475,9 @@ impl ChatState {
         }
         log_debug!(
             "Received reaction {} from {} for message {}",
-            emoji, user, message_id
+            emoji,
+            user,
+            message_id
         );
 
         let timestamp = std::time::SystemTime::now()
@@ -2525,7 +2547,8 @@ impl ChatState {
             if user != caller_node {
                 log_debug!(
                     "[SEC] receive_reaction_remove rejected spoofed user={} source={}",
-                    user, caller_node
+                    user,
+                    caller_node
                 );
                 return Err("receive_reaction_remove rejected spoofed user".to_string());
             }
@@ -2533,7 +2556,9 @@ impl ChatState {
         }
         log_debug!(
             "Received reaction removal {} from {} for message {}",
-            emoji, user, message_id
+            emoji,
+            user,
+            message_id
         );
 
         let mut update: Option<WsServerMessage> = None;
@@ -2588,7 +2613,9 @@ impl ChatState {
             if chat_id != expected_chat_id {
                 log_debug!(
                     "[SEC] receive_message_edit rejected spoofed chat_id={} expected={} source={}",
-                    chat_id, expected_chat_id, caller_node
+                    chat_id,
+                    expected_chat_id,
+                    caller_node
                 );
                 return Err("receive_message_edit rejected spoofed chat_id".to_string());
             }
@@ -2601,7 +2628,8 @@ impl ChatState {
                 if !is_local_call && message.sender != caller_node {
                     log_debug!(
                         "[SEC] receive_message_edit rejected edit from {} for message sent by {}",
-                        caller_node, message.sender
+                        caller_node,
+                        message.sender
                     );
                     return Err("receive_message_edit rejected unauthorized edit".to_string());
                 }
@@ -2623,7 +2651,8 @@ impl ChatState {
         } else {
             log_debug!(
                 "receive_message_edit: message {} in chat {} not found; dropping edit",
-                message_id, chat_id
+                message_id,
+                chat_id
             );
         }
 
@@ -2699,7 +2728,8 @@ impl ChatState {
         }
         log_debug!(
             "Received deletion request for message {} in chat {}",
-            message_id, chat_id
+            message_id,
+            chat_id
         );
 
         let mut chat_update: Option<WsServerMessage> = None;
@@ -2715,7 +2745,9 @@ impl ChatState {
                     return Err("receive_message_deletion rejected unauthorized delete".to_string());
                 }
                 if chat.messages[pos].message_type == MessageType::Payment {
-                    return Err("receive_message_deletion rejected payment message delete".to_string());
+                    return Err(
+                        "receive_message_deletion rejected payment message delete".to_string()
+                    );
                 }
                 chat.messages.remove(pos);
                 needs_rebuild = true;
@@ -2747,7 +2779,8 @@ impl ChatState {
             if node != caller_node {
                 log_debug!(
                     "[SEC] receive_profile_update rejected spoofed node={} source={}",
-                    node, caller_node
+                    node,
+                    caller_node
                 );
                 return Err("receive_profile_update rejected spoofed node".to_string());
             }
@@ -2877,9 +2910,7 @@ impl ChatState {
 
     #[http]
     async fn search_index(&self, req: SearchIndexReq) -> Result<SearchIndexRes, String> {
-        let results = self
-            .search_index
-            .search(&req.query, req.scope, req.limit);
+        let results = self.search_index.search(&req.query, req.scope, req.limit);
         Ok(SearchIndexRes { results })
     }
 
@@ -3128,7 +3159,8 @@ impl ChatState {
     async fn push_snapshot_to_peer(&mut self, req: PushSnapshotToPeerReq) -> Result<(), String> {
         log_debug!(
             "[REPL][{}] push_snapshot_to_peer invoked peer={}",
-            req.group_id, req.peer
+            req.group_id,
+            req.peer
         );
         let task = ReplicationTask {
             group_id: req.group_id,
@@ -3284,32 +3316,47 @@ impl ChatState {
     // SPIDER INTEGRATION
 
     #[http]
-    async fn spider_connect(&mut self, force_new: Option<bool>) -> Result<SpiderConnectResult, String> {
+    async fn spider_connect(
+        &mut self,
+        force_new: Option<bool>,
+    ) -> Result<SpiderConnectResult, String> {
         const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
 
         let should_force = force_new.unwrap_or(false);
-        log_debug!("[SPIDER] spider_connect called, force_new={:?}, should_force={}", force_new, should_force);
-        log_debug!("[SPIDER] cached key exists: {}", self.spider_api_key.is_some());
+        log_debug!(
+            "[SPIDER] spider_connect called, force_new={:?}, should_force={}",
+            force_new,
+            should_force
+        );
+        log_debug!(
+            "[SPIDER] cached key exists: {}",
+            self.spider_api_key.is_some()
+        );
 
         if !should_force {
             if let Some(existing) = self.spider_api_key.clone() {
-                log_debug!("[SPIDER] Validating cached key: {}...", &existing[..8.min(existing.len())]);
+                log_debug!(
+                    "[SPIDER] Validating cached key: {}...",
+                    &existing[..8.min(existing.len())]
+                );
                 // Validate the cached key before returning it
                 if self.validate_spider_key(&existing).await {
                     log_debug!("[SPIDER] Cached key is valid, returning it");
-                    return Ok(SpiderConnectResult {
-                        api_key: existing,
-                    });
+                    return Ok(SpiderConnectResult { api_key: existing });
                 }
                 log_debug!("[SPIDER] cached spider API key is invalid, creating new one");
             }
         }
 
         // Always use a unique name to ensure Spider creates a fresh key
-        let key_name = format!("homepage-{}-{}", our().node.clone(), std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis());
+        let key_name = format!(
+            "homepage-{}-{}",
+            our().node.clone(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+        );
 
         log_debug!("[SPIDER] Creating new key with name: {}", key_name);
 
@@ -3328,16 +3375,18 @@ impl ChatState {
             )
             .expects_response(5);
 
-        let parsed: Result<SpiderApiKey, String> = hyperapp::send(request)
-            .await
-            .map_err(|err| {
+        let parsed: Result<SpiderApiKey, String> =
+            hyperapp::send(request).await.map_err(|err| {
                 log_debug!("[SPIDER] Failed to contact spider: {}", err);
                 format!("failed to contact spider: {err}")
             })?;
 
         match parsed {
             Ok(key) => {
-                log_debug!("[SPIDER] Successfully created key: {}...", &key.key[..8.min(key.key.len())]);
+                log_debug!(
+                    "[SPIDER] Successfully created key: {}...",
+                    &key.key[..8.min(key.key.len())]
+                );
                 self.spider_api_key = Some(key.key.clone());
                 Ok(SpiderConnectResult { api_key: key.key })
             }
@@ -3362,15 +3411,23 @@ impl ChatState {
             .expects_response(2);
         let ping_result = hyperapp::send::<serde_json::Value>(request).await;
         let available = ping_result.is_ok();
-        log_debug!("[SPIDER] Ping result: {:?}, available: {}", ping_result, available);
+        log_debug!(
+            "[SPIDER] Ping result: {:?}, available: {}",
+            ping_result,
+            available
+        );
 
         let status = SpiderStatusInfo {
             connected: self.spider_api_key.is_some() && available,
             has_api_key: self.spider_api_key.is_some(),
             spider_available: available,
         };
-        log_debug!("[SPIDER] Returning status: connected={}, has_api_key={}, spider_available={}",
-            status.connected, status.has_api_key, status.spider_available);
+        log_debug!(
+            "[SPIDER] Returning status: connected={}, has_api_key={}, spider_available={}",
+            status.connected,
+            status.has_api_key,
+            status.spider_available
+        );
         Ok(status)
     }
 
@@ -3416,7 +3473,8 @@ impl ChatState {
                         Ok(msg) => {
                             log_debug!(
                                 "WebSocket: Received message from channel {}: {:?}",
-                                channel_id, msg
+                                channel_id,
+                                msg
                             );
                             // Initialize connection if not already present
                             if !self.ws_connections.contains_key(&channel_id)
@@ -3644,14 +3702,16 @@ impl ChatState {
                 Ok(_) => {
                     log_debug!(
                         "Message {} sent successfully to {}",
-                        message_id_clone, counterparty
+                        message_id_clone,
+                        counterparty
                     );
                     // Counterparty will send ACK on success.
                 }
                 Err(_) => {
                     log_debug!(
                         "Failed to send message {} to {}, adding to delivery queue",
-                        message_id_clone, counterparty
+                        message_id_clone,
+                        counterparty
                     );
                     ChatState::enqueue_delivery_message_inner(
                         &delivery_tx,
@@ -3776,7 +3836,9 @@ impl ChatState {
                         if let Err(err) = self.require_hub_access(&task.group_id, &our().node) {
                             log_debug!(
                                 "[REPL][{}] skip push to {} (local hub publish denied): {}",
-                                task.group_id, task.peer, err
+                                task.group_id,
+                                task.peer,
+                                err
                             );
                             self.replication_metrics.acl_skips =
                                 self.replication_metrics.acl_skips.saturating_add(1);
@@ -3787,7 +3849,9 @@ impl ChatState {
                     {
                         log_debug!(
                             "[REPL][{}] skip push to subscriber {} (local publish denied): {}",
-                            task.group_id, task.peer, err
+                            task.group_id,
+                            task.peer,
+                            err
                         );
                         self.replication_metrics.acl_skips =
                             self.replication_metrics.acl_skips.saturating_add(1);
@@ -3807,7 +3871,9 @@ impl ChatState {
                     Err(err) => {
                         log_debug!(
                             "[REPL][{}] cannot load doc for {}: {:?}",
-                            task.group_id, task.peer, err
+                            task.group_id,
+                            task.peer,
+                            err
                         );
                         self.schedule_backoff(task, now);
                         return;
@@ -3859,7 +3925,10 @@ impl ChatState {
                     .expects_response(REPL_RPC_TIMEOUT_SECS);
                 log_debug!(
                     "[REPL][{}] push kind={:?} peer={} target={:?}",
-                    task.group_id, task.kind, task.peer, target
+                    task.group_id,
+                    task.kind,
+                    task.peer,
+                    target
                 );
                 let rpc_started = Instant::now();
                 match send::<serde_json::Value>(req).await {
@@ -3907,7 +3976,9 @@ impl ChatState {
                         } else {
                             log_debug!(
                                 "[REPL][{}] failed to decode apply response from {}: {:?}",
-                                task.group_id, task.peer, val
+                                task.group_id,
+                                task.peer,
+                                val
                             );
                             self.schedule_backoff(task, now);
                         }
@@ -3915,7 +3986,11 @@ impl ChatState {
                     Err(AppSendError::SendError(send_err)) => {
                         log_debug!(
                             "[REPL][{}] push to {} send error: {:?} (kind={:?} target={:?})",
-                            task.group_id, task.peer, send_err, task.kind, target
+                            task.group_id,
+                            task.peer,
+                            send_err,
+                            task.kind,
+                            target
                         );
                         log_debug!(
                             "[REPL_DIAG][{}] push send_err after_ms={} kind={:?} peer={}",
@@ -3929,7 +4004,11 @@ impl ChatState {
                     Err(AppSendError::BuildError(build_err)) => {
                         log_debug!(
                             "[REPL][{}] push to {} build error: {:?} (kind={:?} target={:?})",
-                            task.group_id, task.peer, build_err, task.kind, target
+                            task.group_id,
+                            task.peer,
+                            build_err,
+                            task.kind,
+                            target
                         );
                         log_debug!(
                             "[REPL_DIAG][{}] push build_err after_ms={} kind={:?} peer={}",
@@ -3956,7 +4035,9 @@ impl ChatState {
                     ) {
                         log_debug!(
                             "[REPL][{}] failed to apply snapshot from {}: {}",
-                            task.group_id, task.peer, err
+                            task.group_id,
+                            task.peer,
+                            err
                         );
                         self.schedule_backoff(task, now);
                     } else if self.local_group_acl_ready(&task.group_id) {
@@ -3987,7 +4068,9 @@ impl ChatState {
                     ) {
                         log_debug!(
                             "[REPL][{}] failed to apply delta from {}: {}",
-                            task.group_id, task.peer, err
+                            task.group_id,
+                            task.peer,
+                            err
                         );
                         self.schedule_backoff(task, now);
                     }
@@ -4005,7 +4088,11 @@ impl ChatState {
         self.replication_metrics.retries = self.replication_metrics.retries.saturating_add(1);
         log_debug!(
             "[REPL][{}] backoff {:?} to {} (attempt {} delay={}s)",
-            task.group_id, task.kind, task.peer, task.attempt, delay
+            task.group_id,
+            task.kind,
+            task.peer,
+            task.attempt,
+            delay
         );
         self.enqueue_replication_task(task);
     }
@@ -4075,7 +4162,9 @@ impl ChatState {
             .expects_response(REPL_RPC_TIMEOUT_SECS);
         log_debug!(
             "[REPL][{}] fetch_update_from_peer peer={} target={}",
-            group_id, peer, target
+            group_id,
+            peer,
+            target
         );
 
         let req_started = Instant::now();
@@ -4097,7 +4186,9 @@ impl ChatState {
                 } else {
                     log_debug!(
                         "[REPL][{}] failed to decode delta from {} body={:?}",
-                        group_id, peer, val
+                        group_id,
+                        peer,
+                        val
                     );
                     None
                 }
@@ -4105,7 +4196,9 @@ impl ChatState {
             Err(AppSendError::SendError(err)) => {
                 log_debug!(
                     "[REPL][{}] failed to fetch delta from {} send_err={:?}",
-                    group_id, peer, err
+                    group_id,
+                    peer,
+                    err
                 );
                 log_debug!(
                     "[REPL_DIAG][{}] fetch_update_from_peer err peer={} elapsed_ms={}",
@@ -4118,7 +4211,9 @@ impl ChatState {
             Err(AppSendError::BuildError(build_err)) => {
                 log_debug!(
                     "[REPL][{}] failed to build delta request to {}: {:?}",
-                    group_id, peer, build_err
+                    group_id,
+                    peer,
+                    build_err
                 );
                 None
             }
@@ -4142,7 +4237,9 @@ impl ChatState {
             .expects_response(REPL_RPC_TIMEOUT_SECS);
         log_debug!(
             "[REPL][{}] fetch_snapshot_from_peer peer={} target={}",
-            group_id, peer, target
+            group_id,
+            peer,
+            target
         );
 
         let req_started = Instant::now();
@@ -4164,7 +4261,9 @@ impl ChatState {
                 } else {
                     log_debug!(
                         "[REPL][{}] failed to decode snapshot from {} body={:?}",
-                        group_id, peer, val
+                        group_id,
+                        peer,
+                        val
                     );
                     None
                 }
@@ -4172,7 +4271,9 @@ impl ChatState {
             Err(AppSendError::SendError(err)) => {
                 log_debug!(
                     "[REPL][{}] failed to fetch snapshot from {} send_err={:?}",
-                    group_id, peer, err
+                    group_id,
+                    peer,
+                    err
                 );
                 log_debug!(
                     "[REPL_DIAG][{}] fetch_snapshot_from_peer err peer={} elapsed_ms={}",
@@ -4185,7 +4286,9 @@ impl ChatState {
             Err(AppSendError::BuildError(build_err)) => {
                 log_debug!(
                     "[REPL][{}] failed to build snapshot request to {}: {:?}",
-                    group_id, peer, build_err
+                    group_id,
+                    peer,
+                    build_err
                 );
                 None
             }
@@ -4222,7 +4325,9 @@ impl ChatState {
                 if in_acl != local_version {
                     log_debug!(
                         "[CRDT][{}] ACL version drift: incoming={} local={}",
-                        group_id, in_acl, local_version
+                        group_id,
+                        in_acl,
+                        local_version
                     );
                 }
             }
@@ -4233,7 +4338,8 @@ impl ChatState {
         if update_bytes.is_empty() {
             log_debug!(
                 "[CRDT][{}] context={} received EMPTY update payload",
-                group_id, context
+                group_id,
+                context
             );
         }
         let was_missing = !self.groups.contains_key(group_id);
@@ -4248,7 +4354,8 @@ impl ChatState {
         if update_bytes.is_empty() && (was_missing || self.group_needs_bootstrap(group_id)) {
             log_debug!(
                 "[CRDT][{}] context={} skipping empty update during bootstrap",
-                group_id, context
+                group_id,
+                context
             );
             return Ok(());
         }
@@ -4263,7 +4370,9 @@ impl ChatState {
                 // Allow membership bootstrap/update to proceed even if we're not yet whitelisted.
                 log_debug!(
                     "[CRDT][{}] bypassing ACL for local_status={:?} context={}",
-                    group_id, local_status, context
+                    group_id,
+                    local_status,
+                    context
                 );
                 enforce_acl = false;
             }
@@ -4403,10 +4512,7 @@ impl ChatState {
                     global_notify_enabled,
                     active_connection_count
                 );
-                if global_notify_enabled
-                    && group_notify_enabled
-                    && active_connection_count == 0
-                {
+                if global_notify_enabled && group_notify_enabled && active_connection_count == 0 {
                     // Only notify for the most recent message to avoid spam
                     if let Some(latest) = new_messages.iter().max_by_key(|m| m.timestamp) {
                         let sender = latest.sender.clone();
@@ -4414,8 +4520,10 @@ impl ChatState {
                         let gid = group_id.clone();
                         let gname = group_name.clone();
                         spawn(async move {
-                            send_push_notification_for_group_message(&sender, &content, &gid, &gname)
-                                .await;
+                            send_push_notification_for_group_message(
+                                &sender, &content, &gid, &gname,
+                            )
+                            .await;
                         });
                     }
                 } else {
@@ -4509,8 +4617,10 @@ impl ChatState {
 
                 let inferred_counterparty =
                     Self::infer_counterparty_from_chat_id(chat_id, &our().node);
-                let has_messages_from_counterparty =
-                    chat.messages.iter().any(|message| message.sender == counterparty_node);
+                let has_messages_from_counterparty = chat
+                    .messages
+                    .iter()
+                    .any(|message| message.sender == counterparty_node);
 
                 if chat_id == &canonical_chat_id
                     || chat.counterparty == counterparty_node
@@ -4607,7 +4717,11 @@ impl ChatState {
         merged_chat.messages.sort_by(|a, b| {
             a.timestamp
                 .cmp(&b.timestamp)
-                .then_with(|| a.sequence.unwrap_or(u64::MAX).cmp(&b.sequence.unwrap_or(u64::MAX)))
+                .then_with(|| {
+                    a.sequence
+                        .unwrap_or(u64::MAX)
+                        .cmp(&b.sequence.unwrap_or(u64::MAX))
+                })
                 .then_with(|| a.id.cmp(&b.id))
         });
 
@@ -4922,7 +5036,8 @@ impl ChatState {
                         {
                             log_debug!(
                                 "Failed to enqueue message during flush for {}: {:?}",
-                                queued.node, err
+                                queued.node,
+                                err
                             );
                             break;
                         }
@@ -4950,7 +5065,9 @@ impl ChatState {
             Err(err) => {
                 log_debug!(
                     "Failed to deliver message {} to {}: {:?}",
-                    message.id, node, err
+                    message.id,
+                    node,
+                    err
                 );
                 let retry_tx = delivery_tx.clone();
                 let retry_pending = pending_deliveries.clone();
@@ -4966,7 +5083,9 @@ impl ChatState {
                         )) {
                             log_debug!(
                                 "Failed to requeue message {} for {}: {:?}",
-                                message.id, retry_node, send_err
+                                message.id,
+                                retry_node,
+                                send_err
                             );
                         }
                     }
@@ -4991,7 +5110,10 @@ impl ChatState {
     async fn validate_spider_key(&self, api_key: &str) -> bool {
         const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
 
-        log_debug!("[SPIDER] validate_spider_key called for key: {}...", &api_key[..8.min(api_key.len())]);
+        log_debug!(
+            "[SPIDER] validate_spider_key called for key: {}...",
+            &api_key[..8.min(api_key.len())]
+        );
 
         let body = serde_json::json!({
             "ListMcpServers": {
@@ -5017,8 +5139,13 @@ impl ChatState {
                 // Check if response is an error
                 if let Some(err) = json_body.get("Err") {
                     let err_str = err.as_str().unwrap_or("");
-                    let is_valid = !err_str.contains("Unauthorized") && !err_str.contains("Invalid API key");
-                    log_debug!("[SPIDER] Validation response has Err: {}, is_valid: {}", err_str, is_valid);
+                    let is_valid =
+                        !err_str.contains("Unauthorized") && !err_str.contains("Invalid API key");
+                    log_debug!(
+                        "[SPIDER] Validation response has Err: {}, is_valid: {}",
+                        err_str,
+                        is_valid
+                    );
                     // If unauthorized or invalid key, return false
                     is_valid
                 } else {

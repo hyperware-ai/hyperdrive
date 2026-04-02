@@ -19,7 +19,9 @@ use hyperware_pubsub_core::{whitelist::NodeId as BrokerNodeId, TopicId as Broker
 
 use super::api::*;
 use super::model::*;
-use super::model::{current_timestamp, ensure_membership_rules, generate_group_id, group_root_thread_id};
+use super::model::{
+    current_timestamp, ensure_membership_rules, generate_group_id, group_root_thread_id,
+};
 use super::replication::{
     BrokerEnvelope, ReplicationKind, ReplicationMetrics, ReplicationTask, ReplicationTx,
     ReplicationWakeRx, ReplicationWakeTx, SubscriberDeliveryEvent,
@@ -186,13 +188,14 @@ mod tests {
                 UserProfile {
                     name: "bob".to_string(),
                     profile_pic: None,
-                base_address: None,
-            },
+                    base_address: None,
+                },
             )]),
         };
 
         let bytes = rmp_serde::to_vec(&legacy).expect("serialize legacy state via rmp");
-        let restored: ChatState = rmp_serde::from_slice(&bytes).expect("deserialize into new state");
+        let restored: ChatState =
+            rmp_serde::from_slice(&bytes).expect("deserialize into new state");
 
         assert_eq!(restored.profile.name, "alice");
         assert_eq!(restored.chats.len(), 1);
@@ -210,7 +213,10 @@ mod tests {
         assert_eq!(restored_message.status, message.status);
         assert!(restored.groups.is_empty());
         assert_eq!(
-            restored.node_profiles.get("bob.node").map(|p| p.name.as_str()),
+            restored
+                .node_profiles
+                .get("bob.node")
+                .map(|p| p.name.as_str()),
             Some("bob")
         );
     }
@@ -291,16 +297,14 @@ mod tests {
         };
 
         let bytes = rmp_serde::to_vec(&legacy).expect("serialize legacy state via rmp");
-        let restored: ChatState = rmp_serde::from_slice(&bytes).expect("deserialize into new state");
+        let restored: ChatState =
+            rmp_serde::from_slice(&bytes).expect("deserialize into new state");
 
         let restored_group = restored
             .groups
             .get(&group_id)
             .expect("group should deserialize");
-        let restored_visibility = restored_group
-            .metadata
-            .as_ref()
-            .map(|meta| meta.visibility);
+        let restored_visibility = restored_group.metadata.as_ref().map(|meta| meta.visibility);
         assert_eq!(restored_visibility, Some(GroupVisibility::Public));
         assert!(restored.group_join_keys.is_empty());
     }
@@ -539,51 +543,50 @@ impl<'de> Deserialize<'de> for ChatState {
             group_unread,
             group_notify,
             node_profiles,
-        ) =
-            match ChatStateCompat::deserialize(deserializer)? {
-                ChatStateCompat::V2(data) => (
-                    data.profile,
-                    data.chats,
-                    data.chat_keys,
-                    data.group_join_keys,
-                    data.settings,
-                    data.spider_api_key,
-                    data.spider_history,
-                    data.message_sequence_counters,
-                    data.groups,
-                    data.group_unread,
-                    data.group_notify,
-                    data.node_profiles,
-                ),
-                ChatStateCompat::V2Legacy(data) => (
-                    data.profile,
-                    data.chats,
-                    data.chat_keys,
-                    HashMap::new(),
-                    data.settings,
-                    None,
-                    Vec::new(),
-                    data.message_sequence_counters,
-                    data.groups,
-                    data.group_unread,
-                    data.group_notify,
-                    data.node_profiles,
-                ),
-                ChatStateCompat::V1(data) => (
-                    data.profile,
-                    data.chats,
-                    data.chat_keys,
-                    HashMap::new(),
-                    data.settings,
-                    None,
-                    Vec::new(),
-                    HashMap::new(),
-                    HashMap::new(),
-                    HashMap::new(),
-                    HashMap::new(),
-                    data.node_profiles,
-                ),
-            };
+        ) = match ChatStateCompat::deserialize(deserializer)? {
+            ChatStateCompat::V2(data) => (
+                data.profile,
+                data.chats,
+                data.chat_keys,
+                data.group_join_keys,
+                data.settings,
+                data.spider_api_key,
+                data.spider_history,
+                data.message_sequence_counters,
+                data.groups,
+                data.group_unread,
+                data.group_notify,
+                data.node_profiles,
+            ),
+            ChatStateCompat::V2Legacy(data) => (
+                data.profile,
+                data.chats,
+                data.chat_keys,
+                HashMap::new(),
+                data.settings,
+                None,
+                Vec::new(),
+                data.message_sequence_counters,
+                data.groups,
+                data.group_unread,
+                data.group_notify,
+                data.node_profiles,
+            ),
+            ChatStateCompat::V1(data) => (
+                data.profile,
+                data.chats,
+                data.chat_keys,
+                HashMap::new(),
+                data.settings,
+                None,
+                Vec::new(),
+                HashMap::new(),
+                HashMap::new(),
+                HashMap::new(),
+                HashMap::new(),
+                data.node_profiles,
+            ),
+        };
         let (delivery_tx, delivery_rx) = DeliveryTx::new();
         let (replication_tx, replication_rx) = ReplicationTx::new();
         let (replication_wake_tx, replication_wake_rx) = ReplicationWakeTx::new();
@@ -734,8 +737,7 @@ impl ChatState {
     pub fn rebuild_group_search(&mut self, group_id: &GroupId) {
         let our_node = our().node.clone();
         if let Some(group) = self.groups.get(group_id) {
-            self.search_index
-                .rebuild_group(group_id, group, &our_node);
+            self.search_index.rebuild_group(group_id, group, &our_node);
         } else {
             self.search_index.remove_group(group_id);
         }
@@ -880,7 +882,9 @@ impl ChatState {
         if let Err(err) = self.require_hub_access(group_id, &local_node) {
             crate::log_debug!(
                 "[CRDT][{}] skip publish: node {} lacks hub access ({})",
-                group_id, local_node, err
+                group_id,
+                local_node,
+                err
             );
             self.replication_metrics.acl_skips =
                 self.replication_metrics.acl_skips.saturating_add(1);
@@ -1071,7 +1075,9 @@ impl ChatState {
         if let Err(err) = self.commit_group_crdt(group_id) {
             crate::log_debug!(
                 "Failed to commit group CRDT state (group={} context={}): {:?}",
-                group_id, context, err
+                group_id,
+                context,
+                err
             );
         }
     }

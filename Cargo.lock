@@ -853,6 +853,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arc-swap"
+version = "1.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a07d1f37ff60921c83bdfc7407723bdefe89b44b98a9b772f225c8f9d67141a6"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "argon2"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1057,6 +1066,12 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
+name = "atomic_refcell"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41e67cd8309bbd06cd603a9e693a784ac2e5d1e955f11286e355089fcab3047c"
 
 [[package]]
 name = "auditable-serde"
@@ -1557,6 +1572,26 @@ dependencies = [
  "urlencoding 2.1.3",
  "wit-bindgen 0.42.1",
  "zip 1.1.4",
+]
+
+[[package]]
+name = "chat"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.21.7",
+ "flate2",
+ "futures",
+ "hyperapp_macro 0.2.0",
+ "hyperware-crdt",
+ "hyperware-pubsub-core",
+ "hyperware_process_lib 3.0.0",
+ "process_macros",
+ "rand 0.8.5",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "wit-bindgen 0.42.1",
 ]
 
 [[package]]
@@ -2720,6 +2755,9 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+dependencies = [
+ "getrandom 0.2.16",
+]
 
 [[package]]
 name = "fastrlp"
@@ -3572,8 +3610,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperapp_macro"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061414cb1a535e9e2a9c98ac112c1ac770552ae53d6f6309133cdccf5c251659"
+dependencies = [
+ "hyperware_process_lib 3.0.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
 name = "hyperdrive"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "aes-gcm",
  "alloy",
@@ -3633,7 +3683,7 @@ dependencies = [
 
 [[package]]
 name = "hyperdrive_lib"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "lib",
 ]
@@ -3671,6 +3721,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperware-crdt"
+version = "0.1.0"
+source = "git+https://github.com/hyperware-ai/hyperware-crdt?rev=a0aefa9#a0aefa95d7c55b7f848622119b269131e16efb71"
+dependencies = [
+ "base64 0.22.1",
+ "hyperware_process_lib 3.0.0",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "yrs",
+]
+
+[[package]]
 name = "hyperware-parse-wit"
 version = "0.1.0"
 dependencies = [
@@ -3678,6 +3742,20 @@ dependencies = [
  "serde_json",
  "wit-parser 0.220.1",
  "zip 2.4.2",
+]
+
+[[package]]
+name = "hyperware-pubsub-core"
+version = "0.1.0"
+source = "git+https://github.com/hyperware-ai/hyperware-pubsub?rev=abd30a6#abd30a63db2672ce8acb40095a769c2c1cd8d1f5"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "futures-core",
+ "serde",
+ "thiserror 1.0.69",
+ "tracing",
+ "uuid 1.17.0",
 ]
 
 [[package]]
@@ -4401,7 +4479,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "alloy",
  "anyhow",
@@ -6348,6 +6426,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "send-bulk-chat"
+version = "0.1.0"
+dependencies = [
+ "hyperware_process_lib 3.0.0",
+ "serde",
+ "serde_json",
+ "wit-bindgen 0.41.0",
+]
+
+[[package]]
 name = "send_wrapper"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6572,6 +6660,15 @@ dependencies = [
  "async-channel",
  "futures-core",
  "futures-io",
+]
+
+[[package]]
+name = "smallstr"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "862077b1e764f04c251fe82a2ef562fd78d7cadaeb072ca7c2bcaf7217b1ff3b"
+dependencies = [
+ "smallvec",
 ]
 
 [[package]]
@@ -9111,6 +9208,22 @@ dependencies = [
  "quote",
  "syn 2.0.104",
  "synstructure 0.13.2",
+]
+
+[[package]]
+name = "yrs"
+version = "0.19.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8ca5126331b9a5ef5bb10f3f1c3d01b05f298d348c66f8fb15497d83ee73176"
+dependencies = [
+ "arc-swap",
+ "atomic_refcell",
+ "fastrand 2.3.0",
+ "serde",
+ "serde_json",
+ "smallstr",
+ "smallvec",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

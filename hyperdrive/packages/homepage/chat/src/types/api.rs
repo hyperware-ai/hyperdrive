@@ -9,8 +9,7 @@ use crate::crdt::{
 };
 
 use super::{
-    default_group_message_type, FileInfo, MessageType, ReplicationMetrics,
-    SubscriberDeliveryEvent,
+    default_group_message_type, FileInfo, MessageType, ReplicationMetrics, SubscriberDeliveryEvent,
 };
 
 #[derive(Serialize, Deserialize, Debug)]

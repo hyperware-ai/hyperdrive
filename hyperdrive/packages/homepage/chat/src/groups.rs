@@ -552,17 +552,14 @@ impl ChatState {
             membership_proposal_key(group_id, &candidate, MembershipActionKind::Invite);
         group.membership_proposals.remove(&invite_proposal_id);
 
-        let entry = group
-            .members
-            .entry(candidate.clone())
-            .or_insert_with(|| {
-                GroupMember::new(
-                    candidate.clone(),
-                    default_role_id.clone(),
-                    MembershipStatus::Active,
-                    now,
-                )
-            });
+        let entry = group.members.entry(candidate.clone()).or_insert_with(|| {
+            GroupMember::new(
+                candidate.clone(),
+                default_role_id.clone(),
+                MembershipStatus::Active,
+                now,
+            )
+        });
         entry.role_id = default_role_id;
         entry.status = MembershipStatus::Active;
         entry.last_activity = now;

@@ -7,5 +7,6 @@ panic = "abort"
 members = [
     "homepage",
     "chat",
+    "send-bulk-chat",
 ]
 resolver = "2"

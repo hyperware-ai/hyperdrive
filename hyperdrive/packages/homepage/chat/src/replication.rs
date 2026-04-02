@@ -351,7 +351,9 @@ impl ChatState {
                 if let Err(err) = self.apply_broker_envelope(&topic, &env, now) {
                     crate::log_debug!(
                         "[BROKER] topic={} offset={} apply error: {}",
-                        topic, env.offset, err
+                        topic,
+                        env.offset,
+                        err
                     );
                     continue;
                 }
@@ -489,7 +491,10 @@ impl ChatState {
         if age > SUBSCRIBER_ACK_DEADLINE_SECS {
             crate::log_debug!(
                 "[BROKER][{}] delivery lag {}s topic={} offset={}",
-                group_id, age, topic, env.offset
+                group_id,
+                age,
+                topic,
+                env.offset
             );
         }
         if is_subscriber_topic {
@@ -498,7 +503,10 @@ impl ChatState {
                 self.replication_metrics.drops = self.replication_metrics.drops.saturating_add(1);
                 crate::log_debug!(
                     "[BROKER][{}] drop stale subscriber envelope topic={} offset={} age={}s",
-                    group_id, topic, env.offset, age
+                    group_id,
+                    topic,
+                    env.offset,
+                    age
                 );
                 return Ok(());
             }
@@ -506,7 +514,9 @@ impl ChatState {
                 self.replication_metrics.drops = self.replication_metrics.drops.saturating_add(1);
                 crate::log_debug!(
                     "[BROKER][{}] drop duplicate subscriber envelope topic={} offset={}",
-                    group_id, topic, env.offset
+                    group_id,
+                    topic,
+                    env.offset
                 );
                 return Ok(());
             }
@@ -521,7 +531,10 @@ impl ChatState {
                 if local != in_acl {
                     crate::log_debug!(
                         "[BROKER][{}] ACL drift topic {} incoming={} local={}",
-                        group_id, topic, in_acl, local
+                        group_id,
+                        topic,
+                        in_acl,
+                        local
                     );
                     self.replication_metrics.acl_drifts =
                         self.replication_metrics.acl_drifts.saturating_add(1);
@@ -648,7 +661,11 @@ mod tests {
 
         state.enqueue_stale_subscriber_replays_for_node(now, "local.node");
 
-        let peers: Vec<String> = state.replication_queue.iter().map(|t| t.peer.clone()).collect();
+        let peers: Vec<String> = state
+            .replication_queue
+            .iter()
+            .map(|t| t.peer.clone())
+            .collect();
         assert!(peers.contains(&sub_node));
         assert!(!peers.contains(&hub_node));
     }

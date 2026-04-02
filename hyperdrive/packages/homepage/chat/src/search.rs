@@ -161,8 +161,7 @@ impl SearchIndex {
         }
 
         if !doc_ids.is_empty() {
-            self.group_doc_ids
-                .insert(group_id.to_string(), doc_ids);
+            self.group_doc_ids.insert(group_id.to_string(), doc_ids);
         }
     }
 
@@ -368,7 +367,11 @@ fn build_group_summary_doc(group_id: &GroupId, group: &Group) -> Option<SearchDo
         .as_ref()
         .and_then(|meta| meta.description.clone())
         .unwrap_or_default();
-    let updated_at = group.metadata.as_ref().map(|meta| meta.updated_at).unwrap_or(0);
+    let updated_at = group
+        .metadata
+        .as_ref()
+        .map(|meta| meta.updated_at)
+        .unwrap_or(0);
     SearchDoc::new(
         format!("group:{}:summary", group_id),
         SearchResultKind::GroupSummary,
